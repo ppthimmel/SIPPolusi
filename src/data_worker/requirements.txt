@@ -3,3 +3,6 @@ geopandas
 rasterio
 xarray
 osmnx
+# Konektor ground truth SPKU dan penyimpanan PostgreSQL
+requests>=2.31
+psycopg[binary]>=3.1

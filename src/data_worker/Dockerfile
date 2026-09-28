@@ -8,4 +8,6 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
-CMD ["python", "main.py"]
+# Satu siklus akuisisi lalu keluar; dijadwalkan oleh cron (railway.json: 15 * * * *).
+# Untuk proses menetap tanpa cron: python main.py serve
+CMD ["python", "main.py", "cycle"]
