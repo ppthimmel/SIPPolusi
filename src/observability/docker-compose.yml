@@ -5,21 +5,17 @@ version: "3.8"
 # Gateway is a Traefik/NGINX configuration rather than a bespoke service).
 services:
   prometheus:
-    image: prom/prometheus:latest
-    volumes:
-      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    build: ./prometheus
     ports:
       - "9090:9090"
 
   pushgateway:
-    image: prom/pushgateway:latest
+    build: ./pushgateway
     ports:
       - "9091:9091"
 
   grafana:
-    image: grafana/grafana:latest
-    volumes:
-      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+    build: ./grafana
     ports:
       - "3000:3000"
     depends_on:

@@ -2,17 +2,16 @@ global:
   scrape_interval: 15s
 
 scrape_configs:
-  # "backend" resolves via Docker Compose service DNS locally/in CI; on
-  # Railway this target name is replaced with backend.railway.internal.
+  # Targets are placeholders filled from env (BACKEND_TARGET, PUSHGATEWAY_TARGET) by the Dockerfile entrypoint.
   - job_name: backend
     static_configs:
-      - targets: ["backend:8000"]
+      - targets: ["__BACKEND_TARGET__"]
 
   - job_name: data_worker
     honor_labels: true
     static_configs:
-      - targets: ["pushgateway:9091"]
+      - targets: ["__PUSHGATEWAY_TARGET__"]
 
   - job_name: pushgateway
     static_configs:
-      - targets: ["pushgateway:9091"]
+      - targets: ["__PUSHGATEWAY_TARGET__"]
