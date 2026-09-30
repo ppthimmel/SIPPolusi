@@ -1,0 +1,124 @@
+# Local development / CI stack for all SIPPolusi services. Mirrors the
+# Railway deployment topology minus the gateway (Railway's built-in gateway
+# has no local equivalent here; the frontend container proxies /v1/* to the
+# backend directly, see src/frontend/nginx.conf).
+services:
+  postgres:
+    image: postgis/postgis:16-3.4
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: sippolusi
+      POSTGRES_PASSWORD: sippolusi
+      POSTGRES_DB: sippolusi
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sippolusi"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # minio/minio is no longer pullable without a Docker Hub login (MinIO Inc.
+  # moved AGPL community images behind auth); bitnamilegacy is the free
+  # community-maintained mirror and supports MINIO_DEFAULT_BUCKETS directly.
+  minio:
+    image: bitnamilegacy/minio:latest
+    restart: unless-stopped
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+      MINIO_DEFAULT_BUCKETS: "mlflow,feature-store"
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/bitnami/minio/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  model_registry:
+    build: ./src/model_registry
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    environment:
+      MLFLOW_BACKEND_STORE_URI: "postgresql://sippolusi:sippolusi@postgres:5432/sippolusi?options=-csearch_path=mlflow"
+      MLFLOW_ARTIFACT_ROOT: "s3://mlflow/artifacts"
+      MLFLOW_S3_ENDPOINT_URL: "http://minio:9000"
+      AWS_ACCESS_KEY_ID: minioadmin
+      AWS_SECRET_ACCESS_KEY: minioadmin
+    ports:
+      - "5000:5000"
+
+  backend:
+    build: ./src/backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      model_registry:
+        condition: service_started
+    environment:
+      DATABASE_URL: "postgresql://sippolusi:sippolusi@postgres:5432/sippolusi"
+      MLFLOW_TRACKING_URI: "http://model_registry:5000"
+    ports:
+      - "8000:8000"
+
+  data_worker:
+    build: ./src/data_worker
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      model_registry:
+        condition: service_started
+    environment:
+      DATABASE_URL: "postgresql://sippolusi:sippolusi@postgres:5432/sippolusi"
+      MLFLOW_TRACKING_URI: "http://model_registry:5000"
+      MLFLOW_S3_ENDPOINT_URL: "http://minio:9000"
+      AWS_ACCESS_KEY_ID: minioadmin
+      AWS_SECRET_ACCESS_KEY: minioadmin
+
+  frontend:
+    build: ./src/frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "8080:80"
+
+  prometheus:
+    image: prom/prometheus:latest
+    restart: unless-stopped
+    volumes:
+      - ./src/observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "9090:9090"
+
+  pushgateway:
+    image: prom/pushgateway:latest
+    restart: unless-stopped
+    ports:
+      - "9091:9091"
+
+  grafana:
+    image: grafana/grafana:latest
+    restart: unless-stopped
+    volumes:
+      - ./src/observability/grafana/provisioning:/etc/grafana/provisioning:ro
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+
+volumes:
+  postgres_data:
+  minio_data:

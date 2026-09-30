@@ -2,8 +2,11 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Copy requirements and install dependencies
+# Copy requirements and install dependencies. Railway has no GPU (training
+# runs separately on the Tambora GPU server), so pin the CPU-only PyTorch
+# build here instead of pulling multi-GB CUDA wheels.
 COPY requirements.txt .
+RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy the rest of the backend source code

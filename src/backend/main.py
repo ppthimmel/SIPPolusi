@@ -1,7 +1,11 @@
 from fastapi import FastAPI, HTTPException, status
-import asyncpg
+
 import os
 import logging
+
+from sqlalchemy import text
+from database import dispose_engine, get_session, init_engine
+from route_model.inference import solve_route, solve_baseline_route
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -13,39 +17,48 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# Database connection pool
-db_pool = None
-
 @app.on_event("startup")
 async def startup():
-    global db_pool
     database_url = os.getenv("DATABASE_URL")
     if not database_url:
         logger.warning("DATABASE_URL environment variable is not set. Database features will not work.")
         return
-        
+
     try:
-        db_pool = await asyncpg.create_pool(database_url)
-        logger.info("Successfully connected to the database pool.")
+        init_engine(database_url)
+        async for session in get_session():
+            await session.execute(text("SELECT 1"))
+        logger.info("Successfully connected to the database.")
     except Exception as e:
         logger.error(f"Failed to connect to database: {e}")
 
 @app.on_event("shutdown")
 async def shutdown():
-    global db_pool
-    if db_pool:
-        await db_pool.close()
-        logger.info("Database pool closed.")
+    await dispose_engine()
+    logger.info("Database engine disposed.")
 
 @app.get("/health")
 async def health_check():
     """Health check endpoint for Railway and NGINX."""
     return {"status": "ok", "service": "backend"}
 
-@app.get("/v1/routes")
-async def get_routes():
-    # Placeholder for IRouteQuery implementation
-    return {"message": "Route optimization will be implemented here."}
+@app.post("/v1/routes")
+async def plan_route(request: dict):
+    """Real-time critical path: validate request, run route policy inference within
+    the latency budget, fall back to the baseline route on failure or timeout (PF-09)."""
+    origin = request.get("origin")
+    destination = request.get("destination")
+    mode = request.get("mode")
+    alpha = request.get("alpha", 0.5)
+    beta = request.get("beta", 0.5)
+
+    try:
+        result = solve_route(origin, destination, mode, alpha, beta)
+    except Exception as e:
+        logger.error(f"Route policy inference failed, falling back to baseline: {e}")
+        result = solve_baseline_route(origin, destination, mode)
+
+    return result
 
 @app.get("/metrics")
 async def metrics():

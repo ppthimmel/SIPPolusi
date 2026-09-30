@@ -1,0 +1,26 @@
+version: "3.8"
+
+# Local/CI observability stack (Prometheus, Pushgateway, Grafana). All three
+# are stock images configured, not custom source code (mirrors how API
+# Gateway is a Traefik/NGINX configuration rather than a bespoke service).
+services:
+  prometheus:
+    image: prom/prometheus:latest
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "9090:9090"
+
+  pushgateway:
+    image: prom/pushgateway:latest
+    ports:
+      - "9091:9091"
+
+  grafana:
+    image: grafana/grafana:latest
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
