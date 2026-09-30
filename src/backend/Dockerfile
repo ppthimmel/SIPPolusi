@@ -16,4 +16,6 @@ COPY . .
 EXPOSE 8000
 
 # Command to run the application using uvicorn
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Empty host = all interfaces: asyncio opens separate IPv4 and IPv6 sockets, so both
+# Railway's public edge (IPv4) and private network (IPv6) can connect.
+CMD uvicorn main:app --host "" --port ${PORT:-8000}

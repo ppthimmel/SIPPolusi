@@ -1,9 +1,15 @@
 server {
-    listen 80;
+    listen ${PORT};
     server_name localhost;
 
+    # Re-resolve the backend on each request instead of once at startup, so a
+    # redeployed backend (new private IP) is picked up. NGINX_LOCAL_RESOLVERS is
+    # filled from /etc/resolv.conf by the nginx image entrypoint.
+    resolver ${NGINX_LOCAL_RESOLVERS} valid=10s ipv6=on;
+
     location /v1/ {
-        proxy_pass ${BACKEND_UPSTREAM};
+        set $backend_upstream ${BACKEND_UPSTREAM};
+        proxy_pass $backend_upstream;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
     }
