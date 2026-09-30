@@ -42,8 +42,23 @@ def _parse_start(text: str) -> TimeWindow:
     return TimeWindow.starting_at(moment)
 
 
+def _init_cache_schemas() -> None:
+    """Skema cache ``pollution`` dan ``osm`` (SQLAlchemy, milik Data Worker).
+
+    Idempoten. Kegagalannya tidak menghentikan siklus: skema ``ground_truth``
+    dibuat terpisah oleh ``spku.store.Store`` pada koneksi pertama.
+    """
+    try:
+        from database import init_db
+
+        init_db()
+    except Exception:  # noqa: BLE001
+        log.exception("init_db gagal; siklus tetap dijalankan")
+
+
 def run_cycle(window: TimeWindow | None = None) -> int:
     window = window or TimeWindow.just_ended()
+    _init_cache_schemas()
     log.info("siklus akuisisi untuk %s dimulai", window)
     report = schedule_acquisition(window)
     print(json.dumps(report, indent=2, ensure_ascii=False, default=str))

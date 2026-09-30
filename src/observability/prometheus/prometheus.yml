@@ -1,0 +1,17 @@
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  # Targets are placeholders filled from env (BACKEND_TARGET, PUSHGATEWAY_TARGET) by the Dockerfile entrypoint.
+  - job_name: backend
+    static_configs:
+      - targets: ["__BACKEND_TARGET__"]
+
+  - job_name: data_worker
+    honor_labels: true
+    static_configs:
+      - targets: ["__PUSHGATEWAY_TARGET__"]
+
+  - job_name: pushgateway
+    static_configs:
+      - targets: ["__PUSHGATEWAY_TARGET__"]

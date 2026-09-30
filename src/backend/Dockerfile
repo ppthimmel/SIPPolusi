@@ -2,8 +2,11 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Copy requirements and install dependencies
+# Copy requirements and install dependencies. Railway has no GPU (training
+# runs separately on the Tambora GPU server), so pin the CPU-only PyTorch
+# build here instead of pulling multi-GB CUDA wheels.
 COPY requirements.txt .
+RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy the rest of the backend source code
@@ -13,4 +16,6 @@ COPY . .
 EXPOSE 8000
 
 # Command to run the application using uvicorn
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Empty host = all interfaces: asyncio opens separate IPv4 and IPv6 sockets, so both
+# Railway's public edge (IPv4) and private network (IPv6) can connect.
+CMD uvicorn main:app --host "" --port ${PORT:-8000}

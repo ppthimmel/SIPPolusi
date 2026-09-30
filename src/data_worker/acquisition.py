@@ -28,6 +28,20 @@ def _step_ground_truth(time_window: TimeWindow, config: Config) -> dict:
     }
 
 
+def _step_downscale_inference(time_window: TimeWindow, config: Config) -> dict:
+    """trigger_downscale_inference: ST-GNN, jatuh ke IDW bila gagal (PF-12)."""
+    from spatial_model.inference import run_downscale_inference, run_idw_fallback
+
+    window_start = time_window.start.strftime("%Y-%m-%dT%H:%M:%SZ")
+    try:
+        result = run_downscale_inference(window_start)
+    except Exception as exc:  # noqa: BLE001 - fallback IDW
+        log.exception("inferensi downscale gagal, beralih ke IDW")
+        result = {**run_idw_fallback(window_start), "fallback_reason": f"{type(exc).__name__}: {exc}"}
+    # Kedua fungsi masih kerangka; laporkan sebagai not_implemented sampai terisi.
+    return {"status": result.pop("status", "not_implemented"), **result}
+
+
 #: Langkah B2-B15 berurutan. ``None`` berarti belum diimplementasikan dan
 #: dicatat sebagai not_implemented, bukan galat, agar siklus tetap berjalan.
 DEFAULT_STEPS: list[tuple[str, Step | None]] = [
@@ -38,7 +52,7 @@ DEFAULT_STEPS: list[tuple[str, Step | None]] = [
     ("run_quality_control", None),
     ("align_spatiotemporal", None),
     ("write_features", None),
-    ("trigger_downscale_inference", None),
+    ("trigger_downscale_inference", _step_downscale_inference),
 ]
 
 

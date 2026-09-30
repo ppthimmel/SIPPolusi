@@ -27,6 +27,9 @@ kendali mutu, penyelarasan, write_features, inferensi) masih tercatat
 | `spku/schema.sql` | Skema `ground_truth` (PostgreSQL 16 + PostGIS) |
 | `scripts/migrate_sqlite_to_postgres.py` | Pemindahan data historis dari `udara.sqlite` |
 | `docs/DATA.md` | Kamus data, mutu data, dan catatan zona waktu |
+| `docs/RAILWAY.md` | Langkah deployment Railway, migrasi data historis, peralihan, catatan penggabungan `dev` |
+| `database/` | Model SQLAlchemy skema cache `pollution` dan `osm`; `init_db()` dipanggil di awal setiap siklus |
+| `spatial_model/` | Kerangka inferensi ST-GNN dan fallback IDW (langkah `trigger_downscale_inference`) |
 
 `fetch_ground_truth("spku")` menjalankan lintasan penuh yang sama dengan
 kolektor historis (daftar stasiun, lalu 119 halaman rinci dengan riwayat 48
@@ -71,6 +74,7 @@ Untuk ditinjau pada pull request dan diselaraskan pada revisi dokumen.
 | Timeout SPKU | 30 detik (Tabel 3.19) | 45 detik, tiga kali coba | Nilai kolektor lama; portal pernah sangat lambat (lintasan 78–122 menit) |
 | Data yang disimpan | PM2.5 dan NO2 (Tabel 3.18) | Enam pencemar, ISPU per jam, meteorologi stasiun | Semua ikut pada halaman yang sama; `fetch_ground_truth` tetap mengembalikan PM2.5 dan NO2 |
 | Pemicu siklus | CronJob | Cron Railway `15 * * * *` (`railway.json`) | Setara; manifes `k3s/` belum memuat Data Worker |
+| Akses basis data | Satu lapisan akses | `database/` (SQLAlchemy + psycopg2) untuk skema cache, `spku/store.py` (psycopg 3, SQL langsung) untuk `ground_truth` | Kolektor diporting apa adanya agar semantik idempoten dan jejak revisi tetap teruji; dapat disatukan kemudian |
 | Role basis data | `worker_writer` (Tabel 3.15) | Pengguna dari `DATABASE_URL` | Role belum dibuat oleh DevOps |
 | Cuplikan beranda 30 menit | Tidak ada | Tersedia (`python main.py spku snapshot`), tidak dijadwalkan | Siklus per jam sudah cukup mendeteksi gangguan |
 | Kendali mutu | `run_quality_control` membuang dan mengisi | Konektor hanya menandai (`qc`), tidak membuang | Pembuangan tetap tugas `run_quality_control` |
@@ -84,6 +88,10 @@ meteorologi tujuh jam terlalu maju. Keputusan tim: `udara.sqlite` dibiarkan
 apa adanya, dan koreksi −7 jam dilakukan oleh skrip migrasi. Bukti dan
 rinciannya ada pada `docs/DATA.md` dan docstring `spku/normalize.py`; uji
 regresinya `test_label_rinci_adalah_wib_selaras_dengan_last_update_bertanda_z`.
+
+Pada `docker compose` (lokal), service ini dijalankan dengan `python main.py
+serve --now` (penjadwal internal), bukan `cycle`, karena `restart:
+unless-stopped` akan mengulang `cycle` setiap kali proses keluar.
 
 ## Konfigurasi
 
@@ -102,6 +110,8 @@ pada koneksi pertama (`CREATE EXTENSION IF NOT EXISTS postgis`, `CREATE SCHEMA
 IF NOT EXISTS ground_truth`).
 
 ## Deployment di Railway
+
+Langkah lengkap beserta status data saat ini: [`docs/RAILWAY.md`](docs/RAILWAY.md).
 
 1. Tambahkan service PostgreSQL dengan PostGIS (template PostGIS, bukan
    template Postgres biasa, karena skema memakai `geometry` dan indeks GiST).
