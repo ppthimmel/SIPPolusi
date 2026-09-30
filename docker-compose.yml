@@ -79,24 +79,20 @@ services:
       - "8080:80"
 
   prometheus:
-    image: prom/prometheus:latest
+    build: ./src/observability/prometheus
     restart: unless-stopped
-    volumes:
-      - ./src/observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
     ports:
       - "9090:9090"
 
   pushgateway:
-    image: prom/pushgateway:latest
+    build: ./src/observability/pushgateway
     restart: unless-stopped
     ports:
       - "9091:9091"
 
   grafana:
-    image: grafana/grafana:latest
+    build: ./src/observability/grafana
     restart: unless-stopped
-    volumes:
-      - ./src/observability/grafana/provisioning:/etc/grafana/provisioning:ro
     env_file: ./src/observability/.env
     ports:
       - "3000:3000"
