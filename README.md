@@ -24,6 +24,23 @@ There is no standalone API Gateway service: routing, TLS termination, and
 rate limiting are handled by Railway's built-in gateway (with NGINX
 configured on top of it in production, per the design document).
 
+## Environment variables
+
+Each service has its own `src/<service>/.env.example` (postgres, minio,
+model_registry, backend, data_worker, frontend, observability) listing its
+variables and owner. There is no global env file. Copy each one before the
+first run and fill in the values (`.env` is gitignored):
+
+```bash
+for d in postgres minio model_registry backend data_worker frontend observability; do
+  cp src/$d/.env.example src/$d/.env
+done
+```
+
+Credentials repeated across services (Postgres user/password inside
+`DATABASE_URL`, MinIO root user/password as `AWS_*`) must match the
+`postgres` and `minio` env files.
+
 ## Running everything locally
 
 ```bash

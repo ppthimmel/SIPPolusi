@@ -1,21 +1,18 @@
 # Local development / CI stack for all SIPPolusi services. Mirrors the
 # Railway deployment topology minus the gateway (Railway's built-in gateway
 # has no local equivalent here; the frontend container proxies /v1/* to the
-# backend directly, see src/frontend/nginx.conf).
+# backend directly, see src/frontend/default.conf.template).
 services:
   postgres:
     image: postgis/postgis:16-3.4
     restart: unless-stopped
-    environment:
-      POSTGRES_USER: sippolusi
-      POSTGRES_PASSWORD: sippolusi
-      POSTGRES_DB: sippolusi
+    env_file: ./src/postgres/.env
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U sippolusi"]
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -26,10 +23,7 @@ services:
   minio:
     image: bitnamilegacy/minio:latest
     restart: unless-stopped
-    environment:
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadmin
-      MINIO_DEFAULT_BUCKETS: "mlflow,feature-store"
+    env_file: ./src/minio/.env
     ports:
       - "9000:9000"
       - "9001:9001"
@@ -49,12 +43,7 @@ services:
         condition: service_healthy
       minio:
         condition: service_healthy
-    environment:
-      MLFLOW_BACKEND_STORE_URI: "postgresql://sippolusi:sippolusi@postgres:5432/sippolusi?options=-csearch_path=mlflow"
-      MLFLOW_ARTIFACT_ROOT: "s3://mlflow/artifacts"
-      MLFLOW_S3_ENDPOINT_URL: "http://minio:9000"
-      AWS_ACCESS_KEY_ID: minioadmin
-      AWS_SECRET_ACCESS_KEY: minioadmin
+    env_file: ./src/model_registry/.env
     ports:
       - "5000:5000"
 
@@ -66,9 +55,7 @@ services:
         condition: service_healthy
       model_registry:
         condition: service_started
-    environment:
-      DATABASE_URL: "postgresql://sippolusi:sippolusi@postgres:5432/sippolusi"
-      MLFLOW_TRACKING_URI: "http://model_registry:5000"
+    env_file: ./src/backend/.env
     ports:
       - "8000:8000"
 
@@ -80,16 +67,12 @@ services:
         condition: service_healthy
       model_registry:
         condition: service_started
-    environment:
-      DATABASE_URL: "postgresql://sippolusi:sippolusi@postgres:5432/sippolusi"
-      MLFLOW_TRACKING_URI: "http://model_registry:5000"
-      MLFLOW_S3_ENDPOINT_URL: "http://minio:9000"
-      AWS_ACCESS_KEY_ID: minioadmin
-      AWS_SECRET_ACCESS_KEY: minioadmin
+    env_file: ./src/data_worker/.env
 
   frontend:
     build: ./src/frontend
     restart: unless-stopped
+    env_file: ./src/frontend/.env
     depends_on:
       - backend
     ports:
@@ -114,6 +97,7 @@ services:
     restart: unless-stopped
     volumes:
       - ./src/observability/grafana/provisioning:/etc/grafana/provisioning:ro
+    env_file: ./src/observability/.env
     ports:
       - "3000:3000"
     depends_on:
