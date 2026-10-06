@@ -29,7 +29,8 @@ kendali mutu, penyelarasan, write_features, inferensi) masih tercatat
 | `docs/DATA.md` | Kamus data, mutu data, dan catatan zona waktu |
 | `docs/RAILWAY.md` | Langkah deployment Railway, migrasi data historis, peralihan, catatan penggabungan `dev` |
 | `database/` | Model SQLAlchemy skema cache `pollution` dan `osm`; `init_db()` dipanggil di awal setiap siklus |
-| `spatial_model/` | Kerangka inferensi ST-GNN dan fallback IDW (langkah `trigger_downscale_inference`) |
+| `spatial_model/` | Kerangka inferensi ST-GNN (langkah `trigger_downscale_inference`); `idw.py` dan `grid.py` berisi IDW dan grid 100 m yang dipakai baseline dan fallback |
+| `spatial_model/baseline/` | Baseline IDW TI-AI-04: dataset beku, evaluasi *leave-one-station-out*, analisis galat; lihat [README-nya](spatial_model/baseline/README.md) |
 
 `fetch_ground_truth("spku")` menjalankan lintasan penuh yang sama dengan
 kolektor historis (daftar stasiun, lalu 119 halaman rinci dengan riwayat 48
@@ -164,4 +165,5 @@ Uji penyimpanan dijalankan terhadap PostgreSQL + PostGIS sungguhan (Tabel
 (`postgis/postgis:16-3.4`) bila Docker tersedia. Setiap uji memakai skema
 baru yang dihapus setelahnya. Tanpa keduanya, uji basis data dilewati dan
 sisanya tetap berjalan. `tests/test_data_worker.py` memuat UT-DW-01 dan
-UT-DW-05 dari Tabel 5.8.
+UT-DW-05 dari Tabel 5.8; `tests/test_spatial_baseline.py` memuat UT-SDM-08
+dan UT-MTP-03 untuk baseline IDW.
