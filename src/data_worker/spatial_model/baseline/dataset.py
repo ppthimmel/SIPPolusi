@@ -100,9 +100,12 @@ def load_raw_from_postgres(
 ) -> tuple[pd.DataFrame, pd.DataFrame, dict]:
     """Membaca tabel station dan observation dari PostgreSQL dalam sesi read-only.
 
-    Hanya pengukuran dengan ``ts_utc < end_utc`` yang dibaca, sehingga
-    snapshot tidak berubah walau Data Worker terus menulis. DSN tidak pernah
-    dicatat; manifest hanya memuat host-agnostic ``schema`` dan batas kueri.
+    Hanya pengukuran dengan ``ts_utc < end_utc`` yang dibaca. Ini tidak
+    menjamin hasil yang sama bila dibaca ulang: selama ±48 jam setelah batas,
+    portal masih dapat menambah bacaan, dan bendera ``qc`` dapat berubah
+    (teramati 6 Oktober 2026 pada DKI_PM25_85). Dataset beku adalah berkas
+    hasil fungsi ini beserta manifest-nya, bukan kuerinya. DSN tidak pernah
+    dicatat; manifest hanya memuat ``schema`` dan batas kueri.
     """
     import psycopg
 

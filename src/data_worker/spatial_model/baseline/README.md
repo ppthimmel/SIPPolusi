@@ -23,8 +23,19 @@ python -m spatial_model.baseline run \
 ```
 
 `build-dataset --export-dir <dir>` membaca ekspor Parquet skema
-`ground_truth` sebagai pengganti basis data; dengan batas waktu yang sama
-hasilnya identik (hash isi `sh-a7e5db9bb33f` untuk snapshot 6 Oktober).
+`ground_truth` sebagai pengganti basis data. Ekspor pukul 06.22Z dan basis
+data pukul 07.53Z pada 6 Oktober menghasilkan hash isi yang sama
+(`sh-a7e5db9bb33f`).
+
+**Yang dibekukan adalah berkas, bukan kueri.** Membaca ulang basis data
+dengan batas waktu yang sama belum tentu memberi hasil yang sama. Pada pukul
+09.28Z di hari yang sama, hasilnya `sh-ffc8dbea5533` (+6 baris), karena
+bendera `S` (sensor macet) enam bacaan DKI_PM25_85 bernilai 34,0 berubah
+menjadi bersih. Bendera ini dihitung ulang dari riwayat 48 jam di portal,
+sehingga ujung deret macet kehilangan benderanya ketika awal deret keluar
+dari jendela tersebut. Evaluasi selalu dijalankan dari `station_hour.parquet`
+dan manifest yang di-commit; untuk snapshot baru, pilih batas waktu yang
+sudah lewat lebih dari 48 jam.
 `--split-from <manifest lama>` memakai ulang batas split yang sudah
 dibekukan ketika snapshot diperbarui.
 

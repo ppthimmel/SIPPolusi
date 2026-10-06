@@ -14,8 +14,9 @@ time_window = "1h"             # time window satu jam, UTC
 # Label time window adalah awal jam: pengukuran pada [HH:00, HH+1:00) masuk HH:00.
 min_readings_per_window = 1    # jumlah bacaan bersih minimum per stasiun-jam
 restrict_to_study_area = true  # station.in_jakarta_bbox (JAKARTA_BBOX)
-# Batas atas eksklusif snapshot (UTC). Data sesudahnya tidak dibaca, sehingga
-# snapshot tetap sama walau Data Worker terus menulis.
+# Batas atas eksklusif snapshot (UTC). Data sesudahnya tidak dibaca. Baris
+# sebelum batas masih dapat berubah ±48 jam (riwayat bergulir portal dan
+# bendera qc), sehingga yang dibekukan adalah berkas dataset, bukan kuerinya.
 snapshot_end_utc = "2026-10-06T00:00:00Z"
 
 # Kendali mutu. Sumber: src/data_worker/docs/DATA.md dan README ekspor.
