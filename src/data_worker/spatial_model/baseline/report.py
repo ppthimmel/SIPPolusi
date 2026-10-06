@@ -215,7 +215,8 @@ def write_report(path: pathlib.Path, ctx: dict) -> None:
                   _md_table(s, ["kode", "name", "type", "kota", "n", "rmse", "mae", "bias", "r2",
                                 "nearest_station_km", "high_error", "limited_data"]), ""]
     lines += ["## Galat menurut wilayah dan waktu", ""]
-    for name, col in (("by_kota", "kota"), ("by_station_type", "type"), ("by_day_type", "day_type"),
+    for name, col in (("by_kota", "kota"), ("by_station_type", "type"),
+                      ("by_suspected_low_bias", "suspected_low_bias"), ("by_day_type", "day_type"),
                       ("by_nearest_source_km", "nearest_source_km_bin"),
                       ("by_sources_available", "sources_available_bin"),
                       ("by_reference_fraction_used", "reference_fraction_bin")):
