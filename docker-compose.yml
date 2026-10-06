@@ -68,6 +68,11 @@ services:
       model_registry:
         condition: service_started
     env_file: ./src/data_worker/.env
+    # Image default is `python main.py cycle` (one cycle then exit, for the
+    # Railway cron in railway.json). With restart: unless-stopped that would
+    # rerun a full SPKU sweep every few minutes, so run the in-process
+    # scheduler instead: one cycle now, then every hour at minute 15.
+    command: ["python", "main.py", "serve", "--now"]
 
   frontend:
     build: ./src/frontend

@@ -7,3 +7,6 @@ rasterio
 xarray
 osmnx
 torch-geometric
+# Konektor ground truth SPKU dan penyimpanan PostgreSQL (skema ground_truth)
+requests>=2.31
+psycopg[binary]>=3.1

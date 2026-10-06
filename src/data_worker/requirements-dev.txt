@@ -1,0 +1,5 @@
+-r requirements.txt
+pytest>=8.0
+# Opsional: menjalankan PostgreSQL + PostGIS sementara untuk uji penyimpanan.
+# Tanpa ini, atur TEST_DATABASE_URL atau uji basis data akan dilewati.
+testcontainers>=4.0
