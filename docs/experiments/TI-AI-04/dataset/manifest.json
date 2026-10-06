@@ -1,0 +1,184 @@
+{
+  "manifest_version": 1,
+  "dataset_version": "sh-a7e5db9bb33f",
+  "created_utc": "2026-10-06T07:53:36+00:00",
+  "source": {
+    "type": "postgres",
+    "schema": "ground_truth",
+    "query": {
+      "metrics": [
+        "PM25",
+        "NO2"
+      ],
+      "ts_utc_lt": "2026-10-06T00:00:00+00:00"
+    },
+    "snapshot_utc": "2026-10-06T07:53:36+00:00",
+    "raw_rows": {
+      "station": 127,
+      "observation": 119825
+    },
+    "raw_ts_utc_range": [
+      "2026-09-13T00:26:00+00:00",
+      "2026-10-05T23:33:00+00:00"
+    ],
+    "latest_migration_log": {
+      "id": 1,
+      "migrated_utc": "2026-09-30 13:50:46.516534+00:00"
+    },
+    "config_sha256": "16fd14094cc82e1210c9d032dd9ed4571d4dab275619d35bcac2ace816df70f9"
+  },
+  "code": {
+    "git_commit": "dccf05a0a84590ff6bc3ccca6414c63903430920",
+    "git_branch": "feat/ti-ai-04-baseline-downscaling",
+    "git_dirty": false
+  },
+  "grid": {
+    "crs": "EPSG:32748",
+    "time_window": "1h",
+    "window_label": "start",
+    "timezone": "UTC"
+  },
+  "definition": {
+    "pollutants": [
+      "pm25",
+      "no2"
+    ],
+    "unit": "µg/m³",
+    "aggregation": "mean of clean readings in [window_start, window_start + 1h)",
+    "min_readings_per_window": 1,
+    "restrict_to_study_area": true,
+    "qc": {
+      "require_clean_flag": true,
+      "drop_nonpositive": true,
+      "sentinel_min": 999.99,
+      "max_value_ugm3": 2000.0,
+      "exclude": [
+        {
+          "kode": "DKI_PM25_40",
+          "pollutant": "pm25",
+          "reason": "PM2.5 macet pada 32,00 sepanjang periode"
+        },
+        {
+          "kode": "DKI_PM25_33",
+          "pollutant": "pm25",
+          "since_utc": "2026-09-19T10:00:00Z",
+          "reason": "PM2.5 macet pada 14,00 sejak 2026-09-19T10:00Z"
+        }
+      ]
+    }
+  },
+  "qc_dropped_rows": {
+    "outside_study_area": 1029,
+    "qc_flagged": 3891,
+    "null_value": 0,
+    "nonpositive": 344,
+    "sentinel": 1,
+    "above_max": 0,
+    "exclude:DKI_PM25_40": 287,
+    "exclude:DKI_PM25_33": 18
+  },
+  "suspected_low_bias_stations": [
+    {
+      "station_uuid": "2ba31004-09fd-4806-874e-b20eb28f2bbc",
+      "kode": "DKI_PM25_34",
+      "mean_ugm3": 4.318273480662983,
+      "n": 362
+    },
+    {
+      "station_uuid": "cc38c761-d5c1-4400-855d-e6ea0c66279a",
+      "kode": "DKI_PM25_23",
+      "mean_ugm3": 4.473896276595744,
+      "n": 376
+    },
+    {
+      "station_uuid": "487c98af-c775-4cad-b541-95c33ad4371f",
+      "kode": "DKI_PM25_58",
+      "mean_ugm3": 7.417552083333334,
+      "n": 384
+    },
+    {
+      "station_uuid": "edb97c37-f43f-4964-a762-903fe8df3044",
+      "kode": "DKI_PM25_51",
+      "mean_ugm3": 7.4745833333333325,
+      "n": 384
+    },
+    {
+      "station_uuid": "928156b8-b6d2-4097-b57f-2c0ea6102e67",
+      "kode": "DKI_PM25_81",
+      "mean_ugm3": 8.0841015625,
+      "n": 384
+    },
+    {
+      "station_uuid": "46cebc3e-fcc7-49fe-955f-ec2448c33c71",
+      "kode": "DKI_PM25_71",
+      "mean_ugm3": 9.38263925729443,
+      "n": 377
+    }
+  ],
+  "rows_outside_split_range": 0,
+  "split": {
+    "scheme": "temporal_blocks",
+    "boundaries": {
+      "start": "2026-09-13T00:00:00+00:00",
+      "train_end": "2026-09-29T00:00:00+00:00",
+      "val_end": "2026-10-02T00:00:00+00:00",
+      "end": "2026-10-06T00:00:00+00:00"
+    },
+    "config": {
+      "train_fraction": 0.7,
+      "val_fraction": 0.15,
+      "drop_partial_days": true
+    }
+  },
+  "summary": [
+    {
+      "split": "test",
+      "pollutant": "no2",
+      "rows": 1185,
+      "stations": 13,
+      "windows": 96
+    },
+    {
+      "split": "test",
+      "pollutant": "pm25",
+      "rows": 9903,
+      "stations": 108,
+      "windows": 96
+    },
+    {
+      "split": "train",
+      "pollutant": "no2",
+      "rows": 4845,
+      "stations": 14,
+      "windows": 384
+    },
+    {
+      "split": "train",
+      "pollutant": "pm25",
+      "rows": 38639,
+      "stations": 109,
+      "windows": 384
+    },
+    {
+      "split": "val",
+      "pollutant": "no2",
+      "rows": 936,
+      "stations": 13,
+      "windows": 72
+    },
+    {
+      "split": "val",
+      "pollutant": "pm25",
+      "rows": 7602,
+      "stations": 110,
+      "windows": 72
+    }
+  ],
+  "files": {
+    "station_hour.parquet": {
+      "sha256": "b4b2017a098f3cc52d9a600932eeb1a19e9abadda39d51d311ca2d84fbce037f",
+      "content_sha256": "a7e5db9bb33ff0f5e9509b8a853b0935e593ff0a74cb498b1b3518c264029ef4",
+      "rows": 63110
+    }
+  }
+}
