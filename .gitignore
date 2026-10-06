@@ -193,3 +193,6 @@ dist
 
 # Claude / Antigravity files
 .claude/
+
+# Estimasi per stasiun-jam hasil run baseline (dapat dibangkitkan ulang dari manifest)
+docs/experiments/**/predictions.parquet
