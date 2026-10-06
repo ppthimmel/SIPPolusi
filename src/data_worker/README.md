@@ -144,9 +144,13 @@ Urutan peralihan:
 4. Aktifkan cron Data Worker, lalu hentikan kolektor lama
    (`launchctl unload -w ~/Library/LaunchAgents/id.udara.*.plist`).
 
-Skrip idempoten, jadi langkah 1–3 boleh diulang tepat sebelum peralihan
-agar data terakhir ikut pindah. Setelah Data Worker menulis lintasannya
-sendiri, skrip menolak berjalan kecuali diberi `--force`.
+Skrip idempoten selama Data Worker belum menulis, jadi langkah 1–3 boleh
+diulang sebelum cron diaktifkan. Setelah itu migrasi ulang tidak diperlukan:
+setiap lintasan Data Worker mengambil riwayat 48 jam, sehingga pengukuran sejak
+migrasi terisi sendiri. Skrip menolak berjalan kecuali diberi `--force`, dan
+`--force` jangan dipakai karena baris tabel log SQLite yang `id`-nya sudah
+terpakai dilewati tanpa galat. Rinciannya, termasuk cara mengisi ulang dari
+nol, ada di [`docs/RAILWAY.md`](docs/RAILWAY.md) bagian 2 dan 3.
 
 ## Pengujian
 
