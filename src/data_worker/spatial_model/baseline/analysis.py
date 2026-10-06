@@ -134,7 +134,8 @@ def findings(
         high = st[st["high_error"]]
         if len(high):
             top = ", ".join(
-                f"{r.kode} {r['name']} (RMSE {r.rmse:.1f}, bias {r.bias:+.1f}, stasiun terdekat {r.nearest_station_km:.1f} km)"
+                f"{r.kode} {r['name']} (RMSE {r.rmse:.1f}, bias {r.bias:+.1f}, "
+                f"stasiun terdekat {r.nearest_station_km:.1f} km)"
                 for _, r in high.head(8).iterrows()
             )
             items.append(f"{name}: {len(high)} stasiun dengan RMSE > {factor:g}× agregat: {top}.")

@@ -19,6 +19,8 @@ SIPPolusi: Sistem Informasi Pemandu Perjalanan dalam Polusi
   (schemas: `pollution`, `osm`, `mlflow`).
 - [k3s](k3s) — Kubernetes manifests for a self-hosted alternative to the
   Railway deployment.
+- [docs/experiments](docs/experiments) — frozen dataset snapshots and model
+  experiment results (e.g. the TI-AI-04 IDW baseline).
 
 There is no standalone API Gateway service: routing, TLS termination, and
 rate limiting are handled by Railway's built-in gateway (with NGINX

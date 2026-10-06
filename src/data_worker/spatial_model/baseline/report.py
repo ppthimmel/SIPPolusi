@@ -147,7 +147,8 @@ def write_report(path: pathlib.Path, ctx: dict) -> None:
         "",
         "## Ringkasan eksperimen",
         "",
-        f"- Dataset: `{rm['dataset']['dataset_version']}` (manifest SHA-256 `{rm['dataset']['manifest_sha256'][:16]}…`)",
+        f"- Dataset: `{rm['dataset']['dataset_version']}` "
+        f"(manifest SHA-256 `{rm['dataset']['manifest_sha256'][:16]}…`)",
         f"- Sumber ground truth: {rm['dataset']['source_type']}, snapshot {rm['dataset'].get('source_snapshot_utc')}",
         f"- Split dilaporkan: **{rm['evaluation']['report_split']}** "
         f"[{rm['dataset']['split_boundaries']['val_end']}, {rm['dataset']['split_boundaries']['end']})",
@@ -164,7 +165,8 @@ def write_report(path: pathlib.Path, ctx: dict) -> None:
     ]
     rows = []
     for pollutant, m in ctx["overall"].items():
-        rows.append({"polutan": LABEL[pollutant], "n": m["n"], "stasiun": m["n_stations"], "time window": m["n_windows"],
+        rows.append({"polutan": LABEL[pollutant], "n": m["n"], "stasiun": m["n_stations"],
+                     "time window": m["n_windows"],
                      "MAE": m["mae"], "RMSE": m["rmse"], "R²": m["r2"], "bias": m["bias"], "ȳ": m["mean_obs"],
                      "RMSE stasiun": m["station_median"]["rmse"], "R² stasiun": m["station_median"]["r2"]})
     lines.append(_md_table(pd.DataFrame(rows), list(rows[0].keys()), ".3f"))

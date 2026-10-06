@@ -332,7 +332,8 @@ def flag_low_bias(hourly: pd.DataFrame, rule: dict | None) -> pd.DataFrame:
     empty = pd.DataFrame(columns=["station_uuid", "kode", "mean_ugm3", "n"])
     if not rule:
         return empty
-    sub = hourly[(hourly["split"] == rule.get("split", "train")) & (hourly["pollutant"] == rule.get("pollutant", "pm25"))]
+    sub = hourly[(hourly["split"] == rule.get("split", "train"))
+                 & (hourly["pollutant"] == rule.get("pollutant", "pm25"))]
     if rule.get("kode_prefix"):
         sub = sub[sub["kode"].astype(str).str.startswith(rule["kode_prefix"])]
     if rule.get("station_type"):

@@ -263,7 +263,8 @@ def run_baseline(config_path: pathlib.Path, manifest_path: pathlib.Path, out_roo
             "manifest_sha256": sha256_file(pathlib.Path(manifest_path)),
             "content_sha256": manifest["files"]["station_hour.parquet"]["content_sha256"],
             "source_type": manifest["source"]["type"],
-            "source_snapshot_utc": manifest["source"].get("snapshot_utc") or manifest["source"].get("export_snapshot_utc"),
+            "source_snapshot_utc": (manifest["source"].get("snapshot_utc")
+                                    or manifest["source"].get("export_snapshot_utc")),
             "split_boundaries": boundaries,
         },
         "config": {"path": str(config_path), "sha256": config_sha},
