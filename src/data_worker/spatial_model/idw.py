@@ -111,6 +111,7 @@ def exposure_index(concentrations: Mapping[str, np.ndarray | float | None]) -> n
 
     Polutan yang kosong (None/NaN) tidak ikut dihitung, sehingga sel yang
     hanya memiliki PM2.5 bernilai PM2.5 / 15, bukan setengahnya (UT-SDM-07c).
+    Sel tanpa polutan sama sekali bernilai kosong (NaN), bukan nol.
     """
     parts = []
     for pollutant, norm in EXPOSURE_NORMALIZER.items():
@@ -121,8 +122,10 @@ def exposure_index(concentrations: Mapping[str, np.ndarray | float | None]) -> n
     if not parts:
         raise ValueError("tidak ada polutan untuk indeks paparan")
     stacked = np.vstack([np.atleast_1d(p) for p in parts])
-    with np.errstate(invalid="ignore"):
-        return np.nanmean(stacked, axis=0)
+    available = np.isfinite(stacked)
+    count = available.sum(axis=0)
+    total = np.where(available, stacked, 0.0).sum(axis=0)
+    return np.divide(total, count, out=np.full(total.shape, np.nan), where=count > 0)
 
 
 def _measurements_frame(ground_truth) -> pd.DataFrame:

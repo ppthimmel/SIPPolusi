@@ -7,6 +7,7 @@ reprodusibilitas dataset beku dan run dari manifest yang sama.
 
 import json
 import pathlib
+import warnings
 
 import numpy as np
 import pandas as pd
@@ -22,7 +23,7 @@ from spatial_model.baseline.dataset import (
 from spatial_model.baseline.evaluate import compute_metrics, loso_predict
 from spatial_model.baseline.run import run_baseline
 from spatial_model.grid import GridSpec, to_grid_xy, to_lonlat
-from spatial_model.idw import NoGroundTruthError, idw_interpolate, run_idw_fallback
+from spatial_model.idw import NoGroundTruthError, exposure_index, idw_interpolate, run_idw_fallback
 
 CONFIG = pathlib.Path(__file__).resolve().parent.parent / "spatial_model" / "baseline" / "configs" / "idw_baseline.toml"
 
@@ -75,6 +76,15 @@ def test_ut_sdm_08a_indeks_dari_polutan_yang_tersedia(small_grid):
     out = run_idw_fallback(_measurements(pollutants=("pm25",)), small_grid)
     assert out["no2_ugm3"].isna().all()
     np.testing.assert_allclose(out["exposure_index"], out["pm25_ugm3"] / 15)
+
+
+def test_indeks_paparan_kosong_tanpa_peringatan_bila_tidak_ada_polutan():
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        index = exposure_index({"pm25": np.array([30.0, np.nan, np.nan]), "no2": np.array([50.0, 50.0, np.nan])})
+    assert index[0] == pytest.approx(2.0)
+    assert index[1] == pytest.approx(2.0)      # hanya NO2: 50 / 25
+    assert np.isnan(index[2])                  # tanpa polutan: kosong, bukan nol
 
 
 def test_ut_sdm_08b_sel_berimpit_dengan_stasiun():
