@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import dataclasses
 import logging
+import os
+import pathlib
 import time
 from typing import Callable
 
@@ -29,17 +32,37 @@ def _step_ground_truth(time_window: TimeWindow, config: Config) -> dict:
 
 
 def _step_downscale_inference(time_window: TimeWindow, config: Config) -> dict:
-    """trigger_downscale_inference: ST-GNN, jatuh ke IDW bila gagal (PF-12)."""
-    from spatial_model.inference import run_downscale_inference, run_idw_fallback
+    """trigger_downscale_inference: ST-GNN, jatuh ke IDW bila gagal, lalu EdgeWeight ke cache.
 
-    window_start = time_window.start.strftime("%Y-%m-%dT%H:%M:%SZ")
-    try:
-        result = run_downscale_inference(window_start)
-    except Exception as exc:  # noqa: BLE001 - fallback IDW
-        log.exception("inferensi downscale gagal, beralih ke IDW")
-        result = {**run_idw_fallback(window_start), "fallback_reason": f"{type(exc).__name__}: {exc}"}
-    # Kedua fungsi masih kerangka; laporkan sebagai not_implemented sampai terisi.
-    return {"status": result.pop("status", "not_implemented"), **result}
+    Aktif hanya bila DOWNSCALE_WRITE_CACHE=1, karena setiap time window menulis
+    sekitar 372 ribu baris ke pollution.edge_pollution. SPATIAL_ARTIFACT_DIR
+    (opsional) menerima artefak penelusuran per run.
+    """
+    if os.environ.get("DOWNSCALE_WRITE_CACHE") != "1":
+        return {"status": "disabled", "note": "atur DOWNSCALE_WRITE_CACHE=1 untuk menulis EdgeWeight ke cache"}
+    import psycopg
+
+    from spatial_model import cache
+    from spatial_model.inference import load_ground_truth_window, load_idw_settings, run_downscale_inference
+
+    settings = load_idw_settings()
+    artifact_dir = os.environ.get("SPATIAL_ARTIFACT_DIR") or None
+    with psycopg.connect(config.database) as conn:
+        conn.autocommit = True
+        ground_truth = load_ground_truth_window(conn, time_window, settings["qc"], config.db_schema)
+        graph_version = cache.read_active_graph_version(conn)
+        if graph_version is None:
+            return {"status": "unavailable", "note": "tidak ada graf road network berstatus active"}
+        edges = cache.read_road_edges(conn, graph_version)
+        summary = run_downscale_inference(
+            time_window, ground_truth=ground_truth, edges=edges, graph_version=graph_version, conn=conn,
+            settings=settings, artifact_dir=artifact_dir,
+            pieces_cache_dir=(pathlib.Path(artifact_dir) / "pieces") if artifact_dir else None,
+        )
+    result = dataclasses.asdict(summary)
+    result["status"] = "ok" if summary.status in ("complete", "skipped") else summary.status
+    result["run_status"] = summary.status
+    return result
 
 
 #: Langkah B2-B15 berurutan. ``None`` berarti belum diimplementasikan dan

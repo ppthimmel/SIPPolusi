@@ -104,8 +104,11 @@ def test_lintasan_dibatalkan_tetap_memakai_data_jendela_48_jam(monkeypatch, db):
 
 def test_siklus_penuh_dengan_langkah_bawaan(monkeypatch, db):
     _patch(monkeypatch, "ok")
+    monkeypatch.delenv("DOWNSCALE_WRITE_CACHE", raising=False)
     report = schedule_acquisition(WINDOW, config=_config(db))
     status = {s["step"]: s["status"] for s in report["steps"]}
     assert status["fetch_ground_truth"] == "ok"
     assert report["failed"] == []
-    assert set(status.values()) == {"ok", "not_implemented"}
+    # Penulisan EdgeWeight ke cache hanya aktif bila DOWNSCALE_WRITE_CACHE=1.
+    assert status["trigger_downscale_inference"] == "disabled"
+    assert set(status.values()) == {"ok", "not_implemented", "disabled"}
