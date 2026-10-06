@@ -311,3 +311,23 @@ def test_kompatibilitas_cache_tulis_baca_ulang_dan_idempoten(cache_db, tmp_path)
     # (UT-SDM-01b) pemanggilan kedua: tidak ada eksekusi ganda, run_id sama.
     second = _run(conn=conn, pollution_schema=s["pollution"], osm_schema=s["osm"])
     assert second.status == "skipped" and second.run_id == first.run_id
+
+
+def test_retensi_cache_hanya_menyimpan_time_window_terakhir(cache_db):
+    from spatial_model import cache
+
+    conn, s = cache_db
+    starts = [WINDOW.start + dt.timedelta(hours=h) for h in range(4)]
+    for start in starts:
+        cache.write_pollution_weight(conn, _synthetic_weights(5), TimeWindow.starting_at(start), "g-test",
+                                     "idw-p2-k8", pollution_schema=s["pollution"], osm_schema=s["osm"])
+    writing = WINDOW.start + dt.timedelta(hours=10)
+    conn.execute(f'INSERT INTO "{s["pollution"]}".pollution_window (time_window_start, status) VALUES (%s, %s)',
+                 (writing, "writing"))
+    assert cache.prune_pollution_windows(conn, keep_windows=2, pollution_schema=s["pollution"]) == 2
+    kept = [r[0] for r in conn.execute(
+        f'SELECT DISTINCT time_window_start FROM "{s["pollution"]}".edge_pollution ORDER BY 1').fetchall()]
+    assert kept == starts[2:]
+    assert cache.window_record(conn, writing, s["pollution"])["status"] == "writing"
+    with pytest.raises(ValueError):
+        cache.prune_pollution_windows(conn, keep_windows=0, pollution_schema=s["pollution"])

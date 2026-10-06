@@ -182,6 +182,30 @@ def write_pollution_weight(
     return int(written)
 
 
+def prune_pollution_windows(conn, keep_windows: int, pollution_schema: str = "pollution") -> int:
+    """Hapus time window complete selain ``keep_windows`` terakhir beserta barisnya.
+
+    Satu time window seluruh graf memakan ±184 MB (TI-AI-05), sedangkan Backend
+    hanya membaca time window complete terakhir (data_stale bila > 3 jam).
+    Time window berstatus writing tidak disentuh. Mengembalikan jumlah time
+    window yang dihapus.
+    """
+    if keep_windows < 1:
+        raise ValueError("keep_windows minimal 1")
+    edge_table = _ident(pollution_schema, "edge_pollution")
+    window_table = _ident(pollution_schema, "pollution_window")
+    with conn.transaction():
+        old = [r[0] if not isinstance(r, dict) else r["time_window_start"] for r in conn.execute(
+            sql.SQL("""SELECT time_window_start FROM {} WHERE status = 'complete'
+                       ORDER BY time_window_start DESC OFFSET %s""").format(window_table),
+            (keep_windows,),
+        ).fetchall()]
+        if old:
+            conn.execute(sql.SQL("DELETE FROM {} WHERE time_window_start = ANY(%s)").format(edge_table), (old,))
+            conn.execute(sql.SQL("DELETE FROM {} WHERE time_window_start = ANY(%s)").format(window_table), (old,))
+    return len(old)
+
+
 def latest_complete_window(conn, pollution_schema: str = "pollution") -> dt.datetime | None:
     row = conn.execute(
         sql.SQL("SELECT max(time_window_start) FROM {} WHERE status = 'complete'")

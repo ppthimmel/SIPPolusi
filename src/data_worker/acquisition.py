@@ -35,8 +35,10 @@ def _step_downscale_inference(time_window: TimeWindow, config: Config) -> dict:
     """trigger_downscale_inference: ST-GNN, jatuh ke IDW bila gagal, lalu EdgeWeight ke cache.
 
     Aktif hanya bila DOWNSCALE_WRITE_CACHE=1, karena setiap time window menulis
-    sekitar 372 ribu baris ke pollution.edge_pollution. SPATIAL_ARTIFACT_DIR
-    (opsional) menerima artefak penelusuran per run.
+    sekitar 372 ribu baris (±184 MB) ke pollution.edge_pollution. Setelah
+    penulisan, hanya DOWNSCALE_KEEP_WINDOWS time window complete terakhir
+    (bawaan 6) yang dipertahankan. SPATIAL_ARTIFACT_DIR (opsional) menerima
+    artefak penelusuran per run.
     """
     if os.environ.get("DOWNSCALE_WRITE_CACHE") != "1":
         return {"status": "disabled", "note": "atur DOWNSCALE_WRITE_CACHE=1 untuk menulis EdgeWeight ke cache"}
@@ -59,7 +61,9 @@ def _step_downscale_inference(time_window: TimeWindow, config: Config) -> dict:
             settings=settings, artifact_dir=artifact_dir,
             pieces_cache_dir=(pathlib.Path(artifact_dir) / "pieces") if artifact_dir else None,
         )
+        pruned = cache.prune_pollution_windows(conn, int(os.environ.get("DOWNSCALE_KEEP_WINDOWS") or 6))
     result = dataclasses.asdict(summary)
+    result["windows_pruned"] = pruned
     result["status"] = "ok" if summary.status in ("complete", "skipped") else summary.status
     result["run_status"] = summary.status
     return result
