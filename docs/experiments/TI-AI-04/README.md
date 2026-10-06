@@ -7,13 +7,13 @@ Bukti verifikasi isu #15. Kode dan protokol lengkap:
 |---|---|
 | [`dataset/manifest.json`](dataset/manifest.json) | Manifest dataset `sh-a7e5db9bb33f`: sumber, batas kueri, kendali mutu, split beku, checksum |
 | `dataset/station_hour.parquet` | Ground truth stasiun-jam beku (63.110 baris) |
-| [`runs/20261006T075509Z-idw-sh-a7e5db9bb33f-16fd1409/`](runs/20261006T075509Z-idw-sh-a7e5db9bb33f-16fd1409/report.md) | Run resmi: `report.md`, `metrics.json`, `run_manifest.json`, `config.toml`, `tables/`, `figures/` |
+| [`runs/20261006T093030Z-idw-sh-a7e5db9bb33f-f6f15b8f/`](runs/20261006T093030Z-idw-sh-a7e5db9bb33f-f6f15b8f/report.md) | Run resmi: `report.md`, `metrics.json`, `run_manifest.json`, `config.toml`, `tables/`, `figures/` |
 
 ## Dataset dan protokol
 
-- **Sumber:** skema `ground_truth` PostgreSQL Railway (dibaca read-only pada 6 Oktober 2026),
-  PM2.5 dan NO2 sebelum 2026-10-06T00:00Z. Ekspor Parquet independen dengan batas yang
-  sama menghasilkan hash isi yang identik.
+- **Sumber:** skema `ground_truth` PostgreSQL Railway (dibaca read-only pada 6 Oktober 2026
+  pukul 07.53Z), PM2.5 dan NO2 sebelum 2026-10-06T00:00Z. Ekspor Parquet independen pukul
+  06.22Z dengan batas yang sama menghasilkan hash isi yang identik.
 - **Kendali mutu:** `qc` kosong, nilai > 0, tanpa sentinel 999,99, tanpa DKI_PM25_40 dan
   PM2.5 DKI_PM25_33 sejak 19 September, hanya di dalam `JAKARTA_BBOX`. Enam sensor
   `DKI_PM25_*` dengan rerata pelatihan < 10 µg/m³ ditandai dugaan bias rendah, tidak dibuang.
@@ -85,3 +85,8 @@ Konfigurasi terbaik pada validasi adalah power = 1 dengan seluruh stasiun untuk 
 - *Leave-one-station-out* di pusat kota yang rapat stasiun dapat tampak lebih baik daripada
   kinerja pada area tanpa cakupan sensor.
 - Satuan seluruh polutan diasumsikan µg/m³, dan label waktu portal memiliki ketidakpastian ±30 menit.
+- **Basis data bukan sumber yang imutabel.** Snapshot ulang pukul 09.28Z dengan batas yang sama
+  menghasilkan +6 baris (`sh-ffc8dbea5533`). Bendera `S` pada bacaan macet DKI_PM25_85 (34,0 µg/m³,
+  4 Oktober 08.30–13.30Z) berubah menjadi bersih, karena bendera dihitung ulang dari riwayat 48 jam
+  portal. Evaluasi ini memakai berkas beku `sh-a7e5db9bb33f`. Perilaku bendera tersebut perlu
+  diperbaiki pada konektor SPKU.
