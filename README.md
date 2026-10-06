@@ -79,3 +79,27 @@ npm run dev
 ```
 
 `vite.config.ts` proxies `/v1/*` requests to `http://localhost:8000`.
+
+### Frontend without the route model (mock API)
+
+The Backend's `/v1/routes` is still a placeholder, so the UI can be developed
+and checked against a mock of the documented API contract (subbab 3.5.2:
+`POST /v1/routes`, `GET /v1/exposure-surface`, error codes of Tabel 3.16):
+
+```bash
+cd src/frontend
+npm run mock     # mock API on :8000 (stop the Compose backend first)
+npm run dev      # http://localhost:5173, proxies /v1 to the mock
+npm test         # unit tests (Vitest)
+```
+
+The mock serves one scenario at a time (fallback, stale data, partial data,
+every error code, timeouts, ...). List them and switch with
+`GET /__mock/scenario` and `GET /__mock/scenario?name=<scenario>`; the dev
+server proxies `/__mock`, so `http://localhost:5173/__mock/scenario?name=fallback`
+works too. See [docs/ti-se-09-verifikasi-frontend.md](docs/ti-se-09-verifikasi-frontend.md)
+for the states that were exercised.
+
+The map background is OpenStreetMap raster tiles by default (development use
+only); set `VITE_BASEMAP_TILES` in `src/frontend/.env` (or as a Docker build
+arg) to use another tile service.

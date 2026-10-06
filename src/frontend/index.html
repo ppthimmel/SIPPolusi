@@ -3,17 +3,140 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>SIPPolusi</title>
+    <meta
+      name="description"
+      content="Cari rute jalan kaki atau sepeda dengan estimasi paparan polusi udara lebih rendah. Estimasi model, bukan rekomendasi medis."
+    />
+    <title>Rute Rendah Paparan · SIPPolusi</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css"
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
       rel="stylesheet"
     />
-    <style>
-      html, body, #map { height: 100%; margin: 0; }
-    </style>
   </head>
   <body>
-    <div id="map"></div>
+    <div class="app" id="app">
+      <aside class="panel" id="panel" aria-label="Panel rute">
+        <button
+          type="button"
+          class="sheet-handle"
+          id="sheet-handle"
+          aria-expanded="true"
+          aria-controls="panel-body"
+          aria-label="Ciutkan panel"
+        ></button>
+
+        <header class="brand">
+          <span class="brand-mark" aria-hidden="true">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="19" r="2"/><path d="M8 19h8a4 4 0 000-8H8a4 4 0 010-8h8"/></svg>
+          </span>
+          <span class="brand-name">Rute Rendah Paparan</span>
+        </header>
+
+        <div class="panel-body" id="panel-body">
+          <!-- Form view: trip input (Gambar 3.1a / 3.3) -->
+          <section id="form-view" aria-labelledby="form-title">
+            <h1 id="form-title" class="title">Mau ke mana?</h1>
+            <p class="lede">Cari rute dengan estimasi paparan polusi lebih rendah.</p>
+
+            <form id="trip-form" novalidate>
+              <div class="points">
+                <div class="point-fields">
+                  <div class="field" id="field-origin">
+                    <label for="input-origin"><span class="dot dot-origin" aria-hidden="true"></span>Asal</label>
+                    <div class="field-row">
+                      <input
+                        id="input-origin"
+                        name="origin"
+                        type="text"
+                        inputmode="decimal"
+                        autocomplete="off"
+                        spellcheck="false"
+                        placeholder="Klik peta atau ketik lat, lon"
+                        aria-describedby="error-origin"
+                      />
+                      <button type="button" class="pick-btn" id="pick-origin" aria-pressed="false" aria-label="Pilih titik asal di peta" title="Pilih di peta"></button>
+                    </div>
+                    <p class="field-error" id="error-origin" role="alert" hidden></p>
+                  </div>
+
+                  <div class="field" id="field-destination">
+                    <label for="input-destination"><span class="dot dot-destination" aria-hidden="true"></span>Tujuan</label>
+                    <div class="field-row">
+                      <input
+                        id="input-destination"
+                        name="destination"
+                        type="text"
+                        inputmode="decimal"
+                        autocomplete="off"
+                        spellcheck="false"
+                        placeholder="Klik peta atau ketik lat, lon"
+                        aria-describedby="error-destination"
+                      />
+                      <button type="button" class="pick-btn" id="pick-destination" aria-pressed="false" aria-label="Pilih titik tujuan di peta" title="Pilih di peta"></button>
+                    </div>
+                    <p class="field-error" id="error-destination" role="alert" hidden></p>
+                  </div>
+                </div>
+                <button type="button" class="icon-btn swap-btn" id="swap-btn" aria-label="Tukar asal dan tujuan"></button>
+              </div>
+              <p class="hint" id="pick-hint" aria-live="polite"></p>
+
+              <fieldset class="mode">
+                <legend>Moda</legend>
+                <div class="segmented">
+                  <label class="seg"><input type="radio" name="mode" value="walk" checked /><span id="mode-walk-label"></span></label>
+                  <label class="seg"><input type="radio" name="mode" value="bike" /><span id="mode-bike-label"></span></label>
+                </div>
+              </fieldset>
+
+              <div class="priority">
+                <div class="priority-head">
+                  <label for="priority">Prioritas perjalanan</label>
+                  <span class="mono" id="priority-values" aria-hidden="true"></span>
+                </div>
+                <input
+                  id="priority"
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.05"
+                  value="0.5"
+                  aria-describedby="priority-text"
+                />
+                <div class="priority-scale" aria-hidden="true">
+                  <span>Lebih cepat</span><span>Seimbang</span><span>Lebih bersih</span>
+                </div>
+                <p class="visually-hidden" id="priority-text"></p>
+              </div>
+
+              <div id="form-status" class="status" aria-live="polite" aria-atomic="true"></div>
+
+              <button type="submit" class="primary" id="submit-btn" aria-describedby="submit-help">Cari rute</button>
+              <p class="hint" id="submit-help"></p>
+              <button type="button" class="secondary" id="cancel-btn" hidden>Batalkan</button>
+            </form>
+          </section>
+
+          <!-- Result view: comparison (Gambar 3.1b / 3.4) -->
+          <section id="result-view" hidden aria-labelledby="result-title"></section>
+        </div>
+
+        <footer class="disclaimer" id="disclaimer" role="note"></footer>
+      </aside>
+
+      <main class="map-wrap">
+        <div id="map" aria-label="Peta rute dan heatmap paparan"></div>
+
+        <div class="map-buttons">
+          <button type="button" class="map-btn" id="heat-toggle" aria-pressed="false" aria-label="Tampilkan heatmap paparan" title="Heatmap paparan"></button>
+          <button type="button" class="map-btn" id="locate-btn" aria-label="Pakai lokasi saya sebagai titik asal" title="Lokasi saya"></button>
+        </div>
+
+        <section class="legend" id="legend" aria-label="Legenda peta" hidden></section>
+      </main>
+    </div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

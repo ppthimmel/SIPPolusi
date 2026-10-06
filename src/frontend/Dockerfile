@@ -3,6 +3,9 @@ WORKDIR /app
 COPY package.json ./
 RUN npm install
 COPY . .
+# Optional basemap tile URL baked into the bundle (empty = OpenStreetMap default).
+ARG VITE_BASEMAP_TILES=""
+ENV VITE_BASEMAP_TILES=$VITE_BASEMAP_TILES
 RUN npm run build
 
 FROM nginx:alpine
