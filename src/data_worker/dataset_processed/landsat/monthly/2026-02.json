@@ -1,0 +1,13 @@
+{
+  "month": "2026-02",
+  "temporal_mode": "historical",
+  "observation_window_start": "2026-02-01T00:00:00+00:00",
+  "observation_window_end_exclusive": "2026-03-01T00:00:00+00:00",
+  "source_scene_ids": [],
+  "valid_cells": {
+    "ndvi": 0,
+    "ndbi": 0,
+    "lst_c": 0
+  },
+  "source_produced_at": null
+}

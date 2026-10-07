@@ -1,0 +1,772 @@
+{
+  "status": "complete",
+  "run_id": "3f4dc97655fa",
+  "config": {
+    "start_month": "2026-01",
+    "end_month": "2026-09",
+    "bbox": [
+      106.6,
+      -6.4,
+      107.0,
+      -6.0
+    ],
+    "temporal_mode": "historical",
+    "lookback_days": 90,
+    "min_valid_fraction": 0.5,
+    "min_observations": 1,
+    "max_lst_uncertainty_k": 2.0,
+    "min_cloud_distance_km": 1.0,
+    "lst_min_c": -10.0,
+    "lst_max_c": 80.0,
+    "strict_aerosol": false,
+    "limit_scenes": null,
+    "version": "landsat-xland-2",
+    "crs": "EPSG:32748",
+    "resolution_m": 100,
+    "boundary_sha256": null,
+    "numpy": "2.1.3",
+    "rasterio": "1.5.2"
+  },
+  "inputs": [
+    {
+      "id": "LC08_L2SP_122064_20260101_02_T1",
+      "observed": "2026-01-01T03:00:17.533240+00:00",
+      "catalog_created": "2026-06-25T15:59:25.312817Z",
+      "hashes": {
+        "metadata.json": "48d57215aac7ee69e4935766b58168ba5e8313e9879cf0b80633ad04ba30fd6a",
+        "red.tif": "552c6a5d01e4f513b413d5e1c633b6958b7738019872bf4c18624873770facf5",
+        "nir08.tif": "25f0106459522a9f9596a0b1a6aba71ec0f28e7d9e44713a5d8669627a4ff0cd",
+        "swir16.tif": "5c5bb8172a860f2d0047e6348d369bc9855e5fe56ec31100fa9b75ccb549c754",
+        "lwir11.tif": "e37279a683d9738a8108309ee5a2d92f5f277d2aa9df35cbd1975a7746cd5d75",
+        "qa_pixel.tif": "077b2fe92dae7e08812a064b36d4a7a65f4d94da119f4cef31681297125484cf",
+        "qa_radsat.tif": "3156b809f7bc0411874d02092cdccd310f732b75fd812358c4eb0547418a8f8b",
+        "qa_aerosol.tif": "bd9f7045348268fe8174744c0794df5b28477288b79a1edaced008be9fd414b7",
+        "qa.tif": "3ec5a7b1fc3e499520b9e23492eb6052137a8f1a8eb8e0910043634764d53fca",
+        "cdist.tif": "96c37d38ffa2b225ef93cb3ce8445a00894a68abaab6d3652f876f4431c72dbf"
+      },
+      "produced_at": "2026-01-06T21:12:31+00:00"
+    },
+    {
+      "id": "LC09_L2SP_122064_20260314_02_T1",
+      "observed": "2026-03-14T03:00:05.325622+00:00",
+      "catalog_created": "2026-06-25T15:59:35.203023Z",
+      "hashes": {
+        "metadata.json": "06ff173975856a3a03bd503142031bd4026ec5e2f9e1589f2cbc71a1211639be",
+        "red.tif": "ce037f21011a6b7010c5c3b8b9f40810c42335f992ec1efc975c4cb1bda12a46",
+        "nir08.tif": "c89c3f0f339896ec9796fd9549e34c8b6e61d1cecbfa84a1288796cd4c658808",
+        "swir16.tif": "63cdb7c3c31ead766cdc0a2381868db88758a963f335041e7c5be489e57aba63",
+        "lwir11.tif": "1aa18fc4b9052e87c2c762c958e9adefb2b9672250d936f1ce869ac08f09e437",
+        "qa_pixel.tif": "209e7c975f178f0085b37809216faf83de2a3777a65a61f6512c0511258d215a",
+        "qa_radsat.tif": "a7668b0b187cceaa20d856e884707423ddffa460be09660534787f26233e3288",
+        "qa_aerosol.tif": "66e3a018f942086676c044c9bc0dfd43215c36bdf2aa73897bb033510ee6b80c",
+        "qa.tif": "bad004298efacd6cc0e8f6a9788d83d83af8504e1e9cb2cb3e8623f7f8048d03",
+        "cdist.tif": "6790675856d818263bb7220c0d18946021bc066fdb2997043f34a5d63fc4826b"
+      },
+      "produced_at": "2026-03-15T12:40:30+00:00"
+    },
+    {
+      "id": "LC09_L2SP_122065_20260314_02_T1",
+      "observed": "2026-03-14T03:00:29.250525+00:00",
+      "catalog_created": "2026-06-25T16:02:05.418810Z",
+      "hashes": {
+        "metadata.json": "05c257ff380f7085de2d9daccc37882b19a314218b93f93ef572466889c17181",
+        "red.tif": "43308bf39838bcb5a55f3864b00381fbf34560738bb95559b5de703af362cc68",
+        "nir08.tif": "a0563b8340c364214dfcb6e3bed2b014b73d783753cfc5bf4f36900484488883",
+        "swir16.tif": "670911099f849acc15dfa7ce2d9ceb1f14a85d9c05ec2371131a232729518ddc",
+        "lwir11.tif": "4567b2f0b5e70e4f318ff4bba735c662b5e4ecda53a92d3402c78fa31048708a",
+        "qa_pixel.tif": "4de6a8b0a52d1c2730a8e7a1713cb56d8579d026247ad50cae7605455bc668bd",
+        "qa_radsat.tif": "0e6f5c30da91eaa1692747add1b1dab153a3ea7d8c2191e25e5de149632d4ba5",
+        "qa_aerosol.tif": "6eff87072d77478d0eaa2956e958b475a1fa58cbc62584e3717f80306f21ff0f",
+        "qa.tif": "a39dde95cbc5900058c29dc1835826983c23667d2ba53d80a8c68ca7a9a51349",
+        "cdist.tif": "c0134d21617e87b8f34c406a2a9059f3b4973dc24ada40304661087acd7526ba"
+      },
+      "produced_at": "2026-03-15T12:45:48+00:00"
+    },
+    {
+      "id": "LC08_L2SP_122065_20260322_02_T1",
+      "observed": "2026-03-22T03:00:15.009860+00:00",
+      "catalog_created": "2026-06-25T16:01:59.932651Z",
+      "hashes": {
+        "metadata.json": "ef936089043761b3c66724094d6215bd2cb1a078569754b265beea834fa4faaf",
+        "red.tif": "02c54818f26426f550d2a03a772098f125294b297af707e3cfc714ed72004e28",
+        "nir08.tif": "76c9f32015451aa476dfe990892365efdcfe33286fa05a455a8244872137ac1e",
+        "swir16.tif": "a4108ac940c7c3def5d485ad9ecc51302fb10ccff75e369553a61f8c85e337b3",
+        "lwir11.tif": "6e94a2ca3a9c2a4b1ddd34db40efa5ccfc5db6bcf64710b0124a8ba857798df6",
+        "qa_pixel.tif": "3c94dc5e724c7e6c1ffe5551dadeb59f064fdc14f104fa8eb180b0072cece570",
+        "qa_radsat.tif": "16907f1d0e2511cfd91ff28873f21d614dcbed7e08a558dd3c49538d0432c7b7",
+        "qa_aerosol.tif": "cc61e39a17c4d91b924efead532b4bc3fedf1b96d489bf9dfc3d99d0c9918336",
+        "qa.tif": "94dec63a3144fd2a8b501d226f2688999cf3287c40737c207c17d178def806db",
+        "cdist.tif": "16af42836d2c69bd157ae5996a5fa5fd8d2f1e4766f05086f4221a1cbf27d2c8"
+      },
+      "produced_at": "2026-03-29T08:24:40+00:00"
+    },
+    {
+      "id": "LC09_L2SP_122064_20260330_02_T1",
+      "observed": "2026-03-30T03:00:00.027159+00:00",
+      "catalog_created": "2026-06-25T15:59:37.738587Z",
+      "hashes": {
+        "metadata.json": "8a0576afb44cfb896e2b03f1ae4ad832b3926aa94f4b331b11c80989cb4d2ca5",
+        "red.tif": "65d10325f6b168d887f912b297daaa1fc4d6e052a1e21d42ea0d59fb93093eae",
+        "nir08.tif": "1c7c1b53195c37e5d8ebd77efbe12990dabd16448f5c4f501bdc1dc1b3b98fbf",
+        "swir16.tif": "1bd9d31f0bb53fddccd176db8b2bfbe4319bd2d13867a61526c6440f6e250bc5",
+        "lwir11.tif": "dc928845ad4283f9cc662c93c8249b579543f7137f90afacd521197f132cd3ba",
+        "qa_pixel.tif": "23873e12e66afa6b91b2078e731aaf700a1e2f00188a539a4d87f4e92f0c96df",
+        "qa_radsat.tif": "000f0fede8e04906a64fc4ba84c2a7a6aeb83f95e7c670754abaac036e8084ec",
+        "qa_aerosol.tif": "0883c2096d2c4bb0076ba7125cc7dbf3b682022ad9b7e3162d1ebb09481dae58",
+        "qa.tif": "26608817115d3ad20231ea8af4f81d0344676475d786c57d6f0a9c776598e276",
+        "cdist.tif": "602c303578e6d2e2e2b5de44efae92a3c14c1314ef8fc3d5967e625e18654bf0"
+      },
+      "produced_at": "2026-03-31T20:02:59+00:00"
+    },
+    {
+      "id": "LC09_L2SP_122065_20260330_02_T1",
+      "observed": "2026-03-30T03:00:23.943592+00:00",
+      "catalog_created": "2026-06-25T16:02:04.777201Z",
+      "hashes": {
+        "metadata.json": "e072594a5271b091deb64fae17d7112a9ddbc8c0a862acf0b7e18d73cb0a2808",
+        "red.tif": "eab5168e909c6bdf6e5b2d9ff226bff277e09629407e99047524989d0ad3fdd7",
+        "nir08.tif": "228e55eca4a3821451667dc77282de68ace2d0b833c286aaf5615abfdaecafd6",
+        "swir16.tif": "59b15a77e6b68d6476d5a39aae9d0da04d46d327cbb927e0f1bb5cdc7c648eff",
+        "lwir11.tif": "85090806e2706632bf0b992bfac36a80d40ecff261b51f8b77167928c143c66e",
+        "qa_pixel.tif": "24e4ba40ebfaba683a710fb3c6c63e18e17b1fbc625ba7d0d9788d761b4cb376",
+        "qa_radsat.tif": "87f5e51e2970edd3547615d23965abba3cf434b02fda851b63b9aba30142f09d",
+        "qa_aerosol.tif": "0ba3cea7b077037bc517be2b922e1dc355fbc57d5e9d17cddd9a2aea464a01bb",
+        "qa.tif": "8c620ae4df25538ae63bfbf814d3ee266e96109e056e64ef69f98f120d5730e8",
+        "cdist.tif": "3a35fd5713860ebe4d0979971901cbde4425d02afb1fa1ffb38e9fc0a271f4ca"
+      },
+      "produced_at": "2026-03-31T20:02:56+00:00"
+    },
+    {
+      "id": "LC09_L2SP_122064_20260415_02_T1",
+      "observed": "2026-04-15T02:59:52.162869+00:00",
+      "catalog_created": "2026-06-25T15:59:39.317212Z",
+      "hashes": {
+        "metadata.json": "a0c26b390ac26744e070c58186de7aee04cfbcb760dc7f6bdbd0944d72c8bd83",
+        "red.tif": "a882decc5e2f40bef9f124d450ff062957952d37d17804e1ada8c5e87d2b45c7",
+        "nir08.tif": "2ab1f33d6dfdea3087571e08f22674c8c7d2ab262fff783e629a05b1e4582ca6",
+        "swir16.tif": "eb0aca2a1ef32e54ea2cd260bcb4cc63cf1d06a96f08ae9fc7a4fa7720e84636",
+        "lwir11.tif": "4cadc9700b42b839e05a393a9dc6e9067ded15776c008decae365fe404a30b34",
+        "qa_pixel.tif": "adb6b8dd75ccb2f3334d6f36c78b004b6502f415ac0a6891431d749c64764370",
+        "qa_radsat.tif": "b50d258003a13e8c2f182fe508e1676a16cbf4c89bfa9b0ed6d1636a4ce4a0ba",
+        "qa_aerosol.tif": "e1bce018315b0a03ea533a6b2f80bd80234703950ee4c833d4db7d60ee51570c",
+        "qa.tif": "3f1adfa1ada7a1d120622a762d13c2be003bc102c0ddbe8e6d57a85d56c49a10",
+        "cdist.tif": "fbf58ec25c0636017ed4a39e4c98b73300cf5fc41777f6b66358dd65d7e626e3"
+      },
+      "produced_at": "2026-04-16T19:07:53+00:00"
+    },
+    {
+      "id": "LC09_L2SP_122065_20260415_02_T1",
+      "observed": "2026-04-15T03:00:16.079302+00:00",
+      "catalog_created": "2026-06-25T16:02:13.216610Z",
+      "hashes": {
+        "metadata.json": "318f15683f38b0519310e781878f58c47ba95800d58f1d1031ac1f17d2302c54",
+        "red.tif": "d6ae4027849f348e7fb7b893f1959c9a79ec37ae0b84bdea5b578ad39e4030f5",
+        "nir08.tif": "2de5f078ac6cdaa7210ed216398ab7acff90e2b46d876e79aaf7222530d266fe",
+        "swir16.tif": "a1523f50fb6baf2f1e20617f979f5ddd55f4b30ce0c975670b794204419115e9",
+        "lwir11.tif": "62b5285d0ce7c99e856ccad4f3d17dd9b160a9b5d33ae37232a2d1222bbfd25b",
+        "qa_pixel.tif": "9c56da202d2ceaa5c5b4869ab9be94c6326f0c2bcf6a942555b877f00ee4d614",
+        "qa_radsat.tif": "51567568ab497da5f516341e8413eea5da8fd65809f150c16d26c4418c28f83b",
+        "qa_aerosol.tif": "88450b6dab779b7f5d4faff5771399487fc64a23d0a717dd5db3f0fa873d0005",
+        "qa.tif": "4138e53843551065f524343961daf2bdc2fb6d33a4fa9194de34f7a923970287",
+        "cdist.tif": "3186dd0ed83e26d20333867f2a5130c4979cbdc067993fdf602119cf230deb04"
+      },
+      "produced_at": "2026-04-16T19:05:40+00:00"
+    },
+    {
+      "id": "LC08_L2SP_122065_20260423_02_T1",
+      "observed": "2026-04-23T03:00:01.361052+00:00",
+      "catalog_created": "2026-06-25T16:01:59.289792Z",
+      "hashes": {
+        "metadata.json": "2432a7bb73212e4ab678c044cd106ee01d73f8487d76351fd76017400956a418",
+        "red.tif": "64bffe7b7712b56a57ddc521e7e6a925633841a13e3dce4f46adb6c36bd89c5e",
+        "nir08.tif": "5b86aceec0c48e4342388892005fda499aea763630819a916b5429c432af6461",
+        "swir16.tif": "fa71caca3e68f07150fd0918cb13720878f5f9899c1aaa049ed1ffa623ac347c",
+        "lwir11.tif": "c899841aa1600340c468fd30ff0c48f968165d5d6cb819e7ccc3cb386f35b003",
+        "qa_pixel.tif": "608f0a6e0c1a95cb5c7638165335f63071c933e103a043c26162947d7b9c8916",
+        "qa_radsat.tif": "c5d17616537686f30ce005ba48faa03ca435c0e777e36592ce02391ec107d42c",
+        "qa_aerosol.tif": "19c790f8c22dd9f8951198fe9e1df184e9ff6f6c4f3902aa472f56cabedad5a7",
+        "qa.tif": "b3528a59f46f9c490c8f1b1de62b95de6c8fa1575cbee87972ce855550a8c9bd",
+        "cdist.tif": "21f9a21603dd1ba317370020078fd1cbc882a1a25ea21daf788343c403ee49c2"
+      },
+      "produced_at": "2026-05-01T22:46:51+00:00"
+    },
+    {
+      "id": "LC08_L2SP_122065_20260509_02_T1",
+      "observed": "2026-05-09T02:59:44.893669+00:00",
+      "catalog_created": "2026-06-25T16:01:56.674051Z",
+      "hashes": {
+        "metadata.json": "2ba90e2135bbdf624f5a70035635f9da754d1027e4e7cb2b65b5e1023c638766",
+        "red.tif": "d931fc8fe05aa67ccea225251cb238701c6136f6dd51884b2becc4e27a0d1dbf",
+        "nir08.tif": "1fefc39fec7989afc9f3cd37ac0848b2fd795f81a157d8b7f75871100658acd6",
+        "swir16.tif": "cbb33e792b513121859ccb3423247345cbb34f8501ae4f1c5ef2e6c24fa78fc9",
+        "lwir11.tif": "b75440a829d6dd21b10a0b674c1fa08c06caefdc5ae5839efd203f009c9ebde4",
+        "qa_pixel.tif": "cbad6497d8ddd8fb485e12fdf15333bb5d13de1181a9ce36c51b5f7c3c16c2c6",
+        "qa_radsat.tif": "86e6b144c2d99993fc26f0331b06912fc7cecb258b9d9e51ad35491a710e14ac",
+        "qa_aerosol.tif": "e177a2dbfa3a53e9a740ce8d976a7ebb696ff01837ffd3af2544f75e70d3ec11",
+        "qa.tif": "43ca2a08a33428bdc525afef1feef8878899d0e2ed3821a269cb39b9d6a077f6",
+        "cdist.tif": "a549594cbec49b1064367b9fd5499993bdfcc8b08dd74afec2b38cc183ba3552"
+      },
+      "produced_at": "2026-05-15T08:46:17+00:00"
+    },
+    {
+      "id": "LC09_L2SP_122064_20260602_02_T1",
+      "observed": "2026-06-02T02:59:20.745039+00:00",
+      "catalog_created": "2026-06-25T15:59:45.273245Z",
+      "hashes": {
+        "metadata.json": "49ebd1a7209bee8dc97ff130856506fef41e0a68639c0e900afd1711b8350b5a",
+        "red.tif": "df5c0303a7e47d7678672b33d9c4ae5d428b07783f5e4821e8b10e222cab04a7",
+        "nir08.tif": "d56faf60ea71ee84d821ae1a6143f334a1fcfe37744be3c6acd270ddb221038f",
+        "swir16.tif": "11529e5c6ec022d0fe806c167a670812847ce3daba11ec90bd101ed48cc0f83d",
+        "lwir11.tif": "278a07e433b24abc9bb310b4ce0a3a92dbb4f8f8a251a2355953fd6825bb3710",
+        "qa_pixel.tif": "57fae48ef1111f4a009d38901f5aef32dfda884cf2c90d44ca5fda35f14f64fe",
+        "qa_radsat.tif": "f71ba95191fc4ff38eb0713b07f5bc8d8d5afaeeb8b44aeae3e361ee82594bbc",
+        "qa_aerosol.tif": "f669d264f4e95f59b8586457377cf1528e9e62da0798408ebd96b0211b81217d",
+        "qa.tif": "379d74379b9288cf916f19c89134610ecb31437c84cf712f3d8a4b6754f976ae",
+        "cdist.tif": "ca92056f87ae34b3f1f3907d435479df40564eb9b99cd383e5ec46405aaaa1c3"
+      },
+      "produced_at": "2026-06-03T16:50:35+00:00"
+    },
+    {
+      "id": "LC09_L2SP_122065_20260602_02_T1",
+      "observed": "2026-06-02T02:59:44.661471+00:00",
+      "catalog_created": "2026-06-25T16:02:09.714043Z",
+      "hashes": {
+        "metadata.json": "8dd3843f7d909a0094a93368d5cdf3f8c81acf484acc635f5f8243d4cff382be",
+        "red.tif": "ca45f0556d6324a2e5ddc13a8dd09b020af93aeaf8a7dfb589026c806374e85d",
+        "nir08.tif": "0506847c7c1a3ecacf21af58dba062103b4dd415ecc0efc9d6465dac1244979f",
+        "swir16.tif": "a1ef3fe55db94010c89b61c1e6fec7c11e7fccbc8efac6ee246d787c5490ad4d",
+        "lwir11.tif": "fddf2cb66b9f0cb7c6b55db0ef12c2038fc6a63aba038720a4eada570d98e0f1",
+        "qa_pixel.tif": "83ac8fd85aba22b40f4d18e53d29d638c119f75a38fa8ab78610365eff844d7f",
+        "qa_radsat.tif": "0be2877282bd15f1c418706412a6ebb3ac95a4824f3e536857658b670a95c6fd",
+        "qa_aerosol.tif": "5e22531759236e0de22b31d8cf050ec0c1e749ae173a8a7eef8d6cbd6a5665df",
+        "qa.tif": "2957d7cc2e6684bb6e185e3ade65e0f4406200b2849b913de550d7b68f284e06",
+        "cdist.tif": "d4576a8e6a180f90b6d541661b80863a36619672d785ccb28dceae338ab789d9"
+      },
+      "produced_at": "2026-06-03T16:50:47+00:00"
+    },
+    {
+      "id": "LC08_L2SP_122064_20260610_02_T1",
+      "observed": "2026-06-10T02:59:10.367483+00:00",
+      "catalog_created": "2026-06-25T15:59:36.513949Z",
+      "hashes": {
+        "metadata.json": "627a9bb7c6358584c8d39fe7bf1582f6f2afd506ef6dae44b4c9c5539180d096",
+        "red.tif": "23091baf0ac92ece9d4e8ce077942c656bf5dc7c326ea9bb3015b2217830ed08",
+        "nir08.tif": "7034629b565168a24970e4119c33793e6845ac3c9db23fd74ad960c4489edb98",
+        "swir16.tif": "61e6a51c1bbda136979edb8403952a29635439fb9ff04a9ee9b47fa981a51cdd",
+        "lwir11.tif": "fd3487f0bbf482dfb3f827625d650d903f025302c34e8e6d597971504c358514",
+        "qa_pixel.tif": "3b3737896681ff9e3c742c772114b8b47d4b543dc08232e060151bf151753ace",
+        "qa_radsat.tif": "564f3c09fc019388709e643a0689044cc4cf6a0c1b5561711928dc6cf7aabe33",
+        "qa_aerosol.tif": "1650219e2c05cbc70cfd6f4c57a27d0e53eb160a227fb03a8ecefad57eaae58e",
+        "qa.tif": "e9b12f0b2e6040f2be03e272537d39876f7ac5a801f3021feecf594870231be1",
+        "cdist.tif": "14a20aff3b4e8e98ab7eb4208f97e7b73ea60c1194c3bf905342a5066a67cffe"
+      },
+      "produced_at": "2026-06-13T14:36:25+00:00"
+    },
+    {
+      "id": "LC08_L2SP_122065_20260610_02_T1",
+      "observed": "2026-06-10T02:59:34.288175+00:00",
+      "catalog_created": "2026-06-25T16:01:54.442328Z",
+      "hashes": {
+        "metadata.json": "7c0a6c2a3e80a1f3c3c2b1a5f72db8837a21f4b8b5ff0abde926e9818aaa4572",
+        "red.tif": "c7f77d45008ddd1e6b3e8366a10fe49f8a41fc6e1ef896ad0118a3e2913cbd62",
+        "nir08.tif": "f351515d374021b8b420395d8a13ad6ed29243ccae5fd0ca0aca90a2bf623463",
+        "swir16.tif": "51a8af5cc9dc0a833b84d16ec8255e39f408f9b86fc312a820fd54246ecfbef2",
+        "lwir11.tif": "ddddf4570b41b9b1b25b259daac088dcd2142fcb89088beec137bbe4d7848ecb",
+        "qa_pixel.tif": "fc0c8a8e12c081c52775dc8d045f9ed500d3cbdbc0f3666a4a85a36cc5281ab9",
+        "qa_radsat.tif": "c5d17616537686f30ce005ba48faa03ca435c0e777e36592ce02391ec107d42c",
+        "qa_aerosol.tif": "c1aae4bf383e05dbf5ed71168958abddaeeba12194ec94043335e578e979747f",
+        "qa.tif": "aa8d4947341c438f68e70f3ddf3958978890266d5d58526a7980160cdf546bb3",
+        "cdist.tif": "19975cef3a24d60f2a3eee98901e10f66dd1cb1a867c2ead19f0d8acb933c683"
+      },
+      "produced_at": "2026-06-13T14:33:26+00:00"
+    },
+    {
+      "id": "LC09_L2SP_122064_20260618_02_T1",
+      "observed": "2026-06-18T02:59:27.693584+00:00",
+      "catalog_created": "2026-06-28T15:22:05.263309Z",
+      "hashes": {
+        "metadata.json": "beab9bfe69a4ff858170ef49178b5e09fc70aaaa3ff118d30cc67ec3c939500e",
+        "red.tif": "50b2ad9aaf076edc55488c6f28f74467985ac5e35b7da6f8aab5edf6cde1cf3d",
+        "nir08.tif": "caec6309bc97853dc1e277135c5bf54f51160c26d2d4a1776cf0e591e85bc4e7",
+        "swir16.tif": "082a0aba8e38a3d3441b4409a181c8b18011bcb0d7b6d2857e120e73e6c6dc9f",
+        "lwir11.tif": "3d08d7783255af8f56515a91a663051884fca98811cde5f6d7beead2d6479a26",
+        "qa_pixel.tif": "458059af5fec0faec6e118b8e148b0e30011b0cf300ecc237332614c6bdb10dc",
+        "qa_radsat.tif": "c8012b69eab62e448044a81404d6595b49024f7001a4576f16a40af280204225",
+        "qa_aerosol.tif": "17e5dd1d41d6003a5c4f1acaef4969c9972d3c2b626b1b1d9957f4b18fad8692",
+        "qa.tif": "f53d4541bb53511c4c896323923383e2a08325815136601855a3b6c0cb77e3d1",
+        "cdist.tif": "be31700d0a54c078a1da245d9571ae54330c0ebde01b379d6fd46135bfbffa8c"
+      },
+      "produced_at": "2026-06-22T22:31:48+00:00"
+    },
+    {
+      "id": "LC09_L2SP_122065_20260618_02_T1",
+      "observed": "2026-06-18T02:59:51.618488+00:00",
+      "catalog_created": "2026-06-28T15:22:08.183842Z",
+      "hashes": {
+        "metadata.json": "6e5ae3741d05f621e90103f881d41f39efc70675a2a57d2df5c91cce9cc893ef",
+        "red.tif": "db0c22e8a87810a338738b97c5e50169fc235a116a4e8bc4d83b50e99a4b53cc",
+        "nir08.tif": "b5f8dc341b9b655703cbf6d067ff37cbaba795ad567ea7d64449764969805687",
+        "swir16.tif": "c0de52a897e8c75ba7a085f1a102fc81dda65087761be5c9b2158d11d3d446e8",
+        "lwir11.tif": "3c0df1cd1fb82dd61874af32fe8e2370051a9b2f0afc1116e57af2f9400161c1",
+        "qa_pixel.tif": "e96150dda4a4af39d483fc0b91f15d3b280b11963d725779dddb05cd9be7aae9",
+        "qa_radsat.tif": "91519e7028a6f87b821d70e469d2ab7def1579eaf4549e47305553a4c9e26ba2",
+        "qa_aerosol.tif": "c28fa789a3b033070930d77898e188fb585a09ed0c0739f47582a8104fbf527d",
+        "qa.tif": "e7fcd9d381c6522dc2c5ff3443151e029b5fe5739791464fdc7dfd2ee7ccf665",
+        "cdist.tif": "1c5763f4d59a031b209aec24d5503adecf1209b9164378830ce32327edd21c07"
+      },
+      "produced_at": "2026-06-22T22:31:46+00:00"
+    },
+    {
+      "id": "LC08_L2SP_122064_20260626_02_T1",
+      "observed": "2026-06-26T02:59:24.865075+00:00",
+      "catalog_created": "2026-07-31T04:26:56.029548Z",
+      "hashes": {
+        "metadata.json": "763cdf4654239be5d1b88ae2b4dd745991a0eb339599f0ec834f3c969fb59ed1",
+        "red.tif": "779982b5f2f1497c6f07926a17387537b61243dfe8d2a3fda3ee524bc034ef90",
+        "nir08.tif": "6237ac9c6932251dfaabcb177cfc02959f112538ea064296fab76d8758b5e32f",
+        "swir16.tif": "9a178ff6acf507a2e370a0fdac1a14da618be6bc3b4ecc339206af038bc6d570",
+        "lwir11.tif": "837ebd654056036e559d6faca988588a562dd0cc5855e3600269f3fa351c89de",
+        "qa_pixel.tif": "bcd8ead3e4d4e65201fd2ccc1b04449e0a627d80a7a3c0e5eeebe02b2abdbff7",
+        "qa_radsat.tif": "2030ac0b1f99ecc3dddfe72213caa0616cce0362c42b2fc00ce6b090540d6a43",
+        "qa_aerosol.tif": "02f33ffa1e52ff68389eacf30f9258ce2aa3d2950101496e0101ce3091763d36",
+        "qa.tif": "cd3b49590ddab07657cd4ae96e962db3afbd4ae82f3d3e02b3ba7dcb5f32d331",
+        "cdist.tif": "c5ab1268515ae6070c6eecfb29e5bce4e7158e9e9e19d6451ce9f270ec00a644"
+      },
+      "produced_at": "2026-07-07T02:46:45+00:00"
+    },
+    {
+      "id": "LC08_L2SP_122065_20260626_02_T1",
+      "observed": "2026-06-26T02:59:48.790005+00:00",
+      "catalog_created": "2026-07-31T04:26:53.216449Z",
+      "hashes": {
+        "metadata.json": "4e941f436e829c1bffc2287bd02b4142032dd10569a8fa1fafca86ee3cb93a51",
+        "red.tif": "fd3e81a253cf2426073f44648aa00febbaf19655be79528976f7c420a9d2f8c9",
+        "nir08.tif": "87b0d0a8d69ddde2eb46c79399fac2d2be1ebd4417077a0dd130e289198a837d",
+        "swir16.tif": "c07f4639399aa53f76c1e8abf71c506f28c1f93b130ec4faff424964cd0b3678",
+        "lwir11.tif": "0fc2fd4b7b0a426b8a7b025f7c83e544945225ecac607c595f987971488a11f7",
+        "qa_pixel.tif": "31ce898ec7deb186e4d49e4ded76ada086c0f67ed6fd8582d39a52573616c30d",
+        "qa_radsat.tif": "536988b7bf9ad644bea77b423c8be5a09a1d8a7e36e8ae85479f0576245e7dc9",
+        "qa_aerosol.tif": "1b26e6c2b7db1783d4f81ad1bcd697cc2f245fe330e6750f420ee5a738103e8a",
+        "qa.tif": "bd6ce18b42c79d40d7bd23d312ca57a62bc7332d48cf3c50f99b1344c32cf26a",
+        "cdist.tif": "b141a8ad7d89a8be87c56d5315d617ef490353484e955adc07f3cf557bfbc09e"
+      },
+      "produced_at": "2026-07-07T02:42:10+00:00"
+    },
+    {
+      "id": "LC09_L2SP_122064_20260704_02_T1",
+      "observed": "2026-07-04T02:59:35.870432+00:00",
+      "catalog_created": "2026-07-06T15:18:37.356529Z",
+      "hashes": {
+        "metadata.json": "70f7b9071c498a3519c2ee4b095a6e33f9f63cb1e79635a9b7e8247a6351d6c8",
+        "red.tif": "5512fbef82502d61d1e055a5036e546a1e4574de595f953cb085286178b9f77f",
+        "nir08.tif": "3988722c3028c6ddbca23ca080d7d258787a51198845751b41ad03fa7e6b27cf",
+        "swir16.tif": "14e2057fc20d91d2f428bc54e4f18b3b545ef3136861f2812674d923873da84e",
+        "lwir11.tif": "7822b4331bb111b07e87f70187745a8c1aa05bff5cb4ab707a17994911206be2",
+        "qa_pixel.tif": "4d6cdb65bd30d413bd3c5e834f05683d476ce037563dc0edbdafd9fcb2fce7fb",
+        "qa_radsat.tif": "aa147592e9984ad7acb3ff76f25a7929effaa1722ed9bd5df35c4ac4ef237641",
+        "qa_aerosol.tif": "33db0dc5bc6d763cc5d033663f35fb763662cff929c777c07fc312347d0447d6",
+        "qa.tif": "f29986b97ee34fb2ce772056629bb0a686660e6eba1f326c2ecffe66aa004545",
+        "cdist.tif": "787c3d38fcf2c8acb794201be6afbcc0ae6683926f1f38786aa59882b5678352"
+      },
+      "produced_at": "2026-07-05T11:35:13+00:00"
+    },
+    {
+      "id": "LC09_L2SP_122065_20260704_02_T1",
+      "observed": "2026-07-04T02:59:59.795334+00:00",
+      "catalog_created": "2026-07-06T15:18:38.539322Z",
+      "hashes": {
+        "metadata.json": "7fead67ac7adfad6ed4c0120f1bc9851354658fcb7daf311706cb8be30950e42",
+        "red.tif": "2247085b4ff4c68fd5df963dd192a20b8f25943184f57af3f7b00155ceb5c3ad",
+        "nir08.tif": "852de9f857774e4c807e6388d86361506b1d4d4903220f16a43038093781b215",
+        "swir16.tif": "17f6cd5501fbcbbd4b4e8610f36bd63ff445b58aa927f307e71fe8bc8d607945",
+        "lwir11.tif": "0921b5bd259292cec684bf0e7f7e9342d52fd2782ed7cbf763949f12c6eb63d2",
+        "qa_pixel.tif": "394c02088c62aec961e762e5f1168992fe9dd33d8211fba99479afb483b1fdf0",
+        "qa_radsat.tif": "8d3a6fea2a705087013d1a1699fb47b7262a9af264e39c669a7e57b4ded9cd56",
+        "qa_aerosol.tif": "d2d8f095574431455db595255ea0e09da9cd03610d18a6690f43d688d6b447a0",
+        "qa.tif": "7ea17a5edb291181cb47ee1b1d36ea159bdb3510274b086c511822ac7a2f8b1b",
+        "cdist.tif": "eb049a0c124446396629c0dc0edd2b52b858da4f84469344c0337a1924c4357e"
+      },
+      "produced_at": "2026-07-05T11:35:20+00:00"
+    },
+    {
+      "id": "LC08_L2SP_122064_20260712_02_T1",
+      "observed": "2026-07-12T02:59:30.152323+00:00",
+      "catalog_created": "2026-08-05T09:25:07.425585Z",
+      "hashes": {
+        "metadata.json": "3ef7a528f3f428f07164b6808fd9f3e84d2cbde5a7c78d3c7bdc0cf14a372cfa",
+        "red.tif": "7d5bd84a95d8e62a37f5f9cba3dababd9a90571bbef2216fd39fe76066c91ac9",
+        "nir08.tif": "f4de43fa94269c3a95522b229d6f246811e05f93fdd77e2645705d719d174a69",
+        "swir16.tif": "8c8895de0ffbbfd079cab844a17a9bb60750e5e66052336271878f0c93ce3590",
+        "lwir11.tif": "f24279a4ba5bde19afa80f67931c552a0927435b1c90e77c0fdc172d5891687c",
+        "qa_pixel.tif": "af1f71f9248fe3e5e4f3e1f73fd4fc957ff2842ee010732f8655cd99bf2d9a0b",
+        "qa_radsat.tif": "d86fd81e57695f00e7eab7374c16a5d50b58717d20864e26a0bc33df2893f98f",
+        "qa_aerosol.tif": "bc403a1d68a56626a52dedb8663a1c5770c46c0a2b5e35a8450a80dbf33dda60",
+        "qa.tif": "0ebf6726a5072db43eea89c33a3272b48b6805d9a05acbd67a5b7da46ba3da19",
+        "cdist.tif": "c329cf7fb381ce774f8d7c26094aa3319b2cf279d0a15cbf7ff8c34ba4212aaa"
+      },
+      "produced_at": "2026-07-20T16:53:00+00:00"
+    },
+    {
+      "id": "LC08_L2SP_122065_20260712_02_T1",
+      "observed": "2026-07-12T02:59:54.068779+00:00",
+      "catalog_created": "2026-08-05T09:25:00.511744Z",
+      "hashes": {
+        "metadata.json": "fb957f6e919af52d406e32e5f5702952832fc24f08936d77a56c17210a64bac9",
+        "red.tif": "fb5fd5f22089ed6b0beebb44e2f21284621c65fb8714616b36a354c9fc00ec33",
+        "nir08.tif": "25f2d755195608e662c55323b7c02ae70b379503197aaab397a280ca0f93d36f",
+        "swir16.tif": "f2269f889dc4c054b026e22b3a852560abdc04f810a9e4dc994a49c5187918fe",
+        "lwir11.tif": "5f423b322b864001b7075611244b3e0e5d022547513fd3a14bfb38c36de4827f",
+        "qa_pixel.tif": "3029c6e88b980c869301e1d2e46568f703f14d23f10813d1b314d8b7c4973a65",
+        "qa_radsat.tif": "a7935f1106d9fc0ca88a8093ae30be8a210a85f8fb526e0b37a1fc5704d34748",
+        "qa_aerosol.tif": "3a804fba0e15b5d0a40a49bffca242500a34e5e6c3f57db7ba01573c340f3bdf",
+        "qa.tif": "c747114d0ebfcd3502e7e3ff2d9d5b496c7b463c657a819ce3b8dd61deb726ca",
+        "cdist.tif": "52fd4607bf2f30e6ad40ec536aaf3c1e6da4ca00c220624e03515ec39af57f22"
+      },
+      "produced_at": "2026-07-20T16:50:20+00:00"
+    },
+    {
+      "id": "LC09_L2SP_122064_20260720_02_T1",
+      "observed": "2026-07-20T02:59:45.576555+00:00",
+      "catalog_created": "2026-08-04T09:27:28.037934Z",
+      "hashes": {
+        "metadata.json": "37ec5ed812d3fada1eb555b7e5d2088cec4f4481167cc6b2aa71770f8d4bb01d",
+        "red.tif": "f778425a2fde1db20ecbd76cd17ee1dad4643df41233ea64f1e24940df9a19c5",
+        "nir08.tif": "c842344ae0bfd1bca68d9aa7dced0d7a2f5a2ee71bb119b7ad7396ec0048707a",
+        "swir16.tif": "5feb47f8e395b263e48728856f09456201a356a2befc9117b2f125c07a837b62",
+        "lwir11.tif": "af00e8ed6bb61fc48ea5ac26b2b75dc3831fe9fd7db9b368b786b6b97f7aecc1",
+        "qa_pixel.tif": "8dd40d49414395c40b9fe8253ff611160417dee5001d5d5ce95b14784050cd76",
+        "qa_radsat.tif": "3541ea32a87b559aba27c54900b46883ea081faf342ea962428d28bcc390e1a8",
+        "qa_aerosol.tif": "ef307a96a21dc42e2df08e9e4f5e91162abb027cc47cf3fefed2a50be3bb8252",
+        "qa.tif": "79bc3c558c7f95331a3b0faa0143c0cc34404a477ed93bf71a1a245eb5b70bbe",
+        "cdist.tif": "021583a5f246c37f39b046090760d0d17fc7d0ed54d288a783e10f126e19aee4"
+      },
+      "produced_at": "2026-07-21T11:53:46+00:00"
+    },
+    {
+      "id": "LC09_L2SP_122065_20260720_02_T1",
+      "observed": "2026-07-20T03:00:09.501457+00:00",
+      "catalog_created": "2026-08-04T09:27:38.020814Z",
+      "hashes": {
+        "metadata.json": "ded1988080a959cd4396719fb9f02e1ecdef35a30a7cf5e05b18156614261764",
+        "red.tif": "641a77bb24bd89502556c0a47088f614f61e20c7d7c9104080dfab8355b291c3",
+        "nir08.tif": "d3fbea94558ffe0834a2c68d31bc6dc7b0491811fba6c72f05f8798e84fc37e2",
+        "swir16.tif": "ab397211fb980195e57d6022cfeb9e16bafaca87a8341e92beb67ece9295590c",
+        "lwir11.tif": "195cc88c539daf30b288e82858c1640fff851ddaf1140ff48d0ea7d6fd93e0e2",
+        "qa_pixel.tif": "2e3c8d0157821467d26392255c504921d09538d05875a11612772331b088705b",
+        "qa_radsat.tif": "c5d17616537686f30ce005ba48faa03ca435c0e777e36592ce02391ec107d42c",
+        "qa_aerosol.tif": "6d6611ce2314ccb092b4e17393a7f67388132ba66df88f72a3dcfde6c2b5ac37",
+        "qa.tif": "f72a5e4ba1ccf302739f0d960454cdb536bf1fe787204d54e88814f1d4c04cea",
+        "cdist.tif": "98932333137ec9de147e363950a6e95a460a73e0bdbd97c270c3c439b290ffca"
+      },
+      "produced_at": "2026-07-21T11:53:49+00:00"
+    },
+    {
+      "id": "LC08_L2SP_122064_20260728_02_T1",
+      "observed": "2026-07-28T02:59:40.439247+00:00",
+      "catalog_created": "2026-08-05T09:25:08.048240Z",
+      "hashes": {
+        "metadata.json": "7923984c4bcdee1dd93a158aafaa2c237f407bc088f34f9d23e65cce9392f7c5",
+        "red.tif": "2363302b81091978e4fd33525c8e423d529318b71845365fbca0e57f47c2d706",
+        "nir08.tif": "012bdbf0abdf40523b96e8f0c0580d8519f0439e3ca09ae1022415142c91f9a0",
+        "swir16.tif": "f93f4f0ad26e9093219779e66fc228b0fcd69aa0694453bc0f40f0ec9a287095",
+        "lwir11.tif": "cba02204ab2f221e6c2a3dfc9de2f5332514d95dd25a497890cb6e2b950a1b75",
+        "qa_pixel.tif": "5fe3d103d00de4b39e8b577256324c3769ba9c0132bd4aa84bc955d5059e1d97",
+        "qa_radsat.tif": "564f3c09fc019388709e643a0689044cc4cf6a0c1b5561711928dc6cf7aabe33",
+        "qa_aerosol.tif": "766eb5b1d7681aee319d05310bf55fd0115eefc7361fd5f20d8c251e75ce7968",
+        "qa.tif": "d49923af88c5d02716a853cfc9638e380e53d21bdcf251c32e2e8a916a435a77",
+        "cdist.tif": "77ee2a3cb34e1da633971de8e6721d72a6260bb3a06a3d9c7b8e0919734bb0c0"
+      },
+      "produced_at": "2026-08-01T09:07:44+00:00"
+    },
+    {
+      "id": "LC08_L2SP_122065_20260728_02_T1",
+      "observed": "2026-07-28T03:00:04.359939+00:00",
+      "catalog_created": "2026-08-05T09:24:59.439351Z",
+      "hashes": {
+        "metadata.json": "318343262f29bdfdb3ba814fcda9d15080b50e4d612a3951ce18d9648a122600",
+        "red.tif": "5ea702ad46edcc3b62a809db3af8df7e0b2fd59643b28adac3e568a6456f877e",
+        "nir08.tif": "1dbea61f80ac6e818d457891dae043294a643c233e690f73c5382fb936d064d2",
+        "swir16.tif": "e920821511456ef912e300f0f45440cefed4beeecb9597cf6c42485379e2dd3e",
+        "lwir11.tif": "755f6c798fb968070619a1b755f3de63ce69ee9e280f03e98532b43020bbbc1b",
+        "qa_pixel.tif": "6aa89ddb971b50334fc46fa02f460479e6e08c7e9053e8e13a1b16ba0a395cd3",
+        "qa_radsat.tif": "c5d17616537686f30ce005ba48faa03ca435c0e777e36592ce02391ec107d42c",
+        "qa_aerosol.tif": "43ce47b8b84431baf636c5aff0ab8f2be180e50bb5e29fb6d9ba2cb9afe90b6d",
+        "qa.tif": "985f80e61c63f33269db2cc7489e422d167567e14288b3792c8bc04b0f7d83e5",
+        "cdist.tif": "9f789a903b24a02e4f3ca77c7e77c1ea76c99843bf9eb6283b8904a4cc7c4274"
+      },
+      "produced_at": "2026-08-01T09:07:25+00:00"
+    },
+    {
+      "id": "LC09_L2SP_122064_20260805_02_T1",
+      "observed": "2026-08-05T02:59:53.503031+00:00",
+      "catalog_created": "2026-08-08T09:18:59.040962Z",
+      "hashes": {
+        "metadata.json": "8f238708da02b6fef7e62715d588ba62bd407e57dfcf5228d4e4f310b4a23ce6",
+        "red.tif": "eee4027af55828eeee60b9b902c689a404d6496ec76f5c1fbe6c293637885e91",
+        "nir08.tif": "6d7cb8d4ef9289a3739b64084d44658177771ec14a4eb331b22c787ef077269b",
+        "swir16.tif": "e5d225ca4739d1b5feab3775054c011453ff68c3b3b1e8e223d61bcb899beeb2",
+        "lwir11.tif": "dbb5f7fb268d3b2970719e3170107e7a3cca0557a171f284827c06878c00d7a1",
+        "qa_pixel.tif": "78ee32a1cdda402aadba90371aad4ba4933f15c0cbf0e803bd3d9ee7e8fb86ac",
+        "qa_radsat.tif": "ee32f06c95a479f027daf4d47597c0a904dd1c540e76dbd96a450d48f3cfe6da",
+        "qa_aerosol.tif": "5125ce88fe74095bc2fa5868e10e1bb151d887af9874395f444cf16df320b38f",
+        "qa.tif": "197d1edef245d92a04ae883980a1ec7e52186076b39f91352c814a929e40f5ee",
+        "cdist.tif": "6ffd759e71a1219e0a8b026535aa524916b963a3e9386b2904fcbf81c11222a6"
+      },
+      "produced_at": "2026-08-06T11:02:34+00:00"
+    },
+    {
+      "id": "LC09_L2SP_122065_20260805_02_T1",
+      "observed": "2026-08-05T03:00:17.427935+00:00",
+      "catalog_created": "2026-08-08T09:18:57.846280Z",
+      "hashes": {
+        "metadata.json": "6fd3c46be8907fdd63a79e9b37ded498520ffbc7d4cf0c658a064a6721936b4b",
+        "red.tif": "f9ba732ab9a30165bc2b4fc81ab0f332b069f0c5a87a3765155aaf6f763379d7",
+        "nir08.tif": "bfa82e70d4faad4281529f06a43c68918baa5510660c0d843437f8c4f640334b",
+        "swir16.tif": "881c66a0a097540caa469493dbe211304cff607f5ea28b632bfb14983bd49bb3",
+        "lwir11.tif": "62f4bf0d2f7c5f2ef656fe3f552000a8ae4af55296e7d443b9e5ffafd7aa118b",
+        "qa_pixel.tif": "f4431657960752f552971c727403f7b80b96dee252d625347b77fac2be6a73d1",
+        "qa_radsat.tif": "33a3b36e010e3649c6c14301261553097bfb58a7653c3910933d9cdd561c78a9",
+        "qa_aerosol.tif": "6effbc3ad485ed147964fdbad8b8e508a5bae2fbb382525b1b249616f79a98b3",
+        "qa.tif": "f5fe6e3b26d30cfc09bd58dd986f17113b398052765d14286f119d3736f5ed3d",
+        "cdist.tif": "76b72cd6ca5701a86bdee90a51d837f134241afc62968a5e92194c43e543366b"
+      },
+      "produced_at": "2026-08-06T10:55:33+00:00"
+    },
+    {
+      "id": "LC08_L2SP_122064_20260813_02_T1",
+      "observed": "2026-08-13T02:59:45.648811+00:00",
+      "catalog_created": "2026-08-19T09:16:57.350870Z",
+      "hashes": {
+        "metadata.json": "fbd3a36720fb6dcb6895b8e7343d55fcadcea0873148a8ced3297cff03aa29ca",
+        "red.tif": "95a43fe2da395044cb8785019a1993edc0bec3079c09e3a56c9b5227d45dbae1",
+        "nir08.tif": "f99632e5bcc73fc9905b1585fc4e4fd1301f9e3be6bee5253d248084d102549a",
+        "swir16.tif": "868ac84abfc258aa6dddac95c409d555085fb22e3c7a871f7def6a223b629e07",
+        "lwir11.tif": "17753c6b4758e5699d5b837850e28461d3d4a5526bf3decdca46509e089f58f6",
+        "qa_pixel.tif": "18afbb4a1552a754b2c88a9178e2040f7d5f75b85c3c49fa3c7042578443bc04",
+        "qa_radsat.tif": "abad93c56883b7d064d804cb4055aeb4fa0b7000fa0ee564f0f41b021b096154",
+        "qa_aerosol.tif": "6332844d36ed45f18c7977d4b1c7ff3699c58f4f8f49daa26b143f67f2dee3f2",
+        "qa.tif": "7b6e0db19e6398ad606993934e0f110bd42adbc820a7c5287ffb5154b92889b8",
+        "cdist.tif": "298183aeaa7df2d3d91fa793132d14fa50cc1b3179ee264d27fa044ed6f6b2a6"
+      },
+      "produced_at": "2026-08-17T01:04:13+00:00"
+    },
+    {
+      "id": "LC08_L2SP_122065_20260813_02_T1",
+      "observed": "2026-08-13T03:00:09.573741+00:00",
+      "catalog_created": "2026-08-19T09:16:55.682629Z",
+      "hashes": {
+        "metadata.json": "34ad2e7b890b19c2ba08b931d1d4b874f1a06677b1e77f28c4ec7acab8116a19",
+        "red.tif": "cfe99b287f4a8ceee59ae7a96e1d18c1e77fa67c3806959d0c785508841a9051",
+        "nir08.tif": "86cc295d4b6c145b68ead0c5418b90770965988430a5383e447497ebec859bef",
+        "swir16.tif": "81c86ecefa671b395e0c56096c187d230d9f22a902f8831d5e0a2e31209ecbf5",
+        "lwir11.tif": "bd81c4c1c7f2f0209a0078b99984275df4469cc42c8b44187e5c3daa40210884",
+        "qa_pixel.tif": "2aabaf8620482fbf33127660ab8ec44925bd97aeb28e6c4f91ce7a4a5336cf3b",
+        "qa_radsat.tif": "abc86ce9d75842fba227cd57c3a48f2065de1010e231a412458d70009835e8b9",
+        "qa_aerosol.tif": "11e6e13949ef8fee9aa249170b126937cc622506c7e484533df90dd1242c81ae",
+        "qa.tif": "04d6412038630d489ccaf7fba901601f02dcc9401ac34e4ea8ab9872854eb711",
+        "cdist.tif": "4cb835885738390f5e1d01201cf46ed20d9dfe670e504eace7ef632c4a02001a"
+      },
+      "produced_at": "2026-08-17T00:58:51+00:00"
+    },
+    {
+      "id": "LC09_L2SP_122064_20260821_02_T1",
+      "observed": "2026-08-21T02:59:53.598174+00:00",
+      "catalog_created": "2026-08-23T09:21:24.745989Z",
+      "hashes": {
+        "metadata.json": "d0e4913206940b8e47f5894ed2f4d17bcd49c1d418b6e1dd38aab6e37d6de28b",
+        "red.tif": "9d1d62c2c6c80bb765f14555524e52ef51afc7e02f8ed5039d8141f9df7d1c6e",
+        "nir08.tif": "28ea8049b8a15db59c455e72e2bb371d2920d2cb03b6063bf5371405882cbdfc",
+        "swir16.tif": "3f9269f0111d9a57e102759d260eff1b2dad28c3ec5aa9eae65cbcbc269c7977",
+        "lwir11.tif": "51708099b2e56c01bfa6b85e462fdc6ad5f0c2d58fdb2c89c92dc35d01ccfa81",
+        "qa_pixel.tif": "02b237279b7524010ec43fb05dd1f784cc5233050549c1375f4d533a00773043",
+        "qa_radsat.tif": "efdf6ab9dc11ecadca39baa55dc0e6e8ba4472fe200a66719f1fe1ad1709f0b7",
+        "qa_aerosol.tif": "5d77e7b5dbcc0ff20611384730ffceb92ac43d295e422338fc1696693008cd2b",
+        "qa.tif": "a18afaad6524c2a8af09d1aab09808da7c96f6ed9310365798ac023b34418275",
+        "cdist.tif": "896d12294a8b2c48505c47653f54ed8f6f73a9897e34b9b823b09dcb1d716346"
+      },
+      "produced_at": "2026-08-22T11:37:54+00:00"
+    },
+    {
+      "id": "LC09_L2SP_122065_20260821_02_T1",
+      "observed": "2026-08-21T03:00:17.518842+00:00",
+      "catalog_created": "2026-08-23T09:21:32.283238Z",
+      "hashes": {
+        "metadata.json": "92218cef1fee3fb773444b6225ab74ec58f9b9931dae08c41ddee5560c532cea",
+        "red.tif": "f41fac990685b24f9ba4e673523ac69d36e8775cbb47d433d728510262d0aef3",
+        "nir08.tif": "093f663cebcc9aa1ce0322b4b10999968bfce20ab3feb34c53380f8d05c2c16e",
+        "swir16.tif": "eb74988cd39719ffa958239eb0e183a9179da5f7418fd53ed99241cc79547059",
+        "lwir11.tif": "81bf6a247a46b6a5b5d1b924461aff3389a709566f13cee39b44bfada7e5206e",
+        "qa_pixel.tif": "c162c49f828df93ea606e776ef9079ead71a0d668503d4ada8c595dd32ead28b",
+        "qa_radsat.tif": "577ef3042e58a67d8890bbafb09ca4c346fe3a82fd54053259e572b77f9e6ff7",
+        "qa_aerosol.tif": "b76535710fa5dcff3fc7f8b1ffebcc143b1175f46167d788dff92a79426c3e00",
+        "qa.tif": "93d16f87fc644926d5e700ced0fc530f8f17ac2b82fed8ccb8007a4251bb1462",
+        "cdist.tif": "c973856e0870d828de1e657574f49ac5f0a2bcd2e519986335fdc328d54d079c"
+      },
+      "produced_at": "2026-08-22T11:36:12+00:00"
+    },
+    {
+      "id": "LC08_L2SP_122064_20260829_02_T1",
+      "observed": "2026-08-29T02:59:53.799626+00:00",
+      "catalog_created": "2026-09-13T09:19:30.880318Z",
+      "hashes": {
+        "metadata.json": "d44d83ded7bb19e80407f37cb742e238398f389b9a4984c8ac6e4c4b1c3baf46",
+        "red.tif": "634982eb9b8a2be65508dc577e56734d87a57f4db79713e341daef8d1098cd25",
+        "nir08.tif": "8185918d38436120ea42839e0100ce00ff4b320d0ba2ba53c14e5694c436c85f",
+        "swir16.tif": "7db89016bfe4b637008fcafecd33dc3989c4dc336fcfddd15fce234ded34979a",
+        "lwir11.tif": "f2772bd14d3608526afd30700299e4baa1f8cf45975ca516ec266192b79bb1db",
+        "qa_pixel.tif": "287f6e4b618e9630d7a2367af9791c7d3a79796a21cf3ef59f647351c8a0f1d5",
+        "qa_radsat.tif": "4ddcd0666d00a9616c392f78fc4c1bb6fa577ccdb34469709eb090eb8beb2c65",
+        "qa_aerosol.tif": "f1d6250521f1405f1853993d09de2cc9cd5a53d77948ece73f08a9aa0a401553",
+        "qa.tif": "9a3bb3ccc622e319fcc683df35228b91110267568a51048e34d04801becab7a5",
+        "cdist.tif": "d1ea48326d004002e879fe0fd0667ee4a36cff158c3e87a2a75cd8f6d34cd92c"
+      },
+      "produced_at": "2026-09-10T17:38:37+00:00"
+    },
+    {
+      "id": "LC08_L2SP_122065_20260829_02_T1",
+      "observed": "2026-08-29T03:00:17.724555+00:00",
+      "catalog_created": "2026-09-13T09:19:33.215751Z",
+      "hashes": {
+        "metadata.json": "b17e40fba92cfbe3649aa609b4909fd062dfc43a90dccdc5a9056f67d9bab814",
+        "red.tif": "5e0ea955320203bbc1885634c8b04b0608d4fb7df3f755f5c9b76fa66066978b",
+        "nir08.tif": "90c0734222741c2553e2dbf41665a19e8e45a4fa26bbd98c7bfc125197f108c0",
+        "swir16.tif": "94dd4fa0f063e51eafa171cc3d55fa7683acd985bfb5eec9a8299ee7aeeabcb9",
+        "lwir11.tif": "b4b28262debf85495bd359e840cbc872106bb8455ca696ffcd426de74b38b443",
+        "qa_pixel.tif": "32ec632501936fd7637021d4ad797def461bc7b59eb3235e4879f2ba3f96b36b",
+        "qa_radsat.tif": "2b457c94265aa1cf5213998ef20c7c6519f4f7303c98d77fbd7fcf49e4a5544c",
+        "qa_aerosol.tif": "482dfbfdda9d11e192d9c1e42dc54638a12a864a0bc53a46102c70eb6bad8d69",
+        "qa.tif": "17572b9e5af4347268bfb491a51d112cd5dad2abf35bc5d962a9c5b71b85a8de",
+        "cdist.tif": "40798b8e185dbb64ea1eb85b35c446a900cc2c4bdee4722c49e02e04e38e9979"
+      },
+      "produced_at": "2026-09-10T17:42:02+00:00"
+    },
+    {
+      "id": "LC09_L2SP_122064_20260906_02_T1",
+      "observed": "2026-09-06T03:00:01.974991+00:00",
+      "catalog_created": "2026-09-08T15:23:18.324336Z",
+      "hashes": {
+        "metadata.json": "a162acbb4063e90a3944e7c59c0a62957a3736640f50740e1e4b20c5b1f06c68",
+        "red.tif": "884e7f2e4272daede89d12f01d784de99778643879dc93186c6d8027499125e6",
+        "nir08.tif": "10b1669a1ab5f6c7693f80d1fa9f41a3cd531717328f35d7c60983e240d2aea6",
+        "swir16.tif": "6fb9ad4a65e93e5c9f1c9b3ef022da5569b8a3cf8dcef58b88330d510255430f",
+        "lwir11.tif": "ab3710e2ed713ef3b608af63ed5b17ecaebcab12f225390beba37757887051f9",
+        "qa_pixel.tif": "24ec80adf213ad6e2097ea865861868fc708a80dd6f381e5115fa0fadc0e6525",
+        "qa_radsat.tif": "ae699313ce9eecd3cac8cfcc908b25d3d45a251a2b3e86d24c7b926f11344496",
+        "qa_aerosol.tif": "2c48299882d9c455f5885576e9da4ee3e03e79a11edd7a72696f00b29063d2a0",
+        "qa.tif": "6d62100b27972a03a293026c662aad4cd54b3de2979006647db469163190d6a2",
+        "cdist.tif": "031c4b51d7f0da039aa7db178d22802e61c75c8c1301d2e8dc0abf0354e50922"
+      },
+      "produced_at": "2026-09-07T10:55:03+00:00"
+    },
+    {
+      "id": "LC09_L2SP_122065_20260906_02_T1",
+      "observed": "2026-09-06T03:00:25.891422+00:00",
+      "catalog_created": "2026-09-08T15:23:23.225491Z",
+      "hashes": {
+        "metadata.json": "dcc68a154e9ad2e15e4727de6eb35b0ef4c0c02cdfebb25fa9bf0459c69d9e8e",
+        "red.tif": "7d68bf1bb2f5cdc108afc8887907c3ddc20474fb7c4b903d2120ec7a23f1d7ac",
+        "nir08.tif": "f14efc44712e38102283e232c3ad9588b41fb0357c1bf8f274cd6b110cbce114",
+        "swir16.tif": "4a8b7c5ed241076546120cab584a88c43dad234b222196d99c091e263268dd9b",
+        "lwir11.tif": "e7d6d4a036d7b640e99ed9c7b31aca69b4b7c3de010fc2bf05b52bd2d9362fb5",
+        "qa_pixel.tif": "214425a2b8a2ab718a40fb1b02b0b52e1a968da47ef097c98a746fdb1cca7820",
+        "qa_radsat.tif": "c5d17616537686f30ce005ba48faa03ca435c0e777e36592ce02391ec107d42c",
+        "qa_aerosol.tif": "0f42f635a935b845873daf5f0f3b53bf05e0ab994c542b49c9e3e382679b5f0d",
+        "qa.tif": "aa63dd70e3c4703530e6c5b1ef2f201f0f6d5a799707ae221c9c41d35b2a72f6",
+        "cdist.tif": "421dc1d969c646e0e092a53542da1ed76a00cee52531e6ae0030c3522e634796"
+      },
+      "produced_at": "2026-09-07T10:54:59+00:00"
+    },
+    {
+      "id": "LC08_L2SP_122064_20260914_02_T1",
+      "observed": "2026-09-14T02:59:57.427524+00:00",
+      "catalog_created": "2026-09-26T15:18:12.927765Z",
+      "hashes": {
+        "metadata.json": "ef65307293464e4eecb302898d815b75ed8843c0fb3e389bc161fd2eb98fed11",
+        "red.tif": "ebb8355707db355b8978e04575ddfe4aebfa6c71ed4af8e8607af9fa6bc787e1",
+        "nir08.tif": "5ce79ea676667fd3649baaa679f9faa90ba2b02ecab1de9c1db2fecc142a5d98",
+        "swir16.tif": "7a326eb88ec3ae3e0b08a7909d63cc9463b4fde0aa0b25ec653a348edcefb274",
+        "lwir11.tif": "23dc711f1e90732b659b6cfb47e1d5380b41fb1dfd013a8b37cdfb5783200137",
+        "qa_pixel.tif": "1421b3093cc7affef73c416cc189847a4c0febf8253b6b27a5cc6e9b5f0da830",
+        "qa_radsat.tif": "38fc6c114df2d739635cd73afacb6baf262b6b6e85f2b450b269e34954eab995",
+        "qa_aerosol.tif": "4e43e8ceeeface098f65900b7b630453a4d78f36cd1fcf0afa9d4038e028157a",
+        "qa.tif": "dc8bf31deaeb6125a0df4f4d0ce6ce5c2ce2a9140ffb2f394618ead8d99688ce",
+        "cdist.tif": "d7a3c3219e1fda6f657d9f0dc4651343df620fa9b44e1c14823458b212ad4852"
+      },
+      "produced_at": "2026-09-24T19:02:20+00:00"
+    },
+    {
+      "id": "LC08_L2SP_122065_20260914_02_T1",
+      "observed": "2026-09-14T03:00:21.352453+00:00",
+      "catalog_created": "2026-09-26T09:19:13.787895Z",
+      "hashes": {
+        "metadata.json": "2181572a6247cc147d5326bd913e50e969bd914e6a6ee96ea4dde40c21de7445",
+        "red.tif": "6271e8485aac98db6458de53c7189c11fa66e329fd10ba7db631486e49e7af59",
+        "nir08.tif": "8f427ef902ce592786a484209aa0ccd8dfe0f95de3ac4d448325ca329b4edcdf",
+        "swir16.tif": "1c2c2dda55424e3a98127869d178d2a667586c7e714879c99c1edfe35fafa556",
+        "lwir11.tif": "addfb605cf7ff97a7e1b551b6ecfbe8941e4f80ab54bf744a8c903ee0372a9fb",
+        "qa_pixel.tif": "bd6e6c71816400c07e41c59e89094ad19584e1110f6b1ab83ceebedc177207d1",
+        "qa_radsat.tif": "b06b8294ff38c0a38b624c8cc83775be2815108273cbdbe0134b3cf58784fa72",
+        "qa_aerosol.tif": "43ad22453d70d004ca84f070a000a0a0426c64e06b7bfb513838e0195dc4935f",
+        "qa.tif": "f129533a19084809359d44fedc62cb0daf3abc10aa2cd02213980cbcc19a3ee5",
+        "cdist.tif": "aac55bbf85088d4da6534af9cab7002594e64f81cfd708bdcd014244375fe0ef"
+      },
+      "produced_at": "2026-09-24T18:59:42+00:00"
+    },
+    {
+      "id": "LC09_L2SP_122064_20260922_02_T1",
+      "observed": "2026-09-22T03:00:06.378431+00:00",
+      "catalog_created": "2026-09-26T09:18:54.526634Z",
+      "hashes": {
+        "metadata.json": "6bb98f2c44aacb5a3d9f7ee88785038760b76fcf1082096c1f79cea5acf98af4",
+        "red.tif": "27562c49ae4ede6dbd944781569df7fb51e139a4c4c97db2355fa16fa1feda88",
+        "nir08.tif": "83b6bfce170ae3a12a1f7c33c3289cd9d068048df0074d31cf3bbc870e83cc6b",
+        "swir16.tif": "0034cd321db47cc1432b8dccfe7227a3c12bbb5478430b20340e72e0c6243089",
+        "lwir11.tif": "84bbac432acdaa6f2a3d89b4a31cc4add9d4b97a24735de14e6373c94c7b0fb4",
+        "qa_pixel.tif": "898b46f988d019dafb6a3a1b6e46c8f7de879f39ce274cf7e7cfada080b2389f",
+        "qa_radsat.tif": "1d995b0405442e7503b4359590cff846a1d8f09f2321b97e2d217c731eb510be",
+        "qa_aerosol.tif": "ba1deec2c973b7332b8b20ba538d4c8029dcbc97974bcc547e71e382a56a8742",
+        "qa.tif": "7ed9080c6fbf916db6498d8380d7e366698033426acc29fd5f6b37c58bbbe77b",
+        "cdist.tif": "183f34086f0215844d22118ae6468f18562e4eb0ff708136a3d96c535954dfc8"
+      },
+      "produced_at": "2026-09-24T01:12:43+00:00"
+    },
+    {
+      "id": "LC09_L2SP_122065_20260922_02_T1",
+      "observed": "2026-09-22T03:00:30.303334+00:00",
+      "catalog_created": "2026-09-26T09:19:14.722900Z",
+      "hashes": {
+        "metadata.json": "a53cc90c705194d0829a22388a8ffd6555f1c00ac12809812045910e9a728399",
+        "red.tif": "11874d000b6fe3e8cb05b0608c6ddfd9c1c0a95f74e042c87dc40c6a0f60228c",
+        "nir08.tif": "4ed59050b6bc3d9e7d81040965ef90b4d7383e2a22bd94e16a004d904092d279",
+        "swir16.tif": "dc3da54b97ebddd7a249b88524849632b77eae1280dacc337d2b4f05f2e6f43f",
+        "lwir11.tif": "41cd6bee95bc59e2d0d22fb44633633b11e63d59ca6e2d23991c4ce7834b35c0",
+        "qa_pixel.tif": "bcda1039a6ad1385b8a304cf2f7bb65bcd8d5f134225158a24b41198ce24937e",
+        "qa_radsat.tif": "5e7919b4554d07a88f33184fbd965ef5a8394e27ed8f1e0c2d18ff49e92e40fb",
+        "qa_aerosol.tif": "af33d12c52a510b59e04575c4bb835a05aea9ba33cad206cfa85cec12fca976d",
+        "qa.tif": "6ea7db23273dd7b8b77fb4b175d83bc1ec195a9c36b4d3aed7fc4ef7e630dffd",
+        "cdist.tif": "d3fc02240dff81042c4b21ba8886f81525c78c9aadd4f91b8236b07a182e3b8b"
+      },
+      "produced_at": "2026-09-24T01:13:16+00:00"
+    }
+  ],
+  "region": "bbox unless boundary supplied",
+  "grid": {
+    "width": 445,
+    "height": 445,
+    "transform": [
+      100.0,
+      0.0,
+      676900.0,
+      0.0,
+      -100.0,
+      9336600.0,
+      0.0,
+      0.0,
+      1.0
+    ],
+    "active_cells": 195782
+  },
+  "timing_metadata_version": "satellite-times-2-production-proxy",
+  "timing_metadata_fingerprint": "ebc5bf48ce2beeeef65dfc6199b6f112925405cfa24597ef4839b7e6fd400607",
+  "availability_policy": "User assumption: source produced_at is the availability proxy, not verified publication. Full-month composites also require observation_window_end_exclusive."
+}
