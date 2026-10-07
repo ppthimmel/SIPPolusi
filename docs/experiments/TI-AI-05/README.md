@@ -90,11 +90,39 @@ Contohnya ruas 44451 (4,9 km) yang melintasi 66 sel: PM2.5 yang dihitung ulang d
 | Tiga siklus berturut-turut | Masing-masing ±9 s; retensi menyisakan dua time window terakhir |
 | Pemanggilan ulang time window yang sudah complete | `skipped`, `run_id` sama, 0 baris ditulis (UT-SDM-01b) |
 | `DOWNSCALE_WRITE_CACHE` tidak diatur | Langkah berstatus `disabled` |
-| Ukuran satu time window | ±92 MB termasuk indeks; dengan retensi bawaan 6 time window sekitar 0,55 GB |
+| Ukuran satu time window | ±92 MB termasuk indeks |
 
 Uji otomatis pada `tests/test_spatial_edgeweight.py` dan `tests/test_spatial_baseline.py`
 (UT-SDM-01, 06, 07, 08; UT-OPS-01, 02; retensi; portabilitas encoding) lulus terhadap
 PostgreSQL + PostGIS sungguhan: 129 lulus. Tanpa basis data: 92 lulus dan 37 dilewati.
+
+## Kesesuaian dengan basis data Railway
+
+Basis data Railway menjalankan image `postgis/postgis:18-3.6` (PostgreSQL 18.6, PostGIS 3.6.4), bukan
+PostgreSQL 16 seperti pada dokumen desain, `docker-compose.yml`, dan fixture uji. Seluruh 129 uji dan tiga
+siklus di atas diulang pada image yang sama persis (amd64), dan semuanya lulus dengan hasil yang sama.
+
+| Sumber daya layanan `database` (8 Oktober 2026) | Nilai |
+|---|---|
+| Batas CPU dan memori | 1 vCPU; 4 GB, pemakaian puncak 1 jam terakhir 307 MB |
+| Volume | 5.000 MB (batas efektif 4,88 GB), terpakai 1,34 GB |
+| Isi volume | Data ±0,39 GB (`osm` 252 MB, `ground_truth` 115 MB), WAL ±0,72 GB, sisanya berkas sistem |
+| `max_wal_size` | 1 GB |
+
+Simulasi sepuluh siklus per jam pada PostgreSQL 18 dengan retensi 6 time window dan VACUUM di antara siklus
+(setara autovacuum) menunjukkan `edge_pollution` mendatar di ±0,67 GB. Setiap siklus menghasilkan
+170–430 MB WAL, yang didaur ulang dalam batas `max_wal_size`. Proyeksi isi volume setelah flag aktif:
+
+| Komponen | Perkiraan |
+|---|---|
+| Data selain cache | ±0,4 GB, bertambah sekitar 5–8 MB per hari dari ground truth |
+| `pollution.edge_pollution` (retensi 6) | ±0,7–0,9 GB, tergantung jarak antar-autovacuum |
+| WAL | ±1,0–1,2 GB |
+| Berkas sistem | ±0,2 GB |
+| **Total** | **±2,3–2,7 GB dari 4,88 GB (sekitar 50–55%)** |
+
+Satu node PostgreSQL + PostGIS cukup untuk ground truth, graf road network, dan cache EdgeWeight
+sekaligus, dengan sisa sekitar 2 GB.
 
 ## Pemenuhan acceptance criteria
 
