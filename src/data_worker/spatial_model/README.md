@@ -60,7 +60,7 @@ c_e = Σ_k (ℓ_ek · c_k) / Σ_k ℓ_ek
   menghasilkan `EdgeWeight` dan dicatat di `edges_without_estimate`
   (UT-SDM-07e).
 - Ruas yang melintasi banyak sel menerima bobot panjang dari setiap sel
-  (UT-SDM-07b; ruas terpanjang graf saat ini melintasi 186 sel).
+  (UT-SDM-07b; ruas terpanjang graf saat ini, 4,9 km, melintasi 66 sel).
 
 Tabel potongan (`edge_id`, `cell_id`, `length_m`) dihitung sekali per
 (versi graf, `GridSpec`) dan disimpan sebagai `edge_cell_pieces.parquet`.
