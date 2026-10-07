@@ -293,5 +293,6 @@ def _write_artifacts(out: pathlib.Path, summary: RunSummary, time_window: TimeWi
         "durations_s": {k: round(v, 3) for k, v in timings.items()},
         "created_utc": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"),
     }
-    (run_dir / "run_manifest.json").write_text(json.dumps(manifest, indent=2, ensure_ascii=False, default=str))
+    (run_dir / "run_manifest.json").write_text(json.dumps(manifest, indent=2, ensure_ascii=False, default=str),
+                                              encoding="utf-8")
     return {"dir": str(run_dir), "files": sorted(hashes)}

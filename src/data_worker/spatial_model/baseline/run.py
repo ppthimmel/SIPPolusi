@@ -243,7 +243,8 @@ def run_baseline(config_path: pathlib.Path, manifest_path: pathlib.Path, out_roo
         "grid_example": grid_info["summary"] if grid_info else None,
         "findings": found,
     }
-    (run_dir / "metrics.json").write_text(json.dumps(metrics, indent=2, ensure_ascii=False, default=float))
+    (run_dir / "metrics.json").write_text(json.dumps(metrics, indent=2, ensure_ascii=False, default=float),
+                                          encoding="utf-8")
 
     timings["total_s"] = time.perf_counter() - t0
     boundaries = manifest["split"]["boundaries"]
@@ -276,7 +277,8 @@ def run_baseline(config_path: pathlib.Path, manifest_path: pathlib.Path, out_roo
         "started_utc": started_utc.isoformat(timespec="seconds"),
         "durations_s": {k: round(v, 2) for k, v in timings.items()},
     }
-    (run_dir / "run_manifest.json").write_text(json.dumps(run_manifest, indent=2, ensure_ascii=False, default=str))
+    (run_dir / "run_manifest.json").write_text(json.dumps(run_manifest, indent=2, ensure_ascii=False, default=str),
+                                              encoding="utf-8")
 
     report.write_report(run_dir / "report.md", {
         "run_manifest": run_manifest, "overall": overall, "stations": stations, "tables": tables,
