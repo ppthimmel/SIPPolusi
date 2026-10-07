@@ -185,7 +185,7 @@ def write_pollution_weight(
 def prune_pollution_windows(conn, keep_windows: int, pollution_schema: str = "pollution") -> int:
     """Hapus time window complete selain ``keep_windows`` terakhir beserta barisnya.
 
-    Satu time window seluruh graf memakan ±184 MB (TI-AI-05), sedangkan Backend
+    Satu time window seluruh graf memakan ±92 MB termasuk indeks (TI-AI-05), sedangkan Backend
     hanya membaca time window complete terakhir (data_stale bila > 3 jam).
     Time window berstatus writing tidak disentuh. Mengembalikan jumlah time
     window yang dihapus.

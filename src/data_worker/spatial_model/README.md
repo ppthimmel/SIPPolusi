@@ -119,11 +119,13 @@ parameter IDW, dan commit kode. Run ditemukan dari baris cache lewat kunci
 
 Langkah `trigger_downscale_inference` di `acquisition.py` hanya aktif bila
 `DOWNSCALE_WRITE_CACHE=1`; bawaannya `disabled`. Setiap time window menulis
-372 ribu baris, sekitar 184 MB termasuk indeks (4,3 GB per hari), sedangkan
-volume Railway paket Hobby 5 GB. Karena itu, setelah setiap penulisan hanya
-`DOWNSCALE_KEEP_WINDOWS` time window complete terakhir yang dipertahankan
-(bawaan 6, sekitar 1,1 GB; `prune_pollution_windows`). Backend memang hanya
-membaca time window complete terakhir.
+372 ribu baris, sekitar 92 MB termasuk indeks (2,2 GB per hari), sedangkan
+volume Railway paket Hobby 5 GB. Tulis ulang dan penghapusan meninggalkan baris
+mati sampai autovacuum berjalan, sehingga ukuran sementara dapat mencapai dua
+kali lipat. Karena itu, setelah setiap penulisan hanya `DOWNSCALE_KEEP_WINDOWS`
+time window complete terakhir yang dipertahankan (bawaan 6, sekitar 0,55 GB dan
+paling banyak sekitar 1,1 GB sebelum autovacuum; `prune_pollution_windows`).
+Backend memang hanya membaca time window complete terakhir.
 `SPATIAL_ARTIFACT_DIR` (opsional) menerima artefak penelusuran. Di Railway,
 direktori ini hilang setiap kali kontainer berhenti, kecuali dipasang
 Railway Volume atau diganti object storage (TI-DO-03).

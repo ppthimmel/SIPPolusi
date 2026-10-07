@@ -107,7 +107,7 @@ Seluruhnya lewat variabel lingkungan:
 | `SPKU_CONTACT` | tidak | Alamat kontak pada User-Agent; boleh kosong |
 | `SPKU_DELAY_SECONDS`, `SPKU_TIMEOUT_SECONDS`, `SPKU_RETRIES` | tidak | Bawaan 1, 45, 3 |
 | `DOWNSCALE_WRITE_CACHE` | tidak | `1` mengaktifkan penulisan EdgeWeight ke `pollution.edge_pollution` setiap siklus; bawaan nonaktif |
-| `DOWNSCALE_KEEP_WINDOWS` | tidak | Jumlah time window complete terakhir yang dipertahankan di cache; bawaan 6 (±1,1 GB) |
+| `DOWNSCALE_KEEP_WINDOWS` | tidak | Jumlah time window complete terakhir yang dipertahankan di cache; bawaan 6 (±0,55 GB, hingga ±1,1 GB sebelum autovacuum) |
 | `SPATIAL_ARTIFACT_DIR` | tidak | Direktori artefak penelusuran per run inferensi; kosong berarti tidak disimpan |
 
 Basis data harus memiliki ekstensi PostGIS. Skema dan tabel dibuat otomatis

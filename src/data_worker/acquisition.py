@@ -35,7 +35,7 @@ def _step_downscale_inference(time_window: TimeWindow, config: Config) -> dict:
     """trigger_downscale_inference: ST-GNN, jatuh ke IDW bila gagal, lalu EdgeWeight ke cache.
 
     Aktif hanya bila DOWNSCALE_WRITE_CACHE=1, karena setiap time window menulis
-    sekitar 372 ribu baris (±184 MB) ke pollution.edge_pollution. Setelah
+    sekitar 372 ribu baris (±92 MB) ke pollution.edge_pollution. Setelah
     penulisan, hanya DOWNSCALE_KEEP_WINDOWS time window complete terakhir
     (bawaan 6) yang dipertahankan. SPATIAL_ARTIFACT_DIR (opsional) menerima
     artefak penelusuran per run.
