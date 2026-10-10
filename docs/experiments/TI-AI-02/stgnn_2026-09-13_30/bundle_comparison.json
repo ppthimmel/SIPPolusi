@@ -1,0 +1,85 @@
+{
+ "description": "Perbandingan ekspor repo dengan bundle ST-GNN jakarta_processed_bundle_20261007 (FedrianzD) pada kolom bersama. differing_fraction = fraksi baris yang tidak sama persis (toleransi 0).",
+ "commit": "52b816bc590525976d32dae57b1403a1bf23d20c",
+ "bundle_outputs_sha256": {
+  "features.parquet": "e61f94b5efbf80a21996cc2c4eb8ae0d67025573d1838ffbbd5a26f4837d330a",
+  "nodes.parquet": "1c80becd1ce9d81283aba497634b32dd11f4eccda847b1cdc890bbde1fdaf589",
+  "edges.parquet": "dd9c1efcc456e00c6533bc1332249659e3e6b44772372771ec7009aa1bb228c3",
+  "labels.parquet": "85fb971e1dabfb8f9e3c372dfa90d6867c25439cb67fa23bdb0af850726c8d93"
+ },
+ "viirs_cell_rule_nearest_listed": {
+  "nodes": "identik",
+  "edges": "identik",
+  "labels": "identik",
+  "features": {
+   "rows": [
+    473976,
+    473976
+   ],
+   "shared_columns": 53,
+   "only_in_bundle": [],
+   "added": [
+    "dist_nearest_sensor_m",
+    "no2_mol_m2_available",
+    "ntl_available",
+    "temperature_2m_available",
+    "relative_humidity_2m_available",
+    "wind_speed_10m_available",
+    "wind_direction_10m_available",
+    "boundary_layer_height_available",
+    "precipitation_available",
+    "surface_pressure_available",
+    "geoscf_pm25_ugm3_available",
+    "geoscf_no2_ugm3_available",
+    "ndvi_available",
+    "ndbi_available",
+    "lst_c_available",
+    "dist_nearest_sensor_m_available"
+   ],
+   "differing_fraction": {
+    "latitude": 0.038314
+   }
+  }
+ },
+ "viirs_cell_rule_tile": {
+  "nodes": "identik",
+  "edges": "identik",
+  "labels": "identik",
+  "features": {
+   "rows": [
+    473976,
+    473976
+   ],
+   "shared_columns": 53,
+   "only_in_bundle": [],
+   "added": [
+    "dist_nearest_sensor_m",
+    "no2_mol_m2_available",
+    "ntl_available",
+    "temperature_2m_available",
+    "relative_humidity_2m_available",
+    "wind_speed_10m_available",
+    "wind_direction_10m_available",
+    "boundary_layer_height_available",
+    "precipitation_available",
+    "surface_pressure_available",
+    "geoscf_pm25_ugm3_available",
+    "geoscf_no2_ugm3_available",
+    "ndvi_available",
+    "ndbi_available",
+    "lst_c_available",
+    "dist_nearest_sensor_m_available"
+   ],
+   "differing_fraction": {
+    "latitude": 0.038314,
+    "ntl": 0.726054,
+    "ntl_observed_at": 0.033951,
+    "ntl_produced_at": 0.033951,
+    "ntl_scene_id": 0.033951,
+    "ntl_age_hours": 0.033951
+   }
+  }
+ },
+ "latitude_max_abs_difference_deg": 8.881784197001252e-16,
+ "repeat_run_outputs_identical": true
+}
