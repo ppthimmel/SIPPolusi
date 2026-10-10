@@ -77,11 +77,15 @@ pelatihan saja agar penandaan tidak memakai data validasi/pengujian.
 **Time window.** Rata-rata bacaan bersih pada [HH:00, HH+1:00) UTC,
 berlabel awal jam, minimal satu bacaan.
 
-**Split (provisional TI-AI-03 v1).** Blok temporal pada hari UTC penuh,
-70/15/15: pelatihan 13–28 September, validasi 29 September–1 Oktober,
-pengujian 2–5 Oktober 2026. Batas dibekukan di manifest dan diperiksa
-ulang setiap kali dataset dimuat. Split ini harus disepakati tim sebelum
-dipakai sebagai protokol final.
+**Split.** Run resmi memakai snapshot beku TI-AI-03 `ds-v0.1.0`
+(`run --manifest docs/experiments/ds-v0.1.0/manifest.json`, protokol di
+`docs/PROTOKOL_EVALUASI.md`). Checksum snapshot diperiksa saat dimuat.
+Seluruh stasiun satu grup (sel sama atau < 300 m) ditahan bersama pada
+LOSO, dan PM2.5 juga dilaporkan pada split tetap blind ganda (stasiun uji
+× blok uji, sumber hanya stasiun train). Split provisional v1 (blok
+temporal 70/15/15: pelatihan 13–28 September, validasi 29 September–
+1 Oktober, pengujian 2–5 Oktober 2026) tetap dapat dibangun dengan
+`build-dataset` untuk mereproduksi run TI-AI-04 awal.
 
 **Evaluasi.** Untuk setiap polutan, time window, dan stasiun uji, estimasi
 pada koordinat stasiun dihitung dari stasiun lain pada time window yang
