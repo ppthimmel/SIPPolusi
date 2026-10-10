@@ -8,6 +8,8 @@ SIPPolusi: Sistem Informasi Pemandu Perjalanan dalam Polusi
   cache reads, and Multi-Objective Route Model inference
   ([src/backend/route_model](src/backend/route_model)), served from one
   FastAPI process to stay within the routing latency budget.
+  Baseline routing, interface examples and cost assumptions:
+  [routing guide](src/backend/route_model/README.md).
 - [src/data_worker](src/data_worker) — background phase: secondary data
   ingestion, road graph construction, and Spatial Downscaling Model inference
   ([src/data_worker/spatial_model](src/data_worker/spatial_model)).
