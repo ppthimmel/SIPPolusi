@@ -92,7 +92,7 @@ def quality_report(directory: Path | str) -> dict:
     per_hour = features.groupby("time_utc")[AVAILABILITY_FLAGS].mean()
     labelled = features.grid_id.isin(set(labels.grid_id))
     report = dict(
-        directory=str(directory), feature_rows=len(features), feature_columns=features.shape[1],
+        directory=directory.name, feature_rows=len(features), feature_columns=features.shape[1],
         nodes=len(nodes), label_nodes=int(labels.grid_id.nunique()), hours=len(hours),
         start_utc=manifest["start_utc"], end_utc_exclusive=manifest["end_utc_exclusive"],
         checks=checks, missing_fraction=missing,
