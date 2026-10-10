@@ -31,6 +31,7 @@ kendali mutu, penyelarasan, write_features) masih tercatat `not_implemented`.
 | `docs/RAILWAY.md` | Langkah deployment Railway, migrasi data historis, peralihan, catatan penggabungan `dev` |
 | `database/` | Model SQLAlchemy skema cache `pollution` dan `osm`; `init_db()` dipanggil di awal setiap siklus |
 | `spatial_model/` | Estimasi grid sampai `EdgeWeight` (langkah `trigger_downscale_inference`): fallback IDW, confidence score, agregasi ke ruas, Spatial Pollution Cache DB; lihat [README-nya](spatial_model/README.md) |
+| `feature_matrix/` | FeatureMatrix TI-AI-02: penyelarasan GEOS-CF, Sentinel-5P, Open-Meteo, OSM, Landsat, VIIRS ke grid 100 m per time window tanpa kebocoran waktu; lihat [README-nya](feature_matrix/README.md) |
 | `spatial_model/baseline/` | Baseline IDW TI-AI-04: dataset beku, evaluasi *leave-one-station-out*, analisis galat; lihat [README-nya](spatial_model/baseline/README.md) |
 
 `fetch_ground_truth("spku")` menjalankan lintasan penuh yang sama dengan
