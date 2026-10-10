@@ -46,6 +46,5 @@ Nilai kosong dipertahankan sebagai `NaN` bersama mask `available`. Imputasi dan 
 
 **Aturan waktu:** `produced_at` dianggap waktu tersedia (asumsi penelitian). Gabungkan berdasarkan waktu pengamatan; untuk prediksi, filter produksi dan pengamatan sebelum waktu inferensi. Komposit bulanan juga harus menunggu akhir jendela.
 
-Sentinel: `observations.parquet` menyimpan pengamatan dan produksi per granule/sel. Panduan: [SATELLITE_TIMES.md](SATELLITE_TIMES.md).
+Sentinel: `observations.parquet` menyimpan pengamatan dan produksi per granule/sel.
 
-Penyimpanan gabungan dan pembacaan batch per jam: [SATELLITE_COMBINED.md](SATELLITE_COMBINED.md).
