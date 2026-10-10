@@ -200,3 +200,9 @@ dist
 
 # Estimasi per stasiun-jam hasil run baseline (dapat dibangkitkan ulang dari manifest)
 docs/experiments/**/predictions.parquet
+
+# Local Graphify installation and generated graph.
+/graphify-out/
+/.codex/skills/graphify/
+/.codex/hooks.json
+/AGENTS.md
