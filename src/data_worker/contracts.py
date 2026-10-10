@@ -99,3 +99,42 @@ class GroundTruthBatch:
     #: Ringkasan lintasan pengambilan (untuk SPKU: keluaran run_full).
     run: dict = dataclasses.field(default_factory=dict)
     note: str | None = None
+
+
+@dataclasses.dataclass(frozen=True, slots=True)
+class EdgeWeight:
+    """Estimasi polutan satu ruas pada satu time window (Tabel 3.3, Tabel 3.17).
+
+    ``pm25_ugm3`` dan ``no2_ugm3`` boleh kosong bila polutan tidak tersedia;
+    kosong berbeda dengan nol (PF-06). ``background_source`` bernilai "aod"
+    atau "reanalysis" untuk ST-GNN dan kosong untuk IDW, yang tidak memakai
+    suku latar. ``estimation_source`` ("stgnn" atau "idw") membedakan hasil
+    fallback dari estimasi berbasis data lengkap.
+    """
+
+    edge_id: int
+    time_window_start: dt.datetime
+    pm25_ugm3: float | None
+    no2_ugm3: float | None
+    exposure_index: float | None
+    confidence_score: float | None
+    background_source: str | None
+    estimation_source: str
+
+
+@dataclasses.dataclass(slots=True)
+class RunSummary:
+    """Ringkasan satu eksekusi Spatial Downscaling Model (Tabel 3.3, B27)."""
+
+    run_id: str
+    status: str                     # complete, skipped (sudah ada), atau failed
+    time_window_start: dt.datetime
+    model_version: str
+    estimation_source: str
+    coverage_ratio: float | None    # porsi ruas graf yang mendapat estimasi
+    confidence_distribution: dict = dataclasses.field(default_factory=dict)
+    duration_s: float | None = None
+    graph_version: str | None = None
+    rows_written: int = 0
+    fallback_reason: str | None = None
+    artifacts: dict = dataclasses.field(default_factory=dict)

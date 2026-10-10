@@ -6,9 +6,10 @@ satu siklus akuisisi untuk time window satu jam yang baru berakhir.
 
 Yang sudah berjalan: **`fetch_ground_truth("spku", ...)`**, yaitu pengambilan
 ground truth sensor darat dari portal DLH DKI Jakarta (udara.jakarta.go.id),
-yang disimpan ke PostgreSQL. Langkah lain pada siklus (satelit, meteorologi,
-kendali mutu, penyelarasan, write_features, inferensi) masih tercatat
-`not_implemented`.
+yang disimpan ke PostgreSQL. Langkah `trigger_downscale_inference` (fallback
+IDW sampai EdgeWeight di cache) tersedia tetapi nonaktif kecuali
+`DOWNSCALE_WRITE_CACHE=1`. Langkah lain pada siklus (satelit, meteorologi,
+kendali mutu, penyelarasan, write_features) masih tercatat `not_implemented`.
 
 > **Sebelum memakai datanya, baca [`docs/DATA.md`](docs/DATA.md).** Isinya:
 > arti setiap tabel dan bendera `qc`, stasiun yang diketahui bermasalah (dan
@@ -29,7 +30,7 @@ kendali mutu, penyelarasan, write_features, inferensi) masih tercatat
 | `docs/DATA.md` | Kamus data, mutu data, dan catatan zona waktu |
 | `docs/RAILWAY.md` | Langkah deployment Railway, migrasi data historis, peralihan, catatan penggabungan `dev` |
 | `database/` | Model SQLAlchemy skema cache `pollution` dan `osm`; `init_db()` dipanggil di awal setiap siklus |
-| `spatial_model/` | Kerangka inferensi ST-GNN (langkah `trigger_downscale_inference`); `idw.py` dan `grid.py` berisi IDW dan grid 100 m yang dipakai baseline dan fallback |
+| `spatial_model/` | Estimasi grid sampai `EdgeWeight` (langkah `trigger_downscale_inference`): fallback IDW, confidence score, agregasi ke ruas, Spatial Pollution Cache DB; lihat [README-nya](spatial_model/README.md) |
 | `spatial_model/baseline/` | Baseline IDW TI-AI-04: dataset beku, evaluasi *leave-one-station-out*, analisis galat; lihat [README-nya](spatial_model/baseline/README.md) |
 
 `fetch_ground_truth("spku")` menjalankan lintasan penuh yang sama dengan
@@ -105,6 +106,9 @@ Seluruhnya lewat variabel lingkungan:
 | `SPKU_ARCHIVE_DIR` | tidak | Arsip muatan mentah; kosong berarti tidak mengarsipkan |
 | `SPKU_CONTACT` | tidak | Alamat kontak pada User-Agent; boleh kosong |
 | `SPKU_DELAY_SECONDS`, `SPKU_TIMEOUT_SECONDS`, `SPKU_RETRIES` | tidak | Bawaan 1, 45, 3 |
+| `DOWNSCALE_WRITE_CACHE` | tidak | `1` mengaktifkan penulisan EdgeWeight ke `pollution.edge_pollution` setiap siklus; bawaan nonaktif |
+| `DOWNSCALE_KEEP_WINDOWS` | tidak | Jumlah time window complete terakhir yang dipertahankan di cache; bawaan 6 (±0,55 GB, hingga ±1,1 GB sebelum autovacuum) |
+| `SPATIAL_ARTIFACT_DIR` | tidak | Direktori artefak penelusuran per run inferensi; kosong berarti tidak disimpan |
 
 Basis data harus memiliki ekstensi PostGIS. Skema dan tabel dibuat otomatis
 pada koneksi pertama (`CREATE EXTENSION IF NOT EXISTS postgis`, `CREATE SCHEMA
@@ -166,4 +170,5 @@ Uji penyimpanan dijalankan terhadap PostgreSQL + PostGIS sungguhan (Tabel
 baru yang dihapus setelahnya. Tanpa keduanya, uji basis data dilewati dan
 sisanya tetap berjalan. `tests/test_data_worker.py` memuat UT-DW-01 dan
 UT-DW-05 dari Tabel 5.8; `tests/test_spatial_baseline.py` memuat UT-SDM-08
-dan UT-MTP-03 untuk baseline IDW.
+dan UT-MTP-03 untuk baseline IDW; `tests/test_spatial_edgeweight.py` memuat
+UT-SDM-01, UT-SDM-06, UT-SDM-07, UT-OPS-01, dan UT-OPS-02.

@@ -84,7 +84,7 @@ def load_raw_from_export(
     }
     manifest = export_dir / "manifest.json"
     if manifest.exists():
-        meta = json.loads(manifest.read_text())
+        meta = json.loads(manifest.read_text(encoding="utf-8"))
         source["export_snapshot_utc"] = meta.get("snapshot_utc")
         source["export_manifest_sha256"] = sha256_file(manifest)
         # Ekspor yang tidak utuh tidak boleh menjadi dasar dataset.
@@ -321,7 +321,8 @@ def build_dataset(
         "files": {DATASET_FILE: {"sha256": sha256_file(path), "content_sha256": content_hash,
                                   "rows": int(len(hourly))}},
     }
-    (out_dir / MANIFEST_FILE).write_text(json.dumps(manifest, indent=2, ensure_ascii=False, default=str))
+    (out_dir / MANIFEST_FILE).write_text(json.dumps(manifest, indent=2, ensure_ascii=False, default=str),
+                                         encoding="utf-8")
     log.info("dataset %s: %d baris stasiun-jam ditulis ke %s", manifest["dataset_version"], len(hourly), out_dir)
     return manifest
 
@@ -350,7 +351,7 @@ def flag_low_bias(hourly: pd.DataFrame, rule: dict | None) -> pd.DataFrame:
 def load_dataset(manifest_path: pathlib.Path) -> tuple[pd.DataFrame, dict]:
     """Membaca dataset dari manifest dan memastikan isinya tidak berubah sejak dibekukan."""
     manifest_path = pathlib.Path(manifest_path)
-    manifest = json.loads(manifest_path.read_text())
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     info = manifest["files"][DATASET_FILE]
     df = pd.read_parquet(manifest_path.parent / DATASET_FILE)
     actual = content_sha256(df)

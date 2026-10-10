@@ -37,7 +37,7 @@ def _build(args: argparse.Namespace) -> int:
     end_utc = args.end_utc or config["dataset"].get("snapshot_end_utc")
     if args.split_from:
         # Pakai ulang batas split yang sudah dibekukan, mis. ketika snapshot diperbarui.
-        previous = json.loads(pathlib.Path(args.split_from).read_text())
+        previous = json.loads(pathlib.Path(args.split_from).read_text(encoding="utf-8"))
         bounds = previous["split"]["boundaries"]
         config["dataset"]["split"] |= {"train_end": bounds["train_end"], "val_end": bounds["val_end"]}
     if args.from_db:

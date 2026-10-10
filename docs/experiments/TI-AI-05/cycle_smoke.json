@@ -1,0 +1,77 @@
+{
+  "steps": [
+    {
+      "time_window_start": "2026-10-07 14:00:00+00:00",
+      "status": "ok",
+      "run_status": "complete",
+      "run_id": "20261007T1400Z-idw-p2-k8-861a6a05",
+      "model_version": "idw-p2-k8",
+      "estimation_source": "idw",
+      "coverage_ratio": 0.996564,
+      "rows_written": 372069,
+      "windows_pruned": 0,
+      "duration_s": 9.273,
+      "fallback_reason": "ModelUnavailableError: model spatial-downscaling production belum terdaftar di Model Registry"
+    },
+    {
+      "time_window_start": "2026-10-07 15:00:00+00:00",
+      "status": "ok",
+      "run_status": "complete",
+      "run_id": "20261007T1500Z-idw-p2-k8-26637486",
+      "model_version": "idw-p2-k8",
+      "estimation_source": "idw",
+      "coverage_ratio": 0.996564,
+      "rows_written": 372069,
+      "windows_pruned": 0,
+      "duration_s": 8.721,
+      "fallback_reason": "ModelUnavailableError: model spatial-downscaling production belum terdaftar di Model Registry"
+    },
+    {
+      "time_window_start": "2026-10-07 16:00:00+00:00",
+      "status": "ok",
+      "run_status": "complete",
+      "run_id": "20261007T1600Z-idw-p2-k8-fa3431cd",
+      "model_version": "idw-p2-k8",
+      "estimation_source": "idw",
+      "coverage_ratio": 0.996564,
+      "rows_written": 372069,
+      "windows_pruned": 1,
+      "duration_s": 8.983,
+      "fallback_reason": "ModelUnavailableError: model spatial-downscaling production belum terdaftar di Model Registry"
+    },
+    {
+      "ulang": "2026-10-07 16:00:00+00:00",
+      "run_status": "skipped",
+      "run_id_sama": true,
+      "rows_written": 0
+    },
+    {
+      "flag_nonaktif": "disabled"
+    }
+  ],
+  "pollution_window": [
+    [
+      "2026-10-07 15:00:00+00:00",
+      "complete",
+      "idw-p2-k8",
+      0.996564
+    ],
+    [
+      "2026-10-07 16:00:00+00:00",
+      "complete",
+      "idw-p2-k8",
+      0.996564
+    ]
+  ],
+  "edge_pollution_rows_per_window": [
+    [
+      "2026-10-07 15:00:00+00:00",
+      372069
+    ],
+    [
+      "2026-10-07 16:00:00+00:00",
+      372069
+    ]
+  ],
+  "edge_pollution_total_mb": 286.0
+}
