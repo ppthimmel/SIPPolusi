@@ -200,3 +200,6 @@ dist
 
 # Estimasi per stasiun-jam hasil run baseline (dapat dibangkitkan ulang dari manifest)
 docs/experiments/**/predictions.parquet
+
+# FeatureMatrix seluruh grid (dibangkitkan ulang dari manifest)
+docs/experiments/TI-AI-02/grid_*/features.parquet

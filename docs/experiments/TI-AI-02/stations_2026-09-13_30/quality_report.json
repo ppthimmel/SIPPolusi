@@ -1,0 +1,440 @@
+{
+  "coverage": {
+    "rows": 53568,
+    "cells": 124,
+    "cells_in_study_bbox": 124,
+    "time_windows": 432,
+    "time_range": [
+      "2026-09-13 00:00:00+00:00",
+      "2026-09-30 23:00:00+00:00"
+    ],
+    "static_cutoff": [
+      "2026-09-13 00:00:00+00:00",
+      "2026-09-14 00:00:00+00:00",
+      "2026-09-15 00:00:00+00:00",
+      "2026-09-16 00:00:00+00:00",
+      "2026-09-17 00:00:00+00:00",
+      "2026-09-18 00:00:00+00:00",
+      "2026-09-19 00:00:00+00:00",
+      "2026-09-20 00:00:00+00:00",
+      "2026-09-21 00:00:00+00:00",
+      "2026-09-22 00:00:00+00:00",
+      "2026-09-23 00:00:00+00:00",
+      "2026-09-24 00:00:00+00:00",
+      "2026-09-25 00:00:00+00:00",
+      "2026-09-26 00:00:00+00:00",
+      "2026-09-27 00:00:00+00:00",
+      "2026-09-28 00:00:00+00:00",
+      "2026-09-29 00:00:00+00:00",
+      "2026-09-30 00:00:00+00:00",
+      "2026-10-01 00:00:00+00:00"
+    ]
+  },
+  "checks": [
+    {
+      "check": "kolom sesuai data dictionary",
+      "status": "lolos",
+      "detail": {
+        "hilang": [],
+        "tidak terdaftar": []
+      }
+    },
+    {
+      "check": "tipe data sesuai data dictionary",
+      "status": "lolos",
+      "detail": {}
+    },
+    {
+      "check": "tidak ada kunci (grid_id, time_window_start) ganda",
+      "status": "lolos",
+      "detail": {
+        "duplikat": 0
+      }
+    },
+    {
+      "check": "time_window_start tepat di awal jam UTC",
+      "status": "lolos",
+      "detail": {
+        "pelanggaran": 0
+      }
+    },
+    {
+      "check": "setiap sel memiliki setiap time window",
+      "status": "lolos",
+      "detail": {
+        "baris": 53568,
+        "sel × time window": 53568
+      }
+    },
+    {
+      "check": "nilai kosong konsisten dengan penanda ketersediaan",
+      "status": "lolos",
+      "detail": {
+        "geoscf_available": {
+          "tersedia_tanpa_nilai": 0,
+          "tidak_tersedia_tetapi_bernilai": 0
+        },
+        "s5p_available": {
+          "tersedia_tanpa_nilai": 0,
+          "tidak_tersedia_tetapi_bernilai": 0
+        },
+        "met_available": {
+          "tersedia_tanpa_nilai": 0,
+          "tidak_tersedia_tetapi_bernilai": 0
+        },
+        "xroad_available": {
+          "tersedia_tanpa_nilai": 0,
+          "tidak_tersedia_tetapi_bernilai": 0
+        },
+        "land_available": {
+          "tersedia_tanpa_nilai": 0,
+          "tidak_tersedia_tetapi_bernilai": 0
+        },
+        "act_available": {
+          "tersedia_tanpa_nilai": 0,
+          "tidak_tersedia_tetapi_bernilai": 0
+        },
+        "sensor_available": {
+          "tersedia_tanpa_nilai": 0,
+          "tidak_tersedia_tetapi_bernilai": 0
+        }
+      }
+    },
+    {
+      "check": "GEOS-CF: available_at_utc <= waktu inferensi",
+      "status": "lolos",
+      "detail": {
+        "pelanggaran": 0
+      }
+    },
+    {
+      "check": "GEOS-CF: valid time <= time window",
+      "status": "lolos",
+      "detail": {
+        "pelanggaran": 0
+      }
+    },
+    {
+      "check": "Sentinel-5P: produced_at <= waktu inferensi",
+      "status": "lolos",
+      "detail": {
+        "pelanggaran": 0
+      }
+    },
+    {
+      "check": "Open-Meteo: jam sama dengan time window",
+      "status": "lolos",
+      "detail": {
+        "pelanggaran": 0
+      }
+    },
+    {
+      "check": "fitur statis dari batas waktu sesudah waktu inferensi",
+      "status": "lolos",
+      "detail": {
+        "time_window": 0,
+        "catatan": "hanya diizinkan dengan strict_static=False (kebijakan snapshot TI-AI-03)"
+      }
+    }
+  ],
+  "all_passed": true,
+  "missing_fraction": {
+    "geoscf_pm25_ugm3": 0.0,
+    "geoscf_no2_ugm3": 0.0,
+    "geoscf_age_h": 0.0,
+    "s5p_no2_umol_m2": 0.2507,
+    "s5p_no2_precision_umol_m2": 0.2507,
+    "s5p_age_h": 0.2507,
+    "met_temperature_2m_c": 0.0,
+    "met_relative_humidity_2m_pct": 0.0,
+    "met_wind_speed_10m_ms": 0.0,
+    "met_wind_u_10m_ms": 0.0,
+    "met_wind_v_10m_ms": 0.0,
+    "met_boundary_layer_height_m": 0.0,
+    "met_precipitation_mm": 0.0,
+    "met_surface_pressure_hpa": 0.0,
+    "road_density_km_km2": 0.0,
+    "road_major_density_km_km2": 0.0,
+    "road_secondary_density_km_km2": 0.0,
+    "road_local_density_km_km2": 0.0,
+    "road_active_density_km_km2": 0.0,
+    "road_walk_density_km_km2": 0.0,
+    "intersection_density_per_km2": 0.0,
+    "dist_arterial_m": 0.0,
+    "dist_motorway_m": 0.0,
+    "land_ndvi": 0.1559,
+    "land_ndbi": 0.1559,
+    "land_lst_c": 0.9677,
+    "land_ndvi_n_obs": 0.0,
+    "land_ndbi_n_obs": 0.0,
+    "land_lst_n_obs": 0.0,
+    "act_ntl_nw_cm2_sr": 0.0,
+    "act_ntl_n_obs": 0.0,
+    "dist_nearest_sensor_m": 0.0
+  },
+  "availability_fraction": {
+    "geoscf_available": {
+      "seluruh": 1.0,
+      "di_bbox_studi": 1.0
+    },
+    "s5p_available": {
+      "seluruh": 0.7493,
+      "di_bbox_studi": 0.7493
+    },
+    "met_available": {
+      "seluruh": 1.0,
+      "di_bbox_studi": 1.0
+    },
+    "xroad_available": {
+      "seluruh": 1.0,
+      "di_bbox_studi": 1.0
+    },
+    "land_available": {
+      "seluruh": 0.8522,
+      "di_bbox_studi": 0.8522
+    },
+    "act_available": {
+      "seluruh": 1.0,
+      "di_bbox_studi": 1.0
+    },
+    "sensor_available": {
+      "seluruh": 1.0,
+      "di_bbox_studi": 1.0
+    }
+  },
+  "availability_per_window": {
+    "geoscf_available": {
+      "min": 1.0,
+      "mean": 1.0,
+      "max": 1.0
+    },
+    "s5p_available": {
+      "min": 0.129,
+      "mean": 0.7493,
+      "max": 1.0
+    },
+    "met_available": {
+      "min": 1.0,
+      "mean": 1.0,
+      "max": 1.0
+    },
+    "xroad_available": {
+      "min": 1.0,
+      "mean": 1.0,
+      "max": 1.0
+    },
+    "land_available": {
+      "min": 0.8468,
+      "mean": 0.8522,
+      "max": 0.8629
+    },
+    "act_available": {
+      "min": 1.0,
+      "mean": 1.0,
+      "max": 1.0
+    },
+    "sensor_available": {
+      "min": 1.0,
+      "mean": 1.0,
+      "max": 1.0
+    }
+  },
+  "value_ranges": {
+    "geoscf_pm25_ugm3": {
+      "min": 26.75,
+      "p01": 27.125,
+      "p50": 73.5,
+      "p99": 174.0,
+      "max": 225.0
+    },
+    "geoscf_no2_ugm3": {
+      "min": 5.9927,
+      "p01": 6.7726,
+      "p50": 48.1604,
+      "p99": 141.1976,
+      "max": 165.2778
+    },
+    "geoscf_age_h": {
+      "min": 7.0,
+      "p01": 7.0,
+      "p50": 17.5,
+      "p99": 28.0,
+      "max": 28.0
+    },
+    "s5p_no2_umol_m2": {
+      "min": 24.7399,
+      "p01": 34.4075,
+      "p50": 138.2529,
+      "p99": 791.3542,
+      "max": 1070.4722
+    },
+    "s5p_no2_precision_umol_m2": {
+      "min": 12.9306,
+      "p01": 14.8718,
+      "p50": 43.1199,
+      "p99": 319.7019,
+      "max": 398.1634
+    },
+    "s5p_age_h": {
+      "min": -0.2342,
+      "p01": 0.2495,
+      "p50": 24.3503,
+      "p99": 71.0374,
+      "max": 71.9362
+    },
+    "met_temperature_2m_c": {
+      "min": 22.7,
+      "p01": 23.8,
+      "p50": 28.9,
+      "p99": 35.8,
+      "max": 36.7
+    },
+    "met_relative_humidity_2m_pct": {
+      "min": 24.0,
+      "p01": 28.0,
+      "p50": 67.5,
+      "p99": 97.0,
+      "max": 100.0
+    },
+    "met_wind_speed_10m_ms": {
+      "min": 0.0,
+      "p01": 0.1944,
+      "p50": 1.3056,
+      "p99": 4.4444,
+      "max": 5.0556
+    },
+    "met_wind_u_10m_ms": {
+      "min": -4.5045,
+      "p01": -3.7713,
+      "p50": -0.523,
+      "p99": 2.1377,
+      "max": 2.4636
+    },
+    "met_wind_v_10m_ms": {
+      "min": -4.0057,
+      "p01": -3.741,
+      "p50": 0.1457,
+      "p99": 1.6112,
+      "max": 2.1665
+    },
+    "met_boundary_layer_height_m": {
+      "min": 25.0,
+      "p01": 30.0,
+      "p50": 657.5,
+      "p99": 2340.0,
+      "max": 2685.0
+    },
+    "met_precipitation_mm": {
+      "min": 0.0,
+      "p01": 0.0,
+      "p50": 0.0,
+      "p99": 3.7,
+      "max": 8.9
+    },
+    "met_surface_pressure_hpa": {
+      "min": 1006.4,
+      "p01": 1007.0,
+      "p50": 1010.7,
+      "p99": 1013.1,
+      "max": 1013.7
+    },
+    "road_density_km_km2": {
+      "min": 0.0,
+      "p01": 0.0,
+      "p50": 26.0916,
+      "p99": 117.6986,
+      "max": 134.0051
+    },
+    "road_major_density_km_km2": {
+      "min": 0.0,
+      "p01": 0.0,
+      "p50": 0.0,
+      "p99": 62.9269,
+      "max": 79.2875
+    },
+    "road_secondary_density_km_km2": {
+      "min": 0.0,
+      "p01": 0.0,
+      "p50": 0.0,
+      "p99": 20.1346,
+      "max": 24.4808
+    },
+    "road_local_density_km_km2": {
+      "min": 0.0,
+      "p01": 0.0,
+      "p50": 18.7463,
+      "p99": 41.8321,
+      "max": 46.8325
+    },
+    "road_active_density_km_km2": {
+      "min": 0.0,
+      "p01": 0.0,
+      "p50": 0.0,
+      "p99": 51.6886,
+      "max": 57.3874
+    },
+    "road_walk_density_km_km2": {
+      "min": 0.0,
+      "p01": 0.0,
+      "p50": 22.2267,
+      "p99": 78.9847,
+      "max": 85.0163
+    },
+    "intersection_density_per_km2": {
+      "min": 0.0,
+      "p01": 0.0,
+      "p50": 200.0,
+      "p99": 2000.0,
+      "max": 2000.0
+    },
+    "dist_arterial_m": {
+      "min": 0.8935,
+      "p01": 3.274,
+      "p50": 275.9544,
+      "p99": 3206.0579,
+      "max": 3378.5103
+    },
+    "dist_motorway_m": {
+      "min": 2.1699,
+      "p01": 24.7778,
+      "p50": 1435.7136,
+      "p99": 3501.0417,
+      "max": 3895.4038
+    },
+    "land_ndvi": {
+      "min": 0.0987,
+      "p01": 0.111,
+      "p50": 0.2507,
+      "p99": 0.5496,
+      "max": 0.6379
+    },
+    "land_ndbi": {
+      "min": -0.2246,
+      "p01": -0.1817,
+      "p50": 0.014,
+      "p99": 0.1551,
+      "max": 0.1642
+    },
+    "land_lst_c": {
+      "min": 40.4912,
+      "p01": 40.4912,
+      "p50": 43.0575,
+      "p99": 45.1896,
+      "max": 45.1896
+    },
+    "act_ntl_nw_cm2_sr": {
+      "min": 21.4595,
+      "p01": 29.4722,
+      "p50": 49.6724,
+      "p99": 99.5845,
+      "max": 116.957
+    },
+    "dist_nearest_sensor_m": {
+      "min": 6.4948,
+      "p01": 7.6875,
+      "p50": 40.1555,
+      "p99": 66.3592,
+      "max": 66.5482
+    }
+  }
+}
