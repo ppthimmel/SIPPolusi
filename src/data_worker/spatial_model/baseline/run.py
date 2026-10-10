@@ -37,6 +37,7 @@ from spatial_model.baseline.dataset import load_dataset, sha256_file
 from spatial_model.baseline.evaluate import (
     METRIC_DEFINITIONS,
     compute_metrics,
+    fixed_split_predict,
     loso_predict,
     select_from_sweep,
     sweep,
@@ -186,6 +187,23 @@ def run_baseline(config_path: pathlib.Path, manifest_path: pathlib.Path, out_roo
                 f"R² {m['r2']:.3f}, bias {m['bias']:+.2f} µg/m³ pada n = {m['n']} dari {m['n_stations']} stasiun."
             )
 
+    # Snapshot TI-AI-03: split tetap blind ganda (stasiun uji × blok uji, sumber hanya stasiun train).
+    fixed_split = {}
+    if "station_split" in df:
+        for pollutant, protocols in manifest.get("evaluation", {}).items():
+            if "fixed_split" not in protocols:
+                continue
+            sub = eval_df[eval_df["pollutant"] == pollutant].reset_index(drop=True)
+            fp = fixed_split_predict(sub, power, neighbors, "train", report_split, min_sources)
+            m = compute_metrics(fp["observed"], fp["predicted"])
+            m["n_stations"] = int(fp["station_uuid"].nunique())
+            fixed_split[pollutant] = {"sources": "station_split == train", "targets": f"station_split == {report_split}",
+                                      "metrics": m}
+            found.append(
+                f"Split tetap blind ganda ({pollutant}): RMSE {m['rmse']:.2f} µg/m³, MAE {m['mae']:.2f} µg/m³, "
+                f"R² {m['r2']:.3f}, bias {m['bias']:+.2f} µg/m³ pada n = {m['n']} dari {m['n_stations']} stasiun uji.")
+            fp.to_parquet(run_dir / f"predictions_fixed_split_{pollutant}.parquet", index=False)
+
     # Sensitivitas pada split validasi; konfigurasi terpilih dievaluasi pada split uji.
     tuned = {}
     sweep_table = None
@@ -239,6 +257,7 @@ def run_baseline(config_path: pathlib.Path, manifest_path: pathlib.Path, out_roo
         "definitions": METRIC_DEFINITIONS,
         "overall": overall,
         "variants": variants,
+        "fixed_split": fixed_split,
         "tuned_on_validation": tuned,
         "grid_example": grid_info["summary"] if grid_info else None,
         "findings": found,
@@ -254,7 +273,8 @@ def run_baseline(config_path: pathlib.Path, manifest_path: pathlib.Path, out_roo
         "model": {"method": "idw", "power": power, "neighbors": neighbors, "min_sources": min_sources,
                   "crs": model.get("crs", "EPSG:32748")},
         "seed": seed,
-        "evaluation": {"cv_scheme": eval_cfg.get("cv_scheme"), "report_split": report_split,
+        "evaluation": {"cv_scheme": ("leave-one-group-out" if "group_id" in df else eval_cfg.get("cv_scheme")),
+                       "report_split": report_split, "fixed_split": bool(fixed_split),
                        "sweep": sweep_cfg if sweep_cfg.get("enabled") else None,
                        "variants": [v["name"] for v in eval_cfg.get("variants", [])]},
         "dataset": {
@@ -262,6 +282,7 @@ def run_baseline(config_path: pathlib.Path, manifest_path: pathlib.Path, out_roo
             "manifest_path": str(pathlib.Path(manifest_path)),
             "manifest_sha256": sha256_file(pathlib.Path(manifest_path)),
             "content_sha256": manifest["files"]["station_hour.parquet"]["content_sha256"],
+            "snapshot_manifest_sha256": manifest.get("snapshot_manifest_sha256"),
             "source_type": manifest["source"]["type"],
             "source_snapshot_utc": (manifest["source"].get("snapshot_utc")
                                     or manifest["source"].get("export_snapshot_utc")),
@@ -280,7 +301,7 @@ def run_baseline(config_path: pathlib.Path, manifest_path: pathlib.Path, out_roo
 
     report.write_report(run_dir / "report.md", {
         "run_manifest": run_manifest, "overall": overall, "stations": stations, "tables": tables,
-        "findings": found, "tuned": tuned, "variants": variants, "figures": figures,
+        "findings": found, "tuned": tuned, "variants": variants, "figures": figures, "fixed_split": fixed_split,
         "grid": grid_info["summary"] if grid_info else None,
     })
     log.info("run %s selesai dalam %.1f s: %s", run_id, timings["total_s"], run_dir)

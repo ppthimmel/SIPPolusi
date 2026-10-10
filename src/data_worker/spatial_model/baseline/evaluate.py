@@ -88,9 +88,13 @@ def loso_predict(
         nearest = np.full(n, np.nan)
         mean_dist = np.full(n, np.nan)
         ref_frac = np.full(n, np.nan)
+        # Snapshot dengan grup stasiun: seluruh stasiun satu grup ditahan bersama (LOSO per grup).
+        group = g["group_id"].to_numpy() if "group_id" in g else np.arange(n)
         if n - 1 >= max(1, min_sources):
             for i in range(n):
-                others = np.arange(n) != i
+                others = group != group[i]
+                if others.sum() < max(1, min_sources):
+                    continue
                 res = idw_interpolate(xy[others], values[others], xy[i:i + 1], power, neighbors)
                 pred[i] = res["value"][0]
                 n_used[i] = res["n_used"][0]
@@ -104,7 +108,7 @@ def loso_predict(
             "window_start_utc": window,
             "observed": values,
             "predicted": pred,
-            "n_sources_available": n - 1,
+            "n_sources_available": np.array([(group != gi).sum() for gi in group]),
             "n_used": n_used,
             "nearest_source_m": nearest,
             "mean_source_dist_m": mean_dist,
@@ -118,6 +122,27 @@ def loso_predict(
     return result.merge(meta, on="station_uuid", how="left").merge(
         split, on=["station_uuid", "pollutant", "window_start_utc"], how="left"
     )
+
+
+def fixed_split_predict(df: pd.DataFrame, power: float, neighbors: int, sources: str = "train",
+                        targets: str = "test", min_sources: int = 1) -> pd.DataFrame:
+    """Split tetap blind ganda: estimasi di stasiun ``station_split == targets`` hanya dari
+    stasiun ``station_split == sources`` pada time window yang sama."""
+    out = []
+    for (pollutant, window), g in df.groupby(["pollutant", "window_start_utc"], sort=True):
+        src = g[g["station_split"] == sources]
+        dst = g[g["station_split"] == targets]
+        if len(dst) == 0 or len(src) < max(1, min_sources):
+            continue
+        res = idw_interpolate(src[["x", "y"]].to_numpy(), src["value_ugm3"].to_numpy(), dst[["x", "y"]].to_numpy(),
+                              power, neighbors)
+        out.append(pd.DataFrame({"station_uuid": dst["station_uuid"].to_numpy(), "pollutant": pollutant,
+                                 "window_start_utc": window, "observed": dst["value_ugm3"].to_numpy(),
+                                 "predicted": res["value"], "n_sources_available": len(src),
+                                 "nearest_source_m": res["nearest_m"]}))
+    if not out:
+        return pd.DataFrame(columns=["station_uuid", "pollutant", "window_start_utc", "observed", "predicted"])
+    return pd.concat(out, ignore_index=True)
 
 
 def sweep(

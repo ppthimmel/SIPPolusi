@@ -347,10 +347,55 @@ def flag_low_bias(hourly: pd.DataFrame, rule: dict | None) -> pd.DataFrame:
     return stats.sort_values("mean_ugm3").reset_index(drop=True) if len(stats) else empty
 
 
+def load_snapshot(manifest_path: pathlib.Path) -> tuple[pd.DataFrame, dict]:
+    """Dataset stasiun-jam dari snapshot terversi TI-AI-03 (mis. ``ds-v0.1.0``).
+
+    Seluruh berkas snapshot diperiksa terhadap ``CHECKSUMS.sha256``. Kolom ``split``
+    adalah blok temporal snapshot (jam jeda dibuang); ``group_id`` dan
+    ``station_split`` dibawa untuk LOSO per grup dan split tetap blind ganda.
+    """
+    from spatial_model.snapshot.build import verify_checksums
+
+    manifest_path = pathlib.Path(manifest_path)
+    root = manifest_path.parent
+    bad = verify_checksums(root)
+    if bad:
+        raise ValueError(f"snapshot berubah atau tidak lengkap: {bad}")
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    labels = pd.read_parquet(root / "labels.parquet")
+    stations = pd.read_parquet(root / "stations.parquet")
+    frames = []
+    for pollutant in manifest["targets"]:
+        rows = labels[labels[f"{pollutant}_ugm3"].notna() & labels["period"].isin(SPLITS)]
+        frames.append(pd.DataFrame({
+            "station_uuid": rows["station_uuid"].astype(str).to_numpy(), "pollutant": pollutant,
+            "window_start_utc": rows["time_window_start"].to_numpy(),
+            "value_ugm3": rows[f"{pollutant}_ugm3"].to_numpy(), "n_readings": rows[f"{pollutant}_n_obs"].to_numpy(),
+            "split": rows["period"].astype(str).to_numpy()}))
+    df = pd.concat(frames, ignore_index=True)
+    x, y = to_grid_xy(stations["lng"].to_numpy(), stations["lat"].to_numpy())
+    meta = stations.assign(x=x, y=y).rename(columns={"uuid": "station_uuid", "station_type": "type", "lng": "lon"})
+    df = df.merge(meta[["station_uuid", "kode", "name", "type", "kota", "lat", "lon", "x", "y", "group_id",
+                        "station_split", "suspected_low_bias"]], on="station_uuid", how="left")
+    df["window_start_utc"] = pd.to_datetime(df["window_start_utc"], utc=True)
+    df = df.sort_values(["pollutant", "window_start_utc", "kode"]).reset_index(drop=True)
+    compat = {
+        "dataset_version": manifest["version"],
+        "source": {"type": "snapshot", "snapshot_utc": manifest["sources"]["ground_truth"]["snapshot_utc"]},
+        "split": {"scheme": "temporal_blocks_with_gaps", "boundaries": manifest["blocks"]},
+        "files": {DATASET_FILE: {"content_sha256": content_sha256(df), "rows": int(len(df))}},
+        "snapshot_manifest_sha256": sha256_file(manifest_path),
+        "evaluation": {t: v["evaluation"] for t, v in manifest["targets"].items()},
+    }
+    return df, compat
+
+
 def load_dataset(manifest_path: pathlib.Path) -> tuple[pd.DataFrame, dict]:
     """Membaca dataset dari manifest dan memastikan isinya tidak berubah sejak dibekukan."""
     manifest_path = pathlib.Path(manifest_path)
     manifest = json.loads(manifest_path.read_text())
+    if str(manifest.get("version", "")).startswith("ds-"):
+        return load_snapshot(manifest_path)
     info = manifest["files"][DATASET_FILE]
     df = pd.read_parquet(manifest_path.parent / DATASET_FILE)
     actual = content_sha256(df)
