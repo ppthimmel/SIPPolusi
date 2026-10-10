@@ -30,7 +30,8 @@ ASSUMPTIONS = dict(
     geoscf_availability="Server Last-Modified is the assumed availability proxy; first publication and product "
                         "production times are not verified.",
     satellite_availability="produced_at used as availability proxy",
-    target_units="ug/m3 assumed; portal confirmation pending",
+    target_units="ug/m3; portal tidak menyatakan satuan, terverifikasi terhadap ISPU portal "
+                 "(scripts/check_ispu_units.py)",
     target_policy="Mean valid readings in [hour start, hour end), target timestamp at hour end; existing source "
                   "QC and exclusions preserved",
 )
