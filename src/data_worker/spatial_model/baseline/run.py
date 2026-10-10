@@ -151,6 +151,8 @@ def run_baseline(config_path: pathlib.Path, manifest_path: pathlib.Path, out_roo
     report_split = eval_cfg.get("report_split", "test")
 
     df, manifest = load_dataset(manifest_path)
+    if "group_id" in df:
+        eval_cfg = {**eval_cfg, "group_loso": True}
     timings["load_dataset_s"] = time.perf_counter() - t0
     run_id = f"{started_utc:%Y%m%dT%H%M%SZ}-idw-{manifest['dataset_version']}-{config_sha[:8]}"
     run_dir = pathlib.Path(out_root) / run_id
