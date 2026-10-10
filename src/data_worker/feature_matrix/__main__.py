@@ -17,14 +17,16 @@ from .grid import active_cells
 from .labels import INPUT_FILES, station_hour_targets
 from .prepare_stgnn import build_grid_graph, export_stgnn_inputs, prepare_stgnn_labels, stgnn_hash
 from .quality import write_report
-from .sources import DATASET_PROCESSED, VIIRS_RULES, SourceReader
+from .sources import DATASET_PROCESSED, VIIRS_RULES, WEATHER_DELAY_HOURS, SourceReader
 from .spec import spec_document
 
 PACKAGE = Path(__file__).resolve().parent
 SPEC_PATH = PACKAGE / "feature_spec.json"
 
 ASSUMPTIONS = dict(
-    weather_availability="Asumsi penelitian: cuaca tersedia pada time_utc; publikasi tidak terverifikasi.",
+    weather_availability="Open-Meteo Historical Forecast menyambung jam-jam pertama setiap run; waktu terbit tidak "
+                         "tercatat. Asumsi: nilai valid time t tersedia pada awal run 6 jam yang memuat t + "
+                         "weather_delay_hours; dipakai valid time terbaru yang tersedia pada time_utc.",
     geoscf_availability="Server Last-Modified is the assumed availability proxy; first publication and product "
                         "production times are not verified.",
     satellite_availability="produced_at used as availability proxy",
@@ -41,7 +43,8 @@ def _git_commit() -> dict:
 
 
 def export(args) -> dict:
-    reader = SourceReader(args.dataset_processed, viirs_cell_rule=args.viirs_cell_rule)
+    delay = None if args.weather_delay_hours < 0 else args.weather_delay_hours
+    reader = SourceReader(args.dataset_processed, viirs_cell_rule=args.viirs_cell_rule, weather_delay_hours=delay)
     targets = station_hour_targets(args.ground_truth, args.start, args.end)
     nodes, edges = build_grid_graph(active_cells(), targets.grid_id.unique().tolist(), args.context_hops)
     labels = prepare_stgnn_labels(targets, nodes, args.train_end, args.validation_end)
@@ -51,7 +54,8 @@ def export(args) -> dict:
     sources |= {f"ground_truth/{gt.name}/{name}": stgnn_hash(gt / name) for name in INPUT_FILES}
     provenance = dict(
         sources_sha256=sources, **ASSUMPTIONS, context_hops=args.context_hops,
-        viirs_cell_rule=args.viirs_cell_rule,
+        viirs_cell_rule=args.viirs_cell_rule, weather_delay_hours=delay,
+        weather_run_interval_hours=reader.weather_run_interval_hours,
         arguments=dict(start=args.start, end=args.end, train_end=args.train_end,
                        validation_end=args.validation_end, window=args.window),
         code=_git_commit(), basis="bundle ST-GNN jakarta_processed_bundle_20261007 (FedrianzD)")
@@ -79,6 +83,8 @@ def main(argv=None) -> int:
     e.add_argument("--window", type=int, default=24)
     e.add_argument("--context-hops", type=int, default=1)
     e.add_argument("--viirs-cell-rule", choices=VIIRS_RULES, default="tile")
+    e.add_argument("--weather-delay-hours", type=float, default=WEATHER_DELAY_HOURS,
+                   help="jeda terbit run Open-Meteo yang diasumsikan; negatif = nilai valid time τ (aturan bundle)")
     q = sub.add_parser("quality", help="tulis ulang quality_report.{json,md}")
     q.add_argument("directory")
     args = parser.parse_args(argv)

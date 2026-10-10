@@ -1,11 +1,11 @@
 # Laporan kualitas FeatureMatrix ST-GNN
 
-473.976 baris × 69 kolom: 1.044 sel (116 berlabel) × 454 jam, 2026-09-12T02:00:00+00:00 s.d. 2026-10-01T00:00:00+00:00 (eksklusif).
+473.976 baris × 71 kolom: 1.044 sel (116 berlabel) × 454 jam, 2026-09-12T02:00:00+00:00 s.d. 2026-10-01T00:00:00+00:00 (eksklusif).
 
 | Pemeriksaan | Status | Rincian |
 |---|---|---|
-| manifest lengkap dan hash keluaran cocok | lolos | status complete |
-| kolom dan tipe fitur sesuai data dictionary | lolos | 69 kolom |
+| manifest lengkap dan hash keluaran cocok | lolos | status complete; hash wajib 4: hilang [], tak dikenal [], tidak cocok [] |
+| kolom dan tipe fitur sesuai data dictionary | lolos | 71 kolom |
 | kolom dan tipe label sesuai data dictionary | lolos | 16 kolom |
 | cakupan sel × jam lengkap | lolos | 1.044 sel × 454 jam = 473.976; tersedia 473.976 baris |
 | tanpa kunci ganda | lolos | fitur (grid_id, time_utc): 0; label (station_uuid, time_utc): 0 |
@@ -42,6 +42,7 @@
 | VIIRS NTL | 178,0 | 212,0 | 399,0 |
 | GEOS-CF PM2.5 | 7,0 | 18,0 | 28,0 |
 | GEOS-CF NO2 | 7,0 | 18,0 | 28,0 |
+| Open-Meteo | 3,0 | 5,0 | 8,0 |
 
 ## Label
 

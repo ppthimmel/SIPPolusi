@@ -12,7 +12,13 @@ Aturan per sumber (``time_utc`` = waktu inferensi τ, akhir jam label):
   (``satellite_events`` / ``join_satellite_events``); umur = τ − ``observed_at``.
 - GEOS-CF ``ana``: valid time terbaru dengan ``available_at_utc <= τ``; umur =
   τ − akhir jam valid time.
-- Open-Meteo: nilai pada jam τ; diasumsikan tersedia pada τ.
+- Open-Meteo Historical Forecast: arsip ini menyambung jam-jam pertama setiap
+  run model, sehingga nilai valid time t dapat berasal dari run yang terbit
+  sesudah t. Waktu terbit tidak tercatat, jadi diasumsikan
+  ``available_at = floor(t, weather_run_interval_hours) + weather_delay_hours``
+  (run global ECMWF IFS/ICON/GFS tiap 6 jam; jeda terbit 8 jam, asumsi
+  konservatif). Dipakai valid time terbaru dengan ``available_at <= τ``;
+  umur = τ − valid time.
 """
 
 from __future__ import annotations
@@ -36,6 +42,8 @@ GEOSCF = ["pm25", "no2"]
 S5P_LEFT, S5P_TOP, S5P_RES = 675000.0, 9340000.0, 5000.0
 VIIRS_CELL_DEG = 1 / 240          # 15 detik busur
 VIIRS_RULES = ("tile", "nearest_listed")
+WEATHER_RUN_INTERVAL_HOURS = 6
+WEATHER_DELAY_HOURS = 8.0
 
 
 def s5p_cell_ids(easting, northing) -> list[str]:
@@ -74,13 +82,21 @@ class SourceReader:
       - ``"nearest_listed"``: sel dengan ``longitude``/``latitude`` terdekat,
         aturan bundle ST-GNN 2026-10-07. Bergeser setengah piksel (±230 m) ke
         tenggara; hanya untuk mereproduksi bundle tersebut.
+
+    ``weather_delay_hours``: jeda terbit run Open-Meteo yang diasumsikan. ``None``
+    memakai nilai valid time τ seolah tersedia pada τ (aturan bundle; berisiko
+    memakai run yang terbit sesudah τ).
     """
 
-    def __init__(self, root: Path | str = DATASET_PROCESSED, viirs_cell_rule: str = "tile"):
+    def __init__(self, root: Path | str = DATASET_PROCESSED, viirs_cell_rule: str = "tile",
+                 weather_delay_hours: float | None = WEATHER_DELAY_HOURS,
+                 weather_run_interval_hours: int = WEATHER_RUN_INTERVAL_HOURS):
         if viirs_cell_rule not in VIIRS_RULES:
             raise ValueError(f"viirs_cell_rule harus salah satu dari {VIIRS_RULES}")
         self.root = Path(root)
         self.viirs_cell_rule = viirs_cell_rule
+        self.weather_delay_hours = weather_delay_hours
+        self.weather_run_interval_hours = weather_run_interval_hours
         self._cells = active_cells().set_index("grid_id")
         self._cache_key: tuple[str, ...] | None = None
         self._cache: dict = {}
@@ -151,9 +167,14 @@ class SourceReader:
             geos_events[var] = e[["cell_id", "available_at_utc", "time_window_start", "time_window_end",
                                   f"{var}_ugm3", "latency_hours"]].reset_index(drop=True)
 
-        weather = pd.read_parquet(self.root / "open_meteo/hourly.parquet").set_index("time_utc")
+        weather = pd.read_parquet(self.root / "open_meteo/hourly.parquet")
         for name in WEATHER:
             weather.loc[~weather[f"{name}_available"], name] = np.nan
+        weather = weather[weather[WEATHER].notna().any(axis=1)][["time_utc", *WEATHER]]
+        weather["time_utc"] = weather.time_utc.astype("datetime64[ns, UTC]")
+        weather["available_at_utc"] = self.weather_available_at(weather.time_utc)
+        weather = (weather.sort_values(["available_at_utc", "time_utc"])
+                   .drop_duplicates("available_at_utc", keep="last").reset_index(drop=True))
 
         self._cache_key = grid_ids
         self._cache = dict(
@@ -162,6 +183,13 @@ class SourceReader:
                     "no2_mol_m2": ("sentinel5p", satellite_events(s5p, "no2_mol_m2")),
                     "ntl": ("viirs", satellite_events(viirs, "ntl"))})
         return self._cache
+
+    def weather_available_at(self, valid_time: pd.Series) -> pd.Series:
+        """Waktu tersedia yang diasumsikan untuk nilai Open-Meteo pada ``valid_time``."""
+        if self.weather_delay_hours is None:
+            return valid_time
+        run = valid_time.dt.floor(f"{self.weather_run_interval_hours}h")
+        return run + pd.Timedelta(hours=self.weather_delay_hours)
 
     def cell_mapping(self, grid_ids) -> pd.DataFrame:
         """Sel sumber per sel 100 m (Landsat, Sentinel-5P, VIIRS, GEOS-CF)."""
@@ -181,10 +209,14 @@ class SourceReader:
             source, events = state["events"][feature]
             batch = join_satellite_events(batch, mapping, events, feature, source)
 
-        weather = state["weather"].reindex(batch.time_utc)
+        taus = pd.DataFrame({"tau": times}).sort_values("tau")
+        weather = pd.merge_asof(taus, state["weather"], left_on="tau", right_on="available_at_utc",
+                                direction="backward").set_index("tau").reindex(batch.time_utc)
         for name in WEATHER:
             batch[name] = weather[name].to_numpy()
-        batch["weather_time_utc"] = batch.time_utc.where(weather[WEATHER].notna().any(axis=1).to_numpy())
+        batch["weather_time_utc"] = weather.time_utc.to_numpy()
+        batch["weather_available_at_utc"] = weather.available_at_utc.to_numpy()
+        batch["weather_age_hours"] = (batch.time_utc - batch.weather_time_utc).dt.total_seconds() / 3600
 
         batch["geoscf_cell_id"] = batch.grid_id.map(mapping.set_index("grid_id").geoscf_cell_id)
         left = batch[["time_utc", "geoscf_cell_id"]].reset_index().sort_values("time_utc")

@@ -68,9 +68,15 @@ def feature_columns() -> list[dict]:
     for name, unit in WEATHER_UNITS.items():
         cols.append(dict(name=name, dtype="float32", unit=unit, role="temporal",
                          source="Open-Meteo Historical Forecast (open-meteo-core-1)",
-                         alignment="satu titik (−6,2; 106,85), nilai jam time_utc, seragam di semua sel"))
+                         alignment="satu titik (−6,2; 106,85), seragam di semua sel; valid time terbaru dengan "
+                                   "available_at <= time_utc"))
     cols.append(dict(name="weather_time_utc", dtype=TS, unit="UTC", role="provenance", source="Open-Meteo",
-                     alignment="jam cuaca yang dipakai (= time_utc)"))
+                     alignment="valid time cuaca yang dipakai, <= time_utc"))
+    cols.append(dict(name="weather_available_at_utc", dtype=TS, unit="UTC", role="provenance", source="Open-Meteo",
+                     alignment="waktu tersedia yang diasumsikan: awal run 6 jam + jeda terbit (bawaan 8 jam), "
+                               "<= time_utc"))
+    cols.append(dict(name="weather_age_hours", dtype="float32", unit="h", role="temporal_age", source="Open-Meteo",
+                     alignment="time_utc − weather_time_utc"))
     cols.append(dict(name="geoscf_cell_id", dtype="int64", unit="-", role="provenance",
                      source="GEOS-CF v2 ana (geoscf-preprocessed-v1)", alignment="sel 0,25° (lookup grid 100 m)"))
     for var in ("pm25", "no2"):

@@ -15,7 +15,8 @@ import pyarrow.parquet as pq
 TEMPORAL_VALUES = ['no2_mol_m2','ntl','temperature_2m','relative_humidity_2m',
     'wind_speed_10m','wind_direction_10m','boundary_layer_height','precipitation',
     'surface_pressure','geoscf_pm25_ugm3','geoscf_no2_ugm3']
-TEMPORAL_AGES = ['no2_mol_m2_age_hours','ntl_age_hours','geoscf_pm25_age_hours','geoscf_no2_age_hours']
+TEMPORAL_AGES = ['no2_mol_m2_age_hours','ntl_age_hours','geoscf_pm25_age_hours','geoscf_no2_age_hours',
+    'weather_age_hours']
 LAND_VALUES = ['ndvi','ndbi']
 LAND_AGES = ['ndvi_age_hours','ndbi_age_hours']
 ROAD_FEATURES = ['road_length_m','road_segment_count','major_road_length_fraction',
@@ -177,6 +178,12 @@ def check_grid_feature_batch(batch,nodes,start,end):
             value=batch[f'geoscf_{variable}_{clock}']
             if value.loc[valid].isna().any() or value.loc[valid].gt(batch.loc[valid,'time_utc']).any():
                 raise ValueError('Unknown or future GEOS condition/availability')
+    valid=batch[['temperature_2m','relative_humidity_2m','wind_speed_10m','wind_direction_10m',
+                 'boundary_layer_height','precipitation','surface_pressure']].notna().any(axis=1)
+    for clock in ['weather_time_utc','weather_available_at_utc']:
+        value=batch[clock]
+        if value.loc[valid].isna().any() or value.loc[valid].gt(batch.loc[valid,'time_utc']).any():
+            raise ValueError('Unknown or future weather valid time/availability')
 
 
 def sensor_distances(nodes,sensors):

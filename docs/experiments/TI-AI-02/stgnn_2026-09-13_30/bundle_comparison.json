@@ -1,13 +1,13 @@
 {
- "description": "Perbandingan ekspor repo dengan bundle ST-GNN jakarta_processed_bundle_20261007 (FedrianzD) pada kolom bersama. differing_fraction = fraksi baris yang tidak sama persis (toleransi 0).",
- "commit": "52b816bc590525976d32dae57b1403a1bf23d20c",
+ "description": "Perbandingan ekspor repo dengan bundle ST-GNN jakarta_processed_bundle_20261007 (FedrianzD) pada kolom bersama. differing_fraction = fraksi baris yang tidak sama persis (toleransi 0). Aturan bundle: --viirs-cell-rule nearest_listed --weather-delay-hours -1.",
+ "commit": "453bb064298de534ea64659a45a02b52737c1e83",
  "bundle_outputs_sha256": {
   "features.parquet": "e61f94b5efbf80a21996cc2c4eb8ae0d67025573d1838ffbbd5a26f4837d330a",
   "nodes.parquet": "1c80becd1ce9d81283aba497634b32dd11f4eccda847b1cdc890bbde1fdaf589",
   "edges.parquet": "dd9c1efcc456e00c6533bc1332249659e3e6b44772372771ec7009aa1bb228c3",
   "labels.parquet": "85fb971e1dabfb8f9e3c372dfa90d6867c25439cb67fa23bdb0af850726c8d93"
  },
- "viirs_cell_rule_nearest_listed": {
+ "bundle_rules": {
   "nodes": "identik",
   "edges": "identik",
   "labels": "identik",
@@ -19,6 +19,8 @@
    "shared_columns": 53,
    "only_in_bundle": [],
    "added": [
+    "weather_available_at_utc",
+    "weather_age_hours",
     "dist_nearest_sensor_m",
     "no2_mol_m2_available",
     "ntl_available",
@@ -41,7 +43,7 @@
    }
   }
  },
- "viirs_cell_rule_tile": {
+ "repo_defaults": {
   "nodes": "identik",
   "edges": "identik",
   "labels": "identik",
@@ -53,6 +55,8 @@
    "shared_columns": 53,
    "only_in_bundle": [],
    "added": [
+    "weather_available_at_utc",
+    "weather_age_hours",
     "dist_nearest_sensor_m",
     "no2_mol_m2_available",
     "ntl_available",
@@ -76,7 +80,15 @@
     "ntl_observed_at": 0.033951,
     "ntl_produced_at": 0.033951,
     "ntl_scene_id": 0.033951,
-    "ntl_age_hours": 0.033951
+    "ntl_age_hours": 0.033951,
+    "temperature_2m": 1.0,
+    "relative_humidity_2m": 0.988987,
+    "wind_speed_10m": 0.986784,
+    "wind_direction_10m": 0.991189,
+    "boundary_layer_height": 0.997797,
+    "precipitation": 0.297357,
+    "surface_pressure": 0.982379,
+    "weather_time_utc": 1.0
    }
   }
  },
