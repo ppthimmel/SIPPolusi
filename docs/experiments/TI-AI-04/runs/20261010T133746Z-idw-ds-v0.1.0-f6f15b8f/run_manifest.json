@@ -1,0 +1,97 @@
+{
+  "run_id": "20261010T133746Z-idw-ds-v0.1.0-f6f15b8f",
+  "experiment": "spatial-downscaling-baseline-idw",
+  "model_name": "spatial-downscaling",
+  "model": {
+    "method": "idw",
+    "power": 2.0,
+    "neighbors": 8,
+    "min_sources": 1,
+    "crs": "EPSG:32748"
+  },
+  "seed": 42,
+  "evaluation": {
+    "cv_scheme": "leave-one-group-out",
+    "report_split": "test",
+    "fixed_split": true,
+    "sweep": {
+      "enabled": true,
+      "power": [
+        0.0,
+        1.0,
+        2.0,
+        3.0
+      ],
+      "neighbors": [
+        4,
+        8,
+        16,
+        0
+      ],
+      "selection_metric": "rmse"
+    },
+    "variants": [
+      "no2_reference_only"
+    ]
+  },
+  "dataset": {
+    "dataset_version": "ds-v0.1.0",
+    "manifest_path": "../../docs/experiments/ds-v0.1.0/manifest.json",
+    "manifest_sha256": "f094a4b061c0c26e925c269967ec863505f58c53d07c3eaba84fb9c019931973",
+    "content_sha256": "2389218bd439d801d6bbbbf3a69307871ce26579e29a682948c1fec71b28e6a2",
+    "snapshot_manifest_sha256": "f094a4b061c0c26e925c269967ec863505f58c53d07c3eaba84fb9c019931973",
+    "source_type": "snapshot",
+    "source_snapshot_utc": "2026-10-06T06:22:15.075236+00:00",
+    "split_boundaries": {
+      "train": {
+        "first_window": "2026-09-13T00:00:00Z",
+        "end_window_exclusive": "2026-09-24T00:00:00Z"
+      },
+      "val": {
+        "first_window": "2026-09-25T00:00:00Z",
+        "end_window_exclusive": "2026-09-28T00:00:00Z"
+      },
+      "test": {
+        "first_window": "2026-09-29T00:00:00Z",
+        "end_window_exclusive": "2026-09-30T23:00:00Z"
+      }
+    }
+  },
+  "config": {
+    "path": "spatial_model/baseline/configs/idw_baseline.toml",
+    "sha256": "f6f15b8fa7a1de8bd16d73ada2d7c440d3ac85188ffe6af43389b0caa035a0b5"
+  },
+  "outputs": {
+    "predictions_sha256": "a4d6c124e924599c8b4db9cd69e7494be69405fa2a508cb66350f1ef4c42b1d8",
+    "n_predictions": 5509
+  },
+  "code": {
+    "git_commit": "923cfdd270d4f693a3ed3166192878c53c5a521b",
+    "git_branch": "feat/ti-ai-03-snapshot",
+    "git_dirty": false
+  },
+  "environment": {
+    "python": "3.12.10",
+    "platform": "macOS-26.6.2-arm64-arm-64bit",
+    "machine": "arm64",
+    "processor": "arm",
+    "cpu_count": 8,
+    "memory_gb": 8.0,
+    "gpu": null,
+    "libraries": {
+      "numpy": "2.4.4",
+      "pandas": "3.0.2",
+      "pyarrow": "20.0.0",
+      "pyproj": "3.7.1",
+      "matplotlib": "3.10.3"
+    }
+  },
+  "started_utc": "2026-10-10T13:37:46+00:00",
+  "durations_s": {
+    "load_dataset_s": 0.2,
+    "loso_report_split_s": 0.33,
+    "sweep_s": 7.21,
+    "grid_example_s": 0.3,
+    "total_s": 9.13
+  }
+}

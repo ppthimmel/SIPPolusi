@@ -124,7 +124,7 @@ LABEL_COLUMNS = [
     dict(name="target_pm25_n_readings", dtype="int64", unit="-", role="provenance", alignment="jumlah pembacaan"),
     dict(name="target_no2_n_readings", dtype="int64", unit="-", role="provenance", alignment="jumlah pembacaan"),
     dict(name="node_index", dtype="int64", unit="-", role="key", alignment="node yang memuat stasiun"),
-    dict(name="split", dtype="string", unit="-", role="provenance", alignment="train | validation | test (kronologis)"),
+    dict(name="split", dtype="string", unit="-", role="provenance", alignment="train | validation | test (kronologis); snapshot ds-*: split PM2.5 blind ganda, none = di luar split"),
 ]
 
 

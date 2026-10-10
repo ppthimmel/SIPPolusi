@@ -1,0 +1,193 @@
+{
+  "split": "test",
+  "unit": "µg/m³",
+  "definitions": {
+    "n": "jumlah pasangan pengamatan-estimasi (stasiun-jam)",
+    "mae": "MAE = (1/n) Σ |ŷ − y|, µg/m³",
+    "rmse": "RMSE = sqrt((1/n) Σ (ŷ − y)²), µg/m³",
+    "r2": "R² = 1 − Σ(y − ŷ)² / Σ(y − ȳ)², tanpa satuan; dapat negatif bila lebih buruk dari ȳ",
+    "bias": "bias = (1/n) Σ (ŷ − y), µg/m³; positif berarti estimasi terlalu tinggi",
+    "mean_obs": "ȳ, rerata ground truth, µg/m³",
+    "nrmse": "RMSE / ȳ, tanpa satuan"
+  },
+  "overall": {
+    "no2": {
+      "n": 604,
+      "mae": 38.81170724924005,
+      "rmse": 46.99221922142891,
+      "r2": 0.1407142166979114,
+      "bias": 22.101835012800493,
+      "mean_obs": 54.65164735099338,
+      "nrmse": 0.8598500045136289,
+      "n_stations": 13,
+      "n_windows": 47,
+      "coverage": 1.0,
+      "station_mean": {
+        "mae": 38.811653112366166,
+        "rmse": 42.66293877928887,
+        "r2": -526.627625041229,
+        "bias": 22.293177464443808
+      },
+      "station_median": {
+        "mae": 35.76932671040981,
+        "rmse": 40.84082030129374,
+        "r2": -2.028527776421537,
+        "bias": 24.012949681901745
+      }
+    },
+    "pm25": {
+      "n": 4905,
+      "mae": 16.421314053198262,
+      "rmse": 23.062704215546525,
+      "r2": -0.06079411346973562,
+      "bias": -1.2946932950237773,
+      "mean_obs": 30.936490927624874,
+      "nrmse": 0.7454854614733497,
+      "n_stations": 109,
+      "n_windows": 47,
+      "coverage": 1.0,
+      "station_mean": {
+        "mae": 16.86903906514789,
+        "rmse": 19.558646095645855,
+        "r2": -350.0774334089456,
+        "bias": -1.5222710769083558
+      },
+      "station_median": {
+        "mae": 15.370796391979994,
+        "rmse": 18.111367735233365,
+        "r2": -1.8497539143257118,
+        "bias": 0.321435991972993
+      }
+    }
+  },
+  "variants": {
+    "no2_reference_only": {
+      "definition": {
+        "name": "no2_reference_only",
+        "pollutant": "no2",
+        "station_types": [
+          "Reference"
+        ]
+      },
+      "metrics": {
+        "no2": {
+          "n": 328,
+          "mae": 32.921139237522056,
+          "rmse": 43.411151734111,
+          "r2": -0.4474283766546967,
+          "bias": 8.217539809043867,
+          "mean_obs": 45.05155487804878,
+          "nrmse": 0.9635883123595127,
+          "n_stations": 7,
+          "n_windows": 47,
+          "coverage": 1.0,
+          "station_mean": {
+            "mae": 32.8936266601507,
+            "rmse": 36.64882267423125,
+            "r2": -539.5208124399857,
+            "bias": 8.264156304190934
+          },
+          "station_median": {
+            "mae": 22.148329278708466,
+            "rmse": 25.332535983693898,
+            "r2": -0.45018568676814685,
+            "bias": 14.696765214251656
+          }
+        }
+      }
+    }
+  },
+  "fixed_split": {
+    "pm25": {
+      "sources": "station_split == train",
+      "targets": "station_split == test",
+      "metrics": {
+        "n": 756,
+        "mae": 11.991579368078146,
+        "rmse": 16.012068942870044,
+        "r2": 0.02158601215105893,
+        "bias": 3.8353076755434876,
+        "mean_obs": 24.58216181657848,
+        "nrmse": 0.6513694386338035,
+        "n_stations": 17
+      }
+    }
+  },
+  "tuned_on_validation": {
+    "no2": {
+      "power": 2.0,
+      "neighbors": 0,
+      "val_rmse": 44.64479923432047,
+      "test": {
+        "n": 604,
+        "mae": 36.43459790147239,
+        "rmse": 44.65959257205146,
+        "r2": 0.2239043851571666,
+        "bias": 18.886353480584177,
+        "mean_obs": 54.65164735099338,
+        "nrmse": 0.8171682782996604
+      }
+    },
+    "pm25": {
+      "power": 1.0,
+      "neighbors": 0,
+      "val_rmse": 22.636779061227017,
+      "test": {
+        "n": 4905,
+        "mae": 15.365848945133555,
+        "rmse": 21.368286103818324,
+        "r2": 0.08935308080527349,
+        "bias": -0.49528546229690235,
+        "mean_obs": 30.936490927624874,
+        "nrmse": 0.6907146047626694
+      }
+    }
+  },
+  "grid_example": {
+    "window_start_utc": "2026-09-30T05:00:00+00:00",
+    "grid_spec": {
+      "x0": 685800.0,
+      "y0": 9294300.0,
+      "nx": 334,
+      "ny": 334,
+      "cell_m": 100.0,
+      "crs": "EPSG:32748"
+    },
+    "n_cells": 111556,
+    "duration_s": 0.3,
+    "stations": {
+      "pm25": 107,
+      "no2": 13
+    },
+    "values": {
+      "pm25": {
+        "min": 0.09036355552519083,
+        "mean": 30.38368033481036,
+        "max": 73.21092755973368
+      },
+      "no2": {
+        "min": 2.1913953325759397,
+        "mean": 49.00578216311924,
+        "max": 180.89303921257834
+      }
+    },
+    "nearest_station_m": {
+      "median": 1714.5616317770136,
+      "max": 13603.935413678326
+    }
+  },
+  "findings": [
+    "NO2: RMSE 46.99 µg/m³, MAE 38.81 µg/m³, R² 0.141, bias +22.10 µg/m³ pada n = 604 stasiun-jam dari 13 stasiun.",
+    "NO2: 2 stasiun dengan RMSE > 1.5× agregat: DKI5 Kebun Jeruk (RMSE 87.1, bias +84.7, stasiun terdekat 4.9 km), DKJ32 Ancol (RMSE 72.7, bias +67.7, stasiun terdekat 7.4 km).",
+    "NO2: galat besar menurut jarak ke stasiun sumber terdekat (km): [3, 5) (RMSE 75.1, n 94).",
+    "NO2: data pendukung terbatas, hanya 13 stasiun dengan median jarak ke stasiun lain terdekat 5.7 km.",
+    "PM2.5: RMSE 23.06 µg/m³, MAE 16.42 µg/m³, R² -0.061, bias -1.29 µg/m³ pada n = 4905 stasiun-jam dari 109 stasiun.",
+    "PM2.5: 11 stasiun dengan RMSE > 1.5× agregat: DKI4 Lubang Buaya (RMSE 87.3, bias -46.3, stasiun terdekat 1.8 km), LCS-26 SDN 5 Marunda (RMSE 63.2, bias -51.7, stasiun terdekat 4.8 km), DKI_PM25_65 RPTRA Amir Hamzah (RMSE 54.5, bias -52.8, stasiun terdekat 1.2 km), DKI_PM25_47 SDN 12 Gedong (RMSE 52.5, bias -49.8, stasiun terdekat 2.2 km), DKI_PM25_26 Asrama Universitas Indonesia (RMSE 50.2, bias -24.7, stasiun terdekat 1.8 km), DKJ37 Taman Sungai Kendal (RMSE 44.8, bias -44.5, stasiun terdekat 0.0 km), DKI_PM25_23 SDN 12 Sunter Agung (RMSE 41.5, bias +39.0, stasiun terdekat 1.3 km), DKI_PM25_18 SDN 02 Pagi Ujung Menteng (RMSE 39.5, bias -29.1, stasiun terdekat 1.3 km).",
+    "PM2.5: 5 stasiun memiliki pengamatan kurang dari 24 stasiun-jam pada split ini: DKJ37, DKI_PM25_27, DKI_PM25_87, DKI_PM25_57, DKI_PM25_24.",
+    "PM2.5: galat besar menurut jam WIB: 3 (RMSE 35.7, n 207).",
+    "PM2.5: galat besar menurut jarak ke stasiun sumber terdekat (km): [3, 5) (RMSE 36.2, n 172).",
+    "PM2.5: DKJ37 (Reference) dan DKI98 (Reference) berjarak 1 m dan satu grup, sehingga ditahan bersama pada LOSO per grup; RMSE 44.8 dan 8.3 µg/m³ (bias -44.5 / +8.1) berasal dari stasiun sumber lain.",
+    "Varian no2_reference_only (no2): RMSE 43.41 µg/m³, MAE 32.92 µg/m³, R² -0.447, bias +8.22 µg/m³ pada n = 328 dari 7 stasiun.",
+    "Split tetap blind ganda (pm25): RMSE 16.01 µg/m³, MAE 11.99 µg/m³, R² 0.022, bias +3.84 µg/m³ pada n = 756 dari 17 stasiun uji."
+  ]
+}

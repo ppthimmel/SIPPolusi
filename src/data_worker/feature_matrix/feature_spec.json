@@ -710,7 +710,7 @@
       "dtype": "string",
       "unit": "-",
       "role": "provenance",
-      "alignment": "train | validation | test (kronologis)"
+      "alignment": "train | validation | test (kronologis); snapshot ds-*: split PM2.5 blind ganda, none = di luar split"
     }
   ]
 }

@@ -120,7 +120,7 @@ def quality_report(directory: Path | str) -> dict:
                     splits={s: dict(rows=int(len(g)), stations=int(g.station_uuid.nunique()),
                                     first=str(g.time_utc.min()), last=str(g.time_utc.max()))
                             for s, g in sorted(labels.groupby("split"),
-                                               key=lambda x: ["train", "validation", "test"].index(x[0]))}),
+                                               key=lambda x: (["train", "validation", "test"] + [x[0]]).index(x[0]))}),
     )
     report["passed"] = all(c["status"] == "lolos" for c in checks)
     return report

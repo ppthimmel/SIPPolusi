@@ -7,7 +7,15 @@ Bukti verifikasi isu #15. Kode dan protokol lengkap:
 |---|---|
 | [`dataset/manifest.json`](dataset/manifest.json) | Manifest dataset `sh-a7e5db9bb33f`: sumber, batas kueri, kendali mutu, split beku, checksum |
 | `dataset/station_hour.parquet` | Ground truth stasiun-jam beku (63.110 baris) |
-| [`runs/20261006T093030Z-idw-sh-a7e5db9bb33f-f6f15b8f/`](runs/20261006T093030Z-idw-sh-a7e5db9bb33f-f6f15b8f/report.md) | Run resmi: `report.md`, `metrics.json`, `run_manifest.json`, `config.toml`, `tables/`, `figures/` |
+| [`runs/20261006T093030Z-idw-sh-a7e5db9bb33f-f6f15b8f/`](runs/20261006T093030Z-idw-sh-a7e5db9bb33f-f6f15b8f/report.md) | Run pada split provisional v1: `report.md`, `metrics.json`, `run_manifest.json`, `config.toml`, `tables/`, `figures/` |
+| [`runs/20261010T133746Z-idw-ds-v0.1.0-f6f15b8f/`](runs/20261010T133746Z-idw-ds-v0.1.0-f6f15b8f/report.md) | Run ulang pada snapshot beku [`ds-v0.1.0`](../ds-v0.1.0/README.md) (TI-AI-03): LOSO per grup dan split tetap blind ganda |
+
+> **Pembaruan 10 Oktober 2026.** Split provisional v1 di bawah digantikan oleh snapshot `ds-v0.1.0`. Hasil
+> baseline yang berlaku adalah run `20261010T133746Z-idw-ds-v0.1.0-f6f15b8f`; protokolnya ada di
+> [`docs/PROTOKOL_EVALUASI.md`](../../PROTOKOL_EVALUASI.md). Pada blok test ds-v0.1.0 (29–30 September),
+> LOSO per grup memberi RMSE PM2.5 23,06 µg/m³ (R² −0,06, 109 stasiun) dan NO2 46,99 µg/m³ (R² 0,14,
+> 13 stasiun). Split tetap blind ganda PM2.5 memberi RMSE 16,01 µg/m³ (R² 0,02, 17 stasiun uji). Bagian
+> di bawah tetap menjelaskan run v1.
 
 ## Dataset dan protokol
 
