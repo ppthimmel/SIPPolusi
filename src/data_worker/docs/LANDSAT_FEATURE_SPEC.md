@@ -46,6 +46,5 @@ Nilai kosong dipertahankan sebagai `NaN`. Jika model membutuhkan imputasi/normal
 
 **Aturan waktu:** `produced_at` dianggap waktu tersedia (asumsi penelitian). Gabungkan berdasarkan waktu pengamatan; untuk prediksi, filter produksi dan pengamatan sebelum waktu inferensi. Komposit bulanan juga harus menunggu akhir jendela.
 
-Landsat: tabel per scene menyimpan `observed_at` dan `produced_at`. Panduan: [SATELLITE_TIMES.md](SATELLITE_TIMES.md).
+Landsat: tabel per scene menyimpan `observed_at` dan `produced_at`.
 
-Penyimpanan gabungan dan pembacaan batch per jam: [SATELLITE_COMBINED.md](SATELLITE_COMBINED.md).

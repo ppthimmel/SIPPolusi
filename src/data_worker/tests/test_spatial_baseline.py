@@ -261,3 +261,43 @@ def test_run_dapat_diulang_dari_manifest_yang_sama(tmp_path):
     metrics = json.loads((run1 / "metrics.json").read_text())
     assert metrics["split"] == "test" and metrics["unit"] == "µg/m³"
     assert {"pm25", "no2"} <= set(metrics["overall"])
+
+
+# Portabilitas: Windows memakai cp1252 sebagai encoding bawaan ------------------------
+NON_UTF8_ENV = {"PYTHONUTF8": "0", "PYTHONIOENCODING": "", "LC_ALL": "en_US.ISO8859-1", "LANG": "en_US.ISO8859-1"}
+NON_UTF8_SCRIPT = """
+import pathlib, sys
+root, out = pathlib.Path(sys.argv[1]), pathlib.Path(sys.argv[2])
+sys.path[:0] = [str(root), str(root / "tests")]
+import locale
+print("ENCODING", locale.getpreferredencoding(False))
+from spatial_model.baseline.dataset import build_dataset
+from spatial_model.baseline.run import run_baseline
+from test_spatial_baseline import CONFIG, _config, _raw
+from test_spatial_edgeweight import _run
+stations, obs = _raw()
+build_dataset(_config(), stations, obs, {"type": "synthetic", "unit": "µg/m³ Σ ŷ −"}, out / "dataset")
+build_dataset(_config(), stations, obs, {"type": "synthetic"}, out / "dataset2")
+run_baseline(CONFIG, out / "dataset" / "manifest.json", out / "runs")
+_run(artifact_dir=out / "infer")
+print("OK")
+"""
+
+
+def test_pipeline_berjalan_tanpa_encoding_utf8(tmp_path):
+    """Regresi: metrics.json memuat Σ/ŷ/− dan gagal ditulis bila encoding bawaan bukan UTF-8 (Windows)."""
+    import os
+    import subprocess
+    import sys
+
+    root = pathlib.Path(__file__).resolve().parent.parent
+    env = {**os.environ, **NON_UTF8_ENV}
+    proc = subprocess.run([sys.executable, "-c", NON_UTF8_SCRIPT, str(root), str(tmp_path)],
+                          capture_output=True, text=True, encoding="utf-8", errors="replace", env=env)
+    first = proc.stdout.splitlines()[0] if proc.stdout else ""
+    if "utf" in first.lower():
+        pytest.skip(f"locale non-UTF-8 tidak tersedia ({first})")
+    assert proc.returncode == 0, proc.stderr[-2000:]
+    assert proc.stdout.strip().endswith("OK")
+    for path in tmp_path.rglob("*.json"):
+        json.loads(path.read_text(encoding="utf-8"))          # seluruh JSON tertulis sebagai UTF-8 yang sah
