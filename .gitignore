@@ -194,5 +194,9 @@ dist
 # Claude / Antigravity files
 .claude/
 
+# Keep the compressed OSM exports in Git, not the large local CSV copies.
+/src/data_worker/dataset_processed/OSM/road_edge.csv
+/src/data_worker/dataset_processed/OSM/road_node.csv
+
 # Estimasi per stasiun-jam hasil run baseline (dapat dibangkitkan ulang dari manifest)
 docs/experiments/**/predictions.parquet

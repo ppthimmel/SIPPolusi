@@ -20,4 +20,4 @@ Tabel utama: `datasets/processed/open_meteo/hourly.parquet`. Setiap baris mewaki
 
 **Penggabungan:** notebook `datasets/datasets_preprocessing.ipynb` mencocokkan tepat jam UTC dengan batch satelit. Nilai satu titik dipakai bersama pada sel-sel yang diminta; tidak menjadi pengukuran cuaca 100 m. Jam tanpa pasangan tetap NaN; Boolean ketersediaan tidak disertakan dalam tabel gabungan; `weather_time_utc` mencatat jam sumber yang cocok. Hanya batch pilihan diekspor, bukan seluruh grid × periode.
 
-**Batas penggunaan:** masukan meteorologi, bukan target polutan. Asumsi waktu tersedia tidak membuktikan ketersediaan operasional saat itu. Normalisasi dan imputasi dipelajari hanya dari data pelatihan. Contoh terbaru lima sumber: `processed/combined/examples/five_sources_hourly.parquet`; aturan lengkap di [SATELLITE_COMBINED.md](SATELLITE_COMBINED.md).
+**Batas penggunaan:** masukan meteorologi, bukan target polutan. Asumsi waktu tersedia tidak membuktikan ketersediaan operasional saat itu. Normalisasi dan imputasi dipelajari hanya dari data pelatihan. Contoh terbaru lima sumber: `processed/combined/examples/five_sources_hourly.parquet`.

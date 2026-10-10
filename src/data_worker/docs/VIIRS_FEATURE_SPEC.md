@@ -36,6 +36,5 @@ Hasil berisi **2.239.488 baris**, dari 243 tanggal produk antara 1 Januari–20 
 
 **Risiko:** cakupan pengamatan berkualitas tidak merata, kotak ekstrak bukan batas administratif DKI, dan cahaya malam belum terbukti menjelaskan perubahan aktivitas per jam. Normalisasi dan imputasi selanjutnya hanya dipelajari dari data pelatihan.
 
-**Asumsi waktu:** `produced_at` dipakai sebagai waktu tersedia. Gabungkan berdasarkan pengamatan dan filter `produced_at <= waktu inferensi`. Panduan: [SATELLITE_TIMES.md](SATELLITE_TIMES.md).
+**Asumsi waktu:** `produced_at` dipakai sebagai waktu tersedia. Gabungkan berdasarkan pengamatan dan filter `produced_at <= waktu inferensi`.
 
-Penyimpanan gabungan dan pembacaan batch per jam: [SATELLITE_COMBINED.md](SATELLITE_COMBINED.md).
