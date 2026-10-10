@@ -246,13 +246,15 @@ def build_snapshot(ground_truth_dir: Path | str, out_dir: Path | str, config_pat
         .map(STGNN_SPLIT).fillna("none").astype("string")
     train_sensors = stations[stations.station_split == "train"].rename(
         columns={"lng": "station_longitude", "lat": "station_latitude"})
-    reader = SourceReader(dataset_processed, viirs_cell_rule=feat["viirs_cell_rule"]) if dataset_processed \
-        else SourceReader(viirs_cell_rule=feat["viirs_cell_rule"])
+    reader_args = dict(viirs_cell_rule=feat["viirs_cell_rule"], weather_delay_hours=feat["weather_delay_hours"])
+    reader = SourceReader(dataset_processed, **reader_args) if dataset_processed else SourceReader(**reader_args)
     sources = {f"dataset_processed/{p.relative_to(reader.root).as_posix()}": stgnn_hash(p)
                for p in reader.input_files()}
     stgnn_dir = out / "stgnn"
     export_stgnn_inputs(nodes, edges, stgnn_labels, reader, stgnn_dir, window=L, sensors=train_sensors,
                         provenance=dict(sources_sha256=sources, viirs_cell_rule=feat["viirs_cell_rule"],
+                                        weather_delay_hours=feat["weather_delay_hours"],
+                                        weather_run_interval_hours=reader.weather_run_interval_hours,
                                         snapshot=cfg["version"],
                                         sensor_set="stasiun split train ds-v0.1.0",
                                         split_policy="split = PM2.5 blind ganda ds-v0.1.0 (stasiun x blok); "
@@ -338,10 +340,13 @@ def build_snapshot(ground_truth_dir: Path | str, out_dir: Path | str, config_pat
                      "ID rRRRR_cCCCC baris 0 di utara", study_area="station.in_jakarta_bbox "
                      "(106,68–106,98 BT; 6,38–6,08 LS)", nodes=int(len(nodes)), edges=int(len(edges)),
                      label_cells=int(stations.grid_id.nunique())),
-        targets={t: dict(column=f"{t}_ugm3", unit="µg/m³ (asumsi; satuan portal tidak dinyatakan)",
+        targets={t: dict(column=f"{t}_ugm3", unit="µg/m³ (portal tidak menyatakan satuan; terverifikasi terhadap "
+                                                    "ISPU portal, scripts/check_ispu_units.py)",
                          evaluation=cfg["evaluation"][t]) for t in scope["targets"]},
         features=dict(spec="stgnn/feature_spec.json", lag_windows=L, context_hops=feat["context_hops"],
                       viirs_cell_rule=feat["viirs_cell_rule"],
+                      weather_policy=f"Open-Meteo as-of: valid time terbaru dengan floor(t, 6 jam) + "
+                                     f"{feat['weather_delay_hours']:g} jam <= waktu inferensi",
                       feature_version=json.loads((stgnn_dir / "manifest.json").read_text(encoding="utf-8"))["outputs"][
                           "features.parquet"][:16],
                       model_inputs=dict(temporal=[*TEMPORAL_VALUES, *TEMPORAL_AGES],

@@ -139,8 +139,15 @@ def leakage_report(out: Path, cfg: dict, labels: pd.DataFrame, stations: pd.Data
         geos_bad += int(((g.loc[ok, f"geoscf_{var}_available_at_utc"] > g.loc[ok, "time_utc"])
                          | (g.loc[ok, f"geoscf_{var}_time_window_end"] > g.loc[ok, "time_utc"])
                          | g.loc[ok, f"geoscf_{var}_available_at_utc"].isna()).sum())
-    _check(checks, "geoscf_available", "Seluruh fitur GEOS-CF memenuhi available_at_utc <= waktu inferensi",
-           geos_bad, f"{int(len(g)):,} baris fitur diperiksa; pelanggaran {geos_bad}".replace(",", "."))
+    w = pd.read_parquet(out / "stgnn" / "features.parquet",
+                        columns=["time_utc", "temperature_2m", "weather_time_utc", "weather_available_at_utc"])
+    ok = w.temperature_2m.notna()
+    cols = ["weather_time_utc", "weather_available_at_utc"]
+    weather_bad = int((w.loc[ok, cols].gt(w.loc[ok, "time_utc"], axis=0).any(axis=1)
+                       | w.loc[ok, cols].isna().any(axis=1)).sum())
+    _check(checks, "geoscf_available", "Seluruh fitur GEOS-CF (dan cuaca) memenuhi waktu tersedia <= waktu inferensi",
+           geos_bad + weather_bad, f"{len(g):_} baris fitur diperiksa; pelanggaran GEOS-CF {geos_bad}, "
+                                   f"cuaca {weather_bad}".replace("_", "."))
 
     # 8. Jendela lag tidak melewati batas split.
     lag_bad = 0

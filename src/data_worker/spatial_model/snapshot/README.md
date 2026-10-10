@@ -55,7 +55,9 @@ deret macet yang dihitung ulang pada deret penuh dan jam tidak lengkap.
   - `dist_nearest_sensor_m` hanya dari stasiun train; per fold LOSO tersedia di
     `splits/loso_sensor_distance.parquet`.
   - Landsat dan VIIRS diambil *as-of* waktu inferensi; tidak ada komposit statis yang di-fit.
-  - GEOS-CF memakai `available_at_utc <= waktu inferensi`.
+  - GEOS-CF memakai `available_at_utc <= waktu inferensi`. Cuaca Open-Meteo memakai valid time terbaru dengan waktu
+    tersedia `floor(t, 6 jam) + 8 jam <= waktu inferensi`.
+- **Satuan target:** µg/m³, terverifikasi terhadap ISPU portal (`scripts/check_ispu_units.py`).
 - **Normalisasi:**
   - Statistik fitur di-fit pada jam masukan blok train di node grup train.
   - Target PM2.5 dan rasio GEOS-CF/SPKU dari split train.
