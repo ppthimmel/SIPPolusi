@@ -4,15 +4,18 @@ Label PM2.5 dan NO2 adalah rata-rata pembacaan valid dalam [t − 1 jam, t),
 dicap pada akhir jam t (= ``time_utc`` fitur, waktu inferensi). Tidak ada
 interpolasi spasial; stasiun yang berbagi sel tetap memiliki baris sendiri.
 
-Pembacaan valid (README ekspor ground truth, "Known data-quality issues"):
+Pembacaan valid ditentukan ``LabelRules``. Bawaan ``BUNDLE_RULES`` (README
+ekspor ground truth, "Known data-quality issues"; sama dengan bundle ST-GNN):
 - ``qc == ""``, stasiun ``in_jakarta_bbox``;
 - tanpa nilai 0 (umumnya "tidak ada data") dan tanpa sentinel ``>= 999.99``;
 - tanpa stasiun ``DKI_PM25_40`` (PM2.5 macet di 32,00);
 - tanpa PM2.5 ``DKI_PM25_33`` sejak 2026-09-19 10:00Z (macet di 14,00).
+Snapshot dataset (TI-AI-03) menambah deret macet dan jam tidak lengkap.
 """
 
 from __future__ import annotations
 
+import dataclasses
 from pathlib import Path
 
 import numpy as np
@@ -46,24 +49,86 @@ def station_cells(stations: pd.DataFrame) -> pd.DataFrame:
     return out[inside & out.grid_id.isin(set(active_cells().grid_id))].reset_index(drop=True)
 
 
-def valid_readings(ground_truth_dir: Path | str) -> tuple[pd.DataFrame, pd.DataFrame]:
-    """(pembacaan PM2.5/NO2 valid, tabel stasiun) dari folder ekspor."""
+@dataclasses.dataclass(frozen=True)
+class LabelRules:
+    """Aturan pembacaan valid; setiap pembacaan yang dibuang memperoleh satu alasan (aturan pertama)."""
+
+    sentinel: float = SENTINEL
+    excluded_stations: tuple[str, ...] = tuple(sorted(EXCLUDED_STATIONS))
+    excluded_from: tuple[tuple[str, str, str], ...] = tuple(
+        (code, metric, since.isoformat()) for (code, metric), since in EXCLUDED_FROM.items())
+    #: Panjang minimum deret nilai identik berturut-turut yang dianggap macet, dihitung pada deret penuh
+    #: (semua bendera qc) per stasiun dan parameter. None = hanya bendera ``S`` dari portal.
+    stuck_run_min: int | None = None
+    #: Buang jam yang jumlah pembacaan validnya kurang dari kadensi stasiun (modus pembacaan per jam).
+    require_complete_hour: bool = False
+
+
+BUNDLE_RULES = LabelRules()
+
+REASONS = ("outside_study_area", "excluded_station", "qc_flag", "zero_value", "sentinel", "excluded_since",
+           "stuck_run", "incomplete_hour")
+
+
+def annotate_readings(ground_truth_dir: Path | str, rules: LabelRules = BUNDLE_RULES,
+                      until=None) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """(pembacaan PM2.5/NO2 dengan kolom ``exclusion_reason``, tabel stasiun lengkap).
+
+    ``exclusion_reason`` kosong (NA) berarti valid. ``until`` (eksklusif) membatasi
+    pembacaan yang dibaca, sehingga aturan deret tidak bergantung pada data sesudahnya.
+    """
     root = Path(ground_truth_dir)
     stations = pd.read_parquet(root / "station.parquet")
     obs = pd.read_parquet(root / "observation.parquet", columns=["station_uuid", "metric", "ts_utc", "value", "qc"])
-    stations = stations[stations.in_jakarta_bbox & ~stations.kode.isin(EXCLUDED_STATIONS)]
-    obs = obs[obs.metric.isin(METRICS) & obs.qc.eq("") & obs.station_uuid.isin(set(stations.uuid))
-              & obs.value.ne(0) & obs.value.lt(SENTINEL)].copy()
-    kode = obs.station_uuid.map(stations.set_index("uuid").kode)
-    for (code, metric), since in EXCLUDED_FROM.items():
-        obs = obs[~(kode.eq(code) & obs.metric.eq(metric) & obs.ts_utc.ge(since))]
+    obs = obs[obs.metric.isin(METRICS)]
+    if until is not None:
+        obs = obs[obs.ts_utc.lt(pd.Timestamp(until))]
+    obs = obs.sort_values(["station_uuid", "metric", "ts_utc"]).reset_index(drop=True)
+    meta = stations.set_index("uuid")
+    kode = obs.station_uuid.map(meta.kode)
+    reason = pd.Series(pd.NA, index=obs.index, dtype="string")
+
+    def mark(mask, name):
+        reason[mask & reason.isna()] = name
+
+    mark(~obs.station_uuid.map(meta.in_jakarta_bbox).fillna(False).astype(bool), "outside_study_area")
+    mark(kode.isin(rules.excluded_stations), "excluded_station")
+    mark(obs.qc.ne(""), "qc_flag")
+    mark(obs.value.eq(0), "zero_value")
+    mark(obs.value.ge(rules.sentinel), "sentinel")
+    for code, metric, since in rules.excluded_from:
+        mark(kode.eq(code) & obs.metric.eq(metric) & obs.ts_utc.ge(pd.Timestamp(since)), "excluded_since")
+    if rules.stuck_run_min:
+        key = [obs.station_uuid, obs.metric]
+        run = obs.value.ne(obs.groupby(key).value.shift()).groupby(key).cumsum()
+        length = obs.groupby([obs.station_uuid, obs.metric, run]).value.transform("size")
+        mark(length.ge(rules.stuck_run_min), "stuck_run")
+    if rules.require_complete_hour:
+        hour = obs.ts_utc.dt.floor("h")
+        raw = obs.groupby([obs.station_uuid, obs.metric, hour]).value.transform("size")
+        expected = (obs.assign(_h=hour, _n=raw).drop_duplicates(["station_uuid", "metric", "_h"])
+                    .groupby(["station_uuid", "metric"])._n.agg(lambda s: s.mode().min()))
+        valid = reason.isna()
+        n_valid = valid.groupby([obs.station_uuid, obs.metric, hour]).transform("sum")
+        need = pd.Series(list(zip(obs.station_uuid, obs.metric)), index=obs.index).map(expected)
+        mark(valid & n_valid.lt(need), "incomplete_hour")
+    obs["exclusion_reason"] = reason
     return obs, stations
 
 
-def station_hour_targets(ground_truth_dir: Path | str, start, end) -> pd.DataFrame:
+def valid_readings(ground_truth_dir: Path | str, rules: LabelRules = BUNDLE_RULES,
+                   until=None) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """(pembacaan PM2.5/NO2 valid, stasiun di bbox studi yang tidak dikecualikan) dari folder ekspor."""
+    obs, stations = annotate_readings(ground_truth_dir, rules, until)
+    stations = stations[stations.in_jakarta_bbox & ~stations.kode.isin(rules.excluded_stations)]
+    return obs[obs.exclusion_reason.isna()].drop(columns="exclusion_reason"), stations
+
+
+def station_hour_targets(ground_truth_dir: Path | str, start, end, rules: LabelRules = BUNDLE_RULES,
+                         until=None) -> pd.DataFrame:
     """Label stasiun-jam dengan ``start <= time_utc < end`` (``time_utc`` = akhir jam)."""
     start, end = pd.Timestamp(start), pd.Timestamp(end)
-    obs, stations = valid_readings(ground_truth_dir)
+    obs, stations = valid_readings(ground_truth_dir, rules, until)
     obs["time_utc"] = obs.ts_utc.dt.floor("h") + pd.Timedelta(hours=1)
     obs = obs[obs.time_utc.ge(start) & obs.time_utc.lt(end)]
     agg = obs.groupby(["station_uuid", "time_utc", "metric"]).value.agg(["mean", "size"]).unstack("metric")
