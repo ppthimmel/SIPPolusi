@@ -1,4 +1,9 @@
-"""Prepare grid ST-GNN inputs; OSM is reserved for mapping predictions to roads."""
+"""Prepare grid ST-GNN inputs; OSM is reserved for mapping predictions to roads.
+
+Basis: bundle ST-GNN 2026-10-07 (FedrianzD). Tambahan TI-AI-02 (Dokumen Desain
+Tabel 3.3, isu #13): jarak ke sensor darat terdekat (``SENSOR_FEATURES``) dan
+penanda ketersediaan eksplisit ``<fitur>_available`` (``AVAILABILITY_FLAGS``).
+"""
 from pathlib import Path
 import json
 import hashlib
@@ -16,6 +21,10 @@ LAND_AGES = ['ndvi_age_hours','ndbi_age_hours']
 ROAD_FEATURES = ['road_length_m','road_segment_count','major_road_length_fraction',
     'walkable_road_length_fraction','bikeable_road_length_fraction','oneway_road_length_fraction']
 TARGETS = ['target_pm25','target_no2']
+SENSOR_FEATURES = ['dist_nearest_sensor_m']
+# Satu penanda per kolom nilai: True tepat bila nilainya finite (tanpa imputasi).
+FLAGGED_VALUES = [*TEMPORAL_VALUES,*LAND_VALUES,'lst_c',*SENSOR_FEATURES]
+AVAILABILITY_FLAGS = [f'{value}_available' for value in FLAGGED_VALUES]
 
 
 def stgnn_hash(path):
@@ -24,6 +33,14 @@ def stgnn_hash(path):
         for block in iter(lambda:stream.read(1024*1024),b''):
             result.update(block)
     return result.hexdigest()
+
+
+def as_nullable_text(frame):
+    """Teks sebagai dtype ``string`` (pd.NA), sama pada pandas 2 dan 3."""
+    for column in frame.columns:
+        if pd.api.types.is_string_dtype(frame[column].dtype):
+            frame[column]=frame[column].astype('string')
+    return frame
 
 
 def stgnn_hour(value):
@@ -133,8 +150,7 @@ def prepare_stgnn_labels(targets,nodes,train_end,validation_end):
                             np.where(labels.time_utc<validation_end,'validation','test'))
     if set(labels.split)!= {'train','validation','test'}:
         raise ValueError('Chronological boundaries must leave labels in all three splits')
-    for column in labels.select_dtypes(include=['object']).columns:
-        labels[column]=labels[column].astype('string')
+    labels=as_nullable_text(labels)
     return labels.sort_values(['time_utc','station_uuid']).reset_index(drop=True)
 
 
@@ -148,7 +164,7 @@ def check_grid_feature_batch(batch,nodes,start,end):
         raise ValueError('Grid feature batch has a different node set')
     if set(TARGETS)&set(batch.columns):
         raise ValueError('Labels leaked into predictors')
-    for feature in [*LAND_VALUES,'no2_mol_m2','ntl']:
+    for feature in [*LAND_VALUES,'lst_c','no2_mol_m2','ntl']:
         valid=batch[feature].notna()
         for clock in ['observed_at','produced_at']:
             value=batch[feature+'_'+clock]
@@ -163,11 +179,43 @@ def check_grid_feature_batch(batch,nodes,start,end):
                 raise ValueError('Unknown or future GEOS condition/availability')
 
 
+def sensor_distances(nodes,sensors):
+    """Jarak (m, EPSG:32748) pusat setiap node ke stasiun terdekat di ``sensors``.
+
+    ``sensors`` memuat ``station_longitude``/``station_latitude``. Pada evaluasi
+    lokasi tak terlihat (TI-AI-03), berikan hanya stasiun non-uji per fold.
+    """
+    from .grid import nearest_sensor_distance
+    sensors=sensors.drop_duplicates(['station_longitude','station_latitude'])
+    return nearest_sensor_distance(nodes.easting,nodes.northing,
+        sensors.station_longitude.to_numpy(),sensors.station_latitude.to_numpy())
+
+
+def add_availability_flags(batch):
+    for value,flag in zip(FLAGGED_VALUES,AVAILABILITY_FLAGS):
+        batch[flag]=np.isfinite(batch[value].to_numpy(dtype='float64'))
+    return batch
+
+
+def check_availability_flags(batch):
+    unexpected=set(batch.select_dtypes(include=['bool','boolean']).columns)-set(AVAILABILITY_FLAGS)
+    if unexpected:
+        raise ValueError(f'Unexpected Boolean column in feature table: {sorted(unexpected)}')
+    for value,flag in zip(FLAGGED_VALUES,AVAILABILITY_FLAGS):
+        if not batch[flag].eq(np.isfinite(batch[value].to_numpy(dtype='float64'))).all():
+            raise ValueError(f'{flag} inconsistent with missing {value}')
+
+
 def export_stgnn_inputs(nodes,edges,labels,reader,output_dir,
-                        window=24,horizon_hours=0,chunk_hours=24,provenance=None):
-    """Stream feature histories from the direct individual-dataset reader."""
+                        window=24,horizon_hours=0,chunk_hours=24,provenance=None,sensors=None):
+    """Stream feature histories from the direct individual-dataset reader.
+
+    ``sensors``: stasiun untuk ``dist_nearest_sensor_m``; bawaan seluruh stasiun
+    berlabel (evaluasi transduktif).
+    """
     if window<1 or horizon_hours<0 or chunk_hours<1:
         raise ValueError('Invalid temporal settings')
+    sensors=labels if sensors is None else sensors
     start=labels.time_utc.min()-pd.Timedelta(hours=window-1+horizon_hours)
     end=labels.time_utc.max()+pd.Timedelta(hours=1)
     output_dir=Path(output_dir)
@@ -178,6 +226,7 @@ def export_stgnn_inputs(nodes,edges,labels,reader,output_dir,
         window=window,horizon_hours=horizon_hours,chunk_hours=chunk_hours,
         temporal_values=TEMPORAL_VALUES,temporal_ages=TEMPORAL_AGES,
         land_values=LAND_VALUES,land_ages=LAND_AGES,road_features=[],
+        sensor_features=SENSOR_FEATURES,availability_flags=AVAILABILITY_FLAGS,
         splits=labels.split.value_counts().to_dict(),
         label_policy='Station-hour labels only; no spatial target interpolation. Multiple stations in a grid retain distinct label rows.',
         loss_policy='Gather node predictions using label node_index/time. Compute loss only on finite target values. No stored Boolean mask.',
@@ -186,6 +235,12 @@ def export_stgnn_inputs(nodes,edges,labels,reader,output_dir,
         static_policy='Landsat only: slow-changing land context selected causally at each hour, not a TCN input.',
         osm_policy='Excluded from predictors and graph construction. Road mapping is used only after grid pollution prediction.',
         metadata_policy='Source clocks/IDs are provenance, not model predictors. GEOS NO2 ppb duplicate omitted.',
+        sensor_policy='dist_nearest_sensor_m: Euclidean EPSG:32748 distance from the cell centre to the nearest '
+            'station in the supplied set (default: all labelled stations, transductive). Recompute per fold '
+            'without held-out stations for unseen-location evaluation.',
+        availability_policy='One Boolean <value>_available per value column, True exactly when the value is '
+            'finite. Missing values remain NaN; no imputation. Flags are not model predictors by default.',
+        sensor_stations=int(sensors[['station_longitude','station_latitude']].drop_duplicates().shape[0]),
         normalisation_policy='Train-only fit in model training; never fit on validation/test. Labels are not predictors.',
         provenance=provenance or {})
     manifest_path=output_dir/'manifest.json'
@@ -193,7 +248,7 @@ def export_stgnn_inputs(nodes,edges,labels,reader,output_dir,
     for name,table in [('nodes.parquet',nodes),('edges.parquet',edges),('labels.parquet',labels)]:
         table.to_parquet(output_dir/name,index=False,compression='zstd')
         pd.testing.assert_frame_equal(table,pd.read_parquet(output_dir/name))
-    static=nodes[['node_index','grid_id']]
+    static=nodes[['node_index','grid_id']].assign(dist_nearest_sensor_m=sensor_distances(nodes,sensors))
     writer=None
     schema=None
     rows=0
@@ -205,11 +260,11 @@ def export_stgnn_inputs(nodes,edges,labels,reader,output_dir,
             check_grid_feature_batch(batch,nodes,first,last)
             batch=batch.drop(columns=['geoscf_no2_ppb',*ROAD_FEATURES],errors='ignore').merge(static,
                 on='grid_id',how='left',validate='many_to_one')
-            if batch.select_dtypes(include=['bool','boolean']).columns.tolist():
-                raise ValueError('Unexpected Boolean availability column in feature table')
-            for column in batch.select_dtypes(include=['object']).columns:
-                batch[column]=batch[column].astype('string')
-            for column in [*TEMPORAL_VALUES,*TEMPORAL_AGES,*LAND_VALUES,*LAND_AGES]:
+            batch=add_availability_flags(batch)
+            check_availability_flags(batch)
+            batch=as_nullable_text(batch)
+            for column in [*TEMPORAL_VALUES,*TEMPORAL_AGES,*LAND_VALUES,*LAND_AGES,'lst_c','lst_c_age_hours',
+                           *SENSOR_FEATURES]:
                 batch[column]=batch[column].astype('float32')
             batch=batch.sort_values(['time_utc','node_index']).reset_index(drop=True)
             table=pa.Table.from_pandas(batch,preserve_index=False)
@@ -254,8 +309,12 @@ def export_stgnn_inputs(nodes,edges,labels,reader,output_dir,
     return manifest
 
 
-def read_stgnn_batch(directory,target_time,target='target_pm25'):
-    """Return raw arrays for one complete graph/window; transforms belong to training."""
+def read_stgnn_batch(directory,target_time,target='target_pm25',sensors=None):
+    """Return raw arrays for one complete graph/window; transforms belong to training.
+
+    ``sensor_static`` berisi ``dist_nearest_sensor_m`` yang diekspor, atau dihitung
+    ulang dari ``sensors`` (mis. stasiun non-uji satu fold).
+    """
     directory=Path(directory)
     manifest=json.loads((directory/'manifest.json').read_text(encoding='utf-8'))
     if manifest['status']!='complete' or target not in TARGETS:
@@ -265,7 +324,8 @@ def read_stgnn_batch(directory,target_time,target='target_pm25'):
     times=pd.date_range(cutoff-pd.Timedelta(hours=manifest['window']-1),cutoff,freq='h')
     nodes=pd.read_parquet(directory/'nodes.parquet').sort_values('node_index')
     edges=pd.read_parquet(directory/'edges.parquet')
-    columns=['node_index','grid_id','time_utc',*TEMPORAL_VALUES,*TEMPORAL_AGES,*LAND_VALUES,*LAND_AGES]
+    columns=['node_index','grid_id','time_utc',*TEMPORAL_VALUES,*TEMPORAL_AGES,*LAND_VALUES,*LAND_AGES,
+             *SENSOR_FEATURES]
     history=pd.read_parquet(directory/'features.parquet',columns=columns,
         filters=[('time_utc','>=',times[0]),('time_utc','<=',times[-1])])
     if len(history)!=len(nodes)*len(times) or history.duplicated(['node_index','time_utc']).any():
@@ -278,15 +338,19 @@ def read_stgnn_batch(directory,target_time,target='target_pm25'):
         len(nodes),len(times),len(TEMPORAL_VALUES)+len(TEMPORAL_AGES))
     last=history.xs(cutoff,level='time_utc').reindex(nodes.node_index)
     land_static=last[[*LAND_VALUES,*LAND_AGES]].to_numpy(dtype='float32')
+    if sensors is None:
+        sensor_static=last[SENSOR_FEATURES].to_numpy(dtype='float32')
+    else:
+        sensor_static=sensor_distances(nodes,sensors).astype('float32')[:,None]
     labels=pd.read_parquet(directory/'labels.parquet',filters=[('time_utc','==',target_time)])
-    return dict(temporal=temporal,land_static=land_static,
+    return dict(temporal=temporal,land_static=land_static,sensor_static=sensor_static,
         edge_index=edges[['source_node','target_node']].to_numpy(dtype='int64').T,
         label_node_index=labels.node_index.to_numpy(dtype='int64'),
         label_values=labels[target].to_numpy(dtype='float32'),
         label_stations=labels.station_uuid.to_numpy(),grid_ids=nodes.grid_id.to_numpy(),
         target_time=target_time,input_cutoff=cutoff,
         temporal_columns=[*TEMPORAL_VALUES,*TEMPORAL_AGES],
-        land_static_columns=[*LAND_VALUES,*LAND_AGES])
+        land_static_columns=[*LAND_VALUES,*LAND_AGES],sensor_static_columns=SENSOR_FEATURES)
 
 
 def grid_predictions_to_roads(predictions,mapping,value_column='prediction'):
