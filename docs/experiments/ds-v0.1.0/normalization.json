@@ -1,0 +1,271 @@
+{
+  "description": "Statistik normalisasi. Fitur: jam masukan blok train pada node grup train split tetap (fitur non-sensor tidak memuat label, sehingga dapat dipakai pula pada fold LOSO). Target dan rasio GEOS-CF/SPKU: PM2.5 dari split train (stasiun train × blok train); NO2 per fold LOSO dari blok train tanpa grup yang ditahan. Rekayasa fitur (log1p umur, sin/cos arah angin) dilakukan model.",
+  "fit_rows": {
+    "feature_rows": 211806,
+    "nodes": 738,
+    "first_time_utc": "2026-09-12 02:00:00+00:00",
+    "last_time_utc": "2026-09-24 00:00:00+00:00",
+    "label_first_time_utc": "2026-09-13 01:00:00+00:00",
+    "label_last_time_utc": "2026-09-24 00:00:00+00:00"
+  },
+  "features": {
+    "no2_mol_m2": {
+      "n": 211806,
+      "missing_fraction": 0.0,
+      "median": 0.00015171784616541117,
+      "mean": 0.00021534376485957149,
+      "std": 0.0001880449266352112
+    },
+    "ntl": {
+      "n": 211806,
+      "missing_fraction": 0.0,
+      "median": 46.09413146972656,
+      "mean": 47.06264672807466,
+      "std": 13.425689383097357
+    },
+    "temperature_2m": {
+      "n": 211806,
+      "missing_fraction": 0.0,
+      "median": 28.899999618530273,
+      "mean": 29.479442569852292,
+      "std": 3.0892692767957217
+    },
+    "relative_humidity_2m": {
+      "n": 211806,
+      "missing_fraction": 0.0,
+      "median": 66.0,
+      "mean": 64.30313588850174,
+      "std": 17.306886423974003
+    },
+    "wind_speed_10m": {
+      "n": 211806,
+      "missing_fraction": 0.0,
+      "median": 4.800000190734863,
+      "mean": 6.187108019918515,
+      "std": 3.9020866341652694
+    },
+    "wind_direction_10m": {
+      "n": 211806,
+      "missing_fraction": 0.0,
+      "median": 120.0,
+      "mean": 147.04181184668988,
+      "std": 99.29952398835067
+    },
+    "boundary_layer_height": {
+      "n": 211806,
+      "missing_fraction": 0.0,
+      "median": 680.0,
+      "mean": 748.7979094076655,
+      "std": 610.867779048748
+    },
+    "precipitation": {
+      "n": 211806,
+      "missing_fraction": 0.0,
+      "median": 0.0,
+      "mean": 0.13937282011899382,
+      "std": 0.7453107226852304
+    },
+    "surface_pressure": {
+      "n": 211806,
+      "missing_fraction": 0.0,
+      "median": 1010.5999755859375,
+      "mean": 1010.255401079663,
+      "std": 1.579980052264999
+    },
+    "geoscf_pm25_ugm3": {
+      "n": 211806,
+      "missing_fraction": 0.0,
+      "median": 67.625,
+      "mean": 72.94301152941843,
+      "std": 39.20865702813542
+    },
+    "geoscf_no2_ugm3": {
+      "n": 211806,
+      "missing_fraction": 0.0,
+      "median": 46.95640182495117,
+      "mean": 46.05340474201854,
+      "std": 23.966696860228428
+    },
+    "no2_mol_m2_age_hours": {
+      "n": 211806,
+      "missing_fraction": 0.0,
+      "median": 36.560569763183594,
+      "mean": 45.011075042311916,
+      "std": 36.15479316244857
+    },
+    "ntl_age_hours": {
+      "n": 211806,
+      "missing_fraction": 0.0,
+      "median": 203.00027465820312,
+      "mean": 221.82382073338513,
+      "std": 42.50439178947544
+    },
+    "geoscf_pm25_age_hours": {
+      "n": 211806,
+      "missing_fraction": 0.0,
+      "median": 18.0,
+      "mean": 17.505226480836235,
+      "std": 6.288572169521856
+    },
+    "geoscf_no2_age_hours": {
+      "n": 211806,
+      "missing_fraction": 0.0,
+      "median": 18.0,
+      "mean": 17.505226480836235,
+      "std": 6.288572169521856
+    },
+    "ndvi": {
+      "n": 206640,
+      "missing_fraction": 0.02439,
+      "median": 0.24258548021316528,
+      "mean": 0.2692996500370403,
+      "std": 0.11481867237353134
+    },
+    "ndbi": {
+      "n": 206640,
+      "missing_fraction": 0.02439,
+      "median": 0.0173976207152009,
+      "mean": 0.006012620111707495,
+      "std": 0.0851006099652654
+    },
+    "ndvi_age_hours": {
+      "n": 206640,
+      "missing_fraction": 0.02439,
+      "median": 301.99945068359375,
+      "mean": 686.2654741719209,
+      "std": 1236.4570733276678
+    },
+    "ndbi_age_hours": {
+      "n": 206640,
+      "missing_fraction": 0.02439,
+      "median": 301.99945068359375,
+      "mean": 686.2654741719209,
+      "std": 1236.4570733276678
+    },
+    "dist_nearest_sensor_m": {
+      "n": 211806,
+      "missing_fraction": 0.0,
+      "median": 120.19017791748047,
+      "mean": 114.82832668661102,
+      "std": 42.67626151592897
+    }
+  },
+  "targets": {
+    "pm25": {
+      "protocol": "fixed_split",
+      "n": 18748,
+      "mean": 32.30258514686011,
+      "std": 23.44314833103422,
+      "geoscf_mean": 73.95060729980469,
+      "ratio_geoscf_to_spku": 2.2893092600358913
+    },
+    "no2": {
+      "protocol": "loso; statistik per fold tanpa grup yang ditahan, blok train",
+      "per_held_out_group": {
+        "G_DKI1": {
+          "n": 3063,
+          "mean": 49.61954456415278,
+          "std": 49.74841485600816,
+          "geoscf_mean": 45.92171859741211,
+          "ratio_geoscf_to_spku": 0.9254764226632557
+        },
+        "G_DKI2": {
+          "n": 3069,
+          "mean": 54.82327142391658,
+          "std": 51.99710095969526,
+          "geoscf_mean": 47.97636032104492,
+          "ratio_geoscf_to_spku": 0.8751094029043166
+        },
+        "G_DKI3": {
+          "n": 3063,
+          "mean": 55.86019098922625,
+          "std": 52.37930866014194,
+          "geoscf_mean": 45.92171859741211,
+          "ratio_geoscf_to_spku": 0.8220830932402116
+        },
+        "G_DKI4": {
+          "n": 3063,
+          "mean": 56.14102187397975,
+          "std": 52.3114714835686,
+          "geoscf_mean": 47.99443817138672,
+          "ratio_geoscf_to_spku": 0.8548907121626724
+        },
+        "G_DKI5": {
+          "n": 3083,
+          "mean": 57.1049108011677,
+          "std": 51.52932853580991,
+          "geoscf_mean": 46.00660705566406,
+          "ratio_geoscf_to_spku": 0.8056506246170917
+        },
+        "G_DKI98": {
+          "n": 3068,
+          "mean": 55.746346153846154,
+          "std": 52.392217610202934,
+          "geoscf_mean": 47.99220657348633,
+          "ratio_geoscf_to_spku": 0.8609031781390601
+        },
+        "G_DKJ32": {
+          "n": 3064,
+          "mean": 56.43031168407311,
+          "std": 52.003672398149355,
+          "geoscf_mean": 49.217796325683594,
+          "ratio_geoscf_to_spku": 0.8721872138724129
+        },
+        "G_DKJ33": {
+          "n": 3068,
+          "mean": 56.051018578878754,
+          "std": 52.249685255229195,
+          "geoscf_mean": 45.92307662963867,
+          "ratio_geoscf_to_spku": 0.8193085120302076
+        },
+        "G_DKJ34": {
+          "n": 3091,
+          "mean": 56.2310918796506,
+          "std": 51.917624551571485,
+          "geoscf_mean": 47.767208099365234,
+          "ratio_geoscf_to_spku": 0.849480358688387
+        },
+        "G_DKJ35": {
+          "n": 3097,
+          "mean": 55.62658701969647,
+          "std": 52.19264532124786,
+          "geoscf_mean": 46.018741607666016,
+          "ratio_geoscf_to_spku": 0.8272796170538294
+        },
+        "G_DKJ36": {
+          "n": 3081,
+          "mean": 54.276103537812396,
+          "std": 52.45820632240578,
+          "geoscf_mean": 45.93785095214844,
+          "ratio_geoscf_to_spku": 0.8463734121987042
+        },
+        "G_LCS-21": {
+          "n": 3232,
+          "mean": 51.84577351485148,
+          "std": 49.2937589665848,
+          "geoscf_mean": 46.92393493652344,
+          "ratio_geoscf_to_spku": 0.9050676989722575
+        },
+        "G_LCS-23": {
+          "n": 3098,
+          "mean": 47.82529696578438,
+          "std": 45.0833151621808,
+          "geoscf_mean": 46.26682662963867,
+          "ratio_geoscf_to_spku": 0.9674132637950855
+        },
+        "G_LCS-24": {
+          "n": 3098,
+          "mean": 47.275261459005804,
+          "std": 45.01884545595642,
+          "geoscf_mean": 46.26682662963867,
+          "ratio_geoscf_to_spku": 0.9786688682781461
+        }
+      }
+    }
+  },
+  "node_split_counts": {
+    "train": 738,
+    "val": 153,
+    "test": 153
+  }
+}
