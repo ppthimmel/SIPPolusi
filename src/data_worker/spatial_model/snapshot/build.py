@@ -342,7 +342,7 @@ def build_snapshot(ground_truth_dir: Path | str, out_dir: Path | str, config_pat
                          evaluation=cfg["evaluation"][t]) for t in scope["targets"]},
         features=dict(spec="stgnn/feature_spec.json", lag_windows=L, context_hops=feat["context_hops"],
                       viirs_cell_rule=feat["viirs_cell_rule"],
-                      feature_version=json.loads((stgnn_dir / "manifest.json").read_text())["outputs"][
+                      feature_version=json.loads((stgnn_dir / "manifest.json").read_text(encoding="utf-8"))["outputs"][
                           "features.parquet"][:16],
                       model_inputs=dict(temporal=[*TEMPORAL_VALUES, *TEMPORAL_AGES],
                                         land_static=[*LAND_VALUES, *LAND_AGES], sensor_static=SENSOR_FEATURES),
