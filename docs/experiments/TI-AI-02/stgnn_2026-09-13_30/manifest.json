@@ -26,7 +26,8 @@
     "no2_mol_m2_age_hours",
     "ntl_age_hours",
     "geoscf_pm25_age_hours",
-    "geoscf_no2_age_hours"
+    "geoscf_no2_age_hours",
+    "weather_age_hours"
   ],
   "land_values": [
     "ndvi",
@@ -129,13 +130,15 @@
       "ground_truth/sippolusi_ground_truth_20261006/observation.parquet": "5916c436a389e6756aca745a1538663b335b57fd0f185201f2dc99c55ac127f2",
       "ground_truth/sippolusi_ground_truth_20261006/manifest.json": "86b474f38009b965c4e1e0de54427ae6b22e6e90f50f50b3f9126fba484ab355"
     },
-    "weather_availability": "Asumsi penelitian: cuaca tersedia pada time_utc; publikasi tidak terverifikasi.",
+    "weather_availability": "Open-Meteo Historical Forecast menyambung jam-jam pertama setiap run; waktu terbit tidak tercatat. Asumsi: nilai valid time t tersedia pada awal run 6 jam yang memuat t + weather_delay_hours; dipakai valid time terbaru yang tersedia pada time_utc.",
     "geoscf_availability": "Server Last-Modified is the assumed availability proxy; first publication and product production times are not verified.",
     "satellite_availability": "produced_at used as availability proxy",
     "target_units": "ug/m3 assumed; portal confirmation pending",
     "target_policy": "Mean valid readings in [hour start, hour end), target timestamp at hour end; existing source QC and exclusions preserved",
     "context_hops": 1,
     "viirs_cell_rule": "tile",
+    "weather_delay_hours": 8.0,
+    "weather_run_interval_hours": 6,
     "arguments": {
       "start": "2026-09-13T01:00Z",
       "end": "2026-10-01T00:00Z",
@@ -144,7 +147,7 @@
       "window": 24
     },
     "code": {
-      "commit": "52b816bc590525976d32dae57b1403a1bf23d20c",
+      "commit": "453bb064298de534ea64659a45a02b52737c1e83",
       "dirty": false
     },
     "basis": "bundle ST-GNN jakarta_processed_bundle_20261007 (FedrianzD)"
@@ -190,6 +193,8 @@
     "precipitation",
     "surface_pressure",
     "weather_time_utc",
+    "weather_available_at_utc",
+    "weather_age_hours",
     "geoscf_cell_id",
     "geoscf_pm25_ugm3",
     "geoscf_pm25_time_window_start",
@@ -224,7 +229,7 @@
   "label_grids": 116,
   "context_grids": 928,
   "outputs": {
-    "features.parquet": "4284d595f4d885eca7b87e70b400fa0395488d0e0548e124c0f355e16170bc8c",
+    "features.parquet": "e6c3f175760775aebad5601949b39fa9d6d9df90987e8d691e7c4cf6767121a5",
     "nodes.parquet": "570c5e87e201fa8e6f95885c4adc7f0f7293e322938910f7926dfebeb7de3e69",
     "edges.parquet": "31ea7670bfbd25d495adf09a9b442ca7a66a1d9323dd575b53b87751f9edcae9",
     "labels.parquet": "808009353e53d7413a891f390554cb3050ec799e0821c21a48bf5c00903b8415"
