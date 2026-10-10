@@ -12,8 +12,10 @@ from .prepare_stgnn import AVAILABILITY_FLAGS, FLAGGED_VALUES, TARGETS, stgnn_ha
 from .spec import LABEL_COLUMNS, feature_columns
 
 SATELLITES = ["ndvi", "ndbi", "lst_c", "no2_mol_m2", "ntl"]
+OUTPUTS = ("features.parquet", "nodes.parquet", "edges.parquet", "labels.parquet")
 AGES = {"Landsat NDVI": "ndvi_age_hours", "Sentinel-5P NO2": "no2_mol_m2_age_hours", "VIIRS NTL": "ntl_age_hours",
-        "GEOS-CF PM2.5": "geoscf_pm25_age_hours", "GEOS-CF NO2": "geoscf_no2_age_hours"}
+        "GEOS-CF PM2.5": "geoscf_pm25_age_hours", "GEOS-CF NO2": "geoscf_no2_age_hours",
+        "Open-Meteo": "weather_age_hours"}
 
 
 def _num(n) -> str:
@@ -39,9 +41,15 @@ def quality_report(directory: Path | str) -> dict:
     nodes = pd.read_parquet(directory / "nodes.parquet")
     checks: list[dict] = []
 
-    hashes = {name: stgnn_hash(directory / name) for name in manifest.get("outputs", {})}
+    outputs = manifest.get("outputs") or {}
+    missing = sorted(set(OUTPUTS) - set(outputs))
+    extra = sorted(set(outputs) - set(OUTPUTS))
+    wrong = sorted(name for name in set(OUTPUTS) & set(outputs)
+                   if not (directory / name).exists() or stgnn_hash(directory / name) != outputs[name])
     _check(checks, "manifest lengkap dan hash keluaran cocok",
-           manifest["status"] == "complete" and hashes == manifest["outputs"], f"status {manifest['status']}")
+           manifest.get("status") == "complete" and not (missing or extra or wrong),
+           f"status {manifest.get('status')}; hash wajib {len(OUTPUTS)}: hilang {missing}, tak dikenal {extra}, "
+           f"tidak cocok {wrong}")
 
     ok, wrong = _schema_ok(features, feature_columns())
     _check(checks, "kolom dan tipe fitur sesuai data dictionary", ok,
@@ -77,8 +85,10 @@ def quality_report(directory: Path | str) -> dict:
         cols = [f"geoscf_{var}_time_window_end", f"geoscf_{var}_available_at_utc"]
         leaks[f"geoscf_{var}"] = int((features.loc[valid, cols].gt(features.loc[valid, "time_utc"], axis=0)
                                       .any(axis=1) | features.loc[valid, cols].isna().any(axis=1)).sum())
-    w = features.weather_time_utc.notna()
-    leaks["weather"] = int((features.loc[w, "weather_time_utc"] != features.loc[w, "time_utc"]).sum())
+    w = features.temperature_2m.notna()
+    cols = ["weather_time_utc", "weather_available_at_utc"]
+    leaks["weather"] = int((features.loc[w, cols].gt(features.loc[w, "time_utc"], axis=0).any(axis=1)
+                            | features.loc[w, cols].isna().any(axis=1)).sum())
     leaks["target_in_features"] = len(set(TARGETS) & set(features.columns))
     _check(checks, "tanpa kebocoran waktu (sumber tersedia <= time_utc, tanpa label di fitur)",
            not any(leaks.values()), f"{sum(leaks.values())} pelanggaran")

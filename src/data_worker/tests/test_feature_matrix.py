@@ -141,11 +141,37 @@ def test_geoscf_dan_sentinel5p_as_of_brute_force(exported):
         assert r.no2_mol_m2 == pytest.approx(best.no2_mol_m2, rel=1e-6)
 
 
-def test_cuaca_pada_jam_inferensi(exported):
+def test_cuaca_as_of_waktu_tersedia_brute_force(exported):
     f = pd.read_parquet(exported / "features.parquet")
-    w = pd.read_parquet(SourceReader().root / "open_meteo/hourly.parquet").set_index("time_utc")
-    assert (f.weather_time_utc == f.time_utc).all()
-    assert np.allclose(f.temperature_2m, w.temperature_2m.reindex(f.time_utc).to_numpy(), rtol=1e-6)
+    w = pd.read_parquet(SourceReader().root / "open_meteo/hourly.parquet")
+    # Brute force: valid time t tersedia pada floor(t, 6 jam) + 8 jam; ambil t terbaru yang tersedia <= τ.
+    avail = w.time_utc.dt.floor("6h") + pd.Timedelta(hours=8)
+    for tau in f.time_utc.drop_duplicates().sample(20, random_state=3):
+        best = w.loc[avail <= tau, "time_utc"].max()
+        rows = f[f.time_utc == tau]
+        assert (rows.weather_time_utc == best).all() and (rows.weather_available_at_utc <= tau).all()
+        expected = w.set_index("time_utc").loc[best, "temperature_2m"]
+        assert np.allclose(rows.temperature_2m, expected, rtol=1e-6)
+        assert np.allclose(rows.weather_age_hours, (tau - best) / pd.Timedelta(hours=1))
+    assert f.weather_age_hours.between(3, 8).all()
+
+
+def test_cuaca_aturan_bundle_memakai_valid_time_tau():
+    nodes, _ = build_grid_graph(active_cells(), ["r0200_c0200"], 1)
+    legacy = SourceReader(weather_delay_hours=None)(nodes.grid_id, "2026-09-20T00:00Z", "2026-09-20T03:00Z")
+    assert (legacy.weather_time_utc == legacy.time_utc).all() and (legacy.weather_age_hours == 0).all()
+
+
+def test_manifest_tanpa_hash_keluaran_ditolak(exported, tmp_path):
+    import shutil
+
+    copy = tmp_path / "copy"
+    shutil.copytree(exported, copy)
+    manifest = json.loads((copy / "manifest.json").read_text(encoding="utf-8"))
+    for outputs in ({}, {k: v for k, v in manifest["outputs"].items() if k != "labels.parquet"}):
+        (copy / "manifest.json").write_text(json.dumps(manifest | {"outputs": outputs}), encoding="utf-8")
+        check = next(c for c in quality_report(copy)["checks"] if c["check"].startswith("manifest"))
+        assert check["status"] == "gagal", outputs.keys()
 
 
 def test_viirs_aturan_tile_memakai_sudut_barat_laut():
