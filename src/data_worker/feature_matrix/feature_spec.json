@@ -673,14 +673,14 @@
     {
       "name": "target_pm25",
       "dtype": "float64",
-      "unit": "ug/m3 (asumsi)",
+      "unit": "ug/m3",
       "role": "target",
       "alignment": "rata-rata pembacaan PM2.5 valid dalam [time_utc − 1 jam, time_utc)"
     },
     {
       "name": "target_no2",
       "dtype": "float64",
-      "unit": "ug/m3 (asumsi)",
+      "unit": "ug/m3",
       "role": "target",
       "alignment": "rata-rata pembacaan NO2 valid dalam [time_utc − 1 jam, time_utc)"
     },

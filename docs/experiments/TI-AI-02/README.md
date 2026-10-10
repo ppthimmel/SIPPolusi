@@ -13,7 +13,7 @@ python -m feature_matrix export --ground-truth <sippolusi_ground_truth_20261006>
 ```
 
 **Masukan dan lingkungan:**
-- Dibangun dari commit `453bb06` dengan working tree bersih (setelah perbaikan review: cuaca *as-of* dan hash keluaran wajib).
+- Dibangun dari commit `582a782` dengan working tree bersih (setelah perbaikan review: cuaca *as-of* dan hash keluaran wajib).
 - Masukannya adalah `dataset_processed` repo dan ekspor `sippolusi_ground_truth_20261006`.
 - SHA-256 seluruh 53 berkas masukan tercatat di `manifest.json`: 50 dari `dataset_processed` dan 3 dari ekspor
   ground truth. Hash 49 berkas identik dengan provenans bundle; yang berbeda hanya `manifest.json` Landsat,

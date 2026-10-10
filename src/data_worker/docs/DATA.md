@@ -13,8 +13,12 @@ pembentukan dataset Spatial Downscaling Model. Ditulis 28 September 2026.
    memakai nilai sebagai ground truth (lihat tabel bendera di bawah).
 3. **Beberapa stasiun bermasalah secara diketahui** dan tidak seluruhnya
    tertangkap bendera `qc` (lihat "Masalah mutu yang diketahui").
-4. **Satuan diasumsikan µg/m³** untuk keenam pencemar; portal tidak
-   menyatakan satuan di mana pun (butir konfirmasi PPID).
+4. **Satuan µg/m³** untuk keenam pencemar. Portal tidak menyatakan satuan,
+   tetapi ISPU yang dipublikasikan portal sama dengan ISPU yang dihitung
+   ulang dari konsentrasi dengan batas µg/m³ Permen LHK P.14/2020
+   (`scripts/check_ispu_units.py`; selisih ≤ 2 poin pada 82–99% stasiun-jam
+   PM2.5, PM10, NO2, SO2, CO). Konfirmasi tertulis melalui PPID tetap
+   dapat dilampirkan bila tersedia.
 
 ## Tabel
 

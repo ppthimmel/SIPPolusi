@@ -133,7 +133,7 @@
     "weather_availability": "Open-Meteo Historical Forecast menyambung jam-jam pertama setiap run; waktu terbit tidak tercatat. Asumsi: nilai valid time t tersedia pada awal run 6 jam yang memuat t + weather_delay_hours; dipakai valid time terbaru yang tersedia pada time_utc.",
     "geoscf_availability": "Server Last-Modified is the assumed availability proxy; first publication and product production times are not verified.",
     "satellite_availability": "produced_at used as availability proxy",
-    "target_units": "ug/m3 assumed; portal confirmation pending",
+    "target_units": "ug/m3; portal tidak menyatakan satuan, terverifikasi terhadap ISPU portal (scripts/check_ispu_units.py)",
     "target_policy": "Mean valid readings in [hour start, hour end), target timestamp at hour end; existing source QC and exclusions preserved",
     "context_hops": 1,
     "viirs_cell_rule": "tile",
@@ -147,7 +147,7 @@
       "window": 24
     },
     "code": {
-      "commit": "453bb064298de534ea64659a45a02b52737c1e83",
+      "commit": "582a7825c948123bad0157e0052ab0ab043baf3c",
       "dirty": false
     },
     "basis": "bundle ST-GNN jakarta_processed_bundle_20261007 (FedrianzD)"
