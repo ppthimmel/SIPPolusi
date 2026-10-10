@@ -19,6 +19,8 @@ targets = ["pm25", "no2"]
 lag_windows = 24                           # L (K3): satu siklus harian
 context_hops = 1
 viirs_cell_rule = "tile"
+# Open-Meteo: nilai valid time t dianggap tersedia pada floor(t, 6 jam) + jeda terbit (asumsi konservatif).
+weather_delay_hours = 8.0
 
 # Aturan eksklusi pembacaan; alasan lengkap di exclusion_rules.md.
 [labels]

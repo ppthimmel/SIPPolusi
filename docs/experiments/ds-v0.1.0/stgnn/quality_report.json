@@ -1,7 +1,7 @@
 {
   "directory": "stgnn",
   "feature_rows": 473976,
-  "feature_columns": 69,
+  "feature_columns": 71,
   "nodes": 1044,
   "label_nodes": 116,
   "hours": 454,
@@ -11,12 +11,12 @@
     {
       "check": "manifest lengkap dan hash keluaran cocok",
       "status": "lolos",
-      "detail": "status complete"
+      "detail": "status complete; hash wajib 4: hilang [], tak dikenal [], tidak cocok []"
     },
     {
       "check": "kolom dan tipe fitur sesuai data dictionary",
       "status": "lolos",
-      "detail": "69 kolom"
+      "detail": "71 kolom"
     },
     {
       "check": "kolom dan tipe label sesuai data dictionary",
@@ -136,6 +136,11 @@
       "min": 7.0,
       "median": 18.0,
       "max": 28.0
+    },
+    "Open-Meteo": {
+      "min": 3.0,
+      "median": 5.0,
+      "max": 8.0
     }
   },
   "sensor_distance_m": {

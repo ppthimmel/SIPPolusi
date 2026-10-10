@@ -45,10 +45,10 @@
     },
     {
       "id": "geoscf_available",
-      "check": "Seluruh fitur GEOS-CF memenuhi available_at_utc <= waktu inferensi",
+      "check": "Seluruh fitur GEOS-CF (dan cuaca) memenuhi waktu tersedia <= waktu inferensi",
       "status": "lolos",
       "violations": 0,
-      "detail": "473.976 baris fitur diperiksa; pelanggaran 0"
+      "detail": "473.976 baris fitur diperiksa; pelanggaran GEOS-CF 0, cuaca 0"
     },
     {
       "id": "lag_window",

@@ -1,14 +1,14 @@
-# Baseline IDW Spatial Downscaling Model: 20261010T092318Z-idw-ds-v0.1.0-f6f15b8f
+# Baseline IDW Spatial Downscaling Model: 20261010T133746Z-idw-ds-v0.1.0-f6f15b8f
 
 Dibangkitkan otomatis oleh `python -m spatial_model.baseline run`. Rujukan: Dokumen Desain subbab 4.3–4.4, Tabel 3.8, isu TI-AI-04.
 
 ## Ringkasan eksperimen
 
-- Dataset: `ds-v0.1.0` (manifest SHA-256 `109fce0c74f73d4c…`)
+- Dataset: `ds-v0.1.0` (manifest SHA-256 `f094a4b061c0c26e…`)
 - Sumber ground truth: snapshot, snapshot 2026-10-06T06:22:15.075236+00:00
 - Split dilaporkan: **test** [2026-09-29T00:00:00Z, 2026-09-30T23:00:00Z)
 - Skema: leave-one-group-out; model IDW power = 2, neighbors = 8, jarak pada EPSG:32748
-- Seed: 42; commit `3f5a61fcda`
+- Seed: 42; commit `923cfdd270`
 
 ## Metrik utama (split uji, IDW konfigurasi Tabel 3.8)
 

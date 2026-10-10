@@ -9,12 +9,12 @@ dibekukan.
 | Butir | Nilai |
 |---|---|
 | Versi | `ds-v0.1.0`, [`docs/experiments/ds-v0.1.0`](experiments/ds-v0.1.0/README.md) |
-| Manifest | `manifest.json` (SHA-256 `109fce0c74f73d4c…`), keutuhan diperiksa dengan `CHECKSUMS.sha256` |
+| Manifest | `manifest.json` (SHA-256 `f094a4b061c0c26e…`), keutuhan diperiksa dengan `CHECKSUMS.sha256` |
 | Ground truth | Ekspor PostgreSQL `sippolusi_ground_truth_20261006`, salinan di `source/` |
 | Rentang | Time window 13 September 00.00 – 30 September 22.00 UTC (batas data pengamatan satelit dan Open-Meteo) |
 | Wilayah | Grid 100 m EPSG:32748; 117 stasiun sensor darat di dalam bbox studi, 115 grup stasiun |
-| Target | PM2.5 (43.207 label stasiun-jam) dan NO2 (5.372), µg/m³, dilatih dan dievaluasi terpisah |
-| Fitur | FeatureMatrix ST-GNN TI-AI-02 (`stgnn/`, versi fitur `69a5ac02e38ae974`), L = 24 time window |
+| Target | PM2.5 (43.207 label stasiun-jam) dan NO2 (5.372), dilatih dan dievaluasi terpisah. Satuan µg/m³, terverifikasi terhadap ISPU portal (`scripts/check_ispu_units.py`) |
+| Fitur | FeatureMatrix ST-GNN TI-AI-02 (`stgnn/`, versi fitur `26ff0f6a4e266fd9`), L = 24 time window |
 
 Snapshot ini immutable. Perubahan aturan, rentang, atau data menghasilkan versi baru (`ds-v0.2.0`, …). Data
 operasional di PostgreSQL (`ground_truth.*`, `pollution.*`) terus berubah dan tidak dipakai langsung untuk evaluasi.
@@ -52,8 +52,10 @@ Split provisional TI-AI-03 v1 pada baseline TI-AI-04 (`sh-a7e5db9bb33f`) diganti
    - Normalisasi fitur dan target di-fit hanya pada data train, yaitu `normalization.json`.
    - Statistik target NO2 tersedia per fold.
 3. **Fitur hanya dari data yang tersedia pada waktu inferensi.**
-   - Fitur pada time window t hanya memakai data dengan waktu tersedia ≤ akhir time window: GEOS-CF
-     `available_at_utc`, serta `produced_at` satelit.
+   - Fitur pada time window t hanya memakai data dengan waktu tersedia ≤ akhir time window:
+     - GEOS-CF `available_at_utc`;
+     - `produced_at` satelit;
+     - waktu terbit run Open-Meteo yang diasumsikan, yaitu awal run 6 jam + 8 jam.
    - Pemeriksaannya ada di `leakage_report.md`.
 4. **Ground truth tidak diubah.** Label ground truth tidak diinterpolasi; time window tanpa label tidak dievaluasi.
 
@@ -74,7 +76,7 @@ ketersediaan data pendukung, seperti pada baseline TI-AI-04.
 
 | Model | Cara memakai dataset | Status |
 |---|---|---|
-| Baseline IDW (TI-AI-04) | `python -m spatial_model.baseline run --manifest docs/experiments/ds-v0.1.0/manifest.json` | Run [`20261010T092318Z-idw-ds-v0.1.0-f6f15b8f`](experiments/TI-AI-04/runs/20261010T092318Z-idw-ds-v0.1.0-f6f15b8f/report.md) |
+| Baseline IDW (TI-AI-04) | `python -m spatial_model.baseline run --manifest docs/experiments/ds-v0.1.0/manifest.json` | Run [`20261010T133746Z-idw-ds-v0.1.0-f6f15b8f`](experiments/TI-AI-04/runs/20261010T133746Z-idw-ds-v0.1.0-f6f15b8f/report.md) |
 | ST-GNN | `read_stgnn_batch(docs/experiments/ds-v0.1.0/stgnn, t)`; split dari `splits/` atau kolom `split` pada `stgnn/labels.parquet` (PM2.5 blind ganda, `none` di luar split); fold dari `splits/loso_folds.parquet` | Belum dilatih |
 | Algoritma pencarian rute A\* | Tidak memakai label secara langsung. Bobot polusi ruas (EdgeWeight) berasal dari Spatial Downscaling Model yang kinerjanya dilaporkan pada ds-v0.1.0, sehingga laporan rute menyebut versi dataset model tersebut | Mengikuti model yang dipakai |
 

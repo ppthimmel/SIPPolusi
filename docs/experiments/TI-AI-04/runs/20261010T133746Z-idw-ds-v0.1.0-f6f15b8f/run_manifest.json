@@ -1,5 +1,5 @@
 {
-  "run_id": "20261010T092318Z-idw-ds-v0.1.0-f6f15b8f",
+  "run_id": "20261010T133746Z-idw-ds-v0.1.0-f6f15b8f",
   "experiment": "spatial-downscaling-baseline-idw",
   "model_name": "spatial-downscaling",
   "model": {
@@ -37,9 +37,9 @@
   "dataset": {
     "dataset_version": "ds-v0.1.0",
     "manifest_path": "../../docs/experiments/ds-v0.1.0/manifest.json",
-    "manifest_sha256": "109fce0c74f73d4c05e540ae30e0062afcaa2030b651cb25c141fd720c4fbd1b",
+    "manifest_sha256": "f094a4b061c0c26e925c269967ec863505f58c53d07c3eaba84fb9c019931973",
     "content_sha256": "2389218bd439d801d6bbbbf3a69307871ce26579e29a682948c1fec71b28e6a2",
-    "snapshot_manifest_sha256": "109fce0c74f73d4c05e540ae30e0062afcaa2030b651cb25c141fd720c4fbd1b",
+    "snapshot_manifest_sha256": "f094a4b061c0c26e925c269967ec863505f58c53d07c3eaba84fb9c019931973",
     "source_type": "snapshot",
     "source_snapshot_utc": "2026-10-06T06:22:15.075236+00:00",
     "split_boundaries": {
@@ -66,7 +66,7 @@
     "n_predictions": 5509
   },
   "code": {
-    "git_commit": "3f5a61fcdaca2593d7c4d179153097546330d667",
+    "git_commit": "923cfdd270d4f693a3ed3166192878c53c5a521b",
     "git_branch": "feat/ti-ai-03-snapshot",
     "git_dirty": false
   },
@@ -86,12 +86,12 @@
       "matplotlib": "3.10.3"
     }
   },
-  "started_utc": "2026-10-10T09:23:18+00:00",
+  "started_utc": "2026-10-10T13:37:46+00:00",
   "durations_s": {
-    "load_dataset_s": 0.33,
-    "loso_report_split_s": 0.38,
-    "sweep_s": 7.12,
+    "load_dataset_s": 0.2,
+    "loso_report_split_s": 0.33,
+    "sweep_s": 7.21,
     "grid_example_s": 0.3,
-    "total_s": 9.21
+    "total_s": 9.13
   }
 }

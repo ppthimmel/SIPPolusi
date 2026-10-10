@@ -26,7 +26,8 @@
     "no2_mol_m2_age_hours",
     "ntl_age_hours",
     "geoscf_pm25_age_hours",
-    "geoscf_no2_age_hours"
+    "geoscf_no2_age_hours",
+    "weather_age_hours"
   ],
   "land_values": [
     "ndvi",
@@ -128,6 +129,8 @@
       "dataset_processed/geos-cf/manifest.json": "9f7c4128eb3aa6d0a453f22faff0650ef014eac17754c4f446479838b409ce58"
     },
     "viirs_cell_rule": "tile",
+    "weather_delay_hours": 8.0,
+    "weather_run_interval_hours": 6,
     "snapshot": "ds-v0.1.0",
     "sensor_set": "stasiun split train ds-v0.1.0",
     "split_policy": "split = PM2.5 blind ganda ds-v0.1.0 (stasiun x blok); none = di luar split"
@@ -173,6 +176,8 @@
     "precipitation",
     "surface_pressure",
     "weather_time_utc",
+    "weather_available_at_utc",
+    "weather_age_hours",
     "geoscf_cell_id",
     "geoscf_pm25_ugm3",
     "geoscf_pm25_time_window_start",
@@ -207,7 +212,7 @@
   "label_grids": 116,
   "context_grids": 928,
   "outputs": {
-    "features.parquet": "69a5ac02e38ae9745930dd351d85acb6bcda5caca96298a00802e64fb647e905",
+    "features.parquet": "26ff0f6a4e266fd92f028efd5a98a8a0b64d73378bdad4edb3836cfbf808724f",
     "nodes.parquet": "570c5e87e201fa8e6f95885c4adc7f0f7293e322938910f7926dfebeb7de3e69",
     "edges.parquet": "31ea7670bfbd25d495adf09a9b442ca7a66a1d9323dd575b53b87751f9edcae9",
     "labels.parquet": "e790c363c1a96ff7b7b74ef7ec4224f18f0d4a6f0c2ab81cc932da38c97966a2"

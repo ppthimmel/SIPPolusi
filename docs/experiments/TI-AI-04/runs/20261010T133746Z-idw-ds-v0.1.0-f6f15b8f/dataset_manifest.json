@@ -19,7 +19,7 @@
   "targets": {
     "pm25": {
       "column": "pm25_ugm3",
-      "unit": "µg/m³ (asumsi; satuan portal tidak dinyatakan)",
+      "unit": "µg/m³ (portal tidak menyatakan satuan; terverifikasi terhadap ISPU portal, scripts/check_ispu_units.py)",
       "evaluation": [
         "fixed_split",
         "loso"
@@ -27,7 +27,7 @@
     },
     "no2": {
       "column": "no2_ugm3",
-      "unit": "µg/m³ (asumsi; satuan portal tidak dinyatakan)",
+      "unit": "µg/m³ (portal tidak menyatakan satuan; terverifikasi terhadap ISPU portal, scripts/check_ispu_units.py)",
       "evaluation": [
         "loso"
       ]
@@ -38,7 +38,8 @@
     "lag_windows": 24,
     "context_hops": 1,
     "viirs_cell_rule": "tile",
-    "feature_version": "69a5ac02e38ae974",
+    "weather_policy": "Open-Meteo as-of: valid time terbaru dengan floor(t, 6 jam) + 8 jam <= waktu inferensi",
+    "feature_version": "26ff0f6a4e266fd9",
     "model_inputs": {
       "temporal": [
         "no2_mol_m2",
@@ -55,7 +56,8 @@
         "no2_mol_m2_age_hours",
         "ntl_age_hours",
         "geoscf_pm25_age_hours",
-        "geoscf_no2_age_hours"
+        "geoscf_no2_age_hours",
+        "weather_age_hours"
       ],
       "land_static": [
         "ndvi",
@@ -267,7 +269,7 @@
     }
   },
   "code": {
-    "commit": "731c446051297f7a287daa169929508f4bcc4b94",
+    "commit": "923cfdd270d4f693a3ed3166192878c53c5a521b",
     "dirty": false
   },
   "libraries": {
@@ -280,13 +282,13 @@
   },
   "config": {
     "path": "config.toml",
-    "sha256": "2596c52a7e5cfa420addfdd56e11c9c1f14c291d59394bba5be80eb7c39d5747"
+    "sha256": "e42ef57416334710ba84de91141911c7a35b9fd95c267a6f412c8d77a028ae00"
   },
   "separation": "Snapshot eksperimen immutable dan terversi; bukan cache operasional (pollution.* / ground_truth.* di PostgreSQL yang terus berubah).",
   "files": {
     "config.toml": {
-      "sha256": "2596c52a7e5cfa420addfdd56e11c9c1f14c291d59394bba5be80eb7c39d5747",
-      "bytes": 2331
+      "sha256": "e42ef57416334710ba84de91141911c7a35b9fd95c267a6f412c8d77a028ae00",
+      "bytes": 2465
     },
     "exclusion_rules.md": {
       "sha256": "304e49decc44136983d14672e341f86a64928f5f722912993b78c7cc5c03451b",
@@ -297,16 +299,16 @@
       "bytes": 271275
     },
     "leakage_report.json": {
-      "sha256": "5a8b060242f6993b98ec4914ca66629d2eec393a0421b051779d348b8318c742",
-      "bytes": 2768
+      "sha256": "938c67d68d772c2cff716fedf1ef2c666c4c07264beb4a9f186c2c7fc6174424",
+      "bytes": 2795
     },
     "leakage_report.md": {
-      "sha256": "f7cdf4deb3f59953af61370498c0bd8d169da17729bbbf75df34456c160a7cc5",
-      "bytes": 2010
+      "sha256": "376d5a010332b92c178e26b472d63df13786443006a6b206c618849c5f66be1a",
+      "bytes": 2037
     },
     "normalization.json": {
-      "sha256": "34513ef59fd2a0511db5329aeea0fd946f0982a5b83495a4098989456ab386cc",
-      "bytes": 7876
+      "sha256": "c5fad760ff97253c3cfc4037a37ba391c692cdb1c9dfc7fd0837f10d93a380cd",
+      "bytes": 8045
     },
     "source/observation.parquet": {
       "sha256": "5916c436a389e6756aca745a1538663b335b57fd0f185201f2dc99c55ac127f2",
@@ -353,8 +355,8 @@
       "bytes": 16882
     },
     "stgnn/features.parquet": {
-      "sha256": "69a5ac02e38ae9745930dd351d85acb6bcda5caca96298a00802e64fb647e905",
-      "bytes": 2144635
+      "sha256": "26ff0f6a4e266fd92f028efd5a98a8a0b64d73378bdad4edb3836cfbf808724f",
+      "bytes": 2139458
     },
     "stgnn/labels.parquet": {
       "sha256": "e790c363c1a96ff7b7b74ef7ec4224f18f0d4a6f0c2ab81cc932da38c97966a2",
@@ -365,12 +367,12 @@
       "bytes": 29642
     },
     "stgnn/quality_report.json": {
-      "sha256": "98d111bc29d4da5dcf33d6fa7a78aac7866c9bd8fff00e217aa9600b0ae50f59",
-      "bytes": 4775
+      "sha256": "7dec53bbe9ae599eef6d799762a2b9acc67953063b69c1cba94c3359cce09434",
+      "bytes": 4915
     },
     "stgnn/quality_report.md": {
-      "sha256": "8695745ab71e35513b10a5e6e05fe95adfac425332543bf350eeab4926c55f7f",
-      "bytes": 2417
+      "sha256": "592a33c52821ed3e77449b6bd68b8a05e30ea057babf22d0349b58e8f52d578c",
+      "bytes": 2507
     }
   }
 }
