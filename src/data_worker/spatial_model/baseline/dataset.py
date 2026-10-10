@@ -391,12 +391,16 @@ def load_snapshot(manifest_path: pathlib.Path) -> tuple[pd.DataFrame, dict]:
     return df, compat
 
 
+def is_snapshot(manifest_path: pathlib.Path) -> bool:
+    """Manifest snapshot terversi TI-AI-03 (``version`` = ``ds-*``), bukan manifest ``station_hour``."""
+    manifest = json.loads(pathlib.Path(manifest_path).read_text(encoding="utf-8"))
+    return str(manifest.get("version", "")).startswith("ds-")
+
+
 def load_dataset(manifest_path: pathlib.Path) -> tuple[pd.DataFrame, dict]:
     """Membaca dataset dari manifest dan memastikan isinya tidak berubah sejak dibekukan."""
     manifest_path = pathlib.Path(manifest_path)
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    if str(manifest.get("version", "")).startswith("ds-"):
-        return load_snapshot(manifest_path)
     info = manifest["files"][DATASET_FILE]
     df = pd.read_parquet(manifest_path.parent / DATASET_FILE)
     actual = content_sha256(df)

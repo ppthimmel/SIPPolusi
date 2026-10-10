@@ -33,7 +33,7 @@ import pandas as pd
 
 from contracts import JAKARTA_BBOX
 from spatial_model.baseline import analysis, report
-from spatial_model.baseline.dataset import load_dataset, sha256_file
+from spatial_model.baseline.dataset import is_snapshot, load_dataset, load_snapshot, sha256_file
 from spatial_model.baseline.evaluate import (
     METRIC_DEFINITIONS,
     compute_metrics,
@@ -150,7 +150,7 @@ def run_baseline(config_path: pathlib.Path, manifest_path: pathlib.Path, out_roo
     min_sources = int(model.get("min_sources", 1))
     report_split = eval_cfg.get("report_split", "test")
 
-    df, manifest = load_dataset(manifest_path)
+    df, manifest = (load_snapshot if is_snapshot(manifest_path) else load_dataset)(manifest_path)
     if "group_id" in df:
         eval_cfg = {**eval_cfg, "group_loso": True}
     timings["load_dataset_s"] = time.perf_counter() - t0
