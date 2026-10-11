@@ -1,4 +1,5 @@
-from fastapi import FastAPI, HTTPException, status
+from fastapi import FastAPI
+from fastapi.responses import JSONResponse
 
 import os
 import logging
@@ -42,10 +43,19 @@ async def health_check():
     """Health check endpoint for Railway and NGINX."""
     return {"status": "ok", "service": "backend"}
 
+def route_response(result):
+    code = {"invalid_input": 422, "snap_failed": 404, "no_route": 404,
+            "same_node": 422, "data_unavailable": 503, "invalid_graph": 503}.get(result["status"], 200)
+    return JSONResponse(result, status_code=code)
+
+
 @app.post("/v1/routes")
-async def plan_route(request: dict):
-    """Real-time critical path: validate request, run route policy inference within
-    the latency budget, fall back to the baseline route on failure or timeout (PF-09)."""
+def plan_route(request: dict):
+    """Validated route request; label unavailable/failed policy fallback explicitly.
+
+    Runs in FastAPI's worker thread pool because graph search is synchronous.
+    Policy timeout/cancellation belongs to the future model adapter.
+    """
     origin = request.get("origin")
     destination = request.get("destination")
     mode = request.get("mode")
@@ -56,9 +66,9 @@ async def plan_route(request: dict):
         result = solve_route(origin, destination, mode, alpha, beta)
     except Exception as e:
         logger.error(f"Route policy inference failed, falling back to baseline: {e}")
-        result = solve_baseline_route(origin, destination, mode)
+        result = solve_baseline_route(origin, destination, mode, fallback_reason="policy_error")
 
-    return result
+    return route_response(result)
 
 @app.get("/metrics")
 async def metrics():

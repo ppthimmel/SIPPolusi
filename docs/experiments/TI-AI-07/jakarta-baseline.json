@@ -1,0 +1,137 @@
+{
+  "origin": {
+    "lon": 106.8502,
+    "lat": -6.2099
+  },
+  "destination": {
+    "lon": 106.8272,
+    "lat": -6.1754
+  },
+  "max_snap_m": 300,
+  "runs": [
+    {
+      "status": "ok",
+      "graph_version": "jakarta-20261005",
+      "mode": "bike",
+      "route_source": "baseline",
+      "preference_applied": false,
+      "metrics": {
+        "travel_time_s": 1512.9898205640006,
+        "length_m": 6304.124252349996,
+        "exposure_ug_s_m3": null,
+        "exposure_status": "unavailable",
+        "exposure_edge_coverage": 0.0,
+        "pollutant": null,
+        "time_window": null
+      },
+      "visited_nodes": 1710,
+      "graph_components": 2655,
+      "snap": {
+        "start_node": 9398103262,
+        "end_node": 2624398882,
+        "start_distance_m": 22.601765677414587,
+        "end_distance_m": 202.66927194495884
+      },
+      "diagnostics": {
+        "computation_ms": 13311.826599994674
+      },
+      "attempt": "cold",
+      "geojson_sha256": "8d936700add5d738503ab83738d190d111dd730816ab3a614141fe4f7fc1c232"
+    },
+    {
+      "status": "ok",
+      "graph_version": "jakarta-20261005",
+      "mode": "bike",
+      "route_source": "baseline",
+      "preference_applied": false,
+      "metrics": {
+        "travel_time_s": 1512.9898205640006,
+        "length_m": 6304.124252349996,
+        "exposure_ug_s_m3": null,
+        "exposure_status": "unavailable",
+        "exposure_edge_coverage": 0.0,
+        "pollutant": null,
+        "time_window": null
+      },
+      "visited_nodes": 1710,
+      "graph_components": 2655,
+      "snap": {
+        "start_node": 9398103262,
+        "end_node": 2624398882,
+        "start_distance_m": 22.601765677414587,
+        "end_distance_m": 202.66927194495884
+      },
+      "diagnostics": {
+        "computation_ms": 274.7224000049755
+      },
+      "attempt": "warm",
+      "geojson_sha256": "8d936700add5d738503ab83738d190d111dd730816ab3a614141fe4f7fc1c232"
+    },
+    {
+      "status": "ok",
+      "graph_version": "jakarta-20261005",
+      "mode": "walk",
+      "route_source": "baseline",
+      "preference_applied": false,
+      "metrics": {
+        "travel_time_s": 3736.8079316999997,
+        "length_m": 5190.011016250001,
+        "exposure_ug_s_m3": null,
+        "exposure_status": "unavailable",
+        "exposure_edge_coverage": 0.0,
+        "pollutant": null,
+        "time_window": null
+      },
+      "visited_nodes": 2015,
+      "graph_components": 634,
+      "snap": {
+        "start_node": 9398103262,
+        "end_node": 10792891204,
+        "start_distance_m": 22.601765677414587,
+        "end_distance_m": 11.768808582364581
+      },
+      "diagnostics": {
+        "computation_ms": 15216.136200004257
+      },
+      "attempt": "cold",
+      "geojson_sha256": "aaf9357821ebedc4f2592338dc13d198bb10828d5aff1f8ea8674fc2cfda0995"
+    },
+    {
+      "status": "ok",
+      "graph_version": "jakarta-20261005",
+      "mode": "walk",
+      "route_source": "baseline",
+      "preference_applied": false,
+      "metrics": {
+        "travel_time_s": 3736.8079316999997,
+        "length_m": 5190.011016250001,
+        "exposure_ug_s_m3": null,
+        "exposure_status": "unavailable",
+        "exposure_edge_coverage": 0.0,
+        "pollutant": null,
+        "time_window": null
+      },
+      "visited_nodes": 2015,
+      "graph_components": 634,
+      "snap": {
+        "start_node": 9398103262,
+        "end_node": 10792891204,
+        "start_distance_m": 22.601765677414587,
+        "end_distance_m": 11.768808582364581
+      },
+      "diagnostics": {
+        "computation_ms": 286.0218999849167
+      },
+      "attempt": "warm",
+      "geojson_sha256": "aaf9357821ebedc4f2592338dc13d198bb10828d5aff1f8ea8674fc2cfda0995"
+    }
+  ],
+  "bike_nearest_destination": {
+    "node": 2624398858,
+    "reachable": false
+  },
+  "walk_nearest_destination": {
+    "node": 10792891204,
+    "reachable": true
+  }
+}
