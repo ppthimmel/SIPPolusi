@@ -16,7 +16,7 @@ pembentukan dataset Spatial Downscaling Model. Ditulis 28 September 2026.
 4. **Satuan µg/m³** untuk keenam pencemar. Portal tidak menyatakan satuan,
    tetapi ISPU yang dipublikasikan portal sama dengan ISPU yang dihitung
    ulang dari konsentrasi dengan batas µg/m³ Permen LHK P.14/2020
-   (`scripts/check_ispu_units.py`; selisih ≤ 2 poin pada 82–99% stasiun-jam
+   (`scripts/check_ispu_units.py`; selisih ≤ 2 poin pada 84,1–99,7% stasiun-jam
    PM2.5, PM10, NO2, SO2, CO). Konfirmasi tertulis melalui PPID tetap
    dapat dilampirkan bila tersedia.
 

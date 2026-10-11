@@ -34,8 +34,13 @@ def check(export_dir: Path, window_hours: int = 24, tolerance: float = 2.0) -> d
         o = obs[(obs.metric == metric) & (obs.qc == "") & (obs.value > 0)]
         hourly = (o.groupby(["station_uuid", o.ts_utc.dt.floor("h").rename("ts_utc")]).value.mean()
                   .rename("c").reset_index().sort_values(["station_uuid", "ts_utc"]))
+        # Missing hours must not extend the window beyond elapsed time. Each
+        # record is already one valid station-hour, so min_periods measures
+        # hourly coverage within (t - window_hours, t].
+        hourly = hourly.set_index("ts_utc")
         hourly["mean"] = hourly.groupby("station_uuid").c.transform(
-            lambda s: s.rolling(window_hours, min_periods=window_hours * 3 // 4).mean())
+            lambda s: s.rolling(f"{window_hours}h", min_periods=window_hours * 3 // 4).mean())
+        hourly = hourly.reset_index()
         joined = hourly.merge(published[published.metric == metric][["station_uuid", "ts_utc", "ispu"]],
                               on=["station_uuid", "ts_utc"]).dropna(subset=["mean", "ispu"])
         result = {}
