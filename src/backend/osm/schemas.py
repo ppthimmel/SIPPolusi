@@ -192,15 +192,16 @@ class RoadGraphOut(BaseModel):
     bbox: list[float]
     node_count: int
     edge_count: int
+    rejected: dict[str, int] = Field(description="Rows left out by validation, per reason")
     nodes: list[GraphNodeOut]
     edges: list[GraphEdgeOut]
 
     @classmethod
-    def build(cls, graph_version: str, mode: Mode, bbox: BBox,
-              nodes: dict[int, RoadNode], edges: list[RoadEdge]) -> RoadGraphOut:
+    def build(cls, graph_version: str, mode: Mode, bbox: BBox, nodes: dict[int, RoadNode],
+              edges: list[RoadEdge], rejected: dict[str, int] | None = None) -> RoadGraphOut:
         return cls(
             graph_version=graph_version, mode=mode, bbox=bbox.as_list(),
-            node_count=len(nodes), edge_count=len(edges),
+            node_count=len(nodes), edge_count=len(edges), rejected=rejected or {},
             nodes=[GraphNodeOut.of(n) for n in nodes.values()],
             edges=[GraphEdgeOut.of(e) for e in edges],
         )
@@ -224,6 +225,7 @@ class SubgraphOut(BaseModel):
     destination_snap_distance_m: float
     node_count: int
     edge_count: int
+    rejected: dict[str, int] = Field(description="Rows left out by validation while reading the bbox, per reason")
     graph: RoadGraphOut | None = None
 
     @classmethod
@@ -233,7 +235,7 @@ class SubgraphOut(BaseModel):
             origin_node=s.origin_node, destination_node=s.destination_node,
             origin_snap_distance_m=round(s.origin_snap_distance_m, 2),
             destination_snap_distance_m=round(s.destination_snap_distance_m, 2),
-            node_count=len(s.nodes), edge_count=len(s.edges),
+            node_count=len(s.nodes), edge_count=len(s.edges), rejected=s.rejected,
             graph=RoadGraphOut.build(s.graph_version, s.mode, s.bbox, s.nodes, s.edges) if include_graph else None,
         )
 

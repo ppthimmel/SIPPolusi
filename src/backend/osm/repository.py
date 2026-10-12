@@ -17,6 +17,7 @@ from collections.abc import Callable, Sequence
 
 from .db import OsmDatabase
 from .errors import CacheUnavailable
+from .graph import assemble_road_graph
 from .models import (
     BBox,
     EdgeDetail,
@@ -27,9 +28,7 @@ from .models import (
     Neighbor,
     NodeDetail,
     Point,
-    RoadEdge,
     RoadGraph,
-    RoadNode,
     StreetMatch,
 )
 
@@ -50,7 +49,8 @@ WHERE status = 'active'
 
 _SQL_GRAPH_EDGES = """
 SELECT e.edge_id, e.u, e.v, round(e.length_m::numeric, 2)::float8 AS length_m, e.highway, e.name, e.oneway,
-       e.walk_allowed, e.bike_allowed, e.osm_way_id{geometry}
+       e.walk_allowed, e.bike_allowed, e.osm_way_id,
+       (e.geom IS NOT NULL AND ST_NPoints(e.geom) >= 2) AS has_geometry{geometry}
 FROM osm.road_edge e
 WHERE e.graph_version = $1
   AND e.geom && ST_MakeEnvelope($2, $3, $4, $5, 4326)
@@ -240,7 +240,8 @@ class OsmRepository:
 
         Returns edges of the active version whose geometry overlaps bbox and
         that the mode may use. Nodes are the endpoints of those edges, including
-        endpoints just outside bbox, so no edge is left dangling.
+        endpoints just outside bbox, so no edge is left dangling. Rows are
+        validated by graph.assemble_road_graph; rejects are in graph.rejected.
         """
         version = (await self.get_active_version()).version
         geometry = ",\n       ST_AsGeoJSON(e.geom, 6)::json -> 'coordinates' AS coordinates" if include_geometry else ""
@@ -250,30 +251,15 @@ class OsmRepository:
         started = time.perf_counter()
         edge_rows, node_rows = await asyncio.gather(self._fetch(edges_sql, *args), self._fetch(nodes_sql, *args))
 
-        nodes = {
-            r["node_id"]: RoadNode(r["node_id"], r["lon"], r["lat"], r["tags"] or {})
-            for r in node_rows
-        }
-        edges = []
-        dangling = 0
-        for r in edge_rows:
-            if r["u"] not in nodes or r["v"] not in nodes:
-                dangling += 1
-                continue
-            edges.append(RoadEdge(
-                edge_id=r["edge_id"], u=r["u"], v=r["v"], length_m=r["length_m"],
-                highway=r["highway"], name=r["name"], oneway=r["oneway"],
-                walk_allowed=r["walk_allowed"], bike_allowed=r["bike_allowed"],
-                osm_way_id=r["osm_way_id"],
-                coordinates=r["coordinates"] if include_geometry else None,
-            ))
-        if dangling:
-            logger.warning("graph_version %s: %d edges without endpoint nodes skipped", version, dangling)
+        graph = assemble_road_graph(version, mode, bbox, node_rows, edge_rows)
+        if graph.rejected:
+            logger.warning("graph_version %s: edges/nodes rejected while assembling RoadGraph: %s",
+                           version, graph.rejected)
         logger.debug(
             "read_road_graph %s: %d nodes, %d edges in %.0f ms",
-            mode.value, len(nodes), len(edges), (time.perf_counter() - started) * 1000,
+            mode.value, len(graph.nodes), len(graph.edges), (time.perf_counter() - started) * 1000,
         )
-        return RoadGraph(graph_version=version, mode=mode, bbox=bbox, nodes=nodes, edges=edges)
+        return graph
 
     async def find_nearest_node(self, point: Point, mode: Mode, max_distance_m: float) -> NearestNode | None:
         """Closest node usable by mode within max_distance_m (handoff 9.2)."""

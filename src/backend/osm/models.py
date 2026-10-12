@@ -178,13 +178,22 @@ class ModeProfile:
 
 @dataclass(slots=True)
 class RoadGraph:
-    """Nodes and edges of the active graph_version inside a bbox, filtered by mode."""
+    """Nodes and edges of the active graph_version inside a bbox, filtered by mode.
+
+    Every edge has passed validation in graph.assemble_road_graph; rows that
+    failed are counted per reason in `rejected` instead of being returned.
+    """
 
     graph_version: str
     mode: Mode
     bbox: BBox
     nodes: dict[int, RoadNode]
     edges: list[RoadEdge]
+    rejected: dict[str, int] = field(default_factory=dict)
+
+    def edges_by_id(self) -> dict[int, RoadEdge]:
+        """Edges keyed by edge_id, the key EdgeWeight rows refer to (pollution.edge_pollution.edge_id)."""
+        return {e.edge_id: e for e in self.edges}
 
 
 @dataclass(slots=True)
@@ -204,6 +213,7 @@ class Subgraph:
     destination_snap_distance_m: float
     nodes: dict[int, RoadNode]
     edges: list[RoadEdge]
+    rejected: dict[str, int] = field(default_factory=dict)
 
 
 @dataclass(frozen=True, slots=True)

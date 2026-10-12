@@ -81,6 +81,18 @@ async def test_read_road_graph_walk_uses_active_version_only(repo, db):
     assert first.coordinates[0] == pytest.approx([graph.nodes[first.u].lon, graph.nodes[first.u].lat], abs=1e-6)
 
 
+@pytest.mark.parametrize("mode", [Mode.WALK, Mode.BIKE])
+async def test_read_road_graph_edges_are_valid(repo, mode):
+    graph = await repo.read_road_graph(MONAS_BBOX, mode)
+    assert graph.rejected == {}
+    for e in graph.edges:
+        assert e.length_m > 0
+        assert len(e.coordinates) >= 2
+        assert e.coordinates[0] == pytest.approx([graph.nodes[e.u].lon, graph.nodes[e.u].lat], abs=1e-5)
+        assert e.coordinates[-1] == pytest.approx([graph.nodes[e.v].lon, graph.nodes[e.v].lat], abs=1e-5)
+    assert len(graph.edges_by_id()) == len(graph.edges)
+
+
 async def test_read_road_graph_bike_excludes_non_bike_edges(repo):
     graph = await repo.read_road_graph(MONAS_BBOX, Mode.BIKE, include_geometry=False)
     assert graph.edges
@@ -122,7 +134,9 @@ async def test_streets_sudirman(repo):
 
 
 async def test_like_wildcards_are_literal(repo):
-    assert await repo.search_streets("%%%", 5) == []
+    # "%" and "_" are escaped, so "sudirman%" only matches a name containing that text.
+    assert await repo.search_streets("sudirman%", 5) == []
+    assert await repo.search_streets("sudirma_", 5) == []
 
 
 async def test_roads_geojson(repo):

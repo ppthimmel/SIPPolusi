@@ -5,16 +5,104 @@ no I/O, so they can be unit tested with synthetic graphs (Tabel 5.5).
 """
 from __future__ import annotations
 
-from collections import deque
+import math
+from collections import Counter, deque
+from collections.abc import Iterable, Mapping
+from typing import Any
 
 from .errors import NoRouteFound, PointNotOnNetwork
-from .models import BBox, Mode, Point, RoadEdge, RoadGraph, SnapResult, Subgraph, haversine_m
+from .models import BBox, Mode, Point, RoadEdge, RoadGraph, RoadNode, SnapResult, Subgraph, haversine_m
 
 MIN_BUFFER_M = 500.0
 BUFFER_RATIO = 0.25
 DEFAULT_SNAP_DISTANCE_M = 200.0
 # Absorbs float rounding so a node exactly at max_distance_m is accepted (UT-BE-05d).
 _DISTANCE_TOLERANCE_M = 1e-6
+# Allowed gap between an edge's first/last vertex and its u/v node. Coordinates
+# come from ST_AsGeoJSON(geom, 6), so they are rounded to 1e-6 degrees (~0.1 m).
+_ENDPOINT_TOLERANCE_DEG = 1e-5
+
+# Reasons an edge row is left out of a RoadGraph (RoadGraph.rejected keys).
+REJECT_NOT_ALLOWED = "not_allowed_for_mode"
+REJECT_DUPLICATE_ID = "duplicate_edge_id"
+REJECT_MISSING_ENDPOINT = "missing_endpoint_node"
+REJECT_MISSING_GEOMETRY = "missing_geometry"
+REJECT_INVALID_LENGTH = "invalid_length"
+REJECT_ENDPOINT_MISMATCH = "geometry_endpoint_mismatch"
+REJECT_NODE_WITHOUT_GEOMETRY = "node_without_geometry"
+
+
+def _valid_length(value: Any) -> bool:
+    return isinstance(value, (int, float)) and math.isfinite(value) and value > 0
+
+
+def _near(vertex: list[float], node: RoadNode) -> bool:
+    return (abs(vertex[0] - node.lon) <= _ENDPOINT_TOLERANCE_DEG
+            and abs(vertex[1] - node.lat) <= _ENDPOINT_TOLERANCE_DEG)
+
+
+def assemble_road_graph(
+    graph_version: str,
+    mode: Mode,
+    bbox: BBox,
+    node_rows: Iterable[Mapping[str, Any]],
+    edge_rows: Iterable[Mapping[str, Any]],
+) -> RoadGraph:
+    """Build a validated RoadGraph from osm.road_node and osm.road_edge rows.
+
+    An edge is kept only when the mode may use it, its edge_id is not repeated,
+    both endpoint nodes exist with a location, it has a geometry of at least two
+    vertices, length_m is a positive number and, when coordinates were fetched,
+    the geometry starts at u and ends at v. Every other row is counted in
+    RoadGraph.rejected by reason, so callers can always rely on geometry and
+    length being usable for travel time, exposure and EdgeWeight mapping.
+
+    Edge rows carry `has_geometry`; `coordinates` is optional ([[lon, lat], ...]).
+    """
+    rejected: Counter[str] = Counter()
+
+    nodes: dict[int, RoadNode] = {}
+    for r in node_rows:
+        if r["lon"] is None or r["lat"] is None:
+            rejected[REJECT_NODE_WITHOUT_GEOMETRY] += 1
+            continue
+        nodes[r["node_id"]] = RoadNode(r["node_id"], r["lon"], r["lat"], r.get("tags") or {})
+
+    edges: list[RoadEdge] = []
+    seen: set[int] = set()
+    for r in edge_rows:
+        edge = RoadEdge(
+            edge_id=r["edge_id"], u=r["u"], v=r["v"], length_m=r["length_m"],
+            highway=r["highway"], name=r.get("name"), oneway=bool(r["oneway"]),
+            walk_allowed=bool(r["walk_allowed"]), bike_allowed=bool(r["bike_allowed"]),
+            osm_way_id=r.get("osm_way_id"), coordinates=r.get("coordinates"),
+        )
+        coordinates = edge.coordinates
+        if not mode.allows(edge):
+            reason = REJECT_NOT_ALLOWED
+        elif edge.edge_id in seen:
+            reason = REJECT_DUPLICATE_ID
+        elif edge.u not in nodes or edge.v not in nodes:
+            reason = REJECT_MISSING_ENDPOINT
+        elif not r["has_geometry"] or (coordinates is not None and len(coordinates) < 2):
+            reason = REJECT_MISSING_GEOMETRY
+        elif not _valid_length(edge.length_m):
+            reason = REJECT_INVALID_LENGTH
+        elif coordinates is not None and not (
+            _near(coordinates[0], nodes[edge.u]) and _near(coordinates[-1], nodes[edge.v])
+        ):
+            reason = REJECT_ENDPOINT_MISMATCH
+        else:
+            seen.add(edge.edge_id)
+            edges.append(edge)
+            continue
+        rejected[reason] += 1
+
+    # Keep only nodes that a kept edge touches.
+    used = {e.u for e in edges} | {e.v for e in edges}
+    nodes = {node_id: node for node_id, node in nodes.items() if node_id in used}
+    return RoadGraph(graph_version=graph_version, mode=mode, bbox=bbox,
+                     nodes=nodes, edges=edges, rejected=dict(rejected))
 
 
 def request_buffer_m(straight_line_m: float, buffer_m: float | None = None) -> float:
@@ -126,4 +214,5 @@ def assemble_request_subgraph(
         destination_snap_distance_m=destination_snap.distance_m,
         nodes={n: road_graph.nodes[n] for n in reached},
         edges=[e for e in usable if not e.is_self_loop and e.u in reached and e.v in reached],
+        rejected=dict(road_graph.rejected),
     )

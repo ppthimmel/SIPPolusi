@@ -145,6 +145,17 @@ def test_streets(client):
     assert_error(client.get("/v1/osm/streets", params={"q": "ab"}), 400, "invalid_request")
 
 
+@pytest.mark.parametrize("q", ["%%%", "a b c", "jl.", "___", "  ab  "])
+def test_streets_without_three_letters_is_400(client, repo, q):
+    assert_error(client.get("/v1/osm/streets", params={"q": q}), 400, "invalid_request")
+    assert "search_streets" not in repo.calls
+
+
+@pytest.mark.parametrize("q", ["Jl. Sudirman", "kh mas mansyur", "123"])
+def test_streets_accepts_real_queries(client, q):
+    assert client.get("/v1/osm/streets", params={"q": q}).status_code == 200
+
+
 def test_subgraph(client):
     body = {
         "origin": {"lat": ORIGIN_LAT, "lon": ORIGIN_LON},
@@ -178,3 +189,63 @@ def test_subgraph_destination_outside_study_area(client):
 
 def test_unknown_path_uses_error_schema(client):
     assert_error(client.get("/v1/osm/nope"), 404, "not_found")
+
+
+# Edge cases --------------------------------------------------------------------
+
+BIGINT_OVERFLOW = 2**63
+
+
+@pytest.mark.parametrize("path", [f"/v1/osm/nodes/{BIGINT_OVERFLOW}", f"/v1/osm/edges/{BIGINT_OVERFLOW}",
+                                  "/v1/osm/nodes/0", "/v1/osm/edges/-1", "/v1/osm/nodes/abc"])
+def test_out_of_range_ids_are_400(client, repo, path):
+    assert_error(client.get(path), 400, "invalid_request")
+    assert not {"get_node", "get_edge"} & set(repo.calls)
+
+
+def test_wrong_method_is_405(client):
+    assert_error(client.post("/v1/osm/version"), 405, "method_not_allowed")
+
+
+def test_malformed_request_id_is_replaced(client):
+    resp = client.get("/v1/osm/version", headers={"X-Request-ID": "bad id with spaces"})
+    uuid.UUID(resp.headers["X-Request-ID"], version=4)
+
+
+@pytest.mark.parametrize("limit", [0, 21])
+def test_street_limit_bounds(client, limit):
+    assert_error(client.get("/v1/osm/streets", params={"q": "sudirman", "limit": limit}), 400, "invalid_request")
+
+
+@pytest.mark.parametrize("radius", [0, 1001])
+def test_snap_radius_bounds(client, radius):
+    params = {"lon": ORIGIN_LON, "lat": ORIGIN_LAT, "mode": "walk", "max_distance_m": radius}
+    assert_error(client.get("/v1/osm/nearest-node", params=params), 400, "invalid_request")
+
+
+@pytest.mark.parametrize("change", [
+    {"buffer_m": 20000},
+    {"mode": "car"},
+    {"origin": {"lat": 106.8, "lon": -6.2}},
+    {"destination": None},
+])
+def test_subgraph_invalid_body_is_400(client, repo, change):
+    body = {"origin": {"lat": ORIGIN_LAT, "lon": ORIGIN_LON},
+            "destination": {"lat": ORIGIN_LAT + STEP_DEG, "lon": ORIGIN_LON}, "mode": "walk", **change}
+    body = {k: v for k, v in body.items() if v is not None}
+    assert_error(client.post("/v1/osm/subgraph", json=body), 400, "invalid_request")
+    assert "read_road_graph" not in repo.calls
+
+
+def test_subgraph_same_origin_and_destination(client):
+    point = {"lat": ORIGIN_LAT, "lon": ORIGIN_LON}
+    out = client.post("/v1/osm/subgraph", json={"origin": point, "destination": point, "mode": "walk"}).json()
+    assert out["origin_node"] == out["destination_node"] == node_id(0, 0)
+
+
+def test_origin_outside_study_area_names_origin(client):
+    body = {"origin": {"lat": -5.75, "lon": 106.55}, "destination": {"lat": ORIGIN_LAT, "lon": ORIGIN_LON},
+            "mode": "walk"}
+    resp = client.post("/v1/osm/subgraph", json=body)
+    assert_error(resp, 422, "outside_study_area")
+    assert "asal" in resp.json()["error"]["message"]
