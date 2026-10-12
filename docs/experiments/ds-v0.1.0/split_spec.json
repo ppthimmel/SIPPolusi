@@ -1,0 +1,977 @@
+{
+  "version": "ds-v0.1.0",
+  "seed": 42,
+  "lag_windows": 24,
+  "blocks": {
+    "train": {
+      "first_window": "2026-09-13T00:00:00Z",
+      "end_window_exclusive": "2026-09-24T00:00:00Z"
+    },
+    "val": {
+      "first_window": "2026-09-25T00:00:00Z",
+      "end_window_exclusive": "2026-09-28T00:00:00Z"
+    },
+    "test": {
+      "first_window": "2026-09-29T00:00:00Z",
+      "end_window_exclusive": "2026-09-30T23:00:00Z"
+    }
+  },
+  "gaps_hours": {
+    "train->val": 25.0,
+    "val->test": 25.0
+  },
+  "min_gap_hours": 24,
+  "groups": {
+    "max_distance_m": 300.0,
+    "duplicate_identical_fraction": 0.2
+  },
+  "station_split": {
+    "fractions": {
+      "train": 0.7,
+      "val": 0.15,
+      "test": 0.15
+    },
+    "strata": [
+      "station_type",
+      "kota"
+    ]
+  },
+  "evaluation": {
+    "pm25": [
+      "fixed_split",
+      "loso"
+    ],
+    "no2": [
+      "loso"
+    ]
+  },
+  "rules": [
+    "Grup stasiun: sel 100 m sama, jarak < 300 m (transitif), atau duplikat penyedia.",
+    "Split stasiun per grup: urut strata (tipe stasiun, kota), acak dalam strata dengan seed, label posisi sistematis (systematic_labels).",
+    "PM2.5: split s = stasiun split s × blok s (blind ganda); baris lain tidak masuk split.",
+    "NO2: blok temporal untuk seluruh stasiun NO2; evaluasi spasial memakai fold LOSO per grup.",
+    "Fitur berbasis sensor (dist_nearest_sensor_m) dari stasiun train; per fold LOSO tanpa grup yang ditahan."
+  ],
+  "group_assignment": [
+    {
+      "group_id": "G_DKI5",
+      "station_type": "Reference",
+      "kota": "KOTA ADM. JAKARTA BARAT",
+      "n_stations": 1,
+      "kode": "DKI5",
+      "station_split": "train"
+    },
+    {
+      "group_id": "G_pm25_kemayoran",
+      "station_type": "Reference",
+      "kota": "KOTA ADM. JAKARTA PUSAT",
+      "n_stations": 1,
+      "kode": "pm25_kemayoran",
+      "station_split": "train"
+    },
+    {
+      "group_id": "G_DKI1",
+      "station_type": "Reference",
+      "kota": "KOTA ADM. JAKARTA PUSAT",
+      "n_stations": 1,
+      "kode": "DKI1",
+      "station_split": "train"
+    },
+    {
+      "group_id": "G_DKI3",
+      "station_type": "Reference",
+      "kota": "KOTA ADM. JAKARTA SELATAN",
+      "n_stations": 1,
+      "kode": "DKI3",
+      "station_split": "val"
+    },
+    {
+      "group_id": "G_DKJ36",
+      "station_type": "Reference",
+      "kota": "KOTA ADM. JAKARTA SELATAN",
+      "n_stations": 1,
+      "kode": "DKJ36",
+      "station_split": "train"
+    },
+    {
+      "group_id": "G_DKI4",
+      "station_type": "Reference",
+      "kota": "KOTA ADM. JAKARTA TIMUR",
+      "n_stations": 1,
+      "kode": "DKI4",
+      "station_split": "train"
+    },
+    {
+      "group_id": "G_DKI105",
+      "station_type": "Reference",
+      "kota": "KOTA ADM. JAKARTA TIMUR",
+      "n_stations": 1,
+      "kode": "DKI105",
+      "station_split": "test"
+    },
+    {
+      "group_id": "G_DKI101",
+      "station_type": "Reference",
+      "kota": "KOTA ADM. JAKARTA TIMUR",
+      "n_stations": 1,
+      "kode": "DKI101",
+      "station_split": "train"
+    },
+    {
+      "group_id": "G_DKI98",
+      "station_type": "Reference",
+      "kota": "KOTA ADM. JAKARTA TIMUR",
+      "n_stations": 2,
+      "kode": "DKI98,DKJ37",
+      "station_split": "train"
+    },
+    {
+      "group_id": "G_DKI104",
+      "station_type": "Reference",
+      "kota": "KOTA ADM. JAKARTA TIMUR",
+      "n_stations": 1,
+      "kode": "DKI104",
+      "station_split": "val"
+    },
+    {
+      "group_id": "G_DKI103",
+      "station_type": "Reference",
+      "kota": "KOTA ADM. JAKARTA UTARA",
+      "n_stations": 1,
+      "kode": "DKI103",
+      "station_split": "train"
+    },
+    {
+      "group_id": "G_DKI99",
+      "station_type": "Reference",
+      "kota": "KOTA ADM. JAKARTA UTARA",
+      "n_stations": 1,
+      "kode": "DKI99",
+      "station_split": "train"
+    },
+    {
+      "group_id": "G_DKI100",
+      "station_type": "Reference",
+      "kota": "KOTA ADM. JAKARTA UTARA",
+      "n_stations": 1,
+      "kode": "DKI100",
+      "station_split": "train"
+    },
+    {
+      "group_id": "G_DKI102",
+      "station_type": "Reference",
+      "kota": "KOTA ADM. JAKARTA UTARA",
+      "n_stations": 1,
+      "kode": "DKI102",
+      "station_split": "test"
+    },
+    {
+      "group_id": "G_DKI2",
+      "station_type": "Reference",
+      "kota": "KOTA ADM. JAKARTA UTARA",
+      "n_stations": 2,
+      "kode": "DKI2,LCS-10",
+      "station_split": "train"
+    },
+    {
+      "group_id": "G_DKI_PM25_62",
+      "station_type": "Sensor",
+      "kota": "KOTA ADM. JAKARTA BARAT",
+      "n_stations": 1,
+      "kode": "DKI_PM25_62",
+      "station_split": "train"
+    },
+    {
+      "group_id": "G_LCS-05",
+      "station_type": "Sensor",
+      "kota": "KOTA ADM. JAKARTA BARAT",
+      "n_stations": 1,
+      "kode": "LCS-05",
+      "station_split": "val"
+    },
+    {
+      "group_id": "G_DKI_PM25_60",
+      "station_type": "Sensor",
+      "kota": "KOTA ADM. JAKARTA BARAT",
+      "n_stations": 1,
+      "kode": "DKI_PM25_60",
+      "station_split": "train"
+    },
+    {
+      "group_id": "G_DKI_PM25_44",
+      "station_type": "Sensor",
+      "kota": "KOTA ADM. JAKARTA BARAT",
+      "n_stations": 1,
+      "kode": "DKI_PM25_44",
+      "station_split": "train"
+    },
+    {
+      "group_id": "G_DKI_PM25_12",
+      "station_type": "Sensor",
+      "kota": "KOTA ADM. JAKARTA BARAT",
+      "n_stations": 1,
+      "kode": "DKI_PM25_12",
+      "station_split": "test"
+    },
+    {
+      "group_id": "G_DKJ35",
+      "station_type": "Sensor",
+      "kota": "KOTA ADM. JAKARTA BARAT",
+      "n_stations": 1,
+      "kode": "DKJ35",
+      "station_split": "train"
+    },
+    {
+      "group_id": "G_DKI_PM25_58",
+      "station_type": "Sensor",
+      "kota": "KOTA ADM. JAKARTA BARAT",
+      "n_stations": 1,
+      "kode": "DKI_PM25_58",
+      "station_split": "train"
+    },
+    {
+      "group_id": "G_DKI_PM25_71",
+      "station_type": "Sensor",
+      "kota": "KOTA ADM. JAKARTA BARAT",
+      "n_stations": 1,
+      "kode": "DKI_PM25_71",
+      "station_split": "train"
+    },
+    {
+      "group_id": "G_DKI_GOMBOLPAYA",
+      "station_type": "Sensor",
+      "kota": "KOTA ADM. JAKARTA BARAT",
+      "n_stations": 1,
+      "kode": "DKI_GOMBOLPAYA",
+      "station_split": "val"
+    },
+    {
+      "group_id": "G_DKI_PM25_69",
+      "station_type": "Sensor",
+      "kota": "KOTA ADM. JAKARTA BARAT",
+      "n_stations": 1,
+      "kode": "DKI_PM25_69",
+      "station_split": "train"
+    },
+    {
+      "group_id": "G_DKI_PM25_80",
+      "station_type": "Sensor",
+      "kota": "KOTA ADM. JAKARTA BARAT",
+      "n_stations": 1,
+      "kode": "DKI_PM25_80",
+      "station_split": "train"
+    },
+    {
+      "group_id": "G_DKI_PM25_77",
+      "station_type": "Sensor",
+      "kota": "KOTA ADM. JAKARTA BARAT",
+      "n_stations": 1,
+      "kode": "DKI_PM25_77",
+      "station_split": "test"
+    },
+    {
+      "group_id": "G_DKI_PM25_64",
+      "station_type": "Sensor",
+      "kota": "KOTA ADM. JAKARTA BARAT",
+      "n_stations": 1,
+      "kode": "DKI_PM25_64",
+      "station_split": "train"
+    },
+    {
+      "group_id": "G_DKI_PM25_59",
+      "station_type": "Sensor",
+      "kota": "KOTA ADM. JAKARTA BARAT",
+      "n_stations": 1,
+      "kode": "DKI_PM25_59",
+      "station_split": "train"
+    },
+    {
+      "group_id": "G_LCS-21",
+      "station_type": "Sensor",
+      "kota": "KOTA ADM. JAKARTA BARAT",
+      "n_stations": 1,
+      "kode": "LCS-21",
+      "station_split": "val"
+    },
+    {
+      "group_id": "G_DKI_PM25_25",
+      "station_type": "Sensor",
+      "kota": "KOTA ADM. JAKARTA BARAT",
+      "n_stations": 1,
+      "kode": "DKI_PM25_25",
+      "station_split": "train"
+    },
+    {
+      "group_id": "G_DKI_CENDRAWASIH",
+      "station_type": "Sensor",
+      "kota": "KOTA ADM. JAKARTA BARAT",
+      "n_stations": 1,
+      "kode": "DKI_CENDRAWASIH",
+      "station_split": "train"
+    },
+    {
+      "group_id": "G_LCS-03",
+      "station_type": "Sensor",
+      "kota": "KOTA ADM. JAKARTA BARAT",
+      "n_stations": 1,
+      "kode": "LCS-03",
+      "station_split": "train"
+    },
+    {
+      "group_id": "G_LCS-08",
+      "station_type": "Sensor",
+      "kota": "KOTA ADM. JAKARTA BARAT",
+      "n_stations": 1,
+      "kode": "LCS-08",
+      "station_split": "test"
+    },
+    {
+      "group_id": "G_DKI_PM25_55",
+      "station_type": "Sensor",
+      "kota": "KOTA ADM. JAKARTA PUSAT",
+      "n_stations": 1,
+      "kode": "DKI_PM25_55",
+      "station_split": "train"
+    },
+    {
+      "group_id": "G_DKI_PM25_79",
+      "station_type": "Sensor",
+      "kota": "KOTA ADM. JAKARTA PUSAT",
+      "n_stations": 1,
+      "kode": "DKI_PM25_79",
+      "station_split": "train"
+    },
+    {
+      "group_id": "G_DKI_PM25_43",
+      "station_type": "Sensor",
+      "kota": "KOTA ADM. JAKARTA PUSAT",
+      "n_stations": 1,
+      "kode": "DKI_PM25_43",
+      "station_split": "val"
+    },
+    {
+      "group_id": "G_DKI_PM25_38",
+      "station_type": "Sensor",
+      "kota": "KOTA ADM. JAKARTA PUSAT",
+      "n_stations": 1,
+      "kode": "DKI_PM25_38",
+      "station_split": "train"
+    },
+    {
+      "group_id": "G_DKI_PM25_75",
+      "station_type": "Sensor",
+      "kota": "KOTA ADM. JAKARTA PUSAT",
+      "n_stations": 1,
+      "kode": "DKI_PM25_75",
+      "station_split": "train"
+    },
+    {
+      "group_id": "G_DKI_PM25_49",
+      "station_type": "Sensor",
+      "kota": "KOTA ADM. JAKARTA PUSAT",
+      "n_stations": 1,
+      "kode": "DKI_PM25_49",
+      "station_split": "test"
+    },
+    {
+      "group_id": "G_DKI_PM25_37",
+      "station_type": "Sensor",
+      "kota": "KOTA ADM. JAKARTA PUSAT",
+      "n_stations": 1,
+      "kode": "DKI_PM25_37",
+      "station_split": "train"
+    },
+    {
+      "group_id": "G_DKI_PM25_65",
+      "station_type": "Sensor",
+      "kota": "KOTA ADM. JAKARTA PUSAT",
+      "n_stations": 1,
+      "kode": "DKI_PM25_65",
+      "station_split": "train"
+    },
+    {
+      "group_id": "G_DKI_PM25_84",
+      "station_type": "Sensor",
+      "kota": "KOTA ADM. JAKARTA PUSAT",
+      "n_stations": 1,
+      "kode": "DKI_PM25_84",
+      "station_split": "train"
+    },
+    {
+      "group_id": "G_DKI_PM25_46",
+      "station_type": "Sensor",
+      "kota": "KOTA ADM. JAKARTA PUSAT",
+      "n_stations": 1,
+      "kode": "DKI_PM25_46",
+      "station_split": "val"
+    },
+    {
+      "group_id": "G_DKI_PM25_66",
+      "station_type": "Sensor",
+      "kota": "KOTA ADM. JAKARTA SELATAN",
+      "n_stations": 1,
+      "kode": "DKI_PM25_66",
+      "station_split": "train"
+    },
+    {
+      "group_id": "G_DKI_PM25_32",
+      "station_type": "Sensor",
+      "kota": "KOTA ADM. JAKARTA SELATAN",
+      "n_stations": 1,
+      "kode": "DKI_PM25_32",
+      "station_split": "train"
+    },
+    {
+      "group_id": "G_DKI_PM25_30",
+      "station_type": "Sensor",
+      "kota": "KOTA ADM. JAKARTA SELATAN",
+      "n_stations": 1,
+      "kode": "DKI_PM25_30",
+      "station_split": "test"
+    },
+    {
+      "group_id": "G_LCS-24",
+      "station_type": "Sensor",
+      "kota": "KOTA ADM. JAKARTA SELATAN",
+      "n_stations": 1,
+      "kode": "LCS-24",
+      "station_split": "train"
+    },
+    {
+      "group_id": "G_DKI_PM25_45",
+      "station_type": "Sensor",
+      "kota": "KOTA ADM. JAKARTA SELATAN",
+      "n_stations": 1,
+      "kode": "DKI_PM25_45",
+      "station_split": "train"
+    },
+    {
+      "group_id": "G_LCS-01",
+      "station_type": "Sensor",
+      "kota": "KOTA ADM. JAKARTA SELATAN",
+      "n_stations": 1,
+      "kode": "LCS-01",
+      "station_split": "val"
+    },
+    {
+      "group_id": "G_DKI_PM25_27",
+      "station_type": "Sensor",
+      "kota": "KOTA ADM. JAKARTA SELATAN",
+      "n_stations": 1,
+      "kode": "DKI_PM25_27",
+      "station_split": "train"
+    },
+    {
+      "group_id": "G_DKI_PM25_14",
+      "station_type": "Sensor",
+      "kota": "KOTA ADM. JAKARTA SELATAN",
+      "n_stations": 1,
+      "kode": "DKI_PM25_14",
+      "station_split": "train"
+    },
+    {
+      "group_id": "G_DKI_PM25_50",
+      "station_type": "Sensor",
+      "kota": "KOTA ADM. JAKARTA SELATAN",
+      "n_stations": 1,
+      "kode": "DKI_PM25_50",
+      "station_split": "train"
+    },
+    {
+      "group_id": "G_DKI_PM25_48",
+      "station_type": "Sensor",
+      "kota": "KOTA ADM. JAKARTA SELATAN",
+      "n_stations": 1,
+      "kode": "DKI_PM25_48",
+      "station_split": "test"
+    },
+    {
+      "group_id": "G_LCS-06",
+      "station_type": "Sensor",
+      "kota": "KOTA ADM. JAKARTA SELATAN",
+      "n_stations": 1,
+      "kode": "LCS-06",
+      "station_split": "train"
+    },
+    {
+      "group_id": "G_DKI_PM25_85",
+      "station_type": "Sensor",
+      "kota": "KOTA ADM. JAKARTA SELATAN",
+      "n_stations": 1,
+      "kode": "DKI_PM25_85",
+      "station_split": "train"
+    },
+    {
+      "group_id": "G_LCS-07",
+      "station_type": "Sensor",
+      "kota": "KOTA ADM. JAKARTA SELATAN",
+      "n_stations": 1,
+      "kode": "LCS-07",
+      "station_split": "val"
+    },
+    {
+      "group_id": "G_LCS-04",
+      "station_type": "Sensor",
+      "kota": "KOTA ADM. JAKARTA SELATAN",
+      "n_stations": 1,
+      "kode": "LCS-04",
+      "station_split": "train"
+    },
+    {
+      "group_id": "G_DKI_PM25_20",
+      "station_type": "Sensor",
+      "kota": "KOTA ADM. JAKARTA SELATAN",
+      "n_stations": 1,
+      "kode": "DKI_PM25_20",
+      "station_split": "train"
+    },
+    {
+      "group_id": "G_DKI_PM25_53",
+      "station_type": "Sensor",
+      "kota": "KOTA ADM. JAKARTA SELATAN",
+      "n_stations": 1,
+      "kode": "DKI_PM25_53",
+      "station_split": "test"
+    },
+    {
+      "group_id": "G_DKI_PM25_17",
+      "station_type": "Sensor",
+      "kota": "KOTA ADM. JAKARTA SELATAN",
+      "n_stations": 1,
+      "kode": "DKI_PM25_17",
+      "station_split": "train"
+    },
+    {
+      "group_id": "G_BAM02",
+      "station_type": "Sensor",
+      "kota": "KOTA ADM. JAKARTA SELATAN",
+      "n_stations": 1,
+      "kode": "BAM02",
+      "station_split": "train"
+    },
+    {
+      "group_id": "G_DKI_PM25_26",
+      "station_type": "Sensor",
+      "kota": "KOTA ADM. JAKARTA SELATAN",
+      "n_stations": 1,
+      "kode": "DKI_PM25_26",
+      "station_split": "train"
+    },
+    {
+      "group_id": "G_LCS-23",
+      "station_type": "Sensor",
+      "kota": "KOTA ADM. JAKARTA SELATAN",
+      "n_stations": 1,
+      "kode": "LCS-23",
+      "station_split": "val"
+    },
+    {
+      "group_id": "G_DKI_RAGUNAN",
+      "station_type": "Sensor",
+      "kota": "KOTA ADM. JAKARTA SELATAN",
+      "n_stations": 1,
+      "kode": "DKI_RAGUNAN",
+      "station_split": "train"
+    },
+    {
+      "group_id": "G_DKJ33",
+      "station_type": "Sensor",
+      "kota": "KOTA ADM. JAKARTA SELATAN",
+      "n_stations": 1,
+      "kode": "DKJ33",
+      "station_split": "train"
+    },
+    {
+      "group_id": "G_DKI_PM25_76",
+      "station_type": "Sensor",
+      "kota": "KOTA ADM. JAKARTA SELATAN",
+      "n_stations": 1,
+      "kode": "DKI_PM25_76",
+      "station_split": "test"
+    },
+    {
+      "group_id": "G_DKI_PM25_28",
+      "station_type": "Sensor",
+      "kota": "KOTA ADM. JAKARTA TIMUR",
+      "n_stations": 1,
+      "kode": "DKI_PM25_28",
+      "station_split": "train"
+    },
+    {
+      "group_id": "G_DKI_PM25_88",
+      "station_type": "Sensor",
+      "kota": "KOTA ADM. JAKARTA TIMUR",
+      "n_stations": 1,
+      "kode": "DKI_PM25_88",
+      "station_split": "train"
+    },
+    {
+      "group_id": "G_DKI_PM25_15",
+      "station_type": "Sensor",
+      "kota": "KOTA ADM. JAKARTA TIMUR",
+      "n_stations": 1,
+      "kode": "DKI_PM25_15",
+      "station_split": "val"
+    },
+    {
+      "group_id": "G_DKI_PM25_33",
+      "station_type": "Sensor",
+      "kota": "KOTA ADM. JAKARTA TIMUR",
+      "n_stations": 1,
+      "kode": "DKI_PM25_33",
+      "station_split": "train"
+    },
+    {
+      "group_id": "G_DKI_PM25_47",
+      "station_type": "Sensor",
+      "kota": "KOTA ADM. JAKARTA TIMUR",
+      "n_stations": 1,
+      "kode": "DKI_PM25_47",
+      "station_split": "train"
+    },
+    {
+      "group_id": "G_DKI_PM25_19",
+      "station_type": "Sensor",
+      "kota": "KOTA ADM. JAKARTA TIMUR",
+      "n_stations": 1,
+      "kode": "DKI_PM25_19",
+      "station_split": "train"
+    },
+    {
+      "group_id": "G_DKI_PM25_39",
+      "station_type": "Sensor",
+      "kota": "KOTA ADM. JAKARTA TIMUR",
+      "n_stations": 1,
+      "kode": "DKI_PM25_39",
+      "station_split": "test"
+    },
+    {
+      "group_id": "G_DKJ34",
+      "station_type": "Sensor",
+      "kota": "KOTA ADM. JAKARTA TIMUR",
+      "n_stations": 1,
+      "kode": "DKJ34",
+      "station_split": "train"
+    },
+    {
+      "group_id": "G_DKI_PM25_54",
+      "station_type": "Sensor",
+      "kota": "KOTA ADM. JAKARTA TIMUR",
+      "n_stations": 1,
+      "kode": "DKI_PM25_54",
+      "station_split": "train"
+    },
+    {
+      "group_id": "G_DKI_PM25_61",
+      "station_type": "Sensor",
+      "kota": "KOTA ADM. JAKARTA TIMUR",
+      "n_stations": 1,
+      "kode": "DKI_PM25_61",
+      "station_split": "val"
+    },
+    {
+      "group_id": "G_DKI_PM25_51",
+      "station_type": "Sensor",
+      "kota": "KOTA ADM. JAKARTA TIMUR",
+      "n_stations": 1,
+      "kode": "DKI_PM25_51",
+      "station_split": "train"
+    },
+    {
+      "group_id": "G_LCS-09",
+      "station_type": "Sensor",
+      "kota": "KOTA ADM. JAKARTA TIMUR",
+      "n_stations": 1,
+      "kode": "LCS-09",
+      "station_split": "train"
+    },
+    {
+      "group_id": "G_LCS-02",
+      "station_type": "Sensor",
+      "kota": "KOTA ADM. JAKARTA TIMUR",
+      "n_stations": 1,
+      "kode": "LCS-02",
+      "station_split": "test"
+    },
+    {
+      "group_id": "G_DKI_PM25_18",
+      "station_type": "Sensor",
+      "kota": "KOTA ADM. JAKARTA TIMUR",
+      "n_stations": 1,
+      "kode": "DKI_PM25_18",
+      "station_split": "train"
+    },
+    {
+      "group_id": "G_DKI_PM25_52",
+      "station_type": "Sensor",
+      "kota": "KOTA ADM. JAKARTA TIMUR",
+      "n_stations": 1,
+      "kode": "DKI_PM25_52",
+      "station_split": "train"
+    },
+    {
+      "group_id": "G_DKI_PULOMAS",
+      "station_type": "Sensor",
+      "kota": "KOTA ADM. JAKARTA TIMUR",
+      "n_stations": 1,
+      "kode": "DKI_PULOMAS",
+      "station_split": "train"
+    },
+    {
+      "group_id": "G_DKI_PM25_24",
+      "station_type": "Sensor",
+      "kota": "KOTA ADM. JAKARTA TIMUR",
+      "n_stations": 1,
+      "kode": "DKI_PM25_24",
+      "station_split": "val"
+    },
+    {
+      "group_id": "G_DKI_CILANGKAP",
+      "station_type": "Sensor",
+      "kota": "KOTA ADM. JAKARTA TIMUR",
+      "n_stations": 1,
+      "kode": "DKI_CILANGKAP",
+      "station_split": "train"
+    },
+    {
+      "group_id": "G_DKI_PM25_63",
+      "station_type": "Sensor",
+      "kota": "KOTA ADM. JAKARTA TIMUR",
+      "n_stations": 1,
+      "kode": "DKI_PM25_63",
+      "station_split": "train"
+    },
+    {
+      "group_id": "G_DKI_PM25_87",
+      "station_type": "Sensor",
+      "kota": "KOTA ADM. JAKARTA TIMUR",
+      "n_stations": 1,
+      "kode": "DKI_PM25_87",
+      "station_split": "test"
+    },
+    {
+      "group_id": "G_DKI_PM25_72",
+      "station_type": "Sensor",
+      "kota": "KOTA ADM. JAKARTA TIMUR",
+      "n_stations": 1,
+      "kode": "DKI_PM25_72",
+      "station_split": "train"
+    },
+    {
+      "group_id": "G_DKI_CIRACAS",
+      "station_type": "Sensor",
+      "kota": "KOTA ADM. JAKARTA TIMUR",
+      "n_stations": 1,
+      "kode": "DKI_CIRACAS",
+      "station_split": "train"
+    },
+    {
+      "group_id": "G_DKI_PM25_36",
+      "station_type": "Sensor",
+      "kota": "KOTA ADM. JAKARTA TIMUR",
+      "n_stations": 1,
+      "kode": "DKI_PM25_36",
+      "station_split": "val"
+    },
+    {
+      "group_id": "G_DKI_PM25_57",
+      "station_type": "Sensor",
+      "kota": "KOTA ADM. JAKARTA TIMUR",
+      "n_stations": 1,
+      "kode": "DKI_PM25_57",
+      "station_split": "train"
+    },
+    {
+      "group_id": "G_DKI_PM25_31",
+      "station_type": "Sensor",
+      "kota": "KOTA ADM. JAKARTA TIMUR",
+      "n_stations": 1,
+      "kode": "DKI_PM25_31",
+      "station_split": "train"
+    },
+    {
+      "group_id": "G_DKI_PM25_35",
+      "station_type": "Sensor",
+      "kota": "KOTA ADM. JAKARTA TIMUR",
+      "n_stations": 1,
+      "kode": "DKI_PM25_35",
+      "station_split": "train"
+    },
+    {
+      "group_id": "G_DKI_PM25_86",
+      "station_type": "Sensor",
+      "kota": "KOTA ADM. JAKARTA TIMUR",
+      "n_stations": 1,
+      "kode": "DKI_PM25_86",
+      "station_split": "test"
+    },
+    {
+      "group_id": "G_DKI_PM25_42",
+      "station_type": "Sensor",
+      "kota": "KOTA ADM. JAKARTA TIMUR",
+      "n_stations": 1,
+      "kode": "DKI_PM25_42",
+      "station_split": "train"
+    },
+    {
+      "group_id": "G_LCS-12",
+      "station_type": "Sensor",
+      "kota": "KOTA ADM. JAKARTA UTARA",
+      "n_stations": 1,
+      "kode": "LCS-12",
+      "station_split": "train"
+    },
+    {
+      "group_id": "G_DKI_MANGGALABISMA",
+      "station_type": "Sensor",
+      "kota": "KOTA ADM. JAKARTA UTARA",
+      "n_stations": 1,
+      "kode": "DKI_MANGGALABISMA",
+      "station_split": "val"
+    },
+    {
+      "group_id": "G_DKI_PM25_82",
+      "station_type": "Sensor",
+      "kota": "KOTA ADM. JAKARTA UTARA",
+      "n_stations": 1,
+      "kode": "DKI_PM25_82",
+      "station_split": "train"
+    },
+    {
+      "group_id": "G_DKI_PM25_41",
+      "station_type": "Sensor",
+      "kota": "KOTA ADM. JAKARTA UTARA",
+      "n_stations": 1,
+      "kode": "DKI_PM25_41",
+      "station_split": "train"
+    },
+    {
+      "group_id": "G_DKI_PM25_22",
+      "station_type": "Sensor",
+      "kota": "KOTA ADM. JAKARTA UTARA",
+      "n_stations": 1,
+      "kode": "DKI_PM25_22",
+      "station_split": "test"
+    },
+    {
+      "group_id": "G_DKI_PENJARINGAN",
+      "station_type": "Sensor",
+      "kota": "KOTA ADM. JAKARTA UTARA",
+      "n_stations": 1,
+      "kode": "DKI_PENJARINGAN",
+      "station_split": "train"
+    },
+    {
+      "group_id": "G_DKI_PM25_21",
+      "station_type": "Sensor",
+      "kota": "KOTA ADM. JAKARTA UTARA",
+      "n_stations": 1,
+      "kode": "DKI_PM25_21",
+      "station_split": "train"
+    },
+    {
+      "group_id": "G_LCS-26",
+      "station_type": "Sensor",
+      "kota": "KOTA ADM. JAKARTA UTARA",
+      "n_stations": 1,
+      "kode": "LCS-26",
+      "station_split": "train"
+    },
+    {
+      "group_id": "G_DKI_PM25_74",
+      "station_type": "Sensor",
+      "kota": "KOTA ADM. JAKARTA UTARA",
+      "n_stations": 1,
+      "kode": "DKI_PM25_74",
+      "station_split": "val"
+    },
+    {
+      "group_id": "G_DKI_PM25_34",
+      "station_type": "Sensor",
+      "kota": "KOTA ADM. JAKARTA UTARA",
+      "n_stations": 1,
+      "kode": "DKI_PM25_34",
+      "station_split": "train"
+    },
+    {
+      "group_id": "G_DKI_PM25_83",
+      "station_type": "Sensor",
+      "kota": "KOTA ADM. JAKARTA UTARA",
+      "n_stations": 1,
+      "kode": "DKI_PM25_83",
+      "station_split": "train"
+    },
+    {
+      "group_id": "G_DKI_PM25_13",
+      "station_type": "Sensor",
+      "kota": "KOTA ADM. JAKARTA UTARA",
+      "n_stations": 1,
+      "kode": "DKI_PM25_13",
+      "station_split": "test"
+    },
+    {
+      "group_id": "G_DKI_PM25_56",
+      "station_type": "Sensor",
+      "kota": "KOTA ADM. JAKARTA UTARA",
+      "n_stations": 1,
+      "kode": "DKI_PM25_56",
+      "station_split": "train"
+    },
+    {
+      "group_id": "G_DKI_PM25_16",
+      "station_type": "Sensor",
+      "kota": "KOTA ADM. JAKARTA UTARA",
+      "n_stations": 1,
+      "kode": "DKI_PM25_16",
+      "station_split": "train"
+    },
+    {
+      "group_id": "G_DKI_PM25_67",
+      "station_type": "Sensor",
+      "kota": "KOTA ADM. JAKARTA UTARA",
+      "n_stations": 1,
+      "kode": "DKI_PM25_67",
+      "station_split": "val"
+    },
+    {
+      "group_id": "G_DKI_PM25_78",
+      "station_type": "Sensor",
+      "kota": "KOTA ADM. JAKARTA UTARA",
+      "n_stations": 1,
+      "kode": "DKI_PM25_78",
+      "station_split": "train"
+    },
+    {
+      "group_id": "G_DKJ32",
+      "station_type": "Sensor",
+      "kota": "KOTA ADM. JAKARTA UTARA",
+      "n_stations": 1,
+      "kode": "DKJ32",
+      "station_split": "train"
+    },
+    {
+      "group_id": "G_DKI_PM25_29",
+      "station_type": "Sensor",
+      "kota": "KOTA ADM. JAKARTA UTARA",
+      "n_stations": 1,
+      "kode": "DKI_PM25_29",
+      "station_split": "train"
+    },
+    {
+      "group_id": "G_DKI_PM25_81",
+      "station_type": "Sensor",
+      "kota": "KOTA ADM. JAKARTA UTARA",
+      "n_stations": 1,
+      "kode": "DKI_PM25_81",
+      "station_split": "test"
+    },
+    {
+      "group_id": "G_DKI_PM25_23",
+      "station_type": "Sensor",
+      "kota": "KOTA ADM. JAKARTA UTARA",
+      "n_stations": 1,
+      "kode": "DKI_PM25_23",
+      "station_split": "train"
+    }
+  ]
+}

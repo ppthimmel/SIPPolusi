@@ -1,0 +1,66 @@
+{
+  "source": "PostgreSQL schema 'ground_truth' (SIPPolusi Data Worker)",
+  "files": {
+    "station.parquet": {
+      "rows": 127,
+      "bytes": 16268,
+      "sha256": "c973a066fea1f393ef4be92b4131d32f06855f39418179bc2baf0be3ca069996"
+    },
+    "station_metric.parquet": {
+      "rows": 197,
+      "bytes": 4664,
+      "sha256": "e6ab265d828c6d0a4a1b0d28dc5e9de7e172c096ef3fec761485a8e0e020ed75"
+    },
+    "observation.parquet": {
+      "rows": 171354,
+      "bytes": 444097,
+      "min_ts_utc": "2026-09-13T00:26:00+00:00",
+      "max_ts_utc": "2026-10-06T06:13:00+00:00",
+      "sha256": "5916c436a389e6756aca745a1538663b335b57fd0f185201f2dc99c55ac127f2"
+    },
+    "observation_ispu.parquet": {
+      "rows": 96546,
+      "bytes": 58066,
+      "min_ts_utc": "2026-09-13T00:00:00+00:00",
+      "max_ts_utc": "2026-10-06T06:00:00+00:00",
+      "sha256": "0cae83da542b04dfd06dc3a4475f2f188a268b1dec52137f7aa70a24ddf862e7"
+    },
+    "meteo.parquet": {
+      "rows": 109367,
+      "bytes": 418787,
+      "min_ts_utc": "2026-09-13T00:26:00+00:00",
+      "max_ts_utc": "2026-10-06T06:13:00+00:00",
+      "sha256": "ef1af44ceb8e83f9004878f875e8775229049b918ecc543e39a7333277df9885"
+    },
+    "daily_ispu.parquet": {
+      "rows": 6068,
+      "bytes": 36169,
+      "min_date_utc": "2026-06-01",
+      "max_date_utc": "2026-10-06",
+      "sha256": "8554f731d9bd9e1a8631bcd4048b2b241eb43df1b193205598e3a16ac7bd069d"
+    },
+    "observation_revision.parquet": {
+      "rows": 6226,
+      "bytes": 45786,
+      "min_ts_utc": "2026-09-13T20:00:00+00:00",
+      "max_ts_utc": "2026-10-06T05:00:00+00:00",
+      "sha256": "2fdd7c1aa2de34aa449d22b8dccb78e0e39c5aa8def8121803436d0a54ef9f55"
+    },
+    "station_status.parquet": {
+      "rows": 22944,
+      "bytes": 222773,
+      "min_fetched_utc": "2026-09-15T07:21:29+00:00",
+      "max_fetched_utc": "2026-10-06T06:21:20+00:00",
+      "sha256": "3f604eb59b144f6c6eb87ff52ce2b5a4ffe20fcbbea415bb9833d8a83218f9ee"
+    },
+    "run.parquet": {
+      "rows": 616,
+      "bytes": 20601,
+      "min_started_utc": "2026-09-15T07:21:27+00:00",
+      "max_started_utc": "2026-10-06T06:19:20+00:00",
+      "sha256": "d5d0151ff143c0c37db9e470acda2a645bde3a99a590b602c8785dc56d475e37"
+    }
+  },
+  "snapshot_utc": "2026-10-06T06:22:15.075236+00:00",
+  "exported_utc": "2026-10-06T06:22:37+00:00"
+}
