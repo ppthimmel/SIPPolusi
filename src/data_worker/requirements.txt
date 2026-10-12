@@ -6,7 +6,8 @@ geopandas
 rasterio
 xarray
 osmnx
-torch-geometric
+torch>=2.2,<3
+torch-geometric>=2.5,<3
 # Konektor ground truth SPKU dan penyimpanan PostgreSQL (skema ground_truth)
 requests>=2.31
 psycopg[binary]>=3.1
