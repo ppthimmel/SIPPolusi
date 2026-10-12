@@ -1,0 +1,15 @@
+# Runs only the OSM API, kept apart from the root docker-compose.yml.
+#   docker compose -f src/backend/osm/docker-compose.yml up --build
+# DATABASE_URL (and optional OSM_* settings) come from src/backend/.env.
+services:
+  backend_osm:
+    build:
+      context: .
+      target: runtime
+    image: sippolusi-backend-osm:latest
+    restart: unless-stopped
+    env_file: ../.env
+    environment:
+      PORT: "8000"
+    ports:
+      - "8001:8000"
