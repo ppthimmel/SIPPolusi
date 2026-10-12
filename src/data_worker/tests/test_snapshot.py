@@ -16,6 +16,7 @@ import pytest
 from feature_matrix.labels import LabelRules, annotate_readings
 from spatial_model.baseline.evaluate import fixed_split_predict, loso_predict
 from spatial_model.snapshot.build import DEFAULT_CONFIG, build_snapshot, verify_checksums
+from spatial_model.snapshot.leakage import weather_violations
 from spatial_model.snapshot.split import split_groups, station_groups, systematic_labels
 
 # 14 lokasi di Jakarta; s00 dan s01 berjarak ±150 m (satu grup).
@@ -203,3 +204,14 @@ def test_loso_menahan_seluruh_grup():
 def test_split_tetap_hanya_dari_stasiun_train():
     pred = fixed_split_predict(_toy(), power=2.0, neighbors=0)
     assert set(pred.station_uuid) == {"a", "b"} and (pred.predicted == 20.0).all()
+
+
+@pytest.mark.parametrize("clock", ["weather_time_utc", "weather_available_at_utc"])
+def test_kebocoran_cuaca_diperiksa_walau_suhu_hilang(snapshot, clock):
+    f = pd.read_parquet(snapshot["dir"] / "stgnn" / "features.parquet").head(50).copy()
+    assert weather_violations(f) == 0
+    f.loc[0, "temperature_2m"] = np.nan                       # angin dan variabel lain tetap ada
+    f.loc[0, clock] = f.loc[0, "time_utc"] + pd.Timedelta(hours=1)
+    assert weather_violations(f) == 1
+    f.loc[0, clock] = pd.NaT
+    assert weather_violations(f) == 1

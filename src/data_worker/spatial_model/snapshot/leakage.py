@@ -8,6 +8,7 @@ import numpy as np
 import pandas as pd
 
 from feature_matrix.grid import nearest_sensor_distance, to_grid_xy
+from feature_matrix.sources import WEATHER
 
 from .split import SPLITS, block_gaps_hours
 
@@ -17,6 +18,14 @@ DIST_TOL_M = 0.01      # dist_nearest_sensor_m disimpan float32
 def _check(checks, cid, name, violations, detail):
     checks.append(dict(id=cid, check=name, status="lolos" if violations == 0 else "gagal",
                        violations=int(violations), detail=detail))
+
+
+def weather_violations(frame: pd.DataFrame) -> int:
+    """Baris dengan nilai cuaca apa pun yang jam valid/tersedianya hilang atau melewati ``time_utc``."""
+    ok = frame[WEATHER].notna().any(axis=1)
+    cols = ["weather_time_utc", "weather_available_at_utc"]
+    return int((frame.loc[ok, cols].gt(frame.loc[ok, "time_utc"], axis=0).any(axis=1)
+                | frame.loc[ok, cols].isna().any(axis=1)).sum())
 
 
 def leakage_report(out: Path, cfg: dict, labels: pd.DataFrame, stations: pd.DataFrame,
@@ -140,11 +149,8 @@ def leakage_report(out: Path, cfg: dict, labels: pd.DataFrame, stations: pd.Data
                          | (g.loc[ok, f"geoscf_{var}_time_window_end"] > g.loc[ok, "time_utc"])
                          | g.loc[ok, f"geoscf_{var}_available_at_utc"].isna()).sum())
     w = pd.read_parquet(out / "stgnn" / "features.parquet",
-                        columns=["time_utc", "temperature_2m", "weather_time_utc", "weather_available_at_utc"])
-    ok = w.temperature_2m.notna()
-    cols = ["weather_time_utc", "weather_available_at_utc"]
-    weather_bad = int((w.loc[ok, cols].gt(w.loc[ok, "time_utc"], axis=0).any(axis=1)
-                       | w.loc[ok, cols].isna().any(axis=1)).sum())
+                        columns=["time_utc", *WEATHER, "weather_time_utc", "weather_available_at_utc"])
+    weather_bad = weather_violations(w)
     _check(checks, "geoscf_available", "Seluruh fitur GEOS-CF (dan cuaca) memenuhi waktu tersedia <= waktu inferensi",
            geos_bad + weather_bad, f"{len(g):_} baris fitur diperiksa; pelanggaran GEOS-CF {geos_bad}, "
                                    f"cuaca {weather_bad}".replace("_", "."))
