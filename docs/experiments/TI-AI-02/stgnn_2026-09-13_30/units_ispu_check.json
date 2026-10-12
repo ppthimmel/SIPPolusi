@@ -1,0 +1,46 @@
+{
+  "window_hours": 24,
+  "tolerance_ispu": 2.0,
+  "results": {
+    "PM25": {
+      "ugm3": {
+        "n": 54276,
+        "median_abs_diff": 0.55,
+        "within_tolerance": 0.9453
+      }
+    },
+    "PM10": {
+      "ugm3": {
+        "n": 4643,
+        "median_abs_diff": 0.29,
+        "within_tolerance": 0.9681
+      }
+    },
+    "NO2": {
+      "ugm3": {
+        "n": 6672,
+        "median_abs_diff": 0.55,
+        "within_tolerance": 0.8407
+      },
+      "ppb": {
+        "n": 6672,
+        "median_abs_diff": 19.07,
+        "within_tolerance": 0.0
+      }
+    },
+    "SO2": {
+      "ugm3": {
+        "n": 5730,
+        "median_abs_diff": 0.38,
+        "within_tolerance": 0.9909
+      }
+    },
+    "CO": {
+      "ugm3": {
+        "n": 5664,
+        "median_abs_diff": 0.43,
+        "within_tolerance": 0.9966
+      }
+    }
+  }
+}

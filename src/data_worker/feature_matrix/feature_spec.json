@@ -1,0 +1,716 @@
+{
+  "description": "Data dictionary FeatureMatrix grid-jam ST-GNN (TI-AI-02): satu baris per (sel 100 m, jam).",
+  "model_inputs": {
+    "temporal": [
+      "no2_mol_m2",
+      "ntl",
+      "temperature_2m",
+      "relative_humidity_2m",
+      "wind_speed_10m",
+      "wind_direction_10m",
+      "boundary_layer_height",
+      "precipitation",
+      "surface_pressure",
+      "geoscf_pm25_ugm3",
+      "geoscf_no2_ugm3",
+      "no2_mol_m2_age_hours",
+      "ntl_age_hours",
+      "geoscf_pm25_age_hours",
+      "geoscf_no2_age_hours",
+      "weather_age_hours"
+    ],
+    "land_static": [
+      "ndvi",
+      "ndbi",
+      "ndvi_age_hours",
+      "ndbi_age_hours"
+    ],
+    "sensor_static": [
+      "dist_nearest_sensor_m"
+    ]
+  },
+  "features": [
+    {
+      "name": "time_utc",
+      "dtype": "timestamp[ns, UTC]",
+      "unit": "UTC",
+      "role": "key",
+      "source": "-",
+      "alignment": "akhir jam label = waktu inferensi τ; time window desain = [τ − 1 jam, τ)"
+    },
+    {
+      "name": "grid_id",
+      "dtype": "string",
+      "unit": "-",
+      "role": "key",
+      "source": "grid TI-AI-01",
+      "alignment": "rRRRR_cCCCC, baris 0 di utara, EPSG:32748 100 m, 445 × 445"
+    },
+    {
+      "name": "easting",
+      "dtype": "float64",
+      "unit": "m",
+      "role": "provenance",
+      "source": "grid TI-AI-01",
+      "alignment": "pusat sel"
+    },
+    {
+      "name": "northing",
+      "dtype": "float64",
+      "unit": "m",
+      "role": "provenance",
+      "source": "grid TI-AI-01",
+      "alignment": "pusat sel"
+    },
+    {
+      "name": "longitude",
+      "dtype": "float64",
+      "unit": "deg",
+      "role": "provenance",
+      "source": "grid TI-AI-01",
+      "alignment": "pusat sel"
+    },
+    {
+      "name": "latitude",
+      "dtype": "float64",
+      "unit": "deg",
+      "role": "provenance",
+      "source": "grid TI-AI-01",
+      "alignment": "pusat sel"
+    },
+    {
+      "name": "ndvi",
+      "dtype": "float32",
+      "unit": "1",
+      "role": "land",
+      "source": "Landsat 8/9 C2 L2 (landsat-xland-2)",
+      "alignment": "30 m → rata-rata sel 100 m per scene; pengamatan valid terakhir dengan produced_at <= time_utc"
+    },
+    {
+      "name": "ndvi_observed_at",
+      "dtype": "timestamp[ns, UTC]",
+      "unit": "UTC",
+      "role": "provenance",
+      "source": "Landsat 8/9 C2 L2 (landsat-xland-2)",
+      "alignment": "waktu pengamatan nilai terpilih"
+    },
+    {
+      "name": "ndvi_produced_at",
+      "dtype": "timestamp[ns, UTC]",
+      "unit": "UTC",
+      "role": "provenance",
+      "source": "Landsat 8/9 C2 L2 (landsat-xland-2)",
+      "alignment": "waktu produksi (proksi ketersediaan), <= time_utc"
+    },
+    {
+      "name": "ndvi_scene_id",
+      "dtype": "string",
+      "unit": "-",
+      "role": "provenance",
+      "source": "Landsat 8/9 C2 L2 (landsat-xland-2)",
+      "alignment": "scene/berkas sumber"
+    },
+    {
+      "name": "ndvi_age_hours",
+      "dtype": "float32",
+      "unit": "h",
+      "role": "land_age",
+      "source": "Landsat 8/9 C2 L2 (landsat-xland-2)",
+      "alignment": "time_utc − observed_at"
+    },
+    {
+      "name": "ndbi",
+      "dtype": "float32",
+      "unit": "1",
+      "role": "land",
+      "source": "Landsat 8/9 C2 L2 (landsat-xland-2)",
+      "alignment": "30 m → rata-rata sel 100 m per scene; pengamatan valid terakhir dengan produced_at <= time_utc"
+    },
+    {
+      "name": "ndbi_observed_at",
+      "dtype": "timestamp[ns, UTC]",
+      "unit": "UTC",
+      "role": "provenance",
+      "source": "Landsat 8/9 C2 L2 (landsat-xland-2)",
+      "alignment": "waktu pengamatan nilai terpilih"
+    },
+    {
+      "name": "ndbi_produced_at",
+      "dtype": "timestamp[ns, UTC]",
+      "unit": "UTC",
+      "role": "provenance",
+      "source": "Landsat 8/9 C2 L2 (landsat-xland-2)",
+      "alignment": "waktu produksi (proksi ketersediaan), <= time_utc"
+    },
+    {
+      "name": "ndbi_scene_id",
+      "dtype": "string",
+      "unit": "-",
+      "role": "provenance",
+      "source": "Landsat 8/9 C2 L2 (landsat-xland-2)",
+      "alignment": "scene/berkas sumber"
+    },
+    {
+      "name": "ndbi_age_hours",
+      "dtype": "float32",
+      "unit": "h",
+      "role": "land_age",
+      "source": "Landsat 8/9 C2 L2 (landsat-xland-2)",
+      "alignment": "time_utc − observed_at"
+    },
+    {
+      "name": "lst_c",
+      "dtype": "float32",
+      "unit": "degC",
+      "role": "excluded",
+      "source": "Landsat 8/9 C2 L2 (landsat-xland-2)",
+      "alignment": "30 m → sel 100 m; ketidakpastian ≤ 2 K; pengamatan valid terakhir dengan produced_at <= time_utc"
+    },
+    {
+      "name": "lst_c_observed_at",
+      "dtype": "timestamp[ns, UTC]",
+      "unit": "UTC",
+      "role": "provenance",
+      "source": "Landsat 8/9 C2 L2 (landsat-xland-2)",
+      "alignment": "waktu pengamatan nilai terpilih"
+    },
+    {
+      "name": "lst_c_produced_at",
+      "dtype": "timestamp[ns, UTC]",
+      "unit": "UTC",
+      "role": "provenance",
+      "source": "Landsat 8/9 C2 L2 (landsat-xland-2)",
+      "alignment": "waktu produksi (proksi ketersediaan), <= time_utc"
+    },
+    {
+      "name": "lst_c_scene_id",
+      "dtype": "string",
+      "unit": "-",
+      "role": "provenance",
+      "source": "Landsat 8/9 C2 L2 (landsat-xland-2)",
+      "alignment": "scene/berkas sumber"
+    },
+    {
+      "name": "lst_c_age_hours",
+      "dtype": "float32",
+      "unit": "h",
+      "role": "excluded",
+      "source": "Landsat 8/9 C2 L2 (landsat-xland-2)",
+      "alignment": "time_utc − observed_at"
+    },
+    {
+      "name": "no2_mol_m2",
+      "dtype": "float32",
+      "unit": "mol/m2",
+      "role": "temporal",
+      "source": "Sentinel-5P TROPOMI L2 NO2 (sentinel5p-no2-3)",
+      "alignment": "sel 5 km EPSG:32748 yang memuat pusat sel 100 m; median piksel QA ≥ 0,75; pengamatan valid terakhir dengan produced_at <= time_utc"
+    },
+    {
+      "name": "no2_mol_m2_observed_at",
+      "dtype": "timestamp[ns, UTC]",
+      "unit": "UTC",
+      "role": "provenance",
+      "source": "Sentinel-5P TROPOMI L2 NO2 (sentinel5p-no2-3)",
+      "alignment": "waktu pengamatan nilai terpilih"
+    },
+    {
+      "name": "no2_mol_m2_produced_at",
+      "dtype": "timestamp[ns, UTC]",
+      "unit": "UTC",
+      "role": "provenance",
+      "source": "Sentinel-5P TROPOMI L2 NO2 (sentinel5p-no2-3)",
+      "alignment": "waktu produksi (proksi ketersediaan), <= time_utc"
+    },
+    {
+      "name": "no2_mol_m2_scene_id",
+      "dtype": "string",
+      "unit": "-",
+      "role": "provenance",
+      "source": "Sentinel-5P TROPOMI L2 NO2 (sentinel5p-no2-3)",
+      "alignment": "scene/berkas sumber"
+    },
+    {
+      "name": "no2_mol_m2_age_hours",
+      "dtype": "float32",
+      "unit": "h",
+      "role": "temporal_age",
+      "source": "Sentinel-5P TROPOMI L2 NO2 (sentinel5p-no2-3)",
+      "alignment": "time_utc − observed_at"
+    },
+    {
+      "name": "ntl",
+      "dtype": "float32",
+      "unit": "nW/cm2/sr",
+      "role": "temporal",
+      "source": "VIIRS VNP46A2 (viirs-ntl-3)",
+      "alignment": "sel 15″ (±500 m) yang memuat pusat sel 100 m (indeks tile); pengamatan valid terakhir dengan produced_at <= time_utc"
+    },
+    {
+      "name": "ntl_observed_at",
+      "dtype": "timestamp[ns, UTC]",
+      "unit": "UTC",
+      "role": "provenance",
+      "source": "VIIRS VNP46A2 (viirs-ntl-3)",
+      "alignment": "waktu pengamatan nilai terpilih"
+    },
+    {
+      "name": "ntl_produced_at",
+      "dtype": "timestamp[ns, UTC]",
+      "unit": "UTC",
+      "role": "provenance",
+      "source": "VIIRS VNP46A2 (viirs-ntl-3)",
+      "alignment": "waktu produksi (proksi ketersediaan), <= time_utc"
+    },
+    {
+      "name": "ntl_scene_id",
+      "dtype": "string",
+      "unit": "-",
+      "role": "provenance",
+      "source": "VIIRS VNP46A2 (viirs-ntl-3)",
+      "alignment": "scene/berkas sumber"
+    },
+    {
+      "name": "ntl_age_hours",
+      "dtype": "float32",
+      "unit": "h",
+      "role": "temporal_age",
+      "source": "VIIRS VNP46A2 (viirs-ntl-3)",
+      "alignment": "time_utc − observed_at"
+    },
+    {
+      "name": "temperature_2m",
+      "dtype": "float32",
+      "unit": "degC",
+      "role": "temporal",
+      "source": "Open-Meteo Historical Forecast (open-meteo-core-1)",
+      "alignment": "satu titik (−6,2; 106,85), seragam di semua sel; valid time terbaru dengan available_at <= time_utc"
+    },
+    {
+      "name": "relative_humidity_2m",
+      "dtype": "float32",
+      "unit": "%",
+      "role": "temporal",
+      "source": "Open-Meteo Historical Forecast (open-meteo-core-1)",
+      "alignment": "satu titik (−6,2; 106,85), seragam di semua sel; valid time terbaru dengan available_at <= time_utc"
+    },
+    {
+      "name": "wind_speed_10m",
+      "dtype": "float32",
+      "unit": "km/h",
+      "role": "temporal",
+      "source": "Open-Meteo Historical Forecast (open-meteo-core-1)",
+      "alignment": "satu titik (−6,2; 106,85), seragam di semua sel; valid time terbaru dengan available_at <= time_utc"
+    },
+    {
+      "name": "wind_direction_10m",
+      "dtype": "float32",
+      "unit": "degree",
+      "role": "temporal",
+      "source": "Open-Meteo Historical Forecast (open-meteo-core-1)",
+      "alignment": "satu titik (−6,2; 106,85), seragam di semua sel; valid time terbaru dengan available_at <= time_utc"
+    },
+    {
+      "name": "boundary_layer_height",
+      "dtype": "float32",
+      "unit": "m",
+      "role": "temporal",
+      "source": "Open-Meteo Historical Forecast (open-meteo-core-1)",
+      "alignment": "satu titik (−6,2; 106,85), seragam di semua sel; valid time terbaru dengan available_at <= time_utc"
+    },
+    {
+      "name": "precipitation",
+      "dtype": "float32",
+      "unit": "mm",
+      "role": "temporal",
+      "source": "Open-Meteo Historical Forecast (open-meteo-core-1)",
+      "alignment": "satu titik (−6,2; 106,85), seragam di semua sel; valid time terbaru dengan available_at <= time_utc"
+    },
+    {
+      "name": "surface_pressure",
+      "dtype": "float32",
+      "unit": "hPa",
+      "role": "temporal",
+      "source": "Open-Meteo Historical Forecast (open-meteo-core-1)",
+      "alignment": "satu titik (−6,2; 106,85), seragam di semua sel; valid time terbaru dengan available_at <= time_utc"
+    },
+    {
+      "name": "weather_time_utc",
+      "dtype": "timestamp[ns, UTC]",
+      "unit": "UTC",
+      "role": "provenance",
+      "source": "Open-Meteo",
+      "alignment": "valid time cuaca yang dipakai, <= time_utc"
+    },
+    {
+      "name": "weather_available_at_utc",
+      "dtype": "timestamp[ns, UTC]",
+      "unit": "UTC",
+      "role": "provenance",
+      "source": "Open-Meteo",
+      "alignment": "waktu tersedia yang diasumsikan: awal run 6 jam + jeda terbit (bawaan 8 jam), <= time_utc"
+    },
+    {
+      "name": "weather_age_hours",
+      "dtype": "float32",
+      "unit": "h",
+      "role": "temporal_age",
+      "source": "Open-Meteo",
+      "alignment": "time_utc − weather_time_utc"
+    },
+    {
+      "name": "geoscf_cell_id",
+      "dtype": "int64",
+      "unit": "-",
+      "role": "provenance",
+      "source": "GEOS-CF v2 ana (geoscf-preprocessed-v1)",
+      "alignment": "sel 0,25° (lookup grid 100 m)"
+    },
+    {
+      "name": "geoscf_pm25_ugm3",
+      "dtype": "float32",
+      "unit": "ug/m3",
+      "role": "temporal",
+      "source": "GEOS-CF v2 ana (geoscf-preprocessed-v1)",
+      "alignment": "valid time terbaru dengan available_at_utc <= time_utc; nilai mentah (belum dikalibrasi)"
+    },
+    {
+      "name": "geoscf_pm25_time_window_start",
+      "dtype": "timestamp[ns, UTC]",
+      "unit": "UTC",
+      "role": "provenance",
+      "source": "GEOS-CF v2 ana (geoscf-preprocessed-v1)",
+      "alignment": "awal jam valid time"
+    },
+    {
+      "name": "geoscf_pm25_time_window_end",
+      "dtype": "timestamp[ns, UTC]",
+      "unit": "UTC",
+      "role": "provenance",
+      "source": "GEOS-CF v2 ana (geoscf-preprocessed-v1)",
+      "alignment": "akhir jam valid time"
+    },
+    {
+      "name": "geoscf_pm25_available_at_utc",
+      "dtype": "timestamp[ns, UTC]",
+      "unit": "UTC",
+      "role": "provenance",
+      "source": "GEOS-CF v2 ana (geoscf-preprocessed-v1)",
+      "alignment": "Last-Modified server (proksi publikasi), <= time_utc"
+    },
+    {
+      "name": "geoscf_pm25_latency_hours",
+      "dtype": "float64",
+      "unit": "h",
+      "role": "provenance",
+      "source": "GEOS-CF v2 ana (geoscf-preprocessed-v1)",
+      "alignment": "available_at_utc − akhir valid time"
+    },
+    {
+      "name": "geoscf_pm25_age_hours",
+      "dtype": "float32",
+      "unit": "h",
+      "role": "temporal_age",
+      "source": "GEOS-CF v2 ana (geoscf-preprocessed-v1)",
+      "alignment": "time_utc − akhir valid time"
+    },
+    {
+      "name": "geoscf_no2_ugm3",
+      "dtype": "float32",
+      "unit": "ug/m3",
+      "role": "temporal",
+      "source": "GEOS-CF v2 ana (geoscf-preprocessed-v1)",
+      "alignment": "valid time terbaru dengan available_at_utc <= time_utc; nilai mentah (belum dikalibrasi)"
+    },
+    {
+      "name": "geoscf_no2_time_window_start",
+      "dtype": "timestamp[ns, UTC]",
+      "unit": "UTC",
+      "role": "provenance",
+      "source": "GEOS-CF v2 ana (geoscf-preprocessed-v1)",
+      "alignment": "awal jam valid time"
+    },
+    {
+      "name": "geoscf_no2_time_window_end",
+      "dtype": "timestamp[ns, UTC]",
+      "unit": "UTC",
+      "role": "provenance",
+      "source": "GEOS-CF v2 ana (geoscf-preprocessed-v1)",
+      "alignment": "akhir jam valid time"
+    },
+    {
+      "name": "geoscf_no2_available_at_utc",
+      "dtype": "timestamp[ns, UTC]",
+      "unit": "UTC",
+      "role": "provenance",
+      "source": "GEOS-CF v2 ana (geoscf-preprocessed-v1)",
+      "alignment": "Last-Modified server (proksi publikasi), <= time_utc"
+    },
+    {
+      "name": "geoscf_no2_latency_hours",
+      "dtype": "float64",
+      "unit": "h",
+      "role": "provenance",
+      "source": "GEOS-CF v2 ana (geoscf-preprocessed-v1)",
+      "alignment": "available_at_utc − akhir valid time"
+    },
+    {
+      "name": "geoscf_no2_age_hours",
+      "dtype": "float32",
+      "unit": "h",
+      "role": "temporal_age",
+      "source": "GEOS-CF v2 ana (geoscf-preprocessed-v1)",
+      "alignment": "time_utc − akhir valid time"
+    },
+    {
+      "name": "node_index",
+      "dtype": "int64",
+      "unit": "-",
+      "role": "key",
+      "source": "graf ST-GNN",
+      "alignment": "indeks node di nodes.parquet"
+    },
+    {
+      "name": "dist_nearest_sensor_m",
+      "dtype": "float32",
+      "unit": "m",
+      "role": "sensor",
+      "source": "SPKU station",
+      "alignment": "jarak Euclidean EPSG:32748 pusat sel ke stasiun terdekat di himpunan yang diberikan"
+    },
+    {
+      "name": "no2_mol_m2_available",
+      "dtype": "bool",
+      "unit": "-",
+      "role": "availability",
+      "source": "turunan",
+      "alignment": "True tepat bila no2_mol_m2 finite"
+    },
+    {
+      "name": "ntl_available",
+      "dtype": "bool",
+      "unit": "-",
+      "role": "availability",
+      "source": "turunan",
+      "alignment": "True tepat bila ntl finite"
+    },
+    {
+      "name": "temperature_2m_available",
+      "dtype": "bool",
+      "unit": "-",
+      "role": "availability",
+      "source": "turunan",
+      "alignment": "True tepat bila temperature_2m finite"
+    },
+    {
+      "name": "relative_humidity_2m_available",
+      "dtype": "bool",
+      "unit": "-",
+      "role": "availability",
+      "source": "turunan",
+      "alignment": "True tepat bila relative_humidity_2m finite"
+    },
+    {
+      "name": "wind_speed_10m_available",
+      "dtype": "bool",
+      "unit": "-",
+      "role": "availability",
+      "source": "turunan",
+      "alignment": "True tepat bila wind_speed_10m finite"
+    },
+    {
+      "name": "wind_direction_10m_available",
+      "dtype": "bool",
+      "unit": "-",
+      "role": "availability",
+      "source": "turunan",
+      "alignment": "True tepat bila wind_direction_10m finite"
+    },
+    {
+      "name": "boundary_layer_height_available",
+      "dtype": "bool",
+      "unit": "-",
+      "role": "availability",
+      "source": "turunan",
+      "alignment": "True tepat bila boundary_layer_height finite"
+    },
+    {
+      "name": "precipitation_available",
+      "dtype": "bool",
+      "unit": "-",
+      "role": "availability",
+      "source": "turunan",
+      "alignment": "True tepat bila precipitation finite"
+    },
+    {
+      "name": "surface_pressure_available",
+      "dtype": "bool",
+      "unit": "-",
+      "role": "availability",
+      "source": "turunan",
+      "alignment": "True tepat bila surface_pressure finite"
+    },
+    {
+      "name": "geoscf_pm25_ugm3_available",
+      "dtype": "bool",
+      "unit": "-",
+      "role": "availability",
+      "source": "turunan",
+      "alignment": "True tepat bila geoscf_pm25_ugm3 finite"
+    },
+    {
+      "name": "geoscf_no2_ugm3_available",
+      "dtype": "bool",
+      "unit": "-",
+      "role": "availability",
+      "source": "turunan",
+      "alignment": "True tepat bila geoscf_no2_ugm3 finite"
+    },
+    {
+      "name": "ndvi_available",
+      "dtype": "bool",
+      "unit": "-",
+      "role": "availability",
+      "source": "turunan",
+      "alignment": "True tepat bila ndvi finite"
+    },
+    {
+      "name": "ndbi_available",
+      "dtype": "bool",
+      "unit": "-",
+      "role": "availability",
+      "source": "turunan",
+      "alignment": "True tepat bila ndbi finite"
+    },
+    {
+      "name": "lst_c_available",
+      "dtype": "bool",
+      "unit": "-",
+      "role": "availability",
+      "source": "turunan",
+      "alignment": "True tepat bila lst_c finite"
+    },
+    {
+      "name": "dist_nearest_sensor_m_available",
+      "dtype": "bool",
+      "unit": "-",
+      "role": "availability",
+      "source": "turunan",
+      "alignment": "True tepat bila dist_nearest_sensor_m finite"
+    }
+  ],
+  "labels": [
+    {
+      "name": "station_uuid",
+      "dtype": "string",
+      "unit": "-",
+      "role": "key",
+      "alignment": "station.uuid ekspor ground truth"
+    },
+    {
+      "name": "station_name",
+      "dtype": "string",
+      "unit": "-",
+      "role": "provenance",
+      "alignment": "station.name"
+    },
+    {
+      "name": "station_code",
+      "dtype": "string",
+      "unit": "-",
+      "role": "provenance",
+      "alignment": "station.kode"
+    },
+    {
+      "name": "station_type",
+      "dtype": "string",
+      "unit": "-",
+      "role": "provenance",
+      "alignment": "Reference | Sensor"
+    },
+    {
+      "name": "grid_id",
+      "dtype": "string",
+      "unit": "-",
+      "role": "key",
+      "alignment": "sel 100 m aktif yang memuat stasiun"
+    },
+    {
+      "name": "time_utc",
+      "dtype": "timestamp[ns, UTC]",
+      "unit": "UTC",
+      "role": "key",
+      "alignment": "akhir jam pengukuran"
+    },
+    {
+      "name": "station_latitude",
+      "dtype": "float64",
+      "unit": "deg",
+      "role": "provenance",
+      "alignment": "station.lat"
+    },
+    {
+      "name": "station_longitude",
+      "dtype": "float64",
+      "unit": "deg",
+      "role": "provenance",
+      "alignment": "station.lng"
+    },
+    {
+      "name": "station_grid_distance_m",
+      "dtype": "float64",
+      "unit": "m",
+      "role": "provenance",
+      "alignment": "haversine stasiun ke pusat sel (R = 6.371.008,8 m)"
+    },
+    {
+      "name": "target_window_start_utc",
+      "dtype": "timestamp[ns, UTC]",
+      "unit": "UTC",
+      "role": "provenance",
+      "alignment": "time_utc − 1 jam"
+    },
+    {
+      "name": "target_pm25",
+      "dtype": "float64",
+      "unit": "ug/m3",
+      "role": "target",
+      "alignment": "rata-rata pembacaan PM2.5 valid dalam [time_utc − 1 jam, time_utc)"
+    },
+    {
+      "name": "target_no2",
+      "dtype": "float64",
+      "unit": "ug/m3",
+      "role": "target",
+      "alignment": "rata-rata pembacaan NO2 valid dalam [time_utc − 1 jam, time_utc)"
+    },
+    {
+      "name": "target_pm25_n_readings",
+      "dtype": "int64",
+      "unit": "-",
+      "role": "provenance",
+      "alignment": "jumlah pembacaan"
+    },
+    {
+      "name": "target_no2_n_readings",
+      "dtype": "int64",
+      "unit": "-",
+      "role": "provenance",
+      "alignment": "jumlah pembacaan"
+    },
+    {
+      "name": "node_index",
+      "dtype": "int64",
+      "unit": "-",
+      "role": "key",
+      "alignment": "node yang memuat stasiun"
+    },
+    {
+      "name": "split",
+      "dtype": "string",
+      "unit": "-",
+      "role": "provenance",
+      "alignment": "train | validation | test (kronologis)"
+    }
+  ]
+}

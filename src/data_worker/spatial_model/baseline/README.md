@@ -56,7 +56,7 @@ dibekukan ketika snapshot diperbarui.
 
 **Ground truth.** Pengukuran PM2.5 dan NO2 sensor darat SPKU pada skema
 `ground_truth`, sampai batas `snapshot_end_utc` (eksklusif). Satuan
-diasumsikan µg/m³ (lihat `docs/DATA.md`).
+µg/m³, terverifikasi terhadap ISPU portal (lihat `docs/DATA.md`).
 
 **Kendali mutu** (urutan penerapan, jumlah baris terbuang per aturan
 tercatat pada manifest):
