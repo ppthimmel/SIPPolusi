@@ -149,12 +149,14 @@ Durasi sekitar 10 detik. Keluaran ±3,3 MB dan tidak di-commit.
 - **Metode verifikasi:** `scripts/check_ispu_units.py` menghitung ulang ISPU dari rata-rata 24 jam konsentrasi
   `observation`, dengan batas µg/m³ Permen LHK P.14/2020, lalu membandingkannya dengan ISPU portal
   (`observation_ispu`).
+  Jendela mengikuti waktu `(t − 24 jam, t]` pada tabel stasiun-jam, dengan sedikitnya 18 jam valid;
+  jam yang hilang tidak diganti dengan pengamatan lebih lama.
 - **Hasil pada ekspor 2026-10-06:** selisih ≤ 2 poin ISPU pada:
-  - PM2.5: 92,8% stasiun-jam (median selisih 0,55);
-  - PM10: 92,0%;
-  - NO2: 82,7%;
-  - SO2: 98,1%;
-  - CO: 98,5%.
+  - PM2.5: 94,5% stasiun-jam (median selisih 0,55);
+  - PM10: 96,8%;
+  - NO2: 84,1%;
+  - SO2: 99,1%;
+  - CO: 99,7%.
 - **Hipotesis ppb untuk NO2** (× 1,88) cocok pada 0%.
 - **Kesimpulan:** konsentrasi sudah dalam µg/m³, sehingga tidak diperlukan konversi satuan.
 

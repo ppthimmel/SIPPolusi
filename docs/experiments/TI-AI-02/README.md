@@ -72,12 +72,16 @@ ulang dan diverifikasi terhadap keluaran bundle:
 **Satuan label (butir 3):**
 - [`units_ispu_check.json`](stgnn_2026-09-13_30/units_ispu_check.json) menghitung ulang ISPU dari rata-rata 24 jam
   konsentrasi dengan batas µg/m³ Permen LHK P.14/2020.
+  Laporan satuan dijalankan ulang setelah perbaikan review PR #47: jendela berbasis waktu
+  `(t − 24 jam, t]`, dengan sedikitnya 18 jam valid, menggantikan jendela 24 baris.
+  Masukan berasal dari ZIP `sippolusi_ground_truth_20261006`; hash `observation.parquet` cocok dengan
+  provenans run asli. Ekspor fitur dan manifest run asli tidak berubah.
 - Hasilnya sama dengan ISPU portal (selisih ≤ 2 poin) pada:
-  - PM2.5: 92,8%;
-  - NO2: 82,7%;
-  - PM10: 92,0%;
-  - SO2: 98,1%;
-  - CO: 98,5%.
+  - PM2.5: 94,5%;
+  - NO2: 84,1%;
+  - PM10: 96,8%;
+  - SO2: 99,1%;
+  - CO: 99,7%.
 - Hipotesis ppb untuk NO2 cocok pada 0%.
 - Satuan µg/m³ terverifikasi, sehingga tidak diperlukan konversi.
 

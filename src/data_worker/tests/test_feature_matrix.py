@@ -174,6 +174,32 @@ def test_manifest_tanpa_hash_keluaran_ditolak(exported, tmp_path):
         assert check["status"] == "gagal", outputs.keys()
 
 
+@pytest.mark.parametrize("clock", ["weather_time_utc", "weather_available_at_utc"])
+@pytest.mark.parametrize("missing_clock", [False, True])
+def test_cuaca_tanpa_suhu_tetap_diperiksa(exported, tmp_path, clock, missing_clock):
+    import shutil
+    from feature_matrix.prepare_stgnn import stgnn_hash
+
+    copy = tmp_path / "weather"
+    shutil.copytree(exported, copy)
+    features = pd.read_parquet(copy / "features.parquet")
+    features.loc[0, "temperature_2m"] = np.nan
+    features.loc[0, "temperature_2m_available"] = False
+    assert pd.notna(features.loc[0, "wind_speed_10m"])
+    features.loc[0, clock] = (pd.NaT if missing_clock else
+                              features.loc[0, "time_utc"] + pd.Timedelta(hours=1))
+    features.to_parquet(copy / "features.parquet", index=False)
+    manifest = json.loads((copy / "manifest.json").read_text(encoding="utf-8"))
+    manifest["outputs"]["features.parquet"] = stgnn_hash(copy / "features.parquet")
+    (copy / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+
+    report = quality_report(copy)
+    assert report["temporal_leakage"]["weather"] == 1
+    assert not report["passed"]
+    assert all(c["status"] == "lolos" for c in report["checks"]
+               if not c["check"].startswith("tanpa kebocoran"))
+
+
 def test_viirs_aturan_tile_memakai_sudut_barat_laut():
     reader = SourceReader()
     daily = pd.read_parquet(reader.root / "viirs/daily.parquet", columns=["viirs_cell_id", "longitude", "latitude"])

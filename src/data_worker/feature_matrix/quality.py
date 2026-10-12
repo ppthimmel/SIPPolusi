@@ -10,6 +10,7 @@ import pandas as pd
 
 from .prepare_stgnn import AVAILABILITY_FLAGS, FLAGGED_VALUES, TARGETS, stgnn_hash
 from .spec import LABEL_COLUMNS, feature_columns
+from .sources import WEATHER
 
 SATELLITES = ["ndvi", "ndbi", "lst_c", "no2_mol_m2", "ntl"]
 OUTPUTS = ("features.parquet", "nodes.parquet", "edges.parquet", "labels.parquet")
@@ -85,7 +86,7 @@ def quality_report(directory: Path | str) -> dict:
         cols = [f"geoscf_{var}_time_window_end", f"geoscf_{var}_available_at_utc"]
         leaks[f"geoscf_{var}"] = int((features.loc[valid, cols].gt(features.loc[valid, "time_utc"], axis=0)
                                       .any(axis=1) | features.loc[valid, cols].isna().any(axis=1)).sum())
-    w = features.temperature_2m.notna()
+    w = features[WEATHER].notna().any(axis=1)
     cols = ["weather_time_utc", "weather_available_at_utc"]
     leaks["weather"] = int((features.loc[w, cols].gt(features.loc[w, "time_utc"], axis=0).any(axis=1)
                             | features.loc[w, cols].isna().any(axis=1)).sum())
