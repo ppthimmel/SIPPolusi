@@ -1,0 +1,67 @@
+{
+  "schema": "geoscf-fcst-preprocessed-v1",
+  "source": {
+    "product": "GEOS-CF v2 fcst aqc_tavg_1hr_glo_L1440x721_slv",
+    "access": "https://opendap.nccs.nasa.gov/dods/gmao/geos-cf/v2/fcst/aqc_tavg_1hr_glo_L1440x721_slv",
+    "availability": "Last-Modified berkas lead terakhir run di https://portal.nccs.nasa.gov/datashare/gmao/geos-cf/v2/fcst",
+    "raw_file": "geoscf_fcst_jakarta_2026.json",
+    "raw_sha256": "d11cf1b9f952497623a709b8a1e6034ca3659bdc105bdb7322cb0b2bfc6df520",
+    "variables": {
+      "pm25_rh35": "µg/m³ pada RH 35% (termasuk air)",
+      "no2": "mol/mol udara kering"
+    }
+  },
+  "runs": {
+    "n": 42,
+    "first": "2026-08-20 09:00:00+00:00",
+    "last": "2026-09-30 09:00:00+00:00",
+    "init_hour_utc": 9,
+    "leads_per_run": 120
+  },
+  "cells": {
+    "n": 9,
+    "lat_centers": [
+      -6.5,
+      -6.25,
+      -6.0
+    ],
+    "lon_centers": [
+      106.5,
+      106.75,
+      107.0
+    ],
+    "cell_id": "iy * 3 + ix (sama dengan ana)"
+  },
+  "time_alignment": "cap tavg menit ke-30 dikurangi 30 menit = time_window_start (awal jam, UTC)",
+  "availability_policy": "available_at_utc = Last-Modified lead terakhir (run lengkap); first_published_utc = Last-Modified lead pertama",
+  "publication_hours_after_init": {
+    "min": 10.953888888888889,
+    "median": 11.049583333333334,
+    "max": 17.12611111111111
+  },
+  "no2_conversion": {
+    "ugm3_per_ppb": 1.8804308553640376,
+    "T_ref_K": 298.15,
+    "P_ref_Pa": 101325.0
+  },
+  "decoded_time_mismatches": {
+    "2026-08-27T09:00:00+00:00": 1
+  },
+  "qc": {
+    "pm25_range": [
+      0.0,
+      2000.0
+    ],
+    "no2_ppb_range": [
+      0.0,
+      10000.0
+    ],
+    "pm25_missing": 0,
+    "no2_missing": 0
+  },
+  "rows": 45360,
+  "output": {
+    "file": "geoscf_fcst_cell_hourly.parquet",
+    "sha256": "d03742a7375fc0e3425e7247a4725634eea2217748bae8dc61bb146c7485a15b"
+  }
+}
