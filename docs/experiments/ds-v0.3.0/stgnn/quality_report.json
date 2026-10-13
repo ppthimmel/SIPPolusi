@@ -1,0 +1,215 @@
+{
+  "directory": "stgnn",
+  "feature_rows": 424944,
+  "feature_columns": 89,
+  "nodes": 936,
+  "label_nodes": 104,
+  "hours": 454,
+  "start_utc": "2026-09-12T02:00:00+00:00",
+  "end_utc_exclusive": "2026-10-01T00:00:00+00:00",
+  "checks": [
+    {
+      "check": "manifest lengkap dan hash keluaran cocok",
+      "status": "lolos",
+      "detail": "status complete; hash wajib 4: hilang [], tak dikenal [], tidak cocok []"
+    },
+    {
+      "check": "kolom dan tipe fitur sesuai data dictionary",
+      "status": "lolos",
+      "detail": "89 kolom"
+    },
+    {
+      "check": "kolom dan tipe label sesuai data dictionary",
+      "status": "lolos",
+      "detail": "16 kolom"
+    },
+    {
+      "check": "cakupan sel × jam lengkap",
+      "status": "lolos",
+      "detail": "936 sel × 454 jam = 424.944; tersedia 424.944 baris"
+    },
+    {
+      "check": "tanpa kunci ganda",
+      "status": "lolos",
+      "detail": "fitur (grid_id, time_utc): 0; label (station_uuid, time_utc): 0"
+    },
+    {
+      "check": "penanda ketersediaan konsisten dengan NaN",
+      "status": "lolos",
+      "detail": "0 pelanggaran pada 21 penanda"
+    },
+    {
+      "check": "tanpa kebocoran waktu (sumber tersedia <= time_utc, tanpa label di fitur)",
+      "status": "lolos",
+      "detail": "0 pelanggaran"
+    },
+    {
+      "check": "setiap label memiliki baris fitur",
+      "status": "lolos",
+      "detail": "0 label tanpa fitur"
+    }
+  ],
+  "missing_fraction": {
+    "no2_mol_m2": 0.0,
+    "ntl": 0.0,
+    "temperature_2m": 0.0,
+    "relative_humidity_2m": 0.0,
+    "wind_speed_10m": 0.0,
+    "wind_direction_10m": 0.0,
+    "boundary_layer_height": 0.0,
+    "precipitation": 0.0,
+    "surface_pressure": 0.0,
+    "geoscf_pm25_ugm3": 0.0,
+    "geoscf_no2_ugm3": 0.0,
+    "geoscf_fcst_pm25_ugm3": 0.0,
+    "geoscf_fcst_no2_ugm3": 0.0,
+    "hour_sin": 0.0,
+    "hour_cos": 0.0,
+    "weekday_sin": 0.0,
+    "weekday_cos": 0.0,
+    "ndvi": 0.029265,
+    "ndbi": 0.029265,
+    "lst_c": 0.962607,
+    "dist_nearest_sensor_m": 0.0
+  },
+  "availability_fraction": {
+    "no2_mol_m2_available": 1.0,
+    "ntl_available": 1.0,
+    "temperature_2m_available": 1.0,
+    "relative_humidity_2m_available": 1.0,
+    "wind_speed_10m_available": 1.0,
+    "wind_direction_10m_available": 1.0,
+    "boundary_layer_height_available": 1.0,
+    "precipitation_available": 1.0,
+    "surface_pressure_available": 1.0,
+    "geoscf_pm25_ugm3_available": 1.0,
+    "geoscf_no2_ugm3_available": 1.0,
+    "geoscf_fcst_pm25_ugm3_available": 1.0,
+    "geoscf_fcst_no2_ugm3_available": 1.0,
+    "hour_sin_available": 1.0,
+    "hour_cos_available": 1.0,
+    "weekday_sin_available": 1.0,
+    "weekday_cos_available": 1.0,
+    "ndvi_available": 0.970735,
+    "ndbi_available": 0.970735,
+    "lst_c_available": 0.037393,
+    "dist_nearest_sensor_m_available": 1.0
+  },
+  "availability_per_hour_min": {
+    "no2_mol_m2_available": 1.0,
+    "ntl_available": 1.0,
+    "temperature_2m_available": 1.0,
+    "relative_humidity_2m_available": 1.0,
+    "wind_speed_10m_available": 1.0,
+    "wind_direction_10m_available": 1.0,
+    "boundary_layer_height_available": 1.0,
+    "precipitation_available": 1.0,
+    "surface_pressure_available": 1.0,
+    "geoscf_pm25_ugm3_available": 1.0,
+    "geoscf_no2_ugm3_available": 1.0,
+    "geoscf_fcst_pm25_ugm3_available": 1.0,
+    "geoscf_fcst_no2_ugm3_available": 1.0,
+    "hour_sin_available": 1.0,
+    "hour_cos_available": 1.0,
+    "weekday_sin_available": 1.0,
+    "weekday_cos_available": 1.0,
+    "ndvi_available": 0.967949,
+    "ndbi_available": 0.967949,
+    "lst_c_available": 0.037393,
+    "dist_nearest_sensor_m_available": 1.0
+  },
+  "temporal_leakage": {
+    "ndvi": 0,
+    "ndbi": 0,
+    "lst_c": 0,
+    "no2_mol_m2": 0,
+    "ntl": 0,
+    "geoscf_pm25": 0,
+    "geoscf_no2": 0,
+    "geoscf_fcst_pm25": 0,
+    "geoscf_fcst_no2": 0,
+    "weather": 0,
+    "target_in_features": 0
+  },
+  "age_hours": {
+    "Landsat NDVI": {
+      "min": 46.99822998046875,
+      "median": 336.0007019042969,
+      "max": 4819.99853515625
+    },
+    "Sentinel-5P NO2": {
+      "min": 0.765826940536499,
+      "median": 40.350337982177734,
+      "max": 256.14410400390625
+    },
+    "VIIRS NTL": {
+      "min": 178.00027465820312,
+      "median": 212.00027465820312,
+      "max": 399.0002746582031
+    },
+    "GEOS-CF PM2.5": {
+      "min": 7.0,
+      "median": 18.0,
+      "max": 28.0
+    },
+    "GEOS-CF NO2": {
+      "min": 7.0,
+      "median": 18.0,
+      "max": 28.0
+    },
+    "Open-Meteo": {
+      "min": 3.0,
+      "median": 5.0,
+      "max": 8.0
+    },
+    "GEOS-CF fcst PM2.5 (lead)": {
+      "min": 10.0,
+      "median": 22.0,
+      "max": 34.0
+    }
+  },
+  "sensor_distance_m": {
+    "labelled_nodes": {
+      "max": 3728.90380859375
+    },
+    "context_nodes": {
+      "min": 51.07331848144531,
+      "max": 3855.826416015625
+    }
+  },
+  "labels": {
+    "rows": 38323,
+    "stations": 105,
+    "finite": {
+      "target_pm25": 38211,
+      "target_no2": 5372
+    },
+    "splits": {
+      "train": {
+        "rows": 16818,
+        "stations": 69,
+        "first": "2026-09-13 01:00:00+00:00",
+        "last": "2026-09-24 00:00:00+00:00"
+      },
+      "validation": {
+        "rows": 1008,
+        "stations": 14,
+        "first": "2026-09-25 01:00:00+00:00",
+        "last": "2026-09-28 00:00:00+00:00"
+      },
+      "test": {
+        "rows": 689,
+        "stations": 15,
+        "first": "2026-09-29 01:00:00+00:00",
+        "last": "2026-09-30 23:00:00+00:00"
+      },
+      "none": {
+        "rows": 19808,
+        "stations": 99,
+        "first": "2026-09-13 02:00:00+00:00",
+        "last": "2026-09-30 23:00:00+00:00"
+      }
+    }
+  },
+  "passed": true
+}
