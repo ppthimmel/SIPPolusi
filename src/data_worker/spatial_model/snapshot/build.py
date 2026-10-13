@@ -347,6 +347,9 @@ def build_snapshot(ground_truth_dir: Path | str, out_dir: Path | str, config_pat
                       viirs_cell_rule=feat["viirs_cell_rule"],
                       weather_policy=f"Open-Meteo as-of: valid time terbaru dengan floor(t, 6 jam) + "
                                      f"{feat['weather_delay_hours']:g} jam <= waktu inferensi",
+                      geoscf_forecast_policy="GEOS-CF v2 fcst untuk jam label dari run terbaru yang lengkap "
+                                             "terbit (Last-Modified lead terakhir) <= waktu inferensi",
+                      calendar="hour_sin/cos, weekday_sin/cos (WIB) pada awal jam label",
                       feature_version=json.loads((stgnn_dir / "manifest.json").read_text(encoding="utf-8"))["outputs"][
                           "features.parquet"][:16],
                       model_inputs=dict(temporal=[*TEMPORAL_VALUES, *TEMPORAL_AGES],

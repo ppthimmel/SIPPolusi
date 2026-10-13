@@ -6,6 +6,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+import pyarrow.parquet as pq
 
 from feature_matrix.grid import nearest_sensor_distance, to_grid_xy
 from feature_matrix.sources import WEATHER
@@ -151,9 +152,23 @@ def leakage_report(out: Path, cfg: dict, labels: pd.DataFrame, stations: pd.Data
     w = pd.read_parquet(out / "stgnn" / "features.parquet",
                         columns=["time_utc", *WEATHER, "weather_time_utc", "weather_available_at_utc"])
     weather_bad = weather_violations(w)
-    _check(checks, "geoscf_available", "Seluruh fitur GEOS-CF (dan cuaca) memenuhi waktu tersedia <= waktu inferensi",
-           geos_bad + weather_bad, f"{len(g):_} baris fitur diperiksa; pelanggaran GEOS-CF {geos_bad}, "
-                                   f"cuaca {weather_bad}".replace("_", "."))
+    fcst_bad = 0
+    fcst_cols = [f"geoscf_fcst_{v}_{c}" for v in ("pm25", "no2")
+                 for c in ("ugm3", "init_utc", "available_at_utc", "lead_hours")]
+    # Snapshot ds-v0.1.0 belum memuat prakiraan; pemeriksaan berlaku bila kolomnya ada.
+    if set(fcst_cols) <= set(pq.ParquetFile(out / "stgnn" / "features.parquet").schema_arrow.names):
+        fc = pd.read_parquet(out / "stgnn" / "features.parquet", columns=["time_utc", *fcst_cols])
+        for var in ("pm25", "no2"):
+            ok = fc[f"geoscf_fcst_{var}_ugm3"].notna()
+            valid_time = fc.loc[ok, f"geoscf_fcst_{var}_init_utc"] + pd.to_timedelta(
+                fc.loc[ok, f"geoscf_fcst_{var}_lead_hours"].astype("float64"), unit="h")
+            avail = fc.loc[ok, f"geoscf_fcst_{var}_available_at_utc"]
+            fcst_bad += int((avail.isna() | avail.gt(fc.loc[ok, "time_utc"])
+                             | valid_time.ne(fc.loc[ok, "time_utc"] - pd.Timedelta(hours=1))).sum())
+    _check(checks, "geoscf_available", "Seluruh fitur GEOS-CF (ana, prakiraan) dan cuaca memenuhi waktu tersedia "
+           "<= waktu inferensi", geos_bad + weather_bad + fcst_bad,
+           f"{len(g):_} baris fitur diperiksa; pelanggaran GEOS-CF ana {geos_bad}, prakiraan {fcst_bad}, "
+           f"cuaca {weather_bad}".replace("_", "."))
 
     # 8. Jendela lag tidak melewati batas split.
     lag_bad = 0
