@@ -46,14 +46,23 @@ def test_incoming_request_id_is_echoed(client):
     assert resp.headers["X-Request-ID"] == "abc-123"
 
 
-def test_cache_unavailable_maps_to_503(client, repo):
-    repo.fail = CacheUnavailable("Kueri OSM Cache DB melewati statement_timeout.")
-    assert_error(client.get("/v1/osm/version"), 503, "cache_unavailable")
+@pytest.mark.parametrize("reason", [CacheUnavailable.CACHE_EMPTY, CacheUnavailable.DATABASE_UNAVAILABLE,
+                                    CacheUnavailable.QUERY_TIMEOUT])
+def test_cache_unavailable_maps_to_503_with_reason(client, repo, reason):
+    repo.fail = CacheUnavailable("cache tidak dapat dibaca", reason)
+    resp = client.get("/v1/osm/version")
+    assert_error(resp, 503, "cache_unavailable")
+    assert resp.json()["error"]["reason"] == reason
+
+
+def test_other_errors_have_no_reason(client):
+    assert "reason" not in client.get("/v1/osm/edges/777").json()["error"]
 
 
 def test_health_degraded_when_db_down(client, repo):
     repo.fail = CacheUnavailable("down")
-    assert client.get("/health").json() == {"status": "degraded", "database": "unavailable", "graph_version": None}
+    body = client.get("/health").json()
+    assert body["status"] == "degraded" and body["database"] == "unavailable" and body["graph_version"] is None
 
 
 def test_graph(client):

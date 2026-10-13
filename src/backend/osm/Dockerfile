@@ -1,8 +1,10 @@
-# OSM Cache DB API (src/backend/osm). Build context is this directory:
-#   docker build -t sippolusi-backend-osm src/backend/osm
+# Cache API: /v1/osm (src/backend/osm) and /v1/pollution (src/backend/pollution).
+# Build context is src/backend so both packages are available; only the files
+# allowed by osm/Dockerfile.dockerignore are sent. From the repo root:
+#   docker build -f src/backend/osm/Dockerfile -t sippolusi-backend-osm src/backend
 #   docker run --rm -p 8001:8000 --env-file src/backend/.env sippolusi-backend-osm
 # Tests run in their own stage:
-#   docker build --target test -t sippolusi-backend-osm-test src/backend/osm
+#   docker build -f src/backend/osm/Dockerfile --target test -t sippolusi-backend-osm-test src/backend
 #   docker run --rm sippolusi-backend-osm-test
 
 FROM python:3.11-slim AS base
@@ -12,28 +14,30 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1
 
-# The package is imported as `osm`, so it lives at /app/osm with /app as cwd.
+# Packages are imported as `osm` and `pollution`, so they live under /app with /app as cwd.
 WORKDIR /app
-COPY requirements.txt osm/requirements.txt
+COPY osm/requirements.txt osm/requirements.txt
 RUN pip install -r osm/requirements.txt
 
 
 FROM base AS test
-COPY requirements-dev.txt osm/requirements-dev.txt
+COPY osm/requirements-dev.txt osm/requirements-dev.txt
 RUN pip install -r osm/requirements-dev.txt
-COPY . osm/
-WORKDIR /app/osm
+COPY osm/ osm/
+COPY pollution/ pollution/
 # Integration tests also run when DATABASE_URL is passed (docker run -e/--env-file).
-CMD ["pytest", "-p", "no:cacheprovider"]
+# Cache-flow tests (TEST_DATABASE_URL + src/data_worker) are skipped in this image.
+CMD ["sh", "-c", "cd /app/osm && pytest -p no:cacheprovider; a=$?; cd /app/pollution && pytest -p no:cacheprovider; b=$?; exit $((a | b))"]
 
 
 FROM base AS runtime
-COPY *.py osm/
+COPY osm/*.py osm/
+COPY pollution/*.py pollution/
 RUN useradd --create-home --uid 10001 app
 USER app
 
-# Configuration comes from environment variables (DATABASE_URL, OSM_*), not a
-# baked-in .env. Railway provides PORT.
+# Configuration comes from environment variables (DATABASE_URL, OSM_*, POLLUTION_*),
+# not a baked-in .env. Railway provides PORT.
 EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
     CMD python -c "import os, urllib.request; urllib.request.urlopen(f'http://127.0.0.1:{os.environ.get(\"PORT\", \"8000\")}/health', timeout=4)"

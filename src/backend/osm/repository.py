@@ -227,7 +227,8 @@ class OsmRepository:
             async with self._db.connection() as conn:
                 row = await conn.fetchrow(_SQL_ACTIVE_VERSION)
             if row is None:
-                raise CacheUnavailable("OSM Cache DB belum memiliki graph_version berstatus 'active'.")
+                raise CacheUnavailable("OSM Cache DB belum memiliki graph_version berstatus 'active'.",
+                                       CacheUnavailable.CACHE_EMPTY)
             version = GraphVersion(**dict(row))
             if self._version is None or self._version.version != version.version:
                 logger.info("Active graph_version: %s", version.version)

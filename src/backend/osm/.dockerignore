@@ -1,8 +1,0 @@
-**/__pycache__
-**/*.pyc
-.pytest_cache
-.env
-*.env
-Dockerfile
-.dockerignore
-docker-compose.yml

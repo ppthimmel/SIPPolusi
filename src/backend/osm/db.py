@@ -1,8 +1,9 @@
 """asyncpg connection pool for the OSM Cache DB.
 
-Every session is opened read-only (default_transaction_read_only) with the
-statement_timeout from Tabel 3.15, so the Backend cannot write to schema `osm`
-even before a dedicated backend_reader role exists. Connection failures and
+Every session is opened with default_transaction_read_only = on and the
+statement_timeout from Tabel 3.15. That stops this code from writing by accident,
+but it is only a session default, not a security boundary: write protection needs
+a database role with SELECT only (backend_reader). Connection failures and
 timeouts surface as CacheUnavailable (503 cache_unavailable).
 """
 from __future__ import annotations
@@ -84,7 +85,8 @@ class OsmDatabase:
                         init=_init_connection,
                     )
                 except (*_UNAVAILABLE_ERRORS, asyncpg.PostgresError) as exc:
-                    raise CacheUnavailable(f"OSM Cache DB tidak dapat dihubungi ({type(exc).__name__}).") from exc
+                    raise CacheUnavailable(f"Basis data cache tidak dapat dihubungi ({type(exc).__name__}).",
+                                           CacheUnavailable.DATABASE_UNAVAILABLE) from exc
                 logger.info("OSM Cache DB pool opened")
         return self._pool
 
@@ -95,11 +97,14 @@ class OsmDatabase:
             async with pool.acquire(timeout=self._settings.connect_timeout_s) as conn:
                 yield conn
         except asyncpg.QueryCanceledError as exc:
-            raise CacheUnavailable("Kueri OSM Cache DB melewati statement_timeout.") from exc
+            raise CacheUnavailable("Kueri basis data cache melewati statement_timeout.",
+                                   CacheUnavailable.QUERY_TIMEOUT) from exc
         except (TimeoutError, asyncio.TimeoutError) as exc:
-            raise CacheUnavailable("Kueri OSM Cache DB melewati batas waktu klien (OSM_COMMAND_TIMEOUT_S).") from exc
+            raise CacheUnavailable("Kueri basis data cache melewati batas waktu klien (OSM_COMMAND_TIMEOUT_S).",
+                                   CacheUnavailable.QUERY_TIMEOUT) from exc
         except _UNAVAILABLE_ERRORS as exc:
-            raise CacheUnavailable(f"OSM Cache DB tidak tersedia ({type(exc).__name__}).") from exc
+            raise CacheUnavailable(f"Basis data cache tidak tersedia ({type(exc).__name__}).",
+                                   CacheUnavailable.DATABASE_UNAVAILABLE) from exc
 
     async def ping(self) -> bool:
         try:

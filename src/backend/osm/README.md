@@ -11,11 +11,17 @@ skema database yang sebenarnya (`handoff_database.md`) dan Dokumen Desain:
 
 Modul ini berdiri sendiri dan **tidak memakai** `main.py`, `database/`, atau `route_model/`.
 
+Aplikasi `osm.app` adalah **Cache API** yang juga menyajikan `/v1/pollution` (Spatial
+Pollution Cache DB) dari modul [`../pollution`](../pollution/README.md). Kedua modul memakai
+pool koneksi dan skema galat yang sama. Bukti TI-SE-04 ada di
+[`../pollution/VERIFICATION.md`](../pollution/VERIFICATION.md).
+
 ## Menjalankan dan menguji
 
 Ada tiga cara. **A** dan **B** menjalankan aplikasi di laptop, tetapi datanya tetap dari
 database Railway (lewat URL publik). **C** menjalankan aplikasi sebagai service di Railway,
-yang terhubung ke database lewat jaringan privat.
+yang terhubung ke database lewat jaringan privat. Database Railway yang dipakai saat ini ada di
+environment **`development`** dan dipakai bersama tim (data SPKU masuk setiap jam).
 
 ### Persiapan
 
@@ -43,9 +49,9 @@ Semua perintah di bawah dijalankan dari **root repo**, kecuali disebutkan lain.
 
    ```bash
    cd osm
-   pytest -m "not integration"       # unit tes, tanpa database   → 91 passed
+   pytest -m "not integration"       # unit tes, tanpa database   → 94 passed
    pytest -m integration             # baca-saja ke DB asli       → 15 passed
-   pytest                            # keduanya                   → 106 passed
+   pytest                            # keduanya                   → 109 passed
    cd ..
    ```
 
@@ -83,7 +89,8 @@ Semua perintah di bawah dijalankan dari **root repo**, kecuali disebutkan lain.
 ### B. Docker lokal
 
 Image ini berdiri sendiri dan tidak memakai `src/backend/Dockerfile`. Konteks build-nya adalah
-direktori `osm/`. Image runtime memakai `python:3.11-slim`, berjalan sebagai user non-root, punya
+`src/backend` (agar `osm/` dan `pollution/` ikut), dan `osm/Dockerfile.dockerignore` membatasi
+berkas yang dikirim hanya ke kedua paket itu. Image runtime memakai `python:3.11-slim`, berjalan sebagai user non-root, punya
 `HEALTHCHECK` ke `/health`, dan mendengarkan pada `PORT` (default 8000). File `.env` tidak ikut
 masuk image; konfigurasi diberikan lewat environment. Pastikan Docker Desktop sudah menyala.
 
@@ -107,9 +114,23 @@ Semua perintah Docker di bawah memakai path dari **root repo**. Kalau terminal m
 3. Jalankan tes di container (Python 3.11, sama dengan produksi):
 
    ```bash
-   docker build --target test -t sippolusi-backend-osm-test src/backend/osm
-   docker run --rm --env-file src/backend/.env sippolusi-backend-osm-test   # → 106 passed
-   docker run --rm sippolusi-backend-osm-test                               # tanpa DB → 91 passed, 15 skipped
+   docker build -f src/backend/osm/Dockerfile --target test -t sippolusi-backend-osm-test src/backend
+   docker run --rm --env-file src/backend/.env sippolusi-backend-osm-test
+   docker run --rm sippolusi-backend-osm-test   # tanpa DB
+   ```
+
+   Container menjalankan tes `osm` lalu `pollution`, jadi ada dua baris hasil:
+
+   | Perintah | `osm` | `pollution` |
+   |---|---|---|
+   | dengan `--env-file` | 109 passed | 20 passed, 10 skipped |
+   | tanpa DB | 94 passed, 15 skipped | 20 passed, 10 skipped |
+
+   Sepuluh tes `pollution` yang dilewati adalah uji alur tulis → baca; uji ini butuh database
+   uji lokal dan kode Data Worker, jadi dijalankan di luar container (lihat
+   [`../pollution/README.md`](../pollution/README.md)).
+
+   ```bash
    ```
 
 4. Buat laporan verifikasi lewat image runtime:
@@ -127,14 +148,14 @@ Semua perintah Docker di bawah memakai path dari **root repo**. Kalau terminal m
 Tanpa compose, image juga bisa dijalankan langsung:
 
 ```bash
-docker build -t sippolusi-backend-osm src/backend/osm
+docker build -f src/backend/osm/Dockerfile -t sippolusi-backend-osm src/backend
 docker run --rm -p 8001:8000 --env-file src/backend/.env sippolusi-backend-osm
 ```
 
 ### Setelah ada perubahan kode
 
 Image Docker menyalin kode saat **build**; container tidak membaca berkas di laptop. Jadi
-setiap perubahan kode di `src/backend/osm` perlu langkah berikut sebelum dicoba.
+setiap perubahan kode di `src/backend/osm` atau `src/backend/pollution` perlu langkah berikut sebelum dicoba.
 
 | Cara menjalankan | Perubahan kode `.py` | Perubahan `requirements*.txt` | Perubahan `.env` |
 |---|---|---|---|
@@ -159,7 +180,7 @@ docker compose -f src/backend/osm/docker-compose.yml ps
 Image tes juga perlu dibangun ulang sebelum tes dijalankan di container:
 
 ```bash
-docker build --target test -t sippolusi-backend-osm-test src/backend/osm
+docker build -f src/backend/osm/Dockerfile --target test -t sippolusi-backend-osm-test src/backend
 docker run --rm --env-file src/backend/.env sippolusi-backend-osm-test
 ```
 
@@ -181,8 +202,9 @@ Railway membangun image dari GitHub, jadi kodenya harus sudah di-push ke branch 
 1. Di project Railway yang sama dengan database, buat service baru: *New → GitHub Repo →
    SIPPolusi*. Lalu atur:
    - **Branch:** branch yang berisi modul ini.
-   - **Root Directory:** `src/backend/osm`. Railway otomatis memakai `Dockerfile` di sana;
-     tahap terakhirnya adalah image runtime.
+   - **Root Directory:** `src/backend`, karena image memuat `osm/` dan `pollution/`.
+   - **Dockerfile:** tambahkan variabel `RAILWAY_DOCKERFILE_PATH=osm/Dockerfile`. Tahap terakhir
+     Dockerfile adalah image runtime.
 2. **Variables:** isi `DATABASE_URL` dengan referensi ke service database, misalnya
    `${{database.DATABASE_URL}}` (sesuaikan nama service). Referensi ini memakai URL privat
    `postgres.railway.internal`. Variabel `PORT` diisi otomatis oleh Railway.
@@ -337,15 +359,16 @@ mengalahkan nilai di `.env`.
 | `X-Request-ID` tidak valid | `curl -i -H "X-Request-ID: ada spasi" localhost:8001/v1/osm/version` | diganti UUID v4 baru |
 | Path tidak ada | `curl localhost:8001/v1/osm/tidak-ada` | 404 `not_found` |
 | Method salah | `curl -X POST localhost:8001/v1/osm/version` | 405 `method_not_allowed` |
-| Database tidak dapat dihubungi | `DATABASE_URL=postgresql://nobody:x@127.0.0.1:1/none uvicorn osm.app:app --port 8002`, lalu `curl localhost:8002/health` dan `curl localhost:8002/v1/osm/version` | `/health`: `"status":"degraded"`; endpoint lain: 503 `cache_unavailable` |
-| Kueri melewati `statement_timeout` | `OSM_STATEMENT_TIMEOUT_MS=1 uvicorn osm.app:app --port 8003`, lalu `curl "localhost:8003/v1/osm/graph?bbox=106.822,-6.180,106.832,-6.170&mode=walk"` | 503 `cache_unavailable`, "Kueri OSM Cache DB melewati statement_timeout." |
+| Database tidak dapat dihubungi | `DATABASE_URL=postgresql://nobody:x@127.0.0.1:1/none uvicorn osm.app:app --port 8002`, lalu `curl localhost:8002/health` dan `curl localhost:8002/v1/osm/version` | `/health`: `"status":"degraded"`, `"database":"unavailable"`; endpoint lain: 503 `cache_unavailable`, `"reason":"database_unavailable"` |
+| Kueri melewati `statement_timeout` | `OSM_STATEMENT_TIMEOUT_MS=1 uvicorn osm.app:app --port 8003`, lalu `curl "localhost:8003/v1/osm/graph?bbox=106.822,-6.180,106.832,-6.170&mode=walk"` | 503 `cache_unavailable`, `"reason":"query_timeout"`, "Kueri basis data cache melewati statement_timeout." |
+| Cache polusi kosong | `curl "localhost:8001/v1/pollution/edge-weights?bbox=106.825,-6.177,106.829,-6.173"` (data Railway saat ini) | 503 `cache_unavailable`, `"reason":"cache_empty"` |
 | Perjalanan jauh dari laptop (±10 km) | body *Jalan kaki Monas → Bundaran HI* dengan tujuan diganti `{"lat": -6.2654, "lon": 106.8272}` | dari laptop bisa 503 karena jaringan lambat; di Railway seharusnya 200 |
 
 ### Hasil yang diharapkan
 
 | Uji | Hasil |
 |---|---|
-| `/health` | `{"status":"ok","database":"ok","graph_version":"jakarta-20261005"}` |
+| `/health` | `"status":"ok"`, `"database":"ok"`, `"graph_version":"jakarta-20261005"`, `"pollution_time_window"` (null selama cache polusi kosong) |
 | nearest-node Monas | `"node_id":10792891204`, `"distance_m":11.7…` |
 | streets `sudirman` | `Jalan Jenderal Sudirman`, 212 segmen |
 | subgraph Monas → Bundaran HI (walk) | `"node_count":3444`, `"edge_count":4282`, `"rejected":{}` |
@@ -381,8 +404,10 @@ Konfigurasi dibaca dari environment, lalu dari `src/backend/.env`.
 | `OSM_STUDY_AREA_BBOX` | `106.68,-6.38,106.98,-6.08` | Wilayah studi: daratan DKI Jakarta. Kepulauan Seribu tidak termasuk. |
 | `OSM_WALK_SPEED_MPS` / `OSM_BIKE_SPEED_MPS` | `1.3` / `4.2` | Kecepatan `ModeProfile`. |
 
-Setiap sesi database dibuka dengan `default_transaction_read_only = on`, sehingga
-Backend tidak bisa menulis ke database walaupun role `backend_reader` belum dibuat.
+Setiap sesi database dibuka dengan `default_transaction_read_only = on`. Ini mencegah kode
+Backend menulis secara tidak sengaja, tetapi **bukan batas keamanan**: nilai itu hanya bawaan
+sesi dan bisa dimatikan oleh sesi mana pun. Selama Backend masih memakai user `postgres`
+(superuser), perlindungan sesungguhnya baru ada setelah role baca-saja (`backend_reader`) dibuat.
 
 ## Endpoint (`/v1/osm`)
 
@@ -398,14 +423,17 @@ Backend tidak bisa menulis ke database walaupun role `backend_reader` belum dibu
 | GET | `/edges/{edge_id}` | Detail ruas, tag, dan geometri | handoff 9.7 |
 | GET | `/streets?q=&limit=` | Cari nama jalan; `q` wajib memuat ≥ 3 huruf/angka berurutan agar index trigram terpakai | handoff 9.8 |
 | POST | `/subgraph` | Bagian OSM dari R8–R10: `compute_request_bbox`, `read_road_graph`, `snap_to_graph`, `assemble_request_subgraph` | Tabel 3.6, UT-BE-04..06 |
-| GET | `/health` | Status koneksi database dan versi aktif | |
+| GET | `/health` | Status koneksi database, versi graf aktif, time window polusi terakhir dan `pollution_data_stale` | |
 
 - **Format data:**
   - `bbox` ditulis `min_lon,min_lat,max_lon,max_lat`.
   - Titik ditulis `{lat, lon}`.
   - Geometri berupa GeoJSON dengan urutan `[lon, lat]`.
 - **Galat** memakai skema seragam
-  `{"error": {"code", "message", "request_id"}}`. Kode yang dipakai:
+  `{"error": {"code", "message", "request_id"}}`. Galat 503 menambahkan `reason` (TI-SE-04):
+  `cache_empty` (belum ada versi graf `active` / time window `complete`),
+  `database_unavailable` (basis data tidak dapat dihubungi), atau `query_timeout`
+  (melewati `statement_timeout` atau batas waktu klien). Kode yang dipakai:
   - `invalid_request` (400)
   - `not_found` (404)
   - `outside_study_area` (422)
@@ -423,10 +451,12 @@ Jika peta menampilkan data ini, wajib mencantumkan atribusi "© OpenStreetMap co
 from osm.app import osm_lifespan                 # membuka pool, mengisi app.state
 from osm.errors import install_error_handling   # skema galat + X-Request-ID
 from osm.router import router as osm_router
+from pollution.router import router as pollution_router
 
 app = FastAPI(lifespan=osm_lifespan)
 install_error_handling(app)
 app.include_router(osm_router)
+app.include_router(pollution_router)
 ```
 
 Untuk `plan_route`, gunakan `OsmRepository.read_road_graph(bbox, mode)` lalu

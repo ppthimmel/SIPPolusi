@@ -244,3 +244,5 @@ class HealthOut(BaseModel):
     status: str
     database: str
     graph_version: str | None
+    pollution_time_window: datetime | None = Field(None, description="Time window complete terakhir; null bila belum ada")
+    pollution_data_stale: bool | None = None

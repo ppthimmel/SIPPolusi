@@ -51,8 +51,23 @@ class NoRouteFound(OsmApiError):
 
 
 class CacheUnavailable(OsmApiError):
+    """503 cache_unavailable. `reason` tells the cases apart (TI-SE-04):
+
+    cache_empty           the cache has no usable data yet (no active graph_version,
+                          no complete time window)
+    database_unavailable  the database cannot be reached
+    query_timeout         a query exceeded statement_timeout or the client timeout
+    """
+
     status_code = 503
     code = "cache_unavailable"
+    CACHE_EMPTY = "cache_empty"
+    DATABASE_UNAVAILABLE = "database_unavailable"
+    QUERY_TIMEOUT = "query_timeout"
+
+    def __init__(self, message: str, reason: str = DATABASE_UNAVAILABLE):
+        super().__init__(message)
+        self.reason = reason
 
 
 def get_request_id(request: Request) -> str:
@@ -65,13 +80,13 @@ def get_request_id(request: Request) -> str:
     return request_id
 
 
-def error_response(request: Request, status_code: int, code: str, message: str) -> JSONResponse:
+def error_response(request: Request, status_code: int, code: str, message: str,
+                   reason: str | None = None) -> JSONResponse:
     request_id = get_request_id(request)
-    return JSONResponse(
-        status_code=status_code,
-        content={"error": {"code": code, "message": message, "request_id": request_id}},
-        headers={REQUEST_ID_HEADER: request_id},
-    )
+    error = {"code": code, "message": message, "request_id": request_id}
+    if reason is not None:
+        error["reason"] = reason
+    return JSONResponse(status_code=status_code, content={"error": error}, headers={REQUEST_ID_HEADER: request_id})
 
 
 _HTTP_CODES = {404: "not_found", 405: "method_not_allowed"}
@@ -91,7 +106,7 @@ def install_error_handling(app: FastAPI) -> None:
     async def _osm_error(request: Request, exc: OsmApiError):
         if exc.status_code >= 500:
             logger.warning("request_id=%s %s: %s", get_request_id(request), exc.code, exc.message)
-        return error_response(request, exc.status_code, exc.code, exc.message)
+        return error_response(request, exc.status_code, exc.code, exc.message, getattr(exc, "reason", None))
 
     @app.exception_handler(RequestValidationError)
     async def _validation_error(request: Request, exc: RequestValidationError):
