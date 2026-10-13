@@ -75,6 +75,8 @@ Durasi sekitar 10 detik. Keluaran ±3,3 MB dan tidak di-commit.
 | Sentinel-5P | `no2_mol_m2` | Sama, pada sel 5 km yang memuat pusat sel |
 | VIIRS VNP46A2 | `ntl` | Sama, pada sel 15″ yang memuat pusat sel (indeks tile) |
 | GEOS-CF `ana` | `geoscf_pm25_ugm3`, `geoscf_no2_ugm3` | Valid time terbaru dengan `available_at_utc <= τ`; umur 7–28 jam |
+| GEOS-CF `fcst` | `geoscf_fcst_pm25_ugm3`, `geoscf_fcst_no2_ugm3` | Prakiraan untuk jam label [τ − 1 jam, τ) dari run harian 09z terbaru yang sudah lengkap terbit pada τ (Last-Modified lead terakhir); lead 11–34 jam pada `geoscf_fcst_*_lead_hours` |
+| Kalender | `hour_sin`, `hour_cos`, `weekday_sin`, `weekday_cos` | Jam dan hari dalam pekan WIB pada awal jam label; selalu diketahui pada τ |
 | Open-Meteo | 7 variabel cuaca | Valid time terbaru dengan waktu tersedia ≤ τ; umur 3–8 jam pada `weather_age_hours`; satu titik, seragam (lihat [Cuaca](#cuaca-open-meteo)) |
 | SPKU | `dist_nearest_sensor_m` | Jarak Euclidean EPSG:32748 pusat sel ke stasiun terdekat di himpunan yang diberikan |
 
