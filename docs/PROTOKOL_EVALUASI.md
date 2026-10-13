@@ -16,6 +16,11 @@ dibekukan.
 | Target | PM2.5 (43.207 label stasiun-jam) dan NO2 (5.372), dilatih dan dievaluasi terpisah. Satuan µg/m³, terverifikasi terhadap ISPU portal (`scripts/check_ispu_units.py`) |
 | Fitur | FeatureMatrix ST-GNN TI-AI-02 (`stgnn/`, versi fitur `26ff0f6a4e266fd9`), L = 24 time window |
 
+**ds-v0.2.0** ([`docs/experiments/ds-v0.2.0`](experiments/ds-v0.2.0/README.md)) memakai label, split, fold, stasiun,
+dan graf yang identik byte demi byte dengan ds-v0.1.0, ditambah fitur prakiraan GEOS-CF v2 (`geoscf_fcst_*`, dari
+run yang sudah terbit pada waktu inferensi) dan kalender (jam/hari WIB). Model berbasis fitur (ST-GNN) memakai
+ds-v0.2.0; hasilnya tetap dibandingkan dengan baseline IDW di bawah karena kunci evaluasinya sama.
+
 Snapshot ini immutable. Perubahan aturan, rentang, atau data menghasilkan versi baru (`ds-v0.2.0`, …). Data
 operasional di PostgreSQL (`ground_truth.*`, `pollution.*`) terus berubah dan tidak dipakai langsung untuk evaluasi.
 Split provisional TI-AI-03 v1 pada baseline TI-AI-04 (`sh-a7e5db9bb33f`) digantikan oleh versi ini.
