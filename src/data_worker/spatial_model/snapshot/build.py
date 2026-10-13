@@ -56,7 +56,9 @@ def label_rules(cfg: dict) -> LabelRules:
     return LabelRules(
         sentinel=float(lab["sentinel"]), excluded_stations=tuple(lab["excluded_stations"]),
         excluded_from=tuple((r["kode"], r["metric"], r["since"]) for r in lab.get("excluded_from", [])),
-        stuck_run_min=lab.get("stuck_run_min"), require_complete_hour=bool(lab.get("require_complete_hour")))
+        stuck_run_min=lab.get("stuck_run_min"), require_complete_hour=bool(lab.get("require_complete_hour")),
+        shared_signal=(tuple(lab["shared_signal"][k] for k in ("min_corr", "max_ratio_deviation", "min_shared_hours"))
+                       if "shared_signal" in lab else None))
 
 
 def _git() -> dict:
@@ -191,7 +193,9 @@ def build_snapshot(ground_truth_dir: Path | str, out_dir: Path | str, config_pat
     located = station_cells(usable).rename(columns={"type": "station_type"})
     valid = readings[readings.exclusion_reason.isna()]
     grouped = station_groups(located, valid, cfg["groups"]["max_distance_m"],
-                             cfg["groups"]["duplicate_identical_fraction"])
+                             cfg["groups"]["duplicate_identical_fraction"],
+                             near_duplicate=tuple(cfg["groups"]["near_duplicate"]) if "near_duplicate" in cfg["groups"]
+                             else None)
     groups = split_groups(grouped, cfg["station_split"]["fractions"], cfg["station_split"]["strata"], cfg["seed"])
     stations = grouped.merge(groups[["group_id", "station_split"]], on="group_id", how="left")
 

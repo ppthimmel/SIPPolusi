@@ -9,6 +9,7 @@ import pandas as pd
 import pyarrow.parquet as pq
 
 from feature_matrix.grid import nearest_sensor_distance, to_grid_xy
+from feature_matrix.labels import near_duplicate_pairs
 from feature_matrix.sources import WEATHER
 
 from .split import SPLITS, block_gaps_hours
@@ -87,11 +88,21 @@ def leakage_report(out: Path, cfg: dict, labels: pd.DataFrame, stations: pd.Data
                 if shared.sum() >= 48 and (v[shared, i] == v[shared, j]).mean() >= \
                         float(cfg["groups"]["duplicate_identical_fraction"]):
                     dup_cross += 1
+    near_rule = cfg["labels"].get("shared_signal") or dict(min_corr=0.98, max_ratio_deviation=0.02,
+                                                            min_shared_hours=100)
+    near_cross = 0
+    split_of = st.set_index("uuid").station_split
+    for target in cfg["scope"]["targets"]:
+        wide = labels.pivot_table(index="time_window_start", columns="station_uuid", values=f"{target}_ugm3")
+        for a, b, _, _ in near_duplicate_pairs(wide, near_rule["min_corr"], near_rule["max_ratio_deviation"],
+                                               near_rule["min_shared_hours"]):
+            near_cross += int(split_of[a] != split_of[b])
     _check(checks, "identical_observations", "Tidak ada observasi identik lintas split",
-           keys_multi + close_cross + dup_cross,
+           keys_multi + close_cross + dup_cross + near_cross,
            f"kunci (target, stasiun, time window) di >1 split: {keys_multi}; pasangan stasiun berimpit "
            f"(sel sama atau < {cfg['groups']['max_distance_m']:g} m) beda split: {close_cross}; pasangan stasiun "
-           f"beda split dengan nilai per jam identik: {dup_cross}")
+           f"beda split dengan nilai per jam identik: {dup_cross}; pasangan beda split dengan deret praktis sama "
+           f"(r ≥ {near_rule['min_corr']}, rasio 1 ± {near_rule['max_ratio_deviation']}): {near_cross}")
 
     # 5. Fitur berbasis sensor tidak memakai stasiun uji/validasi atau stasiun yang ditahan.
     feats = pd.read_parquet(out / "stgnn" / "features.parquet",

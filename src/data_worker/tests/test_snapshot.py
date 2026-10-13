@@ -215,3 +215,36 @@ def test_kebocoran_cuaca_diperiksa_walau_suhu_hilang(snapshot, clock):
     assert weather_violations(f) == 1
     f.loc[0, clock] = pd.NaT
     assert weather_violations(f) == 1
+
+
+def test_sinyal_bersama_dibuang_dan_stasiun_independen_dipertahankan(tmp_path):
+    root = tmp_path / "gt"
+    root.mkdir()
+    pd.DataFrame({"uuid": ["a", "b", "c"], "kode": ["A", "B", "C"], "lat": [-6.2, -6.3, -6.25],
+                  "lng": [106.8, 106.9, 106.85], "in_jakarta_bbox": [True] * 3}).to_parquet(root / "station.parquet")
+    ts = pd.date_range("2026-09-19", periods=240, freq="30min", tz="UTC")
+    rng = np.random.default_rng(1)
+    base = 30 + 10 * np.sin(np.arange(240) / 12) + rng.normal(0, 3, 240)
+    rows = [("a", "PM25", t, round(v, 2), "") for t, v in zip(ts, base)]
+    rows += [("b", "PM25", t, round(v * (1 + rng.normal(0, 0.003)), 2), "") for t, v in zip(ts, base)]  # ±0,3%
+    rows += [("c", "PM25", t, round(v, 2), "") for t, v in zip(ts, 25 + rng.normal(0, 5, 240))]
+    pd.DataFrame(rows, columns=["station_uuid", "metric", "ts_utc", "value", "qc"]).to_parquet(
+        root / "observation.parquet")
+    obs, _ = annotate_readings(root, LabelRules(shared_signal=(0.98, 0.02, 100)))
+    reason = {k: set(g.dropna()) for k, g in obs.groupby("station_uuid").exclusion_reason}
+    assert reason["a"] == {"shared_signal"} and reason["b"] == {"shared_signal"}
+    assert reason["c"] == set()
+    plain, _ = annotate_readings(root)                                   # aturan bundle: tidak diperiksa
+    assert plain.exclusion_reason.isna().all()
+
+
+def test_deret_praktis_sama_terdeteksi_sebagai_pasangan():
+    from feature_matrix.labels import near_duplicate_pairs
+
+    idx = pd.date_range("2026-09-19", periods=200, freq="h", tz="UTC")
+    rng = np.random.default_rng(2)
+    a = 30 + 10 * np.sin(np.arange(200) / 6)
+    wide = pd.DataFrame({"a": a, "b": a * 1.005 + rng.normal(0, 0.1, 200), "c": a * 1.5,
+                         "d": rng.normal(30, 8, 200)}, index=idx)
+    pairs = {(x, y) for x, y, *_ in near_duplicate_pairs(wide, 0.98, 0.02, 100)}
+    assert pairs == {("a", "b")}            # c berkorelasi tetapi rasionya 1,5; d tidak berkorelasi
