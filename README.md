@@ -10,6 +10,8 @@ SIPPolusi: Sistem Informasi Pemandu Perjalanan dalam Polusi
   FastAPI process to stay within the routing latency budget.
   Baseline routing, interface examples and cost assumptions:
   [routing guide](src/backend/route_model/README.md).
+- [src/gateway](src/gateway) — API Gateway: NGINX custom reverse proxy,
+  the public entry point for `/v1/*` in front of the backend.
 - [src/data_worker](src/data_worker) — background phase: secondary data
   ingestion, road graph construction, and Spatial Downscaling Model inference
   ([src/data_worker/spatial_model](src/data_worker/spatial_model)).
@@ -19,24 +21,25 @@ SIPPolusi: Sistem Informasi Pemandu Perjalanan dalam Polusi
   Grafana configuration.
 - [db](db) — schema migrations for the single PostgreSQL/PostGIS instance
   (schemas: `pollution`, `osm`, `mlflow`).
-- [k3s](k3s) — Kubernetes manifests for a self-hosted alternative to the
-  Railway deployment.
 - [docs/experiments](docs/experiments) — frozen dataset snapshots and model
   experiment results (e.g. the TI-AI-04 IDW baseline).
 
-There is no standalone API Gateway service: routing, TLS termination, and
-rate limiting are handled by Railway's built-in gateway (with NGINX
-configured on top of it in production, per the design document).
+Railway's edge terminates TLS; the NGINX API Gateway ([src/gateway](src/gateway))
+behind it is the single public entry point and forwards `/v1/*` to the backend
+over Railway's private network (design document, Table 3.2). Build/start
+definitions, health checks, logging and the smoke test for the gateway,
+backend and data worker are in
+[docs/devops/build-runtime.md](docs/devops/build-runtime.md).
 
 ## Environment variables
 
 Each service has its own `src/<service>/.env.example` (postgres, minio,
-model_registry, backend, data_worker, frontend, observability) listing its
+model_registry, backend, gateway, data_worker, frontend, observability) listing its
 variables and owner. There is no global env file. Copy each one before the
 first run and fill in the values (`.env` is gitignored):
 
 ```bash
-for d in postgres minio model_registry backend data_worker frontend observability; do
+for d in postgres minio model_registry backend gateway data_worker frontend observability; do
   cp src/$d/.env.example src/$d/.env
 done
 ```
@@ -54,12 +57,13 @@ docker compose up --build
 This starts, in dependency order: Postgres/PostGIS (schemas applied
 the data worker creates the PostGIS extension and schemas/tables on startup via SQLAlchemy), MinIO (creates the
 `mlflow` and `feature-store` buckets), the Model Registry (MLflow), Backend,
-Data Worker, Frontend, and the observability stack (Prometheus, Pushgateway,
+API Gateway, Data Worker, Frontend, and the observability stack (Prometheus, Pushgateway,
 Grafana).
 
 | Service         | URL                          |
 |------------------|-------------------------------|
 | Frontend         | http://localhost:8080         |
+| API Gateway (NGINX) | http://localhost:8081      |
 | Backend API      | http://localhost:8000         |
 | Model Registry (MLflow UI) | http://localhost:5000 |
 | MinIO console    | http://localhost:9001 (minioadmin/minioadmin) |

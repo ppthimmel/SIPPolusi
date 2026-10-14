@@ -75,7 +75,7 @@ Untuk ditinjau pada pull request dan diselaraskan pada revisi dokumen.
 | Penyimpanan ground truth mentah | Tidak didefinisikan (hanya skema `pollution` dan `osm`) | Skema `ground_truth` pada instance yang sama | Riwayat 48 jam portal harus diakumulasi; dipakai pelatihan dan IDW |
 | Timeout SPKU | 30 detik (Tabel 3.19) | 45 detik, tiga kali coba | Nilai kolektor lama; portal pernah sangat lambat (lintasan 78–122 menit) |
 | Data yang disimpan | PM2.5 dan NO2 (Tabel 3.18) | Enam pencemar, ISPU per jam, meteorologi stasiun | Semua ikut pada halaman yang sama; `fetch_ground_truth` tetap mengembalikan PM2.5 dan NO2 |
-| Pemicu siklus | CronJob | Cron Railway `15 * * * *` (`railway.json`) | Setara; manifes `k3s/` belum memuat Data Worker |
+| Pemicu siklus | CronJob | Cron Railway `15 * * * *` (`railway.json`) | Setara; deployment memakai Railway, bukan K3s |
 | Akses basis data | Satu lapisan akses | `database/` (SQLAlchemy + psycopg2) untuk skema cache, `spku/store.py` (psycopg 3, SQL langsung) untuk `ground_truth` | Kolektor diporting apa adanya agar semantik idempoten dan jejak revisi tetap teruji; dapat disatukan kemudian |
 | Role basis data | `worker_writer` (Tabel 3.15) | Pengguna dari `DATABASE_URL` | Role belum dibuat oleh DevOps |
 | Cuplikan beranda 30 menit | Tidak ada | Tersedia (`python main.py spku snapshot`), tidak dijadwalkan | Siklus per jam sudah cukup mendeteksi gangguan |
@@ -109,6 +109,8 @@ Seluruhnya lewat variabel lingkungan:
 | `DOWNSCALE_WRITE_CACHE` | tidak | `1` mengaktifkan penulisan EdgeWeight ke `pollution.edge_pollution` setiap siklus; bawaan nonaktif |
 | `DOWNSCALE_KEEP_WINDOWS` | tidak | Jumlah time window complete terakhir yang dipertahankan di cache; bawaan 6 (±0,55 GB, hingga ±1,1 GB sebelum autovacuum) |
 | `SPATIAL_ARTIFACT_DIR` | tidak | Direktori artefak penelusuran per run inferensi; kosong berarti tidak disimpan |
+| `LOG_LEVEL` | tidak | Bawaan `INFO` |
+| `LOG_FORMAT` | tidak | `json` (bawaan di Railway, agar level log terbaca) atau `text` (bawaan lokal) |
 
 Basis data harus memiliki ekstensi PostGIS. Skema dan tabel dibuat otomatis
 pada koneksi pertama (`CREATE EXTENSION IF NOT EXISTS postgis`, `CREATE SCHEMA
@@ -122,7 +124,8 @@ Langkah lengkap beserta status data saat ini: [`docs/RAILWAY.md`](docs/RAILWAY.m
    template Postgres biasa, karena skema memakai `geometry` dan indeks GiST).
 2. Tambahkan service dari repositori ini dengan **Root Directory
    `src/data_worker`**. `railway.json` di folder ini menetapkan builder
-   Dockerfile, perintah `python main.py cycle`, dan **cron `15 * * * *`**.
+   Dockerfile, restart `NEVER`, dan **cron `15 * * * *`**; perintahnya
+   `python main.py cycle` dari `CMD` Dockerfile.
    Bila Railway tidak membaca berkas tersebut, isi Config-as-code path dengan
    `/src/data_worker/railway.json` pada pengaturan service.
 3. Isi `DATABASE_URL` dengan referensi variabel service PostGIS.
@@ -135,6 +138,12 @@ juga dikunci dengan advisory lock sehingga dua lintasan tidak pernah menulis
 bersamaan. Portal perlu dipastikan dapat dijangkau dari IP Railway; bila
 diblokir, lintasan berstatus `aborted` dan siklus tercatat `unavailable`.
 Periksa kesehatan kapan saja dengan `python main.py spku health`.
+
+Sebelum mengaktifkan cron atau saat siklus gagal, jalankan `python main.py
+check`: konfigurasi, impor modul, serta koneksi dan ketersediaan PostGIS,
+tanpa menulis apa pun. `cycle` dan `serve` menjalankan pemeriksaan konfigurasi
+yang sama dan berhenti dengan kode keluar 2 sebelum menyentuh portal bila
+gagal. Kode keluar dan contoh pesan: [`docs/devops/build-runtime.md`](../../docs/devops/build-runtime.md).
 
 ## Migrasi dari SQLite
 
