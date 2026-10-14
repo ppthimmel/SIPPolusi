@@ -1,0 +1,10 @@
+# Build context is src/backend; send only the two cache packages.
+*
+!osm
+!pollution
+**/__pycache__
+**/*.pyc
+**/.pytest_cache
+**/.env
+osm/Dockerfile*
+osm/docker-compose.yml
