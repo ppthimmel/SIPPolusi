@@ -206,3 +206,4 @@ docs/experiments/**/predictions.parquet
 /.codex/skills/graphify/
 /.codex/hooks.json
 /AGENTS.md
+docs/experiments/ds-v0.1.0.zip
