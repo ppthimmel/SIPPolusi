@@ -12,7 +12,11 @@ NAMES = {"idw_p2_k8": "IDW p=2, k=8 (baseline TI-AI-04)", "idw_p1_all": "IDW p=1
          "lgbm": "LightGBM", "xgb": "XGBoost", "rf": "Random forest", "et": "Extra trees", "mlp": "MLP",
          "lgbm_allfeat_tuned": "LightGBM, all features, tuned", "et_allfeat_tuned": "Extra trees, all features, tuned",
          "lgbm_regsel": "LightGBM, regularised selection", "rk_ridge": "Regression kriging (ridge)",
-         "ens_all": "Ensemble, all 6 learned", "ens_top3": "Ensemble, top 3 (val)"}
+         "ens_all": "Ensemble, all 6 learned", "ens_top3": "Ensemble, top 3 (val)",
+         "ridge_idwcorr": "IDW correction p2k8: ridge", "lgbm_idwcorr": "IDW correction p2k8: LightGBM",
+         "lgbm_allfeat_idwcorr": "IDW correction p2k8: LightGBM, all features",
+         "ridge_idwp1corr": "IDW correction p1 all: ridge", "lgbm_idwp1corr": "IDW correction p1 all: LightGBM",
+         "lgbm_allfeat_idwp1corr": "IDW correction p1 all: LightGBM, all features"}
 
 for tgt in ("pm25", "no2"):
     v = pd.read_csv(R + f"loso_{tgt}_val_metrics.csv").set_index("model")

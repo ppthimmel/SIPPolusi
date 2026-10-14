@@ -87,7 +87,7 @@ ketersediaan data pendukung, seperti pada baseline TI-AI-04.
 |---|---|---|
 | Baseline IDW (TI-AI-04) | `python -m spatial_model.baseline run --manifest docs/experiments/ds-v0.3.0/manifest.json` | Run [`20261013T101200Z-idw-ds-v0.3.0-f6f15b8f`](experiments/TI-AI-04/runs/20261013T101200Z-idw-ds-v0.3.0-f6f15b8f/report.md) |
 | ST-GNN | `read_stgnn_batch(docs/experiments/ds-v0.3.0/stgnn, t)`; split dari `splits/` atau kolom `split` pada `stgnn/labels.parquet` (PM2.5 blind ganda, `none` di luar split); fold dari `splits/loso_folds.parquet` | IDW-residual ST-GNN pada ds-v0.3.0 tidak lebih baik dari IDW ([perbandingan model](experiments/model-comparison-ds-v0.3.0/README.md)) |
-| Perbandingan interpolator dan model terlatih | [`experiments/model-comparison-ds-v0.3.0`](experiments/model-comparison-ds-v0.3.0/README.md): LOSO blok val untuk pemilihan, LOSO blok test untuk pelaporan | PM2.5: IDW p = 1 seluruh stasiun terpilih (22,18); NO2: LightGBM seluruh fitur (28,65), bergantung pada fitur geometri sensor dan perlu pemeriksaan sensor LCS-* |
+| Perbandingan interpolator dan model terlatih | [`experiments/model-comparison-ds-v0.3.0`](experiments/model-comparison-ds-v0.3.0/README.md): LOSO blok val untuk pemilihan, LOSO blok test untuk pelaporan | PM2.5: IDW p = 1 seluruh stasiun terpilih (22,18); NO2: LightGBM seluruh fitur dengan koreksi IDW (29,99), bergantung pada fitur geometri sensor dan perlu pemeriksaan sensor LCS-* |
 | Algoritma pencarian rute A\* | Tidak memakai label secara langsung. Bobot polusi ruas (EdgeWeight) berasal dari Spatial Downscaling Model yang kinerjanya dilaporkan pada ds-v0.3.0, sehingga laporan rute menyebut versi dataset model tersebut | Mengikuti model yang dipakai |
 
 ## Hasil baseline IDW pada ds-v0.3.0

@@ -56,6 +56,7 @@ TARGETS = {
     "direct": (lambda d: d["y"].to_numpy(), lambda d, z: z),
     "resid_idw": (lambda d: (d["y"] - d["idw_p2_k8"]).to_numpy(), lambda d, z: d["idw_p2_k8"].to_numpy() + z),
     "resid_mean": (lambda d: (d["y"] - d["src_mean"]).to_numpy(), lambda d, z: d["src_mean"].to_numpy() + z),
+    "resid_idw_p1all": (lambda d: (d["y"] - d["idw_p1_all"]).to_numpy(), lambda d, z: d["idw_p1_all"].to_numpy() + z),
     "logratio_mean": (lambda d: np.log1p(d["y"]).to_numpy() - np.log1p(d["src_mean"]).to_numpy(),
                       lambda d, z: np.expm1(np.log1p(d["src_mean"].to_numpy()) + z)),
 }

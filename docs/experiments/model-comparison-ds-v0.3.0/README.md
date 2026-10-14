@@ -12,7 +12,10 @@ mengikuti [`PROTOKOL_EVALUASI.md`](../../PROTOKOL_EVALUASI.md). Seluruh angka da
   - Kriging, kernel Gauss, ridge, MLP, dan ensemble setara secara statistik dengan konfigurasi terpilih.
   - LightGBM, XGBoost, random forest, dan extra trees sedikit tetapi signifikan lebih buruk.
 - **NO2: LightGBM dengan seluruh fitur unggul jelas.**
-  - Terpilih pada blok val; RMSE LOSO test **28,65** vs 46,99 untuk baseline, 12 dari 13 stasiun membaik.
+  - Terpilih pada blok val adalah LightGBM seluruh fitur yang mengoreksi IDW p = 2, k = 8: RMSE LOSO test
+    **29,99** vs 46,99 untuk baseline (IK 95% −25,66 s.d. −9,48), 12 dari 13 stasiun membaik.
+  - Model ini setara dengan LightGBM seluruh fitur yang mengoreksi rerata sumber (val 29,05 vs 29,03;
+    test 28,65).
   - Hampir seluruh keuntungannya berasal dari fitur geometri sensor. Fitur ini memisahkan kluster pusat
     yang membaca tinggi (DKI1 dan sensor murah LCS-23/24, ~1,4x stasiun referensi berjarak 1 km) dari
     stasiun pemerintah di pinggiran.
@@ -23,6 +26,11 @@ mengikuti [`PROTOKOL_EVALUASI.md`](../../PROTOKOL_EVALUASI.md). Seluruh angka da
     r = 0,92 antara paruh pertama dan kedua blok train, 0,87 antara blok train dan test.
   - Tidak ada kovariat maupun stasiun tetangga yang dapat memprediksinya (R² leave-one-station-out ≤ 0).
   - Hanya tingkat per jam bersama (14% variansi) yang dapat diprediksi dari stasiun tetangga.
+- **Koreksi IDW (model mempelajari observasi − IDW, seperti IDW-residual ST-GNN) tidak mengalahkan IDW
+  yang dikoreksinya.**
+  - Koreksi IDW p = 1 seluruh stasiun dengan LightGBM: RMSE LOSO test 22,29, IDW-nya sendiri 22,18.
+  - Koreksi IDW p = 2, k = 8 lebih lemah daripada koreksi IDW p = 1; basis yang lebih baik membantu, tetapi
+    koreksinya tidak menambah sinyal.
 
 ## Protokol
 
@@ -56,6 +64,11 @@ mengikuti [`PROTOKOL_EVALUASI.md`](../../PROTOKOL_EVALUASI.md). Seluruh angka da
   - ensemble (semua, top 2/3 menurut val).
 - **Target yang dibandingkan:** langsung, residual terhadap IDW, residual terhadap rerata sumber, dan log
   rasio. Residual terhadap rerata sumber menang untuk model pohon; target langsung untuk ridge dan MLP.
+  Fitur IDW p = 2, k = 8 selalu menjadi masukan setiap model terlatih.
+- **Koreksi IDW ([`idw_correction.py`](idw_correction.py)):** model mempelajari observasi − IDW lalu
+  menambahkan IDW kembali, dengan dua basis (IDW p = 2, k = 8 dan IDW p = 1 seluruh stasiun) × tiga model
+  (ridge dan LightGBM dengan kolom terpilih, LightGBM seluruh fitur). Basis IDW selalu menjadi fitur, dan
+  hyperparameter disetel ulang untuk setiap target.
 - **Grup fitur (~70 kolom):**
   - statistik interpolasi dan geometri sensor;
   - lag medan interpolasi;
@@ -109,6 +122,12 @@ mengikuti [`PROTOKOL_EVALUASI.md`](../../PROTOKOL_EVALUASI.md). Seluruh angka da
 | XGBoost | 23,78 | 22,62 | −0,27 | −1,38 [−2,89; +0,10] | +0,44 [+0,05; +0,86] |
 | Random forest | 23,82 | 22,66 | −0,29 | −1,34 [−2,86; +0,14] | +0,48 [+0,09; +0,89] |
 | MLP | 24,00 | 22,12 | −0,68 | −1,88 [−3,47; −0,32] | −0,06 [−0,90; +0,83] |
+| Koreksi IDW p1 semua: LightGBM | 23,42 | 22,29 | −0,34 | −1,70 [−3,13; −0,35] | +0,11 [−0,11; +0,32] |
+| Koreksi IDW p1 semua: ridge | 23,64 | 22,30 | −0,50 | −1,70 [−3,00; −0,44] | +0,12 [−0,15; +0,42] |
+| Koreksi IDW p2 k8: ridge | 23,81 | 22,46 | −0,24 | −1,53 [−2,82; −0,28] | +0,28 [+0,03; +0,56] |
+| Koreksi IDW p1 semua: LightGBM, seluruh fitur | 24,65 | 22,75 | −0,64 | −1,25 [−2,94; +0,42] | +0,57 [−0,56; +1,77] |
+| Koreksi IDW p2 k8: LightGBM | 24,72 | 22,97 | −0,01 | −1,02 [−1,98; −0,09] | +0,79 [+0,40; +1,20] |
+| Koreksi IDW p2 k8: LightGBM, seluruh fitur | 24,92 | 23,16 | −0,39 | −0,84 [−2,63; +0,99] | +0,98 [−0,39; +2,42] |
 | LightGBM, seluruh fitur, disetel | 24,68 | 23,10 | −1,00 | −0,90 [−2,59; +0,81] | +0,92 [−0,18; +2,06] |
 | IDW p = 2, k = 8 (baseline) | 25,56 | 24,00 | −1,57 | – | +1,82 [+0,63; +3,05] |
 | Regression kriging (ridge) | 26,19 | 24,19 | −1,58 | +0,20 [−0,11; +0,55] | +2,02 [+0,71; +3,36] |
@@ -118,20 +137,30 @@ mengikuti [`PROTOKOL_EVALUASI.md`](../../PROTOKOL_EVALUASI.md). Seluruh angka da
 - Konfigurasi terpilih sama dengan IDW tersetel yang sudah dilaporkan TI-AI-04 (power 1, seluruh stasiun,
   22,18).
 - Angka MLP 22,12 berada dalam rentang derau. MLP berada di urutan terakhir model terlatih pada CV dan val.
+- Koreksi IDW terbaik (LightGBM pada IDW p = 1 seluruh stasiun) setara dengan IDW tersebut tanpa koreksi
+  (+0,11; IK −0,11 s.d. +0,32). Koreksi IDW p = 2, k = 8 dengan LightGBM signifikan lebih buruk daripada IDW
+  p = 1 tanpa koreksi.
 
 ## NO2: LOSO (protokol utama)
 
 | Model | RMSE val (pemilihan) | RMSE test | Bias test | vs IDW p2 k8 [IK 95%] | Stasiun membaik |
 |---|---|---|---|---|---|
-| **LightGBM, seluruh fitur, disetel** (terpilih) | **29,05** | **28,65** | +3,49 | −18,34 [−28,93; −8,82] | 12/13 |
+| **Koreksi IDW p2 k8: LightGBM, seluruh fitur** (terpilih) | **29,03** | **29,99** | +3,68 | −17,01 [−25,66; −9,48] | 12/13 |
+| LightGBM, seluruh fitur, disetel (koreksi rerata sumber) | 29,05 | 28,65 | +3,49 | −18,34 [−28,93; −8,82] | 12/13 |
+| Koreksi IDW p1 semua: LightGBM, seluruh fitur | 32,18 | 31,07 | +5,44 | −15,92 [−27,19; −5,45] | 11/13 |
 | Extra trees, seluruh fitur, disetel | 38,78 | 38,43 | +6,85 | −8,56 [−16,81; −3,00] | 10/13 |
+| Koreksi IDW p1 semua: ridge | 39,51 | 40,90 | +7,10 | −6,09 [−16,59; +4,42] | 10/13 |
+| Koreksi IDW p2 k8: ridge | 39,82 | 41,24 | +7,44 | −5,75 [−16,04; +4,17] | 10/13 |
 | Ridge | 39,86 | 41,31 | +6,16 | −5,68 [−14,99; +3,81] | 10/13 |
+| Koreksi IDW p2 k8: LightGBM | 41,15 | 42,23 | +3,14 | −4,77 [−13,77; +5,00] | 11/13 |
+| Koreksi IDW p1 semua: LightGBM | 43,15 | 42,64 | +1,86 | −4,35 [−15,56; +7,05] | 11/13 |
 | IDW p = 2, seluruh stasiun | 44,64 | 44,66 | +18,89 | −2,33 [−3,85; −0,68] | 11/13 |
 | IDW p = 1, seluruh stasiun | 46,14 | 45,55 | +11,63 | −1,44 [−10,38; +7,71] | 7/13 |
 | IDW p = 2, k = 8 (baseline) | 46,46 | 46,99 | +22,10 | – | – |
 
 Konfigurasi NO2 berasal dari seleksi PM2.5 (tanpa penyetelan khusus NO2), sehingga pemilihan di antara
-konfigurasi tersebut hanya dilakukan pada blok val.
+konfigurasi tersebut hanya dilakukan pada blok val. Dua model teratas berselisih 0,02 pada val dan
+keduanya bergantung pada fitur geometri sensor yang sama, sehingga praktis setara.
 
 **Sumber keuntungan NO2** ([`results/no2_ablation.csv`](results/no2_ablation.csv), LightGBM dengan
 hyperparameter yang sama):
@@ -216,6 +245,7 @@ tabulate. Jalankan dari folder ini:
 ```bash
 python fixed.py                    # seleksi + split tetap (~32 menit)
 python fair_tuning.py              # uji ketahanan (~25 menit)
+python idw_correction.py           # koreksi IDW (~30 menit)
 BLOCK=val THREADS=1 JOBS=8 python loso.py pm25
 BLOCK=val THREADS=1 JOBS=8 python loso.py no2
 THREADS=1 JOBS=8 python loso.py pm25    # ~11 menit
@@ -229,6 +259,7 @@ python summarize.py > results/summary.md
 | `common.py` | Panel stasiun-jam, fitur spasial tanpa kebocoran, kriging, metrik, bootstrap |
 | `models.py` | Grup fitur, parameterisasi target, model, ruang pencarian |
 | `fixed.py`, `fair_tuning.py` | Seleksi fitur, target, dan hyperparameter; split tetap; uji ketahanan |
+| `idw_correction.py` | Model koreksi IDW (observasi − IDW) dengan dua basis IDW |
 | `loso.py`, `no2_ablation.py` | LOSO blok val/test; ablasi NO2 |
 | `summarize.py` | Tabel ringkasan `results/summary.md` |
 | `results/` | Metrik per model, jejak seleksi (`fixed_state.json`), ringkasan CSV |
