@@ -6,11 +6,16 @@ The IDW base is always a feature. Hyperparameters are re-tuned for every target 
 CV as fixed.py. New configurations are appended to results/fixed_state.json (best_cfg), so loso.py
 evaluates them too, and their fixed-split rows are appended to results/fixed_metrics.csv.
 
-    python idw_correction.py
+``direct`` mode adds the counterpart that predicts the concentration itself with both IDW results as
+features (LightGBM with the selected columns, and with all feature groups).
+
+    python idw_correction.py           # IDW correction rows
+    python idw_correction.py direct    # LightGBM direct rows
 """
 from __future__ import annotations
 
 import json
+import sys
 
 import numpy as np
 import pandas as pd
@@ -22,7 +27,7 @@ from models import CORE, design, feature_groups, sample_configs
 BASES = {"idwcorr": ("resid_idw", "idw_p2_k8"), "idwp1corr": ("resid_idw_p1all", "idw_p1_all")}
 
 
-def main():
+def main(mode="idw"):
     target = "pm25"
     state = json.loads((RES / "fixed_state.json").read_text(encoding="utf-8"))
     p = Panel(target)
@@ -32,19 +37,24 @@ def main():
     splits = cv_splits(dtr["group"].to_numpy(), dtr["hour"].to_numpy())
     groups = feature_groups(target)
     all_cols = CORE + [c for g in groups.values() for c in g]
+    variants = []  # (name, model, cols, target)
+    if mode == "direct":
+        both_idw = list(dict.fromkeys([*state["best_cfg"]["lgbm"]["cols"], "idw_p2_k8", "idw_p1_all"]))
+        variants = [("lgbm_direct", "lgbm", both_idw, "direct"),
+                    ("lgbm_allfeat_direct", "lgbm", all_cols, "direct")]
+    else:
+        for suffix, (tgt, base) in BASES.items():
+            families = {"ridge": state["best_cfg"]["ridge"]["cols"], "lgbm": state["best_cfg"]["lgbm"]["cols"],
+                        "lgbm_allfeat": all_cols}
+            for fam, cols in families.items():
+                variants.append((f"{fam}_{suffix}", fam.split("_")[0], list(dict.fromkeys([*cols, base])), tgt))
     new = {}
-    for suffix, (tgt, base) in BASES.items():
-        families = {"ridge": state["best_cfg"]["ridge"]["cols"], "lgbm": state["best_cfg"]["lgbm"]["cols"],
-                    "lgbm_allfeat": all_cols}
-        for fam, cols in families.items():
-            cols = list(dict.fromkeys([*cols, base]))
-            model = fam.split("_")[0]
-            configs = sample_configs(model, seed=11)[:15] if model == "lgbm" else sample_configs(model)
-            scores = sorted(((cv_rmse(model, hp, cols, tgt, dtr, splits), hp) for hp in configs), key=lambda x: x[0])
-            name = f"{fam}_{suffix}"
-            new[name] = {"hp": scores[0][1], "cv_rmse": scores[0][0], "cols": cols, "target": tgt,
-                         "n_configs": len(scores)}
-            log("tuned", name, round(scores[0][0], 3), scores[0][1])
+    for name, model, cols, tgt in variants:
+        configs = sample_configs(model, seed=11)[:15] if model == "lgbm" else sample_configs(model)
+        scores = sorted(((cv_rmse(model, hp, cols, tgt, dtr, splits), hp) for hp in configs), key=lambda x: x[0])
+        new[name] = {"hp": scores[0][1], "cv_rmse": scores[0][0], "cols": cols, "target": tgt,
+                     "n_configs": len(scores)}
+        log("tuned", name, round(scores[0][0], 3), scores[0][1])
 
     table = pd.read_csv(RES / "fixed_metrics.csv")
     rows = []
@@ -68,4 +78,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    main(sys.argv[1] if len(sys.argv) > 1 else "idw")

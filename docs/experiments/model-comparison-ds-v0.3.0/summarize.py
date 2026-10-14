@@ -16,7 +16,9 @@ NAMES = {"idw_p2_k8": "IDW p=2, k=8 (baseline TI-AI-04)", "idw_p1_all": "IDW p=1
          "ridge_idwcorr": "IDW correction p2k8: ridge", "lgbm_idwcorr": "IDW correction p2k8: LightGBM",
          "lgbm_allfeat_idwcorr": "IDW correction p2k8: LightGBM, all features",
          "ridge_idwp1corr": "IDW correction p1 all: ridge", "lgbm_idwp1corr": "IDW correction p1 all: LightGBM",
-         "lgbm_allfeat_idwp1corr": "IDW correction p1 all: LightGBM, all features"}
+         "lgbm_allfeat_idwp1corr": "IDW correction p1 all: LightGBM, all features",
+         "lgbm_direct": "LightGBM direct (IDW p2k8 + p1 all as features)",
+         "lgbm_allfeat_direct": "LightGBM direct, all features"}
 
 for tgt in ("pm25", "no2"):
     v = pd.read_csv(R + f"loso_{tgt}_val_metrics.csv").set_index("model")
