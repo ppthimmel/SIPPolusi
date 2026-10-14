@@ -1,18 +1,9 @@
-FROM nginx:1.27-alpine
+FROM nginx:1.27-alpine AS gateway
 
 COPY nginx.conf /etc/nginx/nginx.conf
 COPY templates/ /etc/nginx/templates/
 COPY docker-entrypoint.d/10-validate-env.sh /docker-entrypoint.d/10-validate-env.sh
 RUN chmod +x /docker-entrypoint.d/10-validate-env.sh && rm -f /etc/nginx/conf.d/default.conf
-
-# Fail the build on a syntax error: render the template with sample values
-# and run nginx -t, then discard the result (the real values come at start).
-RUN PORT=8080 BACKEND_UPSTREAM=http://127.0.0.1:8000 CACHE_API_UPSTREAM=http://127.0.0.1:8001 \
-        NGINX_LOCAL_RESOLVERS=127.0.0.11 \
-        envsubst '${PORT} ${BACKEND_UPSTREAM} ${CACHE_API_UPSTREAM} ${NGINX_LOCAL_RESOLVERS}' \
-        < /etc/nginx/templates/default.conf.template > /etc/nginx/conf.d/default.conf \
-    && nginx -t \
-    && rm /etc/nginx/conf.d/default.conf
 
 # PORT: Railway injects its own; 8080 is the local default.
 # BACKEND_UPSTREAM and CACHE_API_UPSTREAM have no default on purpose: the
@@ -24,3 +15,16 @@ ENV PORT=8080 \
     NGINX_ENVSUBST_FILTER="^(PORT|BACKEND_UPSTREAM|CACHE_API_UPSTREAM|NGINX_LOCAL_RESOLVERS)$"
 
 EXPOSE 8080
+
+
+# Environment validation, template render + nginx -t, and routing against stub
+# upstreams (tests/run.sh). On its own: docker build --target test src/gateway
+FROM gateway AS test
+COPY tests/ /tests/
+RUN sh /tests/run.sh && touch /tmp/gateway-tests-passed
+
+
+# Default target. Copying the marker makes every build run the test stage
+# first, so a failing test fails the build (and the Railway deploy).
+FROM gateway AS runtime
+COPY --from=test /tmp/gateway-tests-passed /tmp/gateway-tests-passed

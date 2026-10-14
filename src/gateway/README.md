@@ -25,20 +25,40 @@ backend belong to TI-DO-05 and TI-DO-04; this service is their starting point.
 
 | Variable | Required | Notes |
 |---|---|---|
-| `BACKEND_UPSTREAM` | yes | `scheme://host:port`, no path or trailing slash. Railway: `http://${{backend.RAILWAY_PRIVATE_DOMAIN}}:${{backend.PORT}}`; compose: `http://backend:8000` |
+| `BACKEND_UPSTREAM` | yes | `http(s)://host:port` and nothing else: port required (1–65535); no user-info, path, trailing slash, query or fragment. Host is a DNS name, IPv4, or bracketed IPv6 (`[fd12::1]`). Railway: `http://${{backend.RAILWAY_PRIVATE_DOMAIN}}:${{backend.PORT}}`; compose: `http://backend:8000` |
 | `CACHE_API_UPSTREAM` | yes | Same format. Railway: `http://${{cache-api.RAILWAY_PRIVATE_DOMAIN}}:${{cache-api.PORT}}` (use the Cache API service's actual name); compose: `http://cache_api:8000` |
 | `PORT` | no | Railway injects it; image default `8080` |
 
 `docker-entrypoint.d/10-validate-env.sh` checks all of them before NGINX starts and
-stops the container with a message naming the variable, e.g.
+stops the container (exit 1) with a message naming the variable. A rejected
+upstream value is never printed, since it may hold a pasted credential:
 
 ```
-gateway: invalid configuration: BACKEND_UPSTREAM='http://backend:8000/' must not contain a path or trailing slash (nginx would replace the request path with it); use scheme://host:port
+gateway: invalid configuration: BACKEND_UPSTREAM is not a valid upstream; expected scheme://host:port, e.g. http://backend.railway.internal:8000, with no user:password@, path, trailing slash, query or fragment (value not shown)
 ```
 
 The template is rendered by the official image's entrypoint (envsubst limited
-to `PORT`, `BACKEND_UPSTREAM`, `CACHE_API_UPSTREAM`, `NGINX_LOCAL_RESOLVERS`). The build renders it
-with sample values and runs `nginx -t`, so a syntax error fails the build.
+to `PORT`, `BACKEND_UPSTREAM`, `CACHE_API_UPSTREAM`, `NGINX_LOCAL_RESOLVERS`).
+
+## Tests
+
+`tests/run.sh` runs in the Dockerfile's `test` stage, and the default target
+depends on it, so every build (including Railway's) runs it and a failure
+fails the build. It needs no network and takes about a second:
+
+1. the validator accepts valid upstreams (compose names, Railway private
+   domains, IPv4, bracketed IPv6) and rejects malformed ones (missing or
+   invalid port, user-info, path, query, fragment, whitespace, line breaks,
+   `;`, quotes, `$`), without the rejected value reaching the output;
+2. the real entrypoint renders the template and `nginx -t` accepts it;
+3. against stub upstreams, `/healthz`, `/v1/routes` and other `/v1/*`,
+   `/v1/osm/*`, `/v1/pollution/*` and unknown paths reach the intended place,
+   with the request URI unchanged and the same `X-Request-ID` upstream and in
+   the response.
+
+```bash
+docker build --target test src/gateway
+```
 
 ## Logs
 

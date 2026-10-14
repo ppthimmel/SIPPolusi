@@ -135,9 +135,9 @@ cara memperbaikinya, tanpa mengulang kata sandi.
 |---|---|---|
 | Build backend | `python -c "import main"` | `build check failed: 'import main' raised; see the traceback above (missing package in requirements.txt?)` |
 | Build Data Worker | impor modul yang dipakai siklus (`preflight.RUNTIME_MODULES`) | `build check gagal: modul 'spatial_model.inference' gagal diimpor (ModuleNotFoundError: ...); periksa requirements.txt lalu build ulang image.` |
-| Build gateway | template dirender dengan nilai contoh, lalu `nginx -t` | keluaran `nginx: [emerg] ...` dengan nomor baris |
+| Build gateway | tahap `test` (`tests/run.sh`): validasi variabel, render template lewat entrypoint asli + `nginx -t`, routing ke upstream tiruan | baris `FAIL  ...` per kasus, atau `nginx: [emerg] ...` dengan nomor baris |
 | Start backend | `settings.load_settings()` sebelum port dibuka; kode keluar 2 | `- DATABASE_URL is required in staging; set it in the service variables (Railway: ${{database.DATABASE_URL}}).` |
-| Start gateway | `10-validate-env.sh` sebelum template dirender; kode keluar 1 | `gateway: invalid configuration: BACKEND_UPSTREAM is not set; Railway: http://backend.railway.internal:8000, compose: http://backend:8000` |
+| Start gateway | `10-validate-env.sh` sebelum template dirender; kode keluar 1. Nilai upstream yang ditolak tidak dicetak | `gateway: invalid configuration: BACKEND_UPSTREAM is not set; Railway: http://backend.railway.internal:8000, compose: http://backend:8000` |
 | Start Data Worker | `preflight.config_problems()` sebelum siklus; kode keluar 2 | `- DATABASE_URL belum diatur. Lokal: salin src/data_worker/.env.example ke .env; Railway: isi dengan referensi ${{database.DATABASE_URL}} ...` |
 
 Backend dan Data Worker melaporkan seluruh masalah konfigurasi sekaligus;
