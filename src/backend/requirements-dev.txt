@@ -1,0 +1,4 @@
+-r requirements.txt
+pytest>=8.0
+# FastAPI TestClient
+httpx>=0.24,<0.27

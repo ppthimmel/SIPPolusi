@@ -6,7 +6,6 @@ import argparse
 import csv
 import datetime as dt
 import json
-import logging
 import sys
 
 from .collect import run_full, run_snapshot
@@ -16,12 +15,10 @@ from .store import Store
 
 
 def _log(verbose: bool) -> None:
-    logging.basicConfig(
-        level=logging.DEBUG if verbose else logging.INFO,
-        format="%(asctime)s %(levelname)-7s %(name)s: %(message)s",
-        datefmt="%Y-%m-%dT%H:%M:%S%z",
-        stream=sys.stderr,
-    )
+    # Ke stdout, kredensial disamarkan; lihat log_config.py di akar Data Worker.
+    from log_config import configure_logging
+
+    configure_logging(level="DEBUG" if verbose else None)
 
 
 def main(argv: list[str] | None = None) -> int:

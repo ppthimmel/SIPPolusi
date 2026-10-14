@@ -1,0 +1,10 @@
+# Secrets stay out of the image; Railway injects variables at runtime.
+.env
+.env.*
+!.env.example
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+venv/
+tests/

@@ -6,7 +6,6 @@
     "watchPatterns": ["src/data_worker/**"]
   },
   "deploy": {
-    "startCommand": "python main.py cycle",
     "cronSchedule": "15 * * * *",
     "restartPolicyType": "NEVER"
   }
