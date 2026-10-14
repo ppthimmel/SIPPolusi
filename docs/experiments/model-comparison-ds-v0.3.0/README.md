@@ -252,6 +252,51 @@ IDW p = 2, k = 8 pada kunci yang sama (689 stasiun-jam test):
 
 ## Menjalankan ulang
 
+### Run ST-GNN lokal dengan GPU
+
+`train_stgnn_ds_v0.3.0.ipynb` memuat kode mandiri IDW-residual ST-GNN, disesuaikan
+dengan seluruh fitur temporal ds-v0.3.0 (termasuk prakiraan GEOS-CF dan kalender).
+Sel pertama memuat jalur dataset/output dan pengaturan training. Run default adalah
+PM2.5 fixed split, seed 42, maksimum 100 epoch, early stopping patience 12,
+dan pemilihan checkpoint hanya berdasarkan RMSE validation; epoch nol adalah IDW.
+Fitur sensor mengecualikan seluruh grup target dari baseline dan receptive field GAT.
+
+```powershell
+D:/conda_envs/deep/python.exe docs/experiments/model-comparison-ds-v0.3.0/run_stgnn.py
+```
+
+Pada mesin ini environment `deep` memiliki PyTorch CUDA dan dipakai untuk RTX 3050.
+`run_stgnn.py` menyimpan versi runtime, hash notebook/runner/dataset, konfigurasi,
+progres tiap epoch, log, checkpoint terbaik, prediksi dan metrik kedua metode.
+Artefak lengkap berada di folder output yang dicetak oleh runner; default-nya
+`graphify-out/stgnn-ds-v0.3.0/`. `progress.pt` adalah checkpoint sementara jika training
+terhenti, sedangkan `best.pt` dibuat setelah training selesai. Checkpoint ini memakai
+format `idw_residual_v1` dan harus diinterpretasikan oleh notebook ini.
+Evaluasi test dijalankan sekali setelah pemilihan checkpoint. Dataset ini sudah pernah
+diperiksa dalam pengembangan, sehingga hasilnya tetap perbandingan eksploratif.
+
+Untuk LOSO PM2.5 lengkap di GPU:
+
+```powershell
+D:/conda_envs/deep/python.exe docs/experiments/model-comparison-ds-v0.3.0/run_stgnn_loso.py --all
+# Melanjutkan batch yang terhenti tanpa mengulang fold yang sudah selesai:
+D:/conda_envs/deep/python.exe docs/experiments/model-comparison-ds-v0.3.0/run_stgnn_loso.py --resume <folder-output-batch>
+# Ringkasan setelah seluruh fold selesai:
+D:/conda_envs/deep/python.exe docs/experiments/model-comparison-ds-v0.3.0/summarize_stgnn_loso.py <folder-output-batch>
+```
+
+Dataset mencantumkan 103 grup PM2.5, tetapi hanya **95 grup / 97 stasiun** mempunyai
+label pada blok test (4.358 observasi). Runner mengevaluasi seluruh 95 grup tersebut.
+Pada setiap fold, grup yang ditahan dikeluarkan dari label train **dan validation**,
+normalisasi dan seluruh sumber sensor. Checkpoint dipilih dari blok validation grup
+lain; hyperparameter model tidak dicari ulang per fold. Input tertransformasi disimpan
+di GPU dan dibandingkan persis dengan preprocessing jendela asli sebelum training.
+Agregasi membandingkan IDW p=2/k=8, IDW p=1/all dan IDW-ST-GNN pada kunci yang sama.
+`batch_manifest.json` mencatat cakupan dan status; hasil parsial tidak dianggap sebagai
+hasil LOSO lengkap. Sumber kode disimpan dan hash-nya diperiksa saat resume.
+
+### Model pembanding
+
 Lingkungan Python dengan pandas, scikit-learn, pyproj, scipy, joblib, lightgbm 4.7, xgboost 3.4, dan
 tabulate. Jalankan dari folder ini:
 
@@ -280,3 +325,36 @@ python summarize.py > results/summary.md
 
 Prediksi per baris (`results/*_predictions.parquet`, ~4 MB) tidak di-commit dan dapat dibangkitkan ulang
 dengan perintah di atas.
+
+## XGBoost GPU fixed split
+
+Jalankan `python run_xgboost_fixed.py` di environment `deep` dengan XGBoost 3.0.2
+(CUDA 12.5; kompatibel dengan driver lokal). Target PM2.5, seed 42, snapshot ds-v0.3.0.
+Runner membandingkan enam kandidat: prediksi langsung/koreksi IDW dengan kedalaman 2/4/6.
+Early stopping dan pemilihan kandidat memakai validation; test dievaluasi setelah pemilihan.
+Input mencakup 54 fitur tabular, tanpa lag yang berbasis pergeseran baris.
+Pembacaan sensor hanya dari stasiun train, selalu mengecualikan seluruh grup target.
+
+Hasil, model, prediksi, source, dan manifest disimpan dalam folder bertanggal di `xgboost_fixed/`.
+Run `pm25_gpu_seed42_20261014_202354_090525` memilih koreksi IDW, kedalaman 4, satu pohon.
+Test RMSE: IDW p2/k8 **18.7448**, XGBoost **18.4782** ug/m3, pada 689 observasi.
+Ini eksperimen eksploratif satu seed pada dataset test yang sudah pernah diperiksa.
+
+## Perbandingan IDW, IDW + XGBoost, dan IDW + ST-GNN
+
+`python compare_idw_hybrids.py` menjalankan XGBoost residual pada seluruh 95 grup LOSO
+PM2.5 dan menggabungkannya dengan hasil fixed split serta ST-GNN GPU yang sudah ada.
+Untuk melanjutkan run terputus: `python compare_idw_hybrids.py --resume <folder-run>`.
+Lokasi run pembanding didefinisikan di bagian atas script.
+
+Setiap fold mengeluarkan seluruh grup target dari label train/validation dan sumber sensor.
+Kedalaman 2/4/6, jumlah pohon, serta opsi koreksi nol dipilih pada validation grup lain.
+Baris train tanpa sumber IDW dikeluarkan dan dicatat, sesuai ST-GNN;
+seluruh baris validation/test harus memiliki prediksi IDW yang valid.
+IDW dasar menggunakan p=2/k=8. Runner memverifikasi kecocokan stasiun-jam,
+label, dan baseline IDW sebelum menghitung metrik serta bootstrap berpasangan per grup.
+
+Model dan prediksi lengkap disimpan di `graphify-out/xgboost-ds-v0.3.0/`;
+tabel ringkas dan laporan di `idw_hybrid_comparison/`.
+Ini perbandingan pipeline dengan representasi fitur dan anggaran seleksi yang berbeda,
+bukan pengujian jenis arsitektur dengan input identik.
