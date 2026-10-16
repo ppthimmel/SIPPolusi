@@ -358,3 +358,43 @@ Model dan prediksi lengkap disimpan di `graphify-out/xgboost-ds-v0.3.0/`;
 tabel ringkas dan laporan di `idw_hybrid_comparison/`.
 Ini perbandingan pipeline dengan representasi fitur dan anggaran seleksi yang berbeda,
 bukan pengujian jenis arsitektur dengan input identik.
+
+## NO2: model lain dengan seluruh fitur
+
+`THREADS=1 python no2_feature_sets.py` menguji apakah keuntungan LightGBM pada NO2 berasal dari fitur atau dari
+algoritmanya. Ridge, MLP, XGBoost, random forest, dan LightGBM dijalankan dengan target langsung dan dua set fitur:
+seluruh 62 kolom, serta fitur IDW ditambah tujuh kolom geometri sensor. Setiap model memakai hyperparameter hasil
+penyetelan PM2.5 untuk keluarganya (tanpa penyetelan ulang); set fitur per model dipilih pada blok val. Hasil:
+[`results/no2_feature_sets.csv`](results/no2_feature_sets.csv).
+
+| Model | Set terpilih (val) | RMSE val | RMSE test | Stasiun membaik vs IDW p2 k8 |
+|---|---|---|---|---|
+| LightGBM | seluruh fitur | 30,23 | 28,95 | 13/13 |
+| Random forest | seluruh fitur | 32,26 | 31,31 | 12/13 |
+| XGBoost | seluruh fitur | 37,05 | 34,82 | 12/13 |
+| MLP | seluruh fitur | 69,11 | 65,94 | 9/13 |
+| Ridge | IDW + geometri sensor | 72,62 | 69,98 | 11/13 |
+
+- Model pohon lain juga membaik tajam dengan seluruh fitur (fitur terpilih: 46,45–48,18), sehingga keuntungan NO2
+  terutama berasal dari fitur geometri sensor, bukan dari LightGBM saja. LightGBM pada tabel NO2 utama (27,43) memakai
+  hyperparameter yang disetel untuk target langsung.
+- Ridge dan MLP jauh lebih buruk daripada IDW (46,99), kemungkinan karena hubungan geometri sensor dengan NO2
+  nonlinear dan hanya ada 13 stasiun latih.
+
+## IDW-ST-GNN NO2 LOSO (Colab GPU)
+
+Notebook ST-GNN yang sama dengan run LOSO PM2.5, dijalankan untuk NO2 pada 13 fold (604 stasiun-jam test) dengan
+runner yang diberi opsi `--target`, `--data`, `--out`, dan `--device`. Hasil dan salinan runner:
+[`stgnn_idw_residual/ds-v0.3.0_loso_no2_gpu_seed42_20261015_0e6b77e4/`](stgnn_idw_residual/ds-v0.3.0_loso_no2_gpu_seed42_20261015_0e6b77e4/report.md).
+
+| Metode | MAE | RMSE | Bias | R² |
+|---|---|---|---|---|
+| IDW p2 k8 | 38,81 | 46,99 | +22,10 | 0,14 |
+| IDW p1 all | 37,45 | 45,55 | +11,63 | 0,19 |
+| IDW-ST-GNN | 33,10 | 47,17 | +0,02 | 0,13 |
+
+- ST-GNN menghilangkan bias IDW dan memperbaiki 10 dari 13 stasiun, tetapi RMSE gabungannya setara IDW (selisih
+  +0,18; IK 95% −14,36 sampai +13,00) karena galat besar pada DKI1 dan LCS-24.
+- Masukan ST-GNN hanya memuat sebagian geometri sensor (jarak ke stasiun sumber terdekat dan jumlah sumber), tanpa
+  kerapatan sensor yang paling berperan pada LightGBM seluruh fitur (27,43).
+- Satu seed pada data test yang sudah pernah diperiksa; hasil eksploratif.
