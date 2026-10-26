@@ -1,0 +1,242 @@
+# CI/CD pipeline (TI-DO-06). Stages, the regression set and the deployment
+# rule are documented in docs/devops/ci-cd.md.
+#
+#   build       every Dockerfile Railway deploys (the gateway image runs its
+#               own routing tests in the build)
+#   test        unit tests per service; the Data Worker storage tests run
+#               against a throwaway PostGIS
+#   regression  final path: Data Worker -> Backend cache flow on PostGIS 18 and
+#               an end-to-end smoke test through the gateway (compose)
+#   ci-passed   single required check; Railway ("Wait for CI") deploys dev/main
+#               only after the workflow for that commit succeeds
+#
+# No platform secrets are used: deploy credentials stay in Railway, and the
+# only credentials here are throwaway test database values.
+name: CI
+
+on:
+  push:
+    branches: [dev, main]
+  pull_request:
+    branches: [dev, main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  # Superseded PR runs are cancelled; pushes to dev/main always finish so
+  # Railway gets a result for every commit it waits on.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  PYTHON_VERSION: "3.11"
+  REPORTS: ${{ github.workspace }}/.ci-reports
+
+jobs:
+  build:
+    name: build / ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: backend
+            context: src/backend
+            file: src/backend/Dockerfile
+            target: ""
+          - name: cache-api
+            context: src/backend
+            file: src/backend/osm/Dockerfile
+            target: runtime
+          - name: gateway
+            context: src/gateway
+            file: src/gateway/Dockerfile
+            target: runtime
+          - name: data-worker
+            context: src/data_worker
+            file: src/data_worker/Dockerfile
+            target: ""
+          - name: frontend
+            context: src/frontend
+            file: src/frontend/Dockerfile
+            target: ""
+    steps:
+      - uses: actions/checkout@v5
+      - uses: docker/setup-buildx-action@v3
+      - name: Build image
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.file }}
+          target: ${{ matrix.target }}
+          push: false
+          tags: sippolusi-${{ matrix.name }}:ci
+          cache-from: type=gha,scope=${{ matrix.name }}
+          cache-to: type=gha,scope=${{ matrix.name }}
+
+  test-backend:
+    name: test / backend
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: |
+            src/backend/requirements*.txt
+            src/backend/osm/requirements*.txt
+      - name: Install dependencies
+        run: |
+          pip install -r src/backend/requirements-test.txt
+          pip install -r src/backend/osm/requirements-dev.txt
+      - name: Backend API (src/backend/tests)
+        # From the repo root: test_baseline imports src.backend.route_model.
+        run: python -m pytest src/backend/tests -ra --junitxml="$REPORTS/backend.xml"
+      - name: Cache API (osm, pollution, planner, solver)
+        # DATABASE_URL and TEST_DATABASE_URL are unset here, so the read-only
+        # integration tests and the cache-flow tests skip; the cache flow runs
+        # in the regression job.
+        run: |
+          status=0
+          for p in osm pollution planner solver; do
+            echo "::group::$p"
+            (cd "src/backend/$p" && pytest -p no:cacheprovider -ra --junitxml="$REPORTS/cache-api-$p.xml") || status=1
+            echo "::endgroup::"
+          done
+          exit $status
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reports-test-backend
+          path: ${{ env.REPORTS }}
+          retention-days: 14
+
+  test-data-worker:
+    name: test / data-worker
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgis:
+        # Same major versions as the Railway database.
+        image: postgis/postgis:18-3.6
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -h 127.0.0.1 -U test -d test"
+          --health-interval 2s --health-timeout 3s --health-retries 30
+    env:
+      TEST_DATABASE_URL: postgresql://test:test@localhost:5432/test
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: src/data_worker/requirements*.txt
+      - name: Install dependencies
+        run: pip install -r src/data_worker/requirements-dev.txt
+      - name: Data Worker (src/data_worker/tests, includes test_regresi.py)
+        working-directory: src/data_worker
+        run: python -m pytest tests -p no:cacheprovider -ra --junitxml="$REPORTS/data-worker.xml"
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reports-test-data-worker
+          path: ${{ env.REPORTS }}
+          retention-days: 14
+
+  regression:
+    name: regression / cache flow + gateway e2e
+    needs: [build, test-backend, test-data-worker]
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    services:
+      postgis:
+        image: postgis/postgis:18-3.6
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: test
+        # 55432 like src/backend/testdb, so it does not clash with the compose
+        # stack's postgres on 5432 below.
+        ports:
+          - 55432:5432
+        options: >-
+          --health-cmd "pg_isready -h 127.0.0.1 -U test -d test"
+          --health-interval 2s --health-timeout 3s --health-retries 30
+    env:
+      TEST_DATABASE_URL: postgresql://test:test@localhost:55432/test
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: |
+            src/backend/osm/requirements*.txt
+            src/backend/pollution/requirements-dev.txt
+      - name: Install dependencies
+        run: pip install -r src/backend/pollution/requirements-dev.txt
+      - name: Cache flow (Data Worker writes, Backend reads)
+        run: |
+          status=0
+          for p in pollution planner solver; do
+            echo "::group::$p"
+            (cd "src/backend/$p" && pytest -m cacheflow -p no:cacheprovider -ra --junitxml="$REPORTS/cacheflow-$p.xml") || status=1
+            echo "::endgroup::"
+          done
+          exit $status
+      - name: Cache flow must not be skipped
+        # A missing database turns these tests into skips; on the final path
+        # that counts as a failure, not a pass.
+        run: python scripts/ci/check_junit.py --no-skips "$REPORTS"/cacheflow-*.xml
+      - name: Start gateway, backend, Cache API and PostGIS (compose)
+        run: |
+          for d in postgres backend gateway; do cp "src/$d/.env.example" "src/$d/.env"; done
+          docker compose up -d --build --no-deps --wait --wait-timeout 300 postgres backend cache_api gateway
+      - name: Smoke test through the gateway
+        run: |
+          for i in $(seq 1 30); do curl -fsS http://localhost:8081/healthz >/dev/null && break; sleep 2; done
+          python scripts/smoke_test.py --gateway http://localhost:8081 --backend http://localhost:8000 \
+            | tee "$REPORTS/smoke-test.txt"
+      - name: Collect compose logs
+        if: always()
+        run: |
+          mkdir -p "$REPORTS"
+          docker compose ps -a > "$REPORTS/compose-ps.txt" 2>&1 || true
+          docker compose logs --no-color --timestamps > "$REPORTS/compose.log" 2>&1 || true
+          docker compose down -v || true
+      - name: Upload regression reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reports-regression
+          path: ${{ env.REPORTS }}
+          retention-days: 14
+
+  ci-passed:
+    name: ci-passed
+    if: always()
+    needs: [build, test-backend, test-data-worker, regression]
+    runs-on: ubuntu-latest
+    steps:
+      - name: All required jobs succeeded
+        env:
+          NEEDS: ${{ toJSON(needs) }}
+        run: |
+          echo "$NEEDS" | jq -r 'to_entries[] | "\(.key): \(.value.result)"'
+          if ! echo "$NEEDS" | jq -e 'all(.[]; .result == "success")' >/dev/null; then
+            echo "::error::A required job did not succeed (failed, cancelled or skipped); nothing may be deployed from this commit."
+            exit 1
+          fi
