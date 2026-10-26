@@ -209,3 +209,6 @@ docs/experiments/model-comparison-ds-v0.3.0/results/*_predictions.parquet
 /.codex/skills/graphify/
 /.codex/hooks.json
 /AGENTS.md
+
+# JUnit reports and logs written by the CI workflow (also when run locally).
+/ci-reports/
