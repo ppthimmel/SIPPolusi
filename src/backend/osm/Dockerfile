@@ -1,6 +1,6 @@
-# Cache API: /v1/osm (src/backend/osm) and /v1/pollution (src/backend/pollution).
-# Build context is src/backend so both packages are available; only the files
-# allowed by osm/Dockerfile.dockerignore are sent. From the repo root:
+# Cache API: /v1/osm (src/backend/osm), /v1/pollution (src/backend/pollution) and
+# /v1/routes/solver-input (src/backend/planner). Build context is src/backend so the
+# packages are available; only the files allowed by osm/Dockerfile.dockerignore are sent. From the repo root:
 #   docker build -f src/backend/osm/Dockerfile -t sippolusi-backend-osm src/backend
 #   docker run --rm -p 8001:8000 --env-file src/backend/.env sippolusi-backend-osm
 # Tests run in their own stage:
@@ -14,7 +14,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1
 
-# Packages are imported as `osm` and `pollution`, so they live under /app with /app as cwd.
+# Packages are imported as `osm`, `pollution` and `planner`, so they live under /app with /app as cwd.
 WORKDIR /app
 COPY osm/requirements.txt osm/requirements.txt
 RUN pip install -r osm/requirements.txt
@@ -25,14 +25,16 @@ COPY osm/requirements-dev.txt osm/requirements-dev.txt
 RUN pip install -r osm/requirements-dev.txt
 COPY osm/ osm/
 COPY pollution/ pollution/
+COPY planner/ planner/
 # Integration tests also run when DATABASE_URL is passed (docker run -e/--env-file).
 # Cache-flow tests (TEST_DATABASE_URL + src/data_worker) are skipped in this image.
-CMD ["sh", "-c", "cd /app/osm && pytest -p no:cacheprovider; a=$?; cd /app/pollution && pytest -p no:cacheprovider; b=$?; exit $((a | b))"]
+CMD ["sh", "-c", "s=0; for p in osm pollution planner; do cd /app/$p && pytest -p no:cacheprovider || s=1; done; exit $s"]
 
 
 FROM base AS runtime
 COPY osm/*.py osm/
 COPY pollution/*.py pollution/
+COPY planner/*.py planner/
 RUN useradd --create-home --uid 10001 app
 USER app
 

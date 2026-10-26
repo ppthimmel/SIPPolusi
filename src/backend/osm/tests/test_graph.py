@@ -45,6 +45,13 @@ def test_bbox_holds_both_points_with_margin(trip_m, margin_m):
     assert margin_m <= haversine_m(west, ORIGIN) <= margin_m * 1.01
 
 
+def test_zero_buffer_on_aligned_or_equal_points_still_gives_a_valid_bbox():
+    north = offset_north(ORIGIN, 300)
+    for a, b in ((ORIGIN, north), (ORIGIN, ORIGIN)):
+        bbox = compute_request_bbox(a, b, buffer_m=0)
+        assert bbox.min_lon < bbox.max_lon and bbox.min_lat < bbox.max_lat
+
+
 # UT-BE-05 snap_to_graph -------------------------------------------------------
 
 def test_snap_returns_node_50_m_away(grid):
@@ -105,14 +112,16 @@ def test_subgraph_fails_when_destination_is_disconnected(grid):
 
 
 def test_bike_follows_oneway_but_walk_does_not():
-    nodes = {1: RoadNode(1, ORIGIN_LON, ORIGIN_LAT), 2: RoadNode(2, ORIGIN_LON + 0.001, ORIGIN_LAT)}
-    edges = [edge(1, 1, 2, oneway=True)]
+    # ~550 m apart, so each point has only its own node within the 200 m snap radius.
+    nodes = {1: RoadNode(1, ORIGIN_LON, ORIGIN_LAT), 2: RoadNode(2, ORIGIN_LON + 0.005, ORIGIN_LAT)}
+    edges = [edge(1, 1, 2, oneway=True, length_m=550.0)]
     a, b = nodes[1].point, nodes[2].point
     bbox = BBox(106.7, -6.3, 106.9, -6.1)
 
     bike = RoadGraph(VERSION, Mode.BIKE, bbox, nodes, edges)
     assert assemble_request_subgraph(bike, a, b).destination_node == 2
-    with pytest.raises(NoRouteFound):
+    # Node 2 has no edge a bike may leave by: the origin cannot be snapped.
+    with pytest.raises(PointNotOnNetwork, match="Titik asal"):
         assemble_request_subgraph(bike, b, a)
 
     walk = RoadGraph(VERSION, Mode.WALK, bbox, nodes, edges)
@@ -134,3 +143,44 @@ def test_edges_not_allowed_for_mode_split_the_graph():
     ]
     with pytest.raises(NoRouteFound):
         assemble_request_subgraph(g, g.nodes[node_id(0, 0)].point, g.nodes[node_id(0, 4)].point)
+
+
+# Feasible snapping (TI-SE-05) ---------------------------------------------------
+
+def _line_graph(mode, specs):
+    """Nodes 1..n along a line 100 m apart; specs = [(edge_id, u, v, oneway, walk, bike)]."""
+    nodes = {i: RoadNode(i, ORIGIN_LON + (i - 1) * 0.0009, ORIGIN_LAT) for i in range(1, 6)}
+    edges = [edge(eid, u, v, oneway=ow, walk=w, bike=b) for eid, u, v, ow, w, b in specs]
+    return RoadGraph(VERSION, mode, BBox(106.7, -6.3, 106.9, -6.1), nodes, edges)
+
+
+def test_bike_origin_skips_node_without_outgoing_edge():
+    # 2 -> 1 is oneway, so node 1 has no edge a bike can leave by; the origin snaps to node 2.
+    g = _line_graph(Mode.BIKE, [(1, 2, 1, True, True, True), (2, 2, 3, False, True, True)])
+    sub = assemble_request_subgraph(g, g.nodes[1].point, g.nodes[3].point)
+    assert sub.origin_node == 2 and sub.destination_node == 3
+    assert sub.origin_snap_distance_m == pytest.approx(99.5, abs=0.5)
+
+
+def test_bike_destination_skips_node_without_incoming_edge():
+    # 3 -> 4 then 5 -> 4 oneway: node 5 has no edge a bike can arrive by.
+    g = _line_graph(Mode.BIKE, [(1, 3, 4, True, True, True), (2, 5, 4, True, True, True)])
+    sub = assemble_request_subgraph(g, g.nodes[3].point, g.nodes[5].point)
+    assert sub.destination_node == 4
+
+
+def test_next_origin_candidate_is_tried_when_nearest_cannot_reach():
+    # Nearest origin node 1 is on an isolated pair 1-2; node 3 (200 m away) reaches the destination 5.
+    g = _line_graph(Mode.WALK, [(1, 1, 2, False, True, True), (2, 3, 4, False, True, True),
+                                (3, 4, 5, False, True, True)])
+    sub = assemble_request_subgraph(g, g.nodes[1].point, g.nodes[5].point, max_distance_m=250)
+    assert sub.origin_node == 3 and sub.destination_node == 5
+
+
+def test_snap_errors_name_the_endpoint():
+    g = _line_graph(Mode.WALK, [(1, 1, 2, False, True, True)])
+    far = offset_north(g.nodes[1].point, 1000)
+    with pytest.raises(PointNotOnNetwork, match="Titik asal"):
+        assemble_request_subgraph(g, far, g.nodes[2].point)
+    with pytest.raises(PointNotOnNetwork, match="Titik tujuan"):
+        assemble_request_subgraph(g, g.nodes[1].point, far)

@@ -1,4 +1,5 @@
-"""Standalone FastAPI app for the cache endpoints: /v1/osm and /v1/pollution.
+"""Standalone FastAPI app for the cache endpoints (/v1/osm, /v1/pollution) and the
+request planner (/v1/routes/solver-input).
 
 Run from src/backend:
     uvicorn osm.app:app --reload
@@ -22,6 +23,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
+from planner.router import router as planner_router
 from pollution.config import get_pollution_settings
 from pollution.repository import PollutionRepository
 from pollution.router import router as pollution_router
@@ -82,6 +84,7 @@ def create_app(
     install_error_handling(app)
     app.include_router(router)
     app.include_router(pollution_router)
+    app.include_router(planner_router)
 
     @app.get("/health", response_model=HealthOut, tags=["health"])
     async def health():
