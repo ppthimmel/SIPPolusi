@@ -88,8 +88,10 @@ TI-DO-04.
    - cache-api: `uvicorn --host ""` (`osm/Dockerfile`)
    - model_registry: `mlflow server --host "[::]"` (sebelumnya `0.0.0.0`,
      hanya IPv4, sehingga tidak terjangkau dari jaringan privat)
-   - gateway: `resolver ... ipv6=on` agar nama `*.railway.internal`
-     terurai ke alamat IPv6.
+   - gateway: `listen [::]:${PORT}` selain IPv4, karena frontend
+     memanggilnya lewat `gateway.railway.internal`; serta
+     `resolver ... ipv6=on` (juga di frontend) agar nama
+     `*.railway.internal` terurai ke alamat IPv6.
 4. **Satu environment, satu jaringan.** Jaringan privat tidak menyeberang
    antar-environment (`staging` tidak bisa memanggil `production`) atau
    antar-project.
@@ -120,10 +122,13 @@ aturannya sama: referensi privat, `http://`, tanpa path.
 Untuk setiap service selain `gateway` dan `frontend`:
 
 1. **Settings → Networking → Public Networking**: hapus domain
-   `*.up.railway.app` dan domain kustom. Domain lama setelah dihapus dijawab
+   `*.up.railway.app` dan domain kustom (CLI:
+   `railway domain delete <domain> --service <nama> --environment <env>`). Domain lama setelah dihapus dijawab
    edge Railway dengan `404 Application not found`
    (header `X-Railway-Fallback: true`).
-2. **database**: hapus **TCP Proxy** pada Settings → Networking. Selama TCP
+2. **database**: hapus **TCP Proxy** pada Settings → Networking (CLI:
+   `railway tcp-proxy list --service database --environment <env>` lalu
+   `railway tcp-proxy delete <id> --service database --environment <env>`). Selama TCP
    proxy ada, `DATABASE_PUBLIC_URL` (`*.proxy.rlwy.net:<port>`) membuka
    PostgreSQL ke internet dengan kata sandi sebagai satu-satunya pelindung.
    Bila perlu akses dari laptop (migrasi, inspeksi), aktifkan sementara,
@@ -149,7 +154,11 @@ Alat uji: [`scripts/network_test.py`](../../scripts/network_test.py)
   ditolak atau habis waktu, atau edge Railway menjawab domain yang tidak
   lagi diarahkan ke service).
 
-Target berupa `tcp://HOST:PORT` atau `http(s)://HOST[:PORT]/PATH`. Setiap
+Target berupa `tcp://HOST:PORT`, `postgres://HOST:PORT`, atau
+`http(s)://HOST[:PORT]/PATH`. Untuk TCP proxy Railway pakai `postgres://`:
+edge Railway tetap menerima koneksi TCP ke alamat proxy yang sudah dihapus
+(lalu memutusnya), jadi hanya jawaban PostgreSQL atas `SSLRequest` yang
+membuktikan basis data masih terbuka. Tidak ada kredensial yang dikirim. Setiap
 baris hasil memuat alamat hasil DNS, sehingga hasilnya sekaligus membuktikan
 DNS internal: nama internal terurai di dalam jaringan dan tidak terurai di
 luar. Kode keluar 1 bila ada pemeriksaan yang gagal.
@@ -203,7 +212,7 @@ python scripts/network_test.py \
     --open https://<gateway>.up.railway.app/healthz \
     --open https://<frontend>.up.railway.app/ \
     --closed https://<domain-lama-backend>.up.railway.app/health \
-    --closed tcp://<host-tcp-proxy-lama>.proxy.rlwy.net:<port> \
+    --closed postgres://<host-tcp-proxy-lama>.proxy.rlwy.net:<port> \
     --closed tcp://backend.railway.internal:8000 \
     --closed tcp://postgres.railway.internal:5432
 

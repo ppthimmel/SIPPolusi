@@ -13,8 +13,9 @@ to be unreachable (--closed) from the place the script runs:
     # (the script is read from stdin, so it need not be in the image):
     docker compose exec -T backend python - --open tcp://postgres:5432 < scripts/network_test.py
 
-Targets are tcp://HOST:PORT (DNS + TCP connect) or http(s)://HOST[:PORT]/PATH
-(DNS + HTTP request). Every check prints the resolved addresses, so the
+Targets are tcp://HOST:PORT (DNS + TCP connect), postgres://HOST:PORT (DNS +
+PostgreSQL SSLRequest, no credentials; use it for Railway TCP proxies) or
+http(s)://HOST[:PORT]/PATH (DNS + HTTP request). Every check prints the resolved addresses, so the
 output also shows that internal names (*.railway.internal, compose service
 names) resolve inside the network and not outside it.
 
@@ -29,6 +30,7 @@ from __future__ import annotations
 import argparse
 import datetime as dt
 import socket
+import struct
 import sys
 import time
 import urllib.error
@@ -62,6 +64,25 @@ def probe_tcp(host: str, port: int, timeout: float) -> str:
     raise Unreachable(f"DNS {', '.join(addresses)}; TCP: {'; '.join(errors)}")
 
 
+def probe_postgres(host: str, port: int, timeout: float) -> str:
+    """TCP connect plus a PostgreSQL SSLRequest (no credentials sent).
+
+    Railway's TCP proxy edge accepts connections even after the proxy is
+    removed, so a bare TCP check cannot tell; only an answering server can.
+    """
+    addresses = resolve(host, port)
+    try:
+        with socket.create_connection((host, port), timeout=timeout) as sock:
+            sock.settimeout(timeout)
+            sock.sendall(struct.pack("!ii", 8, 80877103))
+            answer = sock.recv(1)
+    except OSError as exc:
+        raise Unreachable(f"DNS {', '.join(addresses)}; PostgreSQL: {exc.strerror or type(exc).__name__}") from None
+    if answer not in (b"S", b"N"):
+        raise Unreachable(f"DNS {', '.join(addresses)}; TCP accepted but no PostgreSQL answered ({answer!r})")
+    return f"DNS {', '.join(addresses)}; PostgreSQL answered SSLRequest with {answer.decode()}"
+
+
 def probe_http(url: str, timeout: float) -> str:
     parts = urlsplit(url)
     addresses = resolve(parts.hostname, parts.port or DEFAULT_PORTS[parts.scheme])
@@ -85,9 +106,12 @@ def probe(target: str, timeout: float) -> str:
     parts = urlsplit(target)
     if parts.scheme == "tcp" and parts.hostname and parts.port:
         return probe_tcp(parts.hostname, parts.port, timeout)
+    if parts.scheme == "postgres" and parts.hostname:
+        return probe_postgres(parts.hostname, parts.port or 5432, timeout)
     if parts.scheme in DEFAULT_PORTS and parts.hostname:
         return probe_http(target, timeout)
-    raise ValueError(f"unsupported target {target!r}; use tcp://HOST:PORT or http(s)://HOST[:PORT]/PATH")
+    raise ValueError(f"unsupported target {target!r}; use tcp://HOST:PORT, postgres://HOST:PORT "
+                     "or http(s)://HOST[:PORT]/PATH")
 
 
 def main(argv: list[str] | None = None) -> int:

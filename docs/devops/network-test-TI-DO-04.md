@@ -10,10 +10,10 @@ baru yang kosong.
 
 | Uji | Lokal (compose) | Railway |
 |---|---|---|
-| Jalur publik: hanya gateway yang terbuka | lulus 9/9 | belum (lihat §6) |
+| Jalur publik: komponen internal tertutup | lulus 9/9 | lulus 5/5 per environment setelah TCP proxy dan domain backend dihapus (§6) |
 | Backend → basis data, cache-api, model_registry | lulus 5/5 | belum |
-| Data Worker → basis data, model_registry | lulus 3/3 + `main.py check` | belum |
-| Gateway → backend dan cache-api lewat nama internal | lulus 4/4 (smoke test) | belum |
+| Data Worker → basis data, model_registry | lulus 3/3 + `main.py check` | basis data: lulus (log cron) |
+| Gateway → backend dan cache-api lewat nama internal | lulus 4/4 (smoke test) | menunggu deploy gateway/backend |
 | DNS internal: terurai di dalam, tidak di luar | lulus | luar: lulus |
 | Layanan internal mendengarkan IPv6 | lulus (backend, cache-api, model_registry) | — |
 | Layanan tidak tersedia | lulus (backend, basis data) | — |
@@ -174,37 +174,124 @@ perubahan.
 
 ## 6. Railway
 
-Uji dari luar Railway, 27 Oktober 2026, terhadap domain environment
-`staging` dari TI-DO-02:
+Proyek `humble-endurance`, 27 Oktober 2026 (WIB). Diperiksa dengan Railway
+CLI 5.68.0.
+
+### 6.1 Kondisi awal
+
+| Environment | Berjalan | Domain publik | TCP proxy basis data |
+|---|---|---|---|
+| development | cache-api, data_worker (cron), database; frontend, model_registry, observability tidur | gateway, backend, frontend, grafana | `tokaido.proxy.rlwy.net:51696` **aktif** |
+| staging | tidak ada (deploy gateway terakhir `FAILED` 14 Okt) | gateway, backend, frontend, observability | `iriguchi.proxy.rlwy.net:56279` **aktif** |
+
+- Semua variabel antarlayanan di kedua environment sudah memakai
+  `*.railway.internal` (`DATABASE_URL`, `BACKEND_UPSTREAM`,
+  `MLFLOW_TRACKING_URI`); tidak ada yang memakai alamat publik. Variabel
+  diperiksa hanya host:port-nya, tanpa mencetak kredensial.
+- Gateway dan backend tidak punya deployment aktif di kedua environment
+  (gateway development: setiap deploy `SKIPPED` karena *watch path*).
+- Gateway belum memiliki `CACHE_API_UPSTREAM`, yang diwajibkan sejak
+  TI-DO-02; frontend masih memakai `BACKEND_UPSTREAM` lama, padahal kode
+  frontend di `dev` membaca `GATEWAY_UPSTREAM`.
+
+Uji publik development sebelum perubahan (TCP proxy terbuka; domain backend
+tidak menjawab hanya karena backend tidak berjalan, domainnya masih ada):
 
 ```
-$ python scripts/network_test.py --open https://gateway-staging-9379.up.railway.app/healthz --closed https://backend-staging-fe40.up.railway.app/health --closed tcp://backend.railway.internal:8000 --closed tcp://postgres.railway.internal:5432 --closed https://nonexistent-sippolusi-xyz.up.railway.app/
-network test 2026-10-26T19:35:30+00:00 from evexr_
-FAIL  reachable   https://gateway-staging-9379.up.railway.app/healthz
-      DNS 69.46.46.115; Railway edge: domain not routed to a service (404 {"status":"error","code":404,"message":"Application not found","request_id":"LQcCnsbwQV-a3uOZljLL4A"})
-PASS  unreachable https://backend-staging-fe40.up.railway.app/health
-      DNS 69.46.46.45; Railway edge: domain not routed to a service (404 {"status":"error","code":404,"message":"Application not found","request_id":"avp-sbhbRBmOzq8pYqVb7A"})
+network test 2026-10-26T19:50:21+00:00 from evexr_
+FAIL  reachable   https://gateway-development-fa8c.up.railway.app/healthz
+      DNS 69.46.46.90; Railway edge: domain not routed to a service (404 {"status":"error","code":404,"message":"Application not found","request_id":"g_OQQjI8RmyGxLz_Y53eZw"})
+PASS  reachable   https://frontend-development-49bf.up.railway.app/
+      DNS 69.46.46.93; HTTP 200 1324 ms <!doctype html> <html lang="id">   <head>     <meta charset="UTF-8" />     <meta name="viewport" content="width=device-w
+PASS  unreachable https://backend-development-0740.up.railway.app/health
+      DNS 69.46.46.77; Railway edge: domain not routed to a service (404 {"status":"error","code":404,"message":"Application not found","request_id":"d13RQhMcRj6QogkJwUFZXw"})
+FAIL  unreachable tcp://tokaido.proxy.rlwy.net:51696
+      DNS 66.33.22.222; TCP connect to [66.33.22.222]:51696 ok
 PASS  unreachable tcp://backend.railway.internal:8000
       DNS: backend.railway.internal not resolvable (getaddrinfo failed)
 PASS  unreachable tcp://postgres.railway.internal:5432
       DNS: postgres.railway.internal not resolvable (getaddrinfo failed)
-PASS  unreachable https://nonexistent-sippolusi-xyz.up.railway.app/
-      DNS 69.46.46.14; Railway edge: domain not routed to a service (404 {"status":"error","code":404,"message":"Application not found","request_id":"yJweSV9QR-mJrAwcJH0Vcg"})
-4/5 checks passed
+PASS  unreachable tcp://cache-api.railway.internal:8000
+      DNS: cache-api.railway.internal not resolvable (getaddrinfo failed)
+5/7 checks passed
 ```
 
-Yang terbukti: nama `*.railway.internal` tidak terurai dari internet, dan
-skrip mengenali domain yang tidak lagi diarahkan ke service (pembanding:
-domain acak yang tidak pernah ada memberi jawaban edge yang sama).
+### 6.2 Perubahan
 
-Yang **belum**: kedua domain staging, termasuk gateway, tidak lagi diarahkan
-ke service, jadi environment staging TI-DO-02 tampaknya sudah tidak
-berjalan. Uji jalur internal di Railway (`railway ssh`) juga belum dijalankan
-karena sesi Railway CLI di mesin uji kedaluwarsa. Setelah `railway login`,
-jalankan bagian **Railway** di
-[`private-networking.md`](private-networking.md#railway) pada environment
-yang aktif dan tambahkan hasilnya di sini, termasuk penghapusan TCP proxy
-database dan domain publik backend.
+| Perubahan | Environment |
+|---|---|
+| TCP proxy `database` dihapus (`railway tcp-proxy delete`) | development, staging |
+| Domain `backend-*.up.railway.app` dihapus (`railway domain delete`) | development, staging |
+| Gateway: `CACHE_API_UPSTREAM=http://${{cache-api.RAILWAY_PRIVATE_DOMAIN}}:${{cache-api.PORT}}`, `PORT=8080` | development |
+| Frontend: `GATEWAY_UPSTREAM=http://${{gateway.RAILWAY_PRIVATE_DOMAIN}}:${{gateway.PORT}}` | development |
+| Gateway mendengarkan IPv6 juga (`listen [::]:${PORT}`), agar frontend dapat memanggilnya lewat jaringan privat | kode (cabang ini) |
+
+Variabel diisi dengan `--skip-deploys`; belum ada deployment baru.
+
+### 6.3 Jalur publik setelah perubahan
+
+```
+network test 2026-10-26T20:01:13+00:00 from evexr_
+PASS  unreachable https://backend-development-0740.up.railway.app/health
+      DNS 69.46.46.77; Railway edge: domain not routed to a service (404 {"status":"error","code":404,"message":"Application not found","request_id":"k9ckAvBoRhSsYP6b0ubPiw"})
+PASS  unreachable postgres://tokaido.proxy.rlwy.net:51696
+      DNS 66.33.22.222; TCP accepted but no PostgreSQL answered (b'')
+PASS  unreachable tcp://backend.railway.internal:8000
+      DNS: backend.railway.internal not resolvable (getaddrinfo failed)
+PASS  unreachable tcp://postgres.railway.internal:5432
+      DNS: postgres.railway.internal not resolvable (getaddrinfo failed)
+PASS  unreachable tcp://cache-api.railway.internal:8000
+      DNS: cache-api.railway.internal not resolvable (getaddrinfo failed)
+5/5 checks passed
+```
+
+```
+network test 2026-10-26T20:01:13+00:00 from evexr_
+PASS  unreachable https://backend-staging-fe40.up.railway.app/health
+      DNS 69.46.46.45; Railway edge: domain not routed to a service (404 {"status":"error","code":404,"message":"Application not found","request_id":"33-GZDi5Tk-BNZ-ymrpb1w"})
+PASS  unreachable postgres://iriguchi.proxy.rlwy.net:56279
+      DNS 66.33.22.219; PostgreSQL: An existing connection was forcibly closed by the remote host
+PASS  unreachable tcp://backend.railway.internal:8000
+      DNS: backend.railway.internal not resolvable (getaddrinfo failed)
+PASS  unreachable tcp://postgres.railway.internal:5432
+      DNS: postgres.railway.internal not resolvable (getaddrinfo failed)
+PASS  unreachable tcp://cache-api.railway.internal:8000
+      DNS: cache-api.railway.internal not resolvable (getaddrinfo failed)
+5/5 checks passed
+```
+
+Alamat TCP proxy lama masih menerima koneksi TCP di edge Railway, tetapi
+memutusnya begitu menerima data: tidak ada PostgreSQL di belakangnya. Karena
+itu `network_test.py` sekarang punya target `postgres://` yang mengirim
+`SSLRequest` (tanpa kredensial). Sebagai pembanding, PostgreSQL lokal
+menjawab `N` pada uji yang sama (`PASS reachable postgres://localhost:55432`).
+
+### 6.4 Jalur internal
+
+- **Data Worker → basis data:** siklus cron development 26 Okt 19:15Z
+  berjalan dengan `DATABASE_URL` ke `postgres.railway.internal` (satu-satunya
+  host yang dikonfigurasi) dan menulis 327 baris:
+  `lintasan 20261026T191547Z-54f752 selesai: {... 'status': 'ok', 'stations_ok': 124, ..., 'rows_new': 327 ...}`.
+- **cache-api:** berjalan (`SUCCESS`) dan health check Railway lulus
+  (`GET /health HTTP/1.1 200`); basis datanya hanya
+  `postgres.railway.internal`.
+- **Gateway → backend/cache-api dan frontend → gateway:** belum diuji,
+  karena gateway dan backend harus di-deploy dulu (§6.5).
+- **Uji dari dalam container (`railway ssh`):** belum dijalankan; akun
+  Railway belum memiliki kunci SSH terdaftar.
+
+### 6.5 Belum dilakukan
+
+Deploy gateway dan backend ke development dari cabang ini, lalu:
+
+```bash
+python scripts/smoke_test.py --gateway https://gateway-development-fa8c.up.railway.app
+python scripts/network_test.py --open https://gateway-development-fa8c.up.railway.app/healthz     --open https://frontend-development-49bf.up.railway.app/
+```
+
+Variabel `DATABASE_PUBLIC_URL` pada service `database` masih ada (dibuat
+otomatis oleh template), tetapi menunjuk ke proxy yang sudah dihapus. Bila
+TCP proxy diaktifkan lagi untuk akses sementara, host dan port-nya berubah.
 
 ## 7. Temuan yang ikut diperbaiki
 
