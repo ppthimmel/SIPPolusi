@@ -579,7 +579,6 @@
     }
   ],
   "metadata": {
-    "request_id": "contoh-surface-z15",
     "kind": "edge",
     "zoom": 15,
     "layer": "combined",
@@ -592,8 +591,8 @@
     "cell_size_m": null,
     "aggregation": null,
     "feature_count": 24,
-    "time_window_start": "2026-10-26T12:00:00Z",
-    "time_window_end": "2026-10-26T13:00:00Z",
+    "time_window_start": "2026-10-26T14:00:00Z",
+    "time_window_end": "2026-10-26T15:00:00Z",
     "data_stale": false,
     "graph_version": "v1",
     "model_version": {

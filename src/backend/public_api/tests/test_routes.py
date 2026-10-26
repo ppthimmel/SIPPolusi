@@ -230,6 +230,52 @@ def test_chunked_body_under_the_limit_is_accepted(make_client):
     assert resp.status_code == 200, resp.text
 
 
+async def _asgi_post(max_bytes, chunks, headers=()):
+    """Drive BodySizeLimit directly: an HTTP client always frames a body with
+    Content-Length or Transfer-Encoding, an ASGI server need not (HTTP/2, proxies)."""
+    from public_api.limits import BodySizeLimit
+
+    received = []
+
+    async def app(scope, receive, send):
+        while True:
+            message = await receive()
+            received.append(message.get("body", b""))
+            if not message.get("more_body"):
+                break
+        await send({"type": "http.response.start", "status": 204, "headers": []})
+        await send({"type": "http.response.body", "body": b""})
+
+    messages = [{"type": "http.request", "body": c, "more_body": i < len(chunks) - 1} for i, c in enumerate(chunks)]
+
+    async def receive():
+        return messages.pop(0)
+
+    sent = []
+
+    async def send(message):
+        sent.append(message)
+
+    scope = {"type": "http", "method": "POST", "path": "/v1/routes", "headers": list(headers)}
+    await BodySizeLimit(app, max_bytes)(scope, receive, send)
+    return sent[0]["status"], b"".join(received)
+
+
+async def test_body_without_length_headers_is_still_limited():
+    status, reached = await _asgi_post(100, [b"x" * 60, b"x" * 60])
+    assert status == 413 and reached == b""  # refused before the application read anything
+
+
+async def test_body_longer_than_its_content_length_is_limited():
+    status, reached = await _asgi_post(100, [b"x" * 80, b"x" * 80], headers=[(b"content-length", b"80")])
+    assert status == 413 and reached == b""
+
+
+async def test_small_body_without_length_headers_reaches_the_app_unchanged():
+    status, reached = await _asgi_post(100, [b'{"a":', b" 1}"])
+    assert status == 204 and reached == b'{"a": 1}'
+
+
 def test_limit_is_configurable(make_client):
     with make_client(max_body_bytes=100) as c:
         error(c.post("/v1/routes", json=request_body()), 413, "payload_too_large")

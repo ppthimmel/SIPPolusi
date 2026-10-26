@@ -180,9 +180,11 @@ class SurfaceModelVersion(BaseModel):
 
 
 class SurfaceMetadata(BaseModel):
+    """Tanpa request_id: body yang sama dapat dipakai ulang dari cache untuk permintaan lain
+    (ID permintaan ada di header X-Request-ID)."""
+
     model_config = _STRICT
 
-    request_id: str
     kind: Literal["edge", "grid"] = Field(description="edge untuk zoom ≥ 14, grid untuk zoom < 14")
     zoom: int
     layer: Literal["combined", "pm25", "no2"] = Field(

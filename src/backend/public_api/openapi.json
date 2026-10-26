@@ -748,7 +748,7 @@
           "public"
         ],
         "summary": "Permukaan paparan untuk heatmap (IExposureSurface)",
-        "description": "Indeks paparan gabungan, PM2.5, NO2 dan confidence score dari time window complete terakhir.\n\nZoom ≥ 14 mengembalikan setiap ruas (LineString); zoom < 14 mengagregasi ruas ke sel grid\n(Polygon) 250 m, 500 m, atau 1 km. Satuan di `metadata.units`, koordinat [lon, lat]\nWGS 84 (`metadata.crs`), batas kelas warna di `metadata.exposure_index_classes`.",
+        "description": "Indeks paparan gabungan, PM2.5, NO2 dan confidence score dari time window complete terakhir.\n\nZoom ≥ 14 mengembalikan setiap ruas (LineString); zoom < 14 mengagregasi ruas ke sel grid\n(Polygon) 250 m, 500 m, atau 1 km. Satuan di `metadata.units`, koordinat [lon, lat]\nWGS 84 (`metadata.crs`), batas kelas warna di `metadata.exposure_index_classes`.\n\nBody tidak memuat request_id, sehingga dapat disimpan cache (ID ada di header\nX-Request-ID). Kirim If-None-Match dengan ETag sebelumnya: 304 bila data dan parameter\nbelum berubah.",
         "operationId": "getExposureSurface",
         "parameters": [
           {
@@ -873,7 +873,6 @@
                         }
                       ],
                       "metadata": {
-                        "request_id": "7f3c2a9e-51d4-4b8e-9a0f-2c1e5d6b8a13",
                         "layer": "combined",
                         "time_window_start": "2026-10-26T05:00:00Z",
                         "time_window_end": "2026-10-26T06:00:00Z",
@@ -961,7 +960,6 @@
                         }
                       ],
                       "metadata": {
-                        "request_id": "7f3c2a9e-51d4-4b8e-9a0f-2c1e5d6b8a13",
                         "layer": "combined",
                         "time_window_start": "2026-10-26T05:00:00Z",
                         "time_window_end": "2026-10-26T06:00:00Z",
@@ -1017,7 +1015,29 @@
                 }
               },
               "Cache-Control": {
-                "description": "public, max-age = detik sampai akhir time window satu jam yang sedang berjalan (Tabel 3.15)",
+                "description": "public, no-cache: boleh disimpan, tetapi wajib divalidasi ulang (If-None-Match) sebelum dipakai lagi",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "ETag": {
+                "description": "ETag lemah atas versi graf, time window (awal, waktu selesai, model), data_stale, dan parameter permintaan",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "If-None-Match cocok dengan ETag: data dan parameter tidak berubah; pakai respons yang tersimpan. Time window complete yang lebih baru mengubah ETag",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Penanda request untuk penelusuran log",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "ETag": {
                 "schema": {
                   "type": "string"
                 }
@@ -4508,10 +4528,6 @@
       },
       "SurfaceMetadata": {
         "properties": {
-          "request_id": {
-            "type": "string",
-            "title": "Request Id"
-          },
           "kind": {
             "type": "string",
             "enum": [
@@ -4636,7 +4652,6 @@
         "additionalProperties": false,
         "type": "object",
         "required": [
-          "request_id",
           "kind",
           "zoom",
           "layer",
@@ -4656,7 +4671,8 @@
           "exposure_index_classes",
           "disclaimer"
         ],
-        "title": "SurfaceMetadata"
+        "title": "SurfaceMetadata",
+        "description": "Tanpa request_id: body yang sama dapat dipakai ulang dari cache untuk permintaan lain\n(ID permintaan ada di header X-Request-ID)."
       },
       "SurfaceModelVersion": {
         "properties": {

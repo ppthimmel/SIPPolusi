@@ -9,13 +9,11 @@ documented here so the Frontend has one contract.
 """
 from __future__ import annotations
 
-from datetime import datetime, timezone
 from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Depends, Query, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 
-from osm.errors import get_request_id
 from osm.router import Repo as OsmRepo
 from osm.router import Settings as OsmSettingsDep
 from osm.router import _ex
@@ -33,7 +31,14 @@ from .openapi_examples import (
     error_example,
 )
 from .schemas import ErrorResponse, RouteFeatureCollection, SurfaceFeatureCollection
-from .surface import get_exposure_surface, max_age_s, parse_surface_bbox
+from .surface import (
+    CACHE_CONTROL,
+    etag_matches,
+    get_exposure_surface,
+    parse_surface_bbox,
+    surface_etag,
+    surface_source,
+)
 
 router = APIRouter(tags=["public"])
 
@@ -126,12 +131,18 @@ SURFACE_RESPONSES: dict[int | str, dict[str, Any]] = {
         "description": "Ruas (zoom ≥ 14) atau sel grid (zoom < 14) dengan exposure_index, pm25_ugm3, no2_ugm3 "
                        "dan confidence_score. Kosong bila tidak ada ruas di bbox.",
         "headers": {**_REQUEST_ID_HEADER,
-                    "Cache-Control": {"description": "public, max-age = detik sampai akhir time window satu jam "
-                                                     "yang sedang berjalan (Tabel 3.15)",
-                                      "schema": {"type": "string"}}},
+                    "Cache-Control": {"description": "public, no-cache: boleh disimpan, tetapi wajib divalidasi "
+                                                     "ulang (If-None-Match) sebelum dipakai lagi",
+                                      "schema": {"type": "string"}},
+                    "ETag": {"description": "ETag lemah atas versi graf, time window (awal, waktu selesai, model), "
+                                            "data_stale, dan parameter permintaan",
+                             "schema": {"type": "string"}}},
         "content": {GEOJSON: {"examples": {"ruas": {"summary": "zoom 15, per ruas", "value": EDGE_SURFACE_EXAMPLE},
                                            "grid": {"summary": "zoom 12, sel 500 m", "value": CELL_SURFACE_EXAMPLE}}}},
     },
+    304: {"description": "If-None-Match cocok dengan ETag: data dan parameter tidak berubah; pakai respons yang "
+                         "tersimpan. Time window complete yang lebih baru mengubah ETag",
+          "headers": {**_REQUEST_ID_HEADER, "ETag": {"schema": {"type": "string"}}}},
     400: _errors(
         "bbox tidak valid, terlalu luas untuk zoom yang diminta, zoom di luar 0–22, atau pollutant tidak dikenal",
         ("bbox_terlalu_luas", error_example("invalid_request", "bbox terlalu luas untuk zoom 15 (30.1 km²); per ruas "
@@ -201,8 +212,17 @@ async def exposure_surface(request: Request, osm: OsmRepo, pollution: PollutionR
 
     Zoom ≥ 14 mengembalikan setiap ruas (LineString); zoom < 14 mengagregasi ruas ke sel grid
     (Polygon) 250 m, 500 m, atau 1 km. Satuan di `metadata.units`, koordinat [lon, lat]
-    WGS 84 (`metadata.crs`), batas kelas warna di `metadata.exposure_index_classes`."""
+    WGS 84 (`metadata.crs`), batas kelas warna di `metadata.exposure_index_classes`.
+
+    Body tidak memuat request_id, sehingga dapat disimpan cache (ID ada di header
+    X-Request-ID). Kirim If-None-Match dengan ETag sebelumnya: 304 bila data dan parameter
+    belum berubah."""
     box, grid = parse_surface_bbox(bbox, zoom, settings)
-    body = await get_exposure_surface(bbox=box, grid=grid, zoom=zoom, layer=pollutant,
-                                      request_id=get_request_id(request), osm=osm, pollution=pollution)
-    return GeoJSONResponse(body, headers={"Cache-Control": f"public, max-age={max_age_s(datetime.now(timezone.utc))}"})
+    source = await surface_source(osm, pollution)
+    etag = surface_etag(source, box, zoom, pollutant)
+    headers = {"Cache-Control": CACHE_CONTROL, "ETag": etag}
+    if etag_matches(request.headers.get("if-none-match"), etag):
+        return Response(status_code=304, headers=headers)
+    body = await get_exposure_surface(bbox=box, grid=grid, zoom=zoom, layer=pollutant, source=source,
+                                      pollution=pollution)
+    return GeoJSONResponse(body, headers=headers)

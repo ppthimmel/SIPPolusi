@@ -89,9 +89,11 @@ def check(case: Case, resp) -> str | None:
     ids = resp.headers.get_list("x-request-id")
     if len(ids) != 1:
         return f"harap tepat satu header X-Request-ID, ada {len(ids)}"
-    body_id = (resp.json().get("metadata", {}) if resp.status_code == 200 else resp.json().get("error", {})).get("request_id")
-    if body_id != ids[0]:
-        return f"request_id body {body_id!r} ≠ header X-Request-ID {ids[0]!r}"
+    # The heatmap body carries no request_id (it may be served from a cache); routes and errors do.
+    if not (resp.status_code == 200 and case.path == "/v1/exposure-surface"):
+        body_id = (resp.json().get("metadata", {}) if resp.status_code == 200 else resp.json().get("error", {})).get("request_id")
+        if body_id != ids[0]:
+            return f"request_id body {body_id!r} ≠ header X-Request-ID {ids[0]!r}"
     if resp.status_code == 200:
         if resp.headers.get("content-type") != "application/geo+json":
             return f"content-type {resp.headers.get('content-type')}"

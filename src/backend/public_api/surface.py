@@ -11,17 +11,27 @@ The grid is fixed in degrees (cell size in metres converted at Jakarta's latitud
 anchored at lon 0, lat 0), so a cell keeps its id and value while the map is
 panned. Cells are axis-aligned in WGS 84 and within 0.5 % of the nominal size
 across the study area.
+
+Caching (TI-SE-08 QA): the body depends only on the data and the query, never on
+the request (no request_id; the ID is in the X-Request-ID header), so it can be
+shared. It is sent with Cache-Control "public, no-cache" and a weak ETag over the
+graph version, the time window (start, completion time, model) and data_stale
+plus the query. A cache must revalidate before reuse: while nothing changed the
+answer is 304 without running the surface query, and once a newer window is
+complete the ETag changes and the new data is served at once.
 """
 from __future__ import annotations
 
+import hashlib
 import math
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from typing import Any
 
 from osm.errors import InvalidRequest
 from osm.models import BBox
 from osm.repository import OsmRepository
+from pollution.models import WindowInfo
 from pollution.repository import PollutionRepository
 from solver.geojson import COORDINATE_ORDER, CRS84, DISCLAIMER, EXPOSURE_INDEX_DEFINITION
 
@@ -114,18 +124,52 @@ def parse_surface_bbox(text: str, zoom: int, settings: ApiSettings) -> tuple[BBo
     return bbox, grid
 
 
-def max_age_s(now: datetime) -> int:
-    """Seconds until the current one-hour time window ends (Tabel 3.15: max-age until
-    the end of the time window), at least 1."""
-    now = now.astimezone(timezone.utc)
-    window_end = now.replace(minute=0, second=0, microsecond=0) + timedelta(hours=1)
-    return max(1, math.ceil((window_end - now).total_seconds()))
+CACHE_CONTROL = "public, no-cache"
+# Part of the ETag: bump when the response body changes shape, so cached bodies of
+# the old shape are not revalidated as current.
+SURFACE_FORMAT = "surface-1"
 
 
-async def get_exposure_surface(*, bbox: BBox, grid: Grid | None, zoom: int, layer: str, request_id: str,
-                               osm: OsmRepository, pollution: PollutionRepository) -> dict[str, Any]:
+@dataclass(frozen=True, slots=True)
+class SurfaceSource:
+    """What the surface is computed from: two cheap reads, enough for the ETag."""
+
+    window: WindowInfo
+    graph_version: str
+    data_stale: bool
+
+
+async def surface_source(osm: OsmRepository, pollution: PollutionRepository) -> SurfaceSource:
     window = await pollution.resolve_window("latest")  # 503 cache_empty without a complete window
     graph_version = (await osm.get_active_version()).version
+    stale, _ = pollution.staleness(window)
+    return SurfaceSource(window, graph_version, stale)
+
+
+def surface_etag(source: SurfaceSource, bbox: BBox, zoom: int, layer: str) -> str:
+    """Weak ETag (the body may be gzip-encoded) of everything the body depends on."""
+    w = source.window
+    key = "|".join([
+        SURFACE_FORMAT, source.graph_version, _iso(w.time_window_start),
+        _iso(w.completed_at) if w.completed_at else "", w.model_version or "", str(source.data_stale),
+        ",".join(repr(v) for v in bbox.as_list()), str(zoom), layer,
+    ])
+    return f'W/"{hashlib.sha256(key.encode()).hexdigest()[:24]}"'
+
+
+def etag_matches(if_none_match: str | None, etag: str) -> bool:
+    """RFC 9110 weak comparison against an If-None-Match header."""
+    if not if_none_match:
+        return False
+    if if_none_match.strip() == "*":
+        return True
+    opaque = etag.removeprefix("W/")
+    return any(tag.strip().removeprefix("W/") == opaque for tag in if_none_match.split(","))
+
+
+async def get_exposure_surface(*, bbox: BBox, grid: Grid | None, zoom: int, layer: str, source: SurfaceSource,
+                               pollution: PollutionRepository) -> dict[str, Any]:
+    window, graph_version = source.window, source.graph_version
     if grid is None:
         rows = await pollution.read_surface_edges(window, graph_version, bbox)
         features = [{
@@ -147,12 +191,10 @@ async def get_exposure_surface(*, bbox: BBox, grid: Grid | None, zoom: int, laye
             },
         } for r in rows]
 
-    stale, _ = pollution.staleness(window)
     return {
         "type": "FeatureCollection",
         "features": features,
         "metadata": {
-            "request_id": request_id,
             "kind": "edge" if grid is None else "grid",
             "zoom": zoom,
             "layer": layer,
@@ -162,7 +204,7 @@ async def get_exposure_surface(*, bbox: BBox, grid: Grid | None, zoom: int, laye
             "feature_count": len(features),
             "time_window_start": _iso(window.time_window_start),
             "time_window_end": _iso(window.time_window.end),
-            "data_stale": stale,
+            "data_stale": source.data_stale,
             "graph_version": graph_version,
             "model_version": {"downscaling": window.model_version},
             "crs": CRS84,

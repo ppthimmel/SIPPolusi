@@ -1,8 +1,9 @@
 """Request body size limit: 413 payload_too_large before the body reaches any parser.
 
-A declared Content-Length above the limit is refused without reading the body.
-A body without Content-Length (chunked) is read up to the limit and refused as
-soon as it goes over; otherwise it is replayed unchanged to the application.
+The limit is enforced on the bytes actually received, whatever the headers say:
+every request body is read up to the limit and refused as soon as it goes over,
+then replayed unchanged to the application. A declared Content-Length above the
+limit is refused up front without reading the body.
 """
 from __future__ import annotations
 
@@ -35,13 +36,9 @@ class BodySizeLimit:
             if int(declared) > self.max_bytes:
                 await self._too_large(scope, receive, send, headers)
                 return
-            await self.app(scope, receive, send)
-            return
-        if headers.get(b"transfer-encoding") is None:
-            await self.app(scope, receive, send)  # no body
-            return
 
-        # Chunked: buffer up to the limit, then hand the same messages to the app.
+        # Count what arrives, with or without Content-Length / Transfer-Encoding: a body
+        # without either header (HTTP/2, a proxy) or one longer than declared is caught here.
         buffered: list[Message] = []
         size = 0
         while True:

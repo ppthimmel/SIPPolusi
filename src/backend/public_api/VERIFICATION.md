@@ -18,7 +18,7 @@ PostGIS 3.6.4 lokal. Uji runtime memakai image Cache API yang terhubung ke basis
 
 | Paket | Hasil |
 |---|---|
-| `src/backend/public_api` | **112 passed**: 105 tanpa DB (rute 31, permukaan paparan 36, OpenAPI 20, koleksi uji 13, contoh 5) + 7 alur di DB lokal |
+| `src/backend/public_api` | **126 passed**: 119 tanpa DB (rute 34, permukaan paparan 47, OpenAPI 20, koleksi uji 13, contoh 5) + 7 alur di DB lokal |
 | `src/backend/solver`, `planner`, `pollution`, `osm` | 99, 37, 30, 115 passed (osm termasuk 15 uji integrasi ke Railway); `osm.verify`: **LULUS** |
 | `src/data_worker` | 126 passed. Lima berkas uji tim lain (scraper) tidak terkumpul karena modul `requests` tidak ada di venv uji; kode `data_worker` tidak berubah |
 | Uji tim (`src/backend/tests`, Python 3.11) | 35 passed |
@@ -34,7 +34,7 @@ PostGIS 3.6.4 lokal. Uji runtime memakai image Cache API yang terhubung ke basis
 | Rute tidak tersedia | Luar wilayah studi, titik jauh dari jalan, asal = tujuan | 422 `outside_study_area`, `point_not_on_network`, `no_route_found` (`same_node`) |
 | Label model (masukan QA TI-SE-07) | Model menyatakan tidak ada rute padahal subgraf terhubung (fallback mati); jawaban berlabel `policy` dengan `preference_applied: false` | 503 `route_service_unavailable` (`solver_no_route`); 200 fallback `model_invalid_response`, tidak pernah ditampilkan sebagai `policy` |
 | Kegagalan upstream | Route Model lambat (fallback mati), Route Model galat, cache kosong, DB tidak terjangkau, query timeout, exception tak terduga | 503 `route_service_unavailable` (`solver_timeout` < 2 s, `solver_error`), 503 `cache_unavailable` (`cache_empty`, `database_unavailable`, `query_timeout`), 500 `internal_error` tanpa detail internal |
-| Ukuran request | `Content-Length` 20 KB, chunked 41 KB, chunked kecil, batas 100 B | 413 `payload_too_large` tanpa membaca cache; body kecil diterima |
+| Ukuran request | `Content-Length` 20 KB, chunked 41 KB, chunked kecil, batas 100 B; di tingkat ASGI: body tanpa `Content-Length`/`Transfer-Encoding` 120 B, body 160 B dengan `Content-Length: 80` (batas 100 B) | 413 `payload_too_large` tanpa membaca cache dan sebelum aplikasi membaca body; body kecil diterima utuh |
 
 ### `GET /v1/exposure-surface`
 
@@ -46,7 +46,14 @@ PostGIS 3.6.4 lokal. Uji runtime memakai image Cache API yang terhubung ke basis
 | Window berstatus `writing` | 503 `cache_unavailable`, `cache_empty` |
 | bbox terlalu luas untuk zoom (zoom 15 > 25 km², zoom 13 seluruh Jakarta), bbox salah format/terbalik/NaN, zoom 23 atau −1, polutan `co`, parameter hilang | 400 `invalid_request`, cache tidak dibaca |
 | Grid | Sel selaras dan tidak bergeser saat peta digeser; ring Polygon tertutup dan berlawanan arah jarum jam (RFC 7946) |
-| `Cache-Control` | `public, max-age` = sisa detik time window satu jam berjalan (3600 / 30 / 1 pada tiga waktu uji); galat tanpa `max-age` |
+| Cache | Body tanpa `request_id`; `Cache-Control: public, no-cache` dan ETag lemah. `If-None-Match` yang cocok → 304 tanpa query heatmap, dengan `X-Request-ID` baru. ETag berubah bila ada window complete yang lebih baru, window ditulis ulang, data menjadi kedaluwarsa, atau bbox/zoom/lapisan berbeda; galat tanpa header cache |
+
+## Perbaikan setelah masukan QA
+
+| Masukan | Perbaikan | Bukti uji |
+|---|---|---|
+| Batas body 16 KiB dapat dilewati: permintaan tanpa `Content-Length` maupun `Transfer-Encoding` diteruskan tanpa menghitung byte | `BodySizeLimit` selalu menghitung byte yang diterima saat body dibaca, apa pun header-nya, lalu memutar ulang body ke aplikasi. `Content-Length` di atas batas tetap langsung ditolak | `test_body_without_length_headers_is_still_limited`, `test_body_longer_than_its_content_length_is_limited`, `test_small_body_without_length_headers_reaches_the_app_unchanged` (ASGI langsung, karena klien HTTP selalu mengirim salah satu header) |
+| Heatmap menyimpan `request_id` dalam respons `public` yang di-cache, dan `max-age` sampai akhir jam dapat menahan window lama setelah window baru selesai | `request_id` dihapus dari body heatmap (ID tetap di header). `max-age` diganti `public, no-cache` dengan ETag atas versi graf, window (awal, waktu selesai, model), `data_stale`, dan parameter: revalidasi → 304 bila sama, data baru segera bila window berganti | `test_same_data_revalidates_with_304_without_the_surface_query`, `test_newer_complete_window_is_served_at_once`, `test_etag_changes_with_everything_the_body_depends_on` (5 kasus), `test_if_none_match_uses_weak_comparison` (7 kasus) |
 
 ## Koleksi uji pada deployment
 
@@ -69,7 +76,8 @@ Uji lewat gateway menemukan dua hal yang lalu diperbaiki:
    menyembunyikan salinan upstream (`proxy_hide_header`), dan uji gateway memeriksa tepat satu
    header.
 2. Gateway mengganti `X-Request-ID` dari klien dengan ID-nya sendiri, sesuai desain. Koleksi kini
-   memeriksa bahwa header sama dengan `request_id` di body.
+   memeriksa bahwa header sama dengan `request_id` di body (rute dan galat; body heatmap tidak
+   memuat `request_id`).
 
 ## Contoh respons
 

@@ -66,7 +66,7 @@ FALLBACK_ROUTE_EXAMPLE["metadata"].update({
 })
 
 _SURFACE_META = {
-    "request_id": _REQUEST_ID, "layer": "combined", "time_window_start": "2026-10-26T05:00:00Z",
+    "layer": "combined", "time_window_start": "2026-10-26T05:00:00Z",
     "time_window_end": "2026-10-26T06:00:00Z", "data_stale": False, "graph_version": "jakarta-20261005",
     "model_version": {"downscaling": "idw-p2-k8"}, "crs": CRS84, "coordinate_order": COORDINATE_ORDER,
     "exposure_index_definition": EXPOSURE_INDEX_DEFINITION, "exposure_index_classes": EXPOSURE_INDEX_CLASSES,

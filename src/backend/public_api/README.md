@@ -109,8 +109,20 @@ Respons 200 (`application/geo+json`, `Cache-Control: no-store` karena berisi koo
   aktif.
 - **`metadata.exposure_index_classes`** = `[0.5, 1.0, 2.0, 3.0]`, yaitu batas kelas skala warna
   (Subbab 3.1).
-- **Cache.** Header `Cache-Control: public, max-age=<detik sampai akhir time window satu jam yang
-  sedang berjalan>` (Tabel 3.15). Respons galat tidak diberi `max-age`.
+- **Cache.** Body heatmap tidak memuat `request_id`. ID permintaan hanya ada di header
+  `X-Request-ID`, jadi body yang sama aman dipakai ulang untuk permintaan lain. Respons diberi:
+  - `Cache-Control: public, no-cache`;
+  - `ETag` lemah atas versi graf, time window (awal, waktu selesai, versi model), `data_stale`,
+    dan parameter permintaan.
+
+  Browser atau cache wajib memvalidasi ulang dengan `If-None-Match` sebelum memakai respons yang
+  tersimpan. Bila tidak ada yang berubah, jawabannya **304** tanpa menjalankan query heatmap.
+  Begitu time window complete yang lebih baru ada (atau window ditulis ulang, atau data menjadi
+  kedaluwarsa), ETag berubah dan data baru langsung dikirim. Respons galat tidak diberi header
+  cache.
+
+  Ini menyimpang dari Tabel 3.15 (`max-age` sampai akhir time window): `max-age` membuat cache
+  menyimpan window lama sampai satu jam setelah window baru selesai (masukan QA).
 
 ## Galat
 
@@ -138,10 +150,12 @@ exception, URL layanan, atau detail koneksi basis data.
 ## Batas ukuran request
 
 `BodySizeLimit` ([`limits.py`](limits.py)) menolak body di atas `API_MAX_BODY_BYTES` (16 KiB)
-dengan 413 sebelum body dibaca:
+dengan 413 sebelum body sampai ke parser:
 
-- bila `Content-Length` dinyatakan, permintaan ditolak tanpa membaca body;
-- body chunked dibaca sampai batas, lalu ditolak saat melewatinya.
+- bila `Content-Length` yang dinyatakan melebihi batas, permintaan langsung ditolak;
+- selain itu, byte yang benar-benar diterima selalu dihitung saat body dibaca, apa pun
+  header-nya (dengan atau tanpa `Content-Length` atau `Transfer-Encoding`, atau body lebih
+  panjang dari yang dinyatakan). Begitu melewati batas, permintaan ditolak.
 
 API Gateway menerapkan batas yang sama (`client_max_body_size 16k`) pada `POST /v1/routes`.
 
@@ -173,8 +187,9 @@ python -m public_api.smoke --export-http                        # perbarui reque
 Ada 17 kasus: rute valid (jalan kaki dan sepeda), validasi (α + β, moda, lintang, JSON rusak),
 413, wilayah studi, titik di laut, asal = tujuan, metode salah, heatmap pada zoom 15, 12, dan 11,
 serta bbox/zoom tidak valid. Kasus yang membaca cache polusi juga menerima 503 `cache_empty`,
-karena cache Railway belum terisi. Setiap respons diperiksa terhadap skema, dan `X-Request-ID`
-harus sama dengan `request_id` di body.
+karena cache Railway belum terisi. Setiap respons diperiksa terhadap skema dan harus membawa
+tepat satu `X-Request-ID`. Untuk rute dan galat, header itu harus sama dengan `request_id` di body;
+body heatmap tidak memuat `request_id`.
 
 ## Konfigurasi
 
@@ -190,8 +205,8 @@ harus sama dengan `request_id` di body.
 Dari `src/backend/public_api`, dengan venv dan dependensi dari [`../pollution`](../pollution/README.md#menguji):
 
 ```bash
-pytest -m "not cacheflow"                                                    # tanpa DB → 105 passed
-TEST_DATABASE_URL=postgresql://test:test@localhost:55432/test pytest         # semua → 112 passed
+pytest -m "not cacheflow"                                                    # tanpa DB → 119 passed
+TEST_DATABASE_URL=postgresql://test:test@localhost:55432/test pytest         # semua → 126 passed
 ```
 
 Uji `cacheflow` memakai PostGIS lokal ([`../testdb`](../testdb/docker-compose.yml)) dan kode Data

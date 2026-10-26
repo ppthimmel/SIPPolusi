@@ -159,7 +159,6 @@
     }
   ],
   "metadata": {
-    "request_id": "contoh-surface-z13",
     "kind": "grid",
     "zoom": 13,
     "layer": "combined",
@@ -172,8 +171,8 @@
     "cell_size_m": 250,
     "aggregation": "Rata-rata berbobot panjang ruas atas ruas yang memiliki nilai; ruas masuk ke sel yang memuat titik tengah kotak pembatasnya. exposure_index_max = nilai ruas tertinggi di sel.",
     "feature_count": 4,
-    "time_window_start": "2026-10-26T12:00:00Z",
-    "time_window_end": "2026-10-26T13:00:00Z",
+    "time_window_start": "2026-10-26T14:00:00Z",
+    "time_window_end": "2026-10-26T15:00:00Z",
     "data_stale": false,
     "graph_version": "v1",
     "model_version": {

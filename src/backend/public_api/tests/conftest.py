@@ -26,11 +26,12 @@ class FakeSurfaceRepository(FakePollutionRepository):
         super().__init__(**kw)
         self.edge_rows, self.cell_rows = list(edge_rows), list(cell_rows)
         self.surface_calls: list[tuple] = []
+        self.window = WINDOW  # tests replace it to simulate a newer complete window
 
     async def resolve_window(self, time_window="latest"):
         if self.fail is not None:
             raise self.fail
-        return WINDOW
+        return self.window
 
     async def read_surface_edges(self, window, graph_version, bbox):
         self.surface_calls.append(("edges", graph_version, bbox))
