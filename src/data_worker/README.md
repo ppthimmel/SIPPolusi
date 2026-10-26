@@ -20,13 +20,15 @@ kendali mutu, penyelarasan, write_features) masih tercatat `not_implemented`.
 
 | Berkas | Isi |
 |---|---|
-| `main.py` | Titik masuk: `cycle` (untuk cron), `serve` (proses menetap), `spku ...` |
+| `main.py` | Titik masuk: `cycle` (untuk cron), `serve` (proses menetap), `status` (pemeriksaan jadwal), `check`, `spku ...` |
 | `acquisition.py` | `schedule_acquisition(time_window)`: langkah berurutan, status per langkah |
+| `worker_runs.py` | Catatan eksekusi siklus (`worker.cycle_run`), kunci siklus, status jadwal; lihat [`docs/devops/data-worker-schedule.md`](../../docs/devops/data-worker-schedule.md) |
 | `ground_truth.py` | `fetch_ground_truth(provider, bbox, time_window)` |
 | `contracts.py` | `TimeWindow`, `BBox`, `GroundTruthMeasurement`, `GroundTruthBatch` (Tabel 3.3) |
 | `spku/` | Kolektor SPKU, porting dari `udara-collector` (SQLite) ke PostgreSQL |
 | `spku/schema.sql` | Skema `ground_truth` (PostgreSQL 16 + PostGIS) |
 | `scripts/migrate_sqlite_to_postgres.py` | Pemindahan data historis dari `udara.sqlite` |
+| `scripts/spku_stub_portal.py` | Portal SPKU tiruan (mode `ok`, `flaky`, `down`, `empty`) untuk uji jalur gagal lewat `SPKU_BASE_URL` |
 | `docs/DATA.md` | Kamus data, mutu data, dan catatan zona waktu |
 | `docs/RAILWAY.md` | Langkah deployment Railway, migrasi data historis, peralihan, catatan penggabungan `dev` |
 | `database/` | Model SQLAlchemy skema cache `pollution` dan `osm`; `init_db()` dipanggil di awal setiap siklus |
@@ -106,6 +108,9 @@ Seluruhnya lewat variabel lingkungan:
 | `SPKU_ARCHIVE_DIR` | tidak | Arsip muatan mentah; kosong berarti tidak mengarsipkan |
 | `SPKU_CONTACT` | tidak | Alamat kontak pada User-Agent; boleh kosong |
 | `SPKU_DELAY_SECONDS`, `SPKU_TIMEOUT_SECONDS`, `SPKU_RETRIES` | tidak | Bawaan 1, 45, 3 |
+| `SPKU_BASE_URL` | tidak | Alamat portal; diganti hanya untuk uji terhadap portal tiruan |
+| `WORKER_DB_SCHEMA` | tidak | Skema catatan eksekusi siklus (`cycle_run`); bawaan `worker` |
+| `WORKER_LOCK_WAIT_SECONDS` | tidak | Lama menunggu kunci siklus bila siklus lain masih berjalan, sebelum dicatat `skipped`; bawaan 600 |
 | `DOWNSCALE_WRITE_CACHE` | tidak | `1` mengaktifkan penulisan EdgeWeight ke `pollution.edge_pollution` setiap siklus; bawaan nonaktif |
 | `DOWNSCALE_KEEP_WINDOWS` | tidak | Jumlah time window complete terakhir yang dipertahankan di cache; bawaan 6 (±0,55 GB, hingga ±1,1 GB sebelum autovacuum) |
 | `SPATIAL_ARTIFACT_DIR` | tidak | Direktori artefak penelusuran per run inferensi; kosong berarti tidak disimpan |
@@ -133,11 +138,20 @@ Langkah lengkap beserta status data saat ini: [`docs/RAILWAY.md`](docs/RAILWAY.m
    berikut). Setelah itu kolektor lama di Mac boleh dihentikan.
 
 Railway tidak memaksakan batas waktu pada cron job; bila satu lintasan masih
-berjalan ketika jadwal berikutnya tiba, jadwal tersebut dilewati. Penulisan
-juga dikunci dengan advisory lock sehingga dua lintasan tidak pernah menulis
-bersamaan. Portal perlu dipastikan dapat dijangkau dari IP Railway; bila
-diblokir, lintasan berstatus `aborted` dan siklus tercatat `unavailable`.
-Periksa kesehatan kapan saja dengan `python main.py spku health`.
+berjalan ketika jadwal berikutnya tiba, jadwal tersebut dilewati. Setiap
+siklus juga memegang kunci siklus (advisory lock) sehingga siklus manual dan
+terjadwal tidak pernah tumpang tindih, dan penulisan SPKU dikunci terpisah.
+Portal perlu dipastikan dapat dijangkau dari IP Railway; bila diblokir,
+lintasan berstatus `aborted`, langkah `fetch_ground_truth` tercatat `failed`,
+dan siklus keluar dengan kode 1, walaupun time window masih berisi data dari
+lintasan sebelumnya.
+
+Setiap siklus dicatat pada tabel `worker.cycle_run` (identitas run,
+`TimeWindow`, pemicu, waktu terjadwal, status per langkah, alasan kegagalan).
+`python main.py status` membandingkan catatan itu dengan jadwal dan
+membedakan siklus yang berhasil, terlambat, gagal, macet, atau tidak pernah
+dijalankan. Kesehatan data SPKU: `python main.py spku health`. Rincian:
+[`docs/devops/data-worker-schedule.md`](../../docs/devops/data-worker-schedule.md).
 
 Sebelum mengaktifkan cron atau saat siklus gagal, jalankan `python main.py
 check`: konfigurasi, impor modul, serta koneksi dan ketersediaan PostGIS,
