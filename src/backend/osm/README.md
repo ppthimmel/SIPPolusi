@@ -14,7 +14,8 @@ Modul ini berdiri sendiri dan **tidak memakai** `main.py`, `database/`, atau `ro
 Aplikasi `osm.app` adalah **Cache API** yang juga menyajikan `/v1/pollution` (Spatial
 Pollution Cache DB) dari modul [`../pollution`](../pollution/README.md),
 `/v1/routes/solver-input` (TI-SE-05) dari modul [`../planner`](../planner/README.md), dan
-`/v1/routes/solve` (TI-SE-06) dari modul [`../solver`](../solver/README.md). Kedua modul memakai
+`/v1/routes/solve` (TI-SE-06) serta `/v1/routes/plan` (GeoJSON, TI-SE-07) dari modul
+[`../solver`](../solver/README.md). Kedua modul memakai
 pool koneksi dan skema galat yang sama. Bukti TI-SE-04 ada di
 [`../pollution/VERIFICATION.md`](../pollution/VERIFICATION.md).
 
@@ -126,8 +127,8 @@ Semua perintah Docker di bawah memakai path dari **root repo**. Kalau terminal m
 
    | Perintah | `osm` | `pollution` | `planner` | `solver` |
    |---|---|---|---|---|
-   | dengan `--env-file` | 115 passed | 20 passed, 10 skipped | 35 passed, 2 skipped | 39 passed, 3 skipped |
-   | tanpa DB | 100 passed, 15 skipped | 20 passed, 10 skipped | 35 passed, 2 skipped | 39 passed, 3 skipped |
+   | dengan `--env-file` | 115 passed | 20 passed, 10 skipped | 35 passed, 2 skipped | 65 passed, 6 skipped |
+   | tanpa DB | 100 passed, 15 skipped | 20 passed, 10 skipped | 35 passed, 2 skipped | 65 passed, 6 skipped |
 
    Tes `pollution`, `planner`, dan `solver` yang dilewati adalah uji alur tulis → baca; uji ini butuh
    database uji lokal dan kode Data Worker, jadi dijalankan di luar container (lihat

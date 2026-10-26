@@ -57,3 +57,46 @@ def test_solve_reports_empty_pollution_cache(writer, client_for):
     with client_for("mock") as client:
         error = client.post("/v1/routes/solve", json=body()).json()["error"]
     assert (error["code"], error["reason"]) == ("cache_unavailable", "cache_empty")
+
+
+# TI-SE-07: the whole chain with an HTTP Route Model -------------------------------------
+
+from .test_model_service import BEHAVIOUR, service_url  # noqa: E402,F401  (module fixture)
+
+
+@pytest.mark.parametrize("mode, fallback, status, route_source, fallback_reason", [
+    ("valid", "baseline", 200, "policy", None),
+    ("slow", "baseline", 200, "baseline", "model_timeout"),
+    ("slow", "none", 503, None, None),
+])
+def test_plan_through_http_model_on_worker_data(writer, cache_dsn, monkeypatch, service_url,
+                                                mode, fallback, status, route_source, fallback_reason):
+    from fastapi.testclient import TestClient
+
+    from osm.app import create_app
+
+    write_graph(writer, "v1")
+    now = datetime.now(timezone.utc).replace(minute=0, second=0, microsecond=0)
+    write_weights(writer, now - timedelta(hours=1), range(1, 25), "v1")
+    BEHAVIOUR["mode"] = mode
+    for name, value in {"DATABASE_URL": cache_dsn, "ROUTE_SOLVER_PROVIDER": "http", "ROUTE_SOLVER_URL": service_url,
+                        "ROUTE_SOLVER_FALLBACK": fallback, "ROUTE_SOLVER_BUDGET_MS": "1500",
+                        "ROUTE_SOLVER_RESPONSE_MARGIN_MS": "0", "ROUTE_SOLVER_GRACE_MS": "100"}.items():
+        monkeypatch.setenv(name, value)
+    for cached in (get_settings, get_pollution_settings, get_solver_settings):
+        cached.cache_clear()
+    try:
+        with TestClient(create_app()) as client:
+            resp = client.post("/v1/routes/plan", json=body(), headers={"X-Request-ID": f"e2e-{mode}-{fallback}"})
+    finally:
+        for cached in (get_settings, get_pollution_settings, get_solver_settings):
+            cached.cache_clear()
+    assert resp.status_code == status, resp.text
+    if status == 200:
+        fc = resp.json()
+        assert resp.headers["content-type"].startswith("application/geo+json")
+        assert (fc["metadata"]["route_source"], fc["metadata"]["fallback_reason"]) == (route_source, fallback_reason)
+        assert fc["features"][0]["geometry"]["coordinates"][0] == [106.8, -6.2]
+        assert fc["metadata"]["graph_version"] == "v1"
+    else:
+        assert resp.json()["error"]["reason"] == "solver_timeout"

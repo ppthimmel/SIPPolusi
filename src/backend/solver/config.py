@@ -11,6 +11,7 @@ from osm.config import BACKEND_DIR
 
 Provider = Literal["mock", "baseline", "http"]
 Fault = Literal["none", "timeout", "error", "no_route", "invalid"]
+Fallback = Literal["baseline", "none"]
 
 
 class SolverSettings(BaseSettings):
@@ -35,6 +36,16 @@ class SolverSettings(BaseSettings):
     response_margin_ms: int = Field(500, ge=0)
     # IRouteSolve HTTP timeout = deadline_ms + 300 ms (Tabel 3.6, 3.15).
     grace_ms: int = Field(300, ge=0)
+
+    # TI-SE-07: when the configured solver times out, is unreachable, fails or replies
+    # outside the contract, run the in-process baseline and mark the response
+    # (route_source "baseline", fallback_reason "model_*"). "none" keeps the design's
+    # behaviour (Tabel 3.12): 503 route_service_unavailable.
+    fallback: Fallback = "baseline"
+    # Upper bound for the fallback run, further capped so the whole request stays
+    # within the API Gateway timeout (10 s, Tabel 3.15).
+    fallback_timeout_ms: int = Field(1500, gt=0)
+    gateway_timeout_ms: int = Field(10000, gt=0)
 
     @model_validator(mode="after")
     def _url_for_http(self) -> SolverSettings:

@@ -1,4 +1,6 @@
-"""Timeout, failures and routes without an answer become structured errors."""
+"""Timeout, failures and routes without an answer become structured errors (fallback off).
+
+Fallback behaviour (TI-SE-07) is tested in test_fallback.py."""
 from __future__ import annotations
 
 import asyncio
@@ -14,7 +16,7 @@ from solver.orchestrator import solve_route_request
 
 from .conftest import request_body
 
-FAST = SolverSettings(_env_file=None, budget_ms=400, response_margin_ms=0, grace_ms=50)
+FAST = SolverSettings(_env_file=None, budget_ms=400, response_margin_ms=0, grace_ms=50, fallback="none")
 
 
 async def solve(solver, osm_repo, pollution_repo, settings, solver_settings=FAST, body=None, received_at=None):

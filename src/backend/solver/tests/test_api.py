@@ -18,6 +18,7 @@ from .conftest import request_body
 @pytest.fixture
 def make_client(settings, osm_repo, pollution_repo):
     def make(solver=None, solver_settings=None):
+        solver_settings = solver_settings or SolverSettings(_env_file=None, fallback="none")
         app = create_app(repository=osm_repo, settings=settings, pollution_repository=pollution_repo,
                          solver=solver, solver_settings=solver_settings)
         return TestClient(app)
@@ -59,7 +60,7 @@ def test_faults_are_structured(make_client, fault, status, code, reason):
 
 
 def test_timeout_is_structured(make_client):
-    fast = SolverSettings(_env_file=None, budget_ms=400, response_margin_ms=0, grace_ms=50)
+    fast = SolverSettings(_env_file=None, budget_ms=400, response_margin_ms=0, grace_ms=50, fallback="none")
     with make_client(solver=MockSolver("timeout"), solver_settings=fast) as c:
         error = c.post("/v1/routes/solve", json=request_body()).json()["error"]
     assert (error["code"], error["reason"]) == ("route_service_unavailable", "solver_timeout")
