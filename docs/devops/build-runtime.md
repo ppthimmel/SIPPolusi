@@ -111,9 +111,10 @@ Untuk setiap layanan: *New Service → GitHub Repo*, lalu di Settings:
    otomatis. Nilai yang diisi manual di dashboard mengalahkan berkas ini;
    kosongkan isian dashboard agar berkas yang berlaku.
 3. **Variables**: sesuai tabel variabel di atas.
-4. **Networking**: hanya **gateway** yang diberi domain publik. Backend cukup
-   dijangkau lewat `backend.railway.internal`; penutupan domain publiknya
-   dikerjakan pada TI-DO-04.
+4. **Networking**: hanya **gateway** (dan frontend) yang diberi domain
+   publik. Layanan lain dijangkau lewat `*.railway.internal`; langkah
+   menutup domain publik dan TCP proxy basis data serta uji jaringannya ada
+   di [`private-networking.md`](private-networking.md) (TI-DO-04).
 
 Environment `staging` (proyek `humble-endurance`) dibuat dengan menduplikasi
 `development`, lalu hanya menyisakan `database`, `backend`, dan service baru
