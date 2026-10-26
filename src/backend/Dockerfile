@@ -1,5 +1,10 @@
 FROM python:3.11-slim
 
+# Unbuffered output so logs reach Railway as they happen, not when the buffer fills.
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
 WORKDIR /app
 
 # Copy requirements and install dependencies. Railway has no GPU (training
@@ -9,13 +14,16 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the rest of the backend source code
+# Copy the rest of the backend source code (.env and caches excluded by .dockerignore)
 COPY . .
 
-# Expose port (Railway provides PORT env variable)
+# Fail the build, not the deploy, when a module or dependency is missing.
+RUN python -c "import main" \
+    || { echo "build check failed: 'import main' raised; see the traceback above (missing package in requirements.txt?)" >&2; exit 1; }
+
+# Railway provides PORT; 8000 is the local default.
 EXPOSE 8000
 
-# Command to run the application using uvicorn
-# Empty host = all interfaces: asyncio opens separate IPv4 and IPv6 sockets, so both
-# Railway's public edge (IPv4) and private network (IPv6) can connect.
-CMD uvicorn main:app --host "" --port ${PORT:-8000}
+# serve.py validates configuration (exit 2 with the reason on failure), then
+# starts uvicorn on $PORT. `python serve.py --check` only validates.
+CMD ["python", "serve.py"]

@@ -1,0 +1,19 @@
+{
+  "month": "2026-03",
+  "temporal_mode": "historical",
+  "observation_window_start": "2026-03-01T00:00:00+00:00",
+  "observation_window_end_exclusive": "2026-04-01T00:00:00+00:00",
+  "source_scene_ids": [
+    "LC09_L2SP_122064_20260314_02_T1",
+    "LC09_L2SP_122065_20260314_02_T1",
+    "LC08_L2SP_122065_20260322_02_T1",
+    "LC09_L2SP_122064_20260330_02_T1",
+    "LC09_L2SP_122065_20260330_02_T1"
+  ],
+  "valid_cells": {
+    "ndvi": 157474,
+    "ndbi": 157476,
+    "lst_c": 245
+  },
+  "source_produced_at": "2026-03-31T20:02:59+00:00"
+}

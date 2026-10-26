@@ -1,0 +1,26 @@
+# PostgreSQL 18 + PostGIS 3.6 lokal, versi sama dengan Railway, KHUSUS untuk uji yang MENULIS
+# ke cache (osm dan pollution). Data disimpan di tmpfs dan hilang saat container dimatikan.
+#
+#   docker compose -f src/backend/testdb/docker-compose.yml up -d
+#   export TEST_DATABASE_URL=postgresql://test:test@localhost:55432/test
+#   docker compose -f src/backend/testdb/docker-compose.yml down
+services:
+  testdb:
+    image: postgis/postgis:18-3.6
+    # Image resmi hanya amd64; di Mac Apple Silicon dijalankan lewat emulasi Docker Desktop.
+    platform: linux/amd64
+    environment:
+      POSTGRES_USER: test
+      POSTGRES_PASSWORD: test
+      POSTGRES_DB: test
+    ports:
+      - "55432:5432"
+    tmpfs:
+      - /var/lib/postgresql
+    healthcheck:
+      # Over TCP: the temporary server that runs during first-time init only listens on the
+      # Unix socket, so this turns healthy only once the real server accepts connections.
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U test -d test"]
+      interval: 2s
+      timeout: 3s
+      retries: 30

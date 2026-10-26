@@ -1,0 +1,9 @@
+# Runtime dependencies of the osm module (src/backend/osm). Python 3.11+.
+fastapi>=0.115
+uvicorn[standard]>=0.30
+asyncpg>=0.30
+pydantic>=2.7
+pydantic-settings>=2.4
+# Route solving (src/backend/solver): HTTP client for IRouteSolve, A* baseline of route_model.
+httpx>=0.27
+networkx>=3.2

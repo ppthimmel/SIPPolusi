@@ -1,0 +1,17 @@
+# Runs only the Cache API (/v1/osm, /v1/pollution, /v1/routes/solver-input, /v1/routes/solve),
+# kept apart from the root docker-compose.yml.
+#   docker compose -f src/backend/osm/docker-compose.yml up --build -d
+# DATABASE_URL (and optional OSM_* / POLLUTION_* settings) come from src/backend/.env.
+services:
+  backend_osm:
+    build:
+      context: ..
+      dockerfile: osm/Dockerfile
+      target: runtime
+    image: sippolusi-backend-osm:latest
+    restart: unless-stopped
+    env_file: ../.env
+    environment:
+      PORT: "8000"
+    ports:
+      - "8001:8000"

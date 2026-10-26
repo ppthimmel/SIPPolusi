@@ -2,16 +2,22 @@ server {
     listen ${PORT};
     server_name localhost;
 
-    # Re-resolve the backend on each request instead of once at startup, so a
-    # redeployed backend (new private IP) is picked up. NGINX_LOCAL_RESOLVERS is
+    # Re-resolve the gateway on each request instead of once at startup, so a
+    # redeployed gateway (new private IP) is picked up. NGINX_LOCAL_RESOLVERS is
     # filled from /etc/resolv.conf by the nginx image entrypoint.
     resolver ${NGINX_LOCAL_RESOLVERS} valid=10s ipv6=on;
 
+    # Same-origin API calls from the browser are handed to the API Gateway
+    # unchanged. Path-to-service routing, timeouts and request IDs live only in
+    # src/gateway, so requests from the web app get the same treatment as any
+    # other client (and the backend is not reached around the gateway).
     location /v1/ {
-        set $backend_upstream ${BACKEND_UPSTREAM};
-        proxy_pass $backend_upstream;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
+        set $gateway_upstream ${GATEWAY_UPSTREAM};
+        proxy_pass $gateway_upstream;
+        # Host is left as the gateway's own, so a public Railway URL routes.
+        proxy_ssl_server_name on;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Host $host;
     }
 
     location / {

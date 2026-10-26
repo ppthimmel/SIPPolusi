@@ -1,0 +1,215 @@
+{
+  "schema": "geoscf-preprocessed-v1",
+  "feature_version": "7b1aea3330af46fa61ddeef7300c4d488d69290939c70b39ef541f4a436b36a7",
+  "created_utc": "2026-10-06T07:37:31+00:00",
+  "source": {
+    "product": "GEOS-CF v2 ana aqc_tavg_1hr_glo_L1440x721_slv",
+    "access": "OPeNDAP opendap.nccs.nasa.gov/dods/gmao/geos-cf/v2",
+    "raw_file": "geoscf_ana_jakarta_2026.json",
+    "raw_sha256": "e5de0e1059b80df0ec10bd817c2e0c45577d6da729fce0537e9afde211cb2a86",
+    "variables": {
+      "pm25_rh35": "µg/m³ pada RH 35% (termasuk air)",
+      "no2": "mol/mol udara kering"
+    },
+    "native_resolution_deg": 0.25,
+    "source_label": "geos_cf_v2_ana"
+  },
+  "period_utc": [
+    "2026-01-01 00:00:00+00:00",
+    "2026-09-30 23:00:00+00:00"
+  ],
+  "time_windows": 6552,
+  "time_window_minutes": 60,
+  "time_alignment": "cap tavg menit ke-30 dikurangi 30 menit = time_window_start (awal jam, UTC)",
+  "geoscf_cells": {
+    "n": 9,
+    "lat_centers": [
+      -6.5,
+      -6.25,
+      -6.0
+    ],
+    "lon_centers": [
+      106.5,
+      106.75,
+      107.0
+    ],
+    "cell_id": "iy * 3 + ix"
+  },
+  "grid": {
+    "crs": "EPSG:32748",
+    "resolution_m": 100.0,
+    "x_min": 676900.0,
+    "y_min": 9292100.0,
+    "n_x": 445,
+    "n_y": 445,
+    "bbox_lonlat": [
+      106.6,
+      -6.4,
+      107.0,
+      -6.0
+    ]
+  },
+  "no2_conversion": {
+    "T_ref_K": 298.15,
+    "P_ref_Pa": 101325.0,
+    "molar_mass": 46.0055,
+    "ugm3_per_ppb": 1.8804308553640376,
+    "catatan": "suhu dan tekanan acuan tetap; ganti dengan Open-Meteo bila tersedia"
+  },
+  "availability": {
+    "source": "header Last-Modified berkas per jam di portal.nccs.nasa.gov/datashare/gmao/geos-cf/v2/ana",
+    "file": "geoscf_availability_2026.csv",
+    "sha256": "b8f11dc5604ae952f3bf1a2f3269dca833ec8c40836dfd1748637cf1ca087621",
+    "latency_hours": {
+      "n": 6552,
+      "mean": 17.39927647198481,
+      "std": 6.863081244227624,
+      "min": 6.282777777777778,
+      "p01": 6.348888888888889,
+      "median": 17.268472222222222,
+      "p99": 31.711966666666655,
+      "max": 62.67166666666667
+    },
+    "catatan": "available_at_utc = waktu tulis terakhir berkas; latency_hours = available_at_utc - (time_window_start + 1 jam)"
+  },
+  "spatial_method_station": "nearest",
+  "quality_report": {
+    "duplikasi_dibuang": 0,
+    "pm25": {
+      "nan_awal": 0,
+      "di_luar_rentang": 0,
+      "nilai_dibuang_total": 0
+    },
+    "no2": {
+      "nan_awal": 0,
+      "di_luar_rentang": 0,
+      "nilai_dibuang_total": 0
+    },
+    "jam_hilang": 0,
+    "stasiun_tanpa_geoscf": 2
+  },
+  "statistics": {
+    "pm25_ugm3": {
+      "n": 58968,
+      "mean": 82.74601745605469,
+      "std": 61.039833068847656,
+      "min": 5.6328125,
+      "p01": 11.1875,
+      "median": 67.625,
+      "p99": 267.0,
+      "max": 469.0
+    },
+    "no2_ugm3": {
+      "n": 58968,
+      "mean": 54.863929748535156,
+      "std": 39.702880859375,
+      "min": 1.5443483591079712,
+      "p01": 5.034952163696289,
+      "median": 43.3443717956543,
+      "p99": 166.59124755859375,
+      "max": 222.41354370117188
+    },
+    "no2_ppb": {
+      "n": 58968,
+      "mean": 29.176254272460938,
+      "std": 21.11371612548828,
+      "min": 0.821273684501648,
+      "p01": 2.6775524616241455,
+      "median": 23.050233840942383,
+      "p99": 88.59205627441406,
+      "max": 118.27796936035156
+    }
+  },
+  "files": {
+    "geoscf_cell_hourly.parquet": {
+      "rows": 58968,
+      "bytes": 388653,
+      "sha256": "8fa0417a7bee9a3ffbf9698a3f3dc7d5707d33be494d9ce0c1cc8d45ad8154e9",
+      "columns": [
+        "time_window_start",
+        "cell_id",
+        "pm25_ugm3",
+        "no2_ugm3",
+        "no2_ppb",
+        "available_pm25",
+        "available_no2",
+        "available_at_utc",
+        "latency_hours",
+        "source"
+      ]
+    },
+    "geoscf_cells.csv": {
+      "rows": 9,
+      "bytes": 497,
+      "sha256": "3b1e88b2bbad64b89f635857afa47a9ee2662318de107a3ebb5b77967972480d",
+      "columns": [
+        "cell_id",
+        "iy",
+        "ix",
+        "lat_center",
+        "lon_center",
+        "lat_min",
+        "lat_max",
+        "lon_min",
+        "lon_max"
+      ]
+    },
+    "geoscf_station_hourly.parquet": {
+      "rows": 832104,
+      "bytes": 3384204,
+      "sha256": "5bef93864eb5c1edce318a362fb2e0da07fed756533e59ef7b5e75af5bf87451",
+      "columns": [
+        "station_uuid",
+        "kode",
+        "time_window_start",
+        "grid_id",
+        "geoscf_cell_id",
+        "geoscf_pm25_ugm3",
+        "geoscf_no2_ugm3",
+        "geoscf_no2_ppb",
+        "geoscf_available",
+        "available_at_utc",
+        "latency_hours",
+        "source"
+      ]
+    },
+    "grid100m_geoscf_lookup.parquet": {
+      "rows": 198025,
+      "bytes": 4284019,
+      "sha256": "5dc957edba267355390aa8f6a4104dcc2fdc0358ffc6e856791ead2c1732a80b",
+      "columns": [
+        "grid_id",
+        "gx",
+        "gy",
+        "x_utm",
+        "y_utm",
+        "lon",
+        "lat",
+        "geoscf_cell_id",
+        "inside_bbox"
+      ]
+    },
+    "spku_stations_geoscf_mapping.csv": {
+      "rows": 127,
+      "bytes": 24281,
+      "sha256": "f9d2fb03318f98071963fc35285cbe75d061e940eba0dc4f056f511066337e6f",
+      "columns": [
+        "station_uuid",
+        "kode",
+        "initial",
+        "name",
+        "type",
+        "lat",
+        "lon",
+        "kecamatan",
+        "kota",
+        "active",
+        "geoscf_cell_id",
+        "x_utm",
+        "y_utm",
+        "grid_id",
+        "in_grid"
+      ]
+    }
+  }
+}

@@ -1,0 +1,52 @@
+{
+  "status": "complete",
+  "processing_version": "open-meteo-core-1",
+  "source_file": "datasets\\2026\\jakarta\\open-meteo weather\\hourly.json",
+  "source_sha256": "e60d29a3b437a341d81286670b471ef5147909367f7fd0313ebc7eb8150e592b",
+  "source_api": "https://open-meteo.com/en/docs/historical-forecast-api",
+  "source_request": {
+    "latitude": -6.2,
+    "longitude": 106.85,
+    "start_date": "2026-01-01",
+    "end_date": "2026-09-30",
+    "timezone": "UTC",
+    "models": "best_match",
+    "tilt": 0,
+    "azimuth": 0
+  },
+  "output_file": "datasets\\processed\\open_meteo\\hourly.parquet",
+  "row_definition": "one requested Jakarta point x one UTC hour",
+  "rows": 6552,
+  "start_utc": "2026-01-01T00:00:00+00:00",
+  "end_utc_inclusive": "2026-09-30T23:00:00+00:00",
+  "units": {
+    "temperature_2m": "degC",
+    "relative_humidity_2m": "%",
+    "wind_speed_10m": "km/h",
+    "wind_direction_10m": "degree",
+    "boundary_layer_height": "m",
+    "precipitation": "mm",
+    "surface_pressure": "hPa"
+  },
+  "source_unit_labels": {
+    "temperature_2m": "\u00b0C",
+    "relative_humidity_2m": "%",
+    "wind_speed_10m": "km/h",
+    "wind_direction_10m": "\u00b0",
+    "boundary_layer_height": "m",
+    "precipitation": "mm",
+    "surface_pressure": "hPa"
+  },
+  "null_counts": {
+    "temperature_2m": 0,
+    "relative_humidity_2m": 0,
+    "wind_speed_10m": 0,
+    "wind_direction_10m": 0,
+    "boundary_layer_height": 0,
+    "precipitation": 0,
+    "surface_pressure": 0
+  },
+  "transformations": "select seven core series; numeric conversion; missing masks; no aggregation or imputation; original units retained",
+  "availability_note": "Hourly timestamps are weather valid times. Forecast issue/publication times were not retained, so feature_available_at is unknown.",
+  "location_note": "Coordinates in source_request are requested coordinates, not verified exact model-grid coordinates."
+}

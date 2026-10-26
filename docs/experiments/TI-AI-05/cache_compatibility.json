@@ -1,0 +1,59 @@
+{
+  "run_id": "20261007T1600Z-idw-p2-k8-fa3431cd",
+  "pollution_window": {
+    "time_window_start": "2026-10-07 16:00:00+00:00",
+    "pollutant": "pm25,no2",
+    "status": "complete",
+    "coverage_ratio": "0.99656355",
+    "model_version": "idw-p2-k8",
+    "completed_at": "2026-10-07 17:33:02.077795+00:00"
+  },
+  "read_full_study_area": {
+    "rows": 372067,
+    "computed_rows": 372069,
+    "edges_outside_bbox_query": [
+      69705,
+      237893
+    ],
+    "max_abs_diff_float32": {
+      "pm25_ugm3": 7.263105260335578e-06,
+      "no2_ugm3": 7.618312181989495e-06,
+      "exposure_index": 2.3512943991832458e-07,
+      "confidence_score": 2.9625024600132832e-08
+    },
+    "estimation_source": [
+      "idw"
+    ],
+    "background_source_all_null": true,
+    "confidence_max": 0.38880402,
+    "seconds": 2.79
+  },
+  "read_bbox_1km": {
+    "rows": 1178,
+    "seconds": 0.248
+  },
+  "rewrite_same_window": {
+    "rows_written": 372069,
+    "seconds": 9.49,
+    "rows_before": 372069,
+    "rows_after": 372069,
+    "distinct_edges_after": 372069
+  },
+  "storage_one_window": {
+    "total_mb": 92.0,
+    "heap_mb": 66.0,
+    "per_day_gb_24_windows": 2.16,
+    "keep_6_windows_gb": 0.54
+  },
+  "trace_example": {
+    "edge_id": 44451,
+    "n_cells": 66,
+    "length_m": 4933.6,
+    "pm25_recomputed_from_cells": 25.8005,
+    "pm25_in_cache": 25.8005,
+    "model_version": "idw-p2-k8",
+    "graph_version": "jakarta-20261005",
+    "estimation_source": "idw",
+    "time_window_start": "2026-10-07 16:00:00+00:00"
+  }
+}

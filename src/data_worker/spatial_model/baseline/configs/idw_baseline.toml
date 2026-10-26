@@ -1,0 +1,102 @@
+# Konfigurasi baseline Spatial Downscaling Model: IDW (TI-AI-04).
+# Dokumen Desain: subbab 4.3.2 (konfigurasi sistem), 4.3.4 (prosedur),
+# 4.3.5 (kontrol), 4.4.1 (baseline IDW), Tabel 3.8 (run_idw_fallback).
+#
+# Berkas ini disalin utuh ke direktori hasil setiap run beserta hash-nya.
+
+experiment = "spatial-downscaling-baseline-idw"
+seed = 42                      # subbab 4.3.5; IDW deterministik, tetap dicatat
+
+# ---------------------------------------------------------------- dataset
+[dataset]
+pollutants = ["pm25", "no2"]   # target estimasi (subbab 4.3.2)
+time_window = "1h"             # time window satu jam, UTC
+# Label time window adalah awal jam: pengukuran pada [HH:00, HH+1:00) masuk HH:00.
+min_readings_per_window = 1    # jumlah bacaan bersih minimum per stasiun-jam
+restrict_to_study_area = true  # station.in_jakarta_bbox (JAKARTA_BBOX)
+# Batas atas eksklusif snapshot (UTC). Data sesudahnya tidak dibaca. Baris
+# sebelum batas masih dapat berubah ±48 jam (riwayat bergulir portal dan
+# bendera qc), sehingga yang dibekukan adalah berkas dataset, bukan kuerinya.
+snapshot_end_utc = "2026-10-06T00:00:00Z"
+
+# Kendali mutu. Sumber: src/data_worker/docs/DATA.md dan README ekspor.
+[dataset.qc]
+require_clean_flag = true      # hanya qc == ""
+drop_nonpositive = true        # 0 dipakai portal sebagai penanda kosong
+sentinel_min = 999.99          # kode sentinel Kelapa Gading (qc tetap "")
+max_value_ugm3 = 2000.0
+
+# Stasiun yang dikecualikan, berdasarkan station.kode (diresolusi ke uuid).
+[[dataset.qc.exclude]]
+kode = "DKI_PM25_40"           # SDN 01 Manggarai: PM2.5 macet 32,00
+pollutant = "pm25"
+reason = "PM2.5 macet pada 32,00 sepanjang periode"
+
+[[dataset.qc.exclude]]
+kode = "DKI_PM25_33"           # RPTRA Citra Permata: macet 14,00 sejak 19 Sep
+pollutant = "pm25"
+since_utc = "2026-09-19T10:00:00Z"
+reason = "PM2.5 macet pada 14,00 sejak 2026-09-19T10:00Z"
+
+# Stasiun yang diduga bias kalibrasi rendah (DATA.md: rerata 4–9 µg/m³).
+# Tidak dibuang; ditandai suspected_low_bias dan dianalisis sebagai kelompok
+# tersendiri. Rerata dihitung pada split pelatihan saja.
+[dataset.low_bias_suspect]
+pollutant = "pm25"
+kode_prefix = "DKI_PM25_"
+station_type = "Sensor"
+max_mean_ugm3 = 10.0
+split = "train"
+
+# Pembagian temporal pelatihan/validasi/pengujian (TI-AI-03, subbab 4.3.4).
+# Batas dihitung sekali dari pecahan hari UTC penuh, lalu dibekukan di
+# manifest dataset. Run berikutnya membaca batas dari manifest, bukan dari
+# sini. Isi train_end/val_end (ISO 8601) untuk menetapkan batas secara manual.
+[dataset.split]
+train_fraction = 0.70
+val_fraction = 0.15
+# train_end = "2026-09-29T00:00:00Z"
+# val_end = "2026-10-02T00:00:00Z"
+drop_partial_days = true       # hari UTC pertama/terakhir yang tidak lengkap dibuang
+
+# ---------------------------------------------------------------- model
+[model]
+name = "idw"
+power = 2.0                    # p pada bobot 1/d^p (Tabel 3.8, nilai awal)
+neighbors = 8                  # stasiun terdekat per titik (Tabel 3.8, nilai awal)
+crs = "EPSG:32748"             # jarak dalam meter, UTM 48S
+min_sources = 1                # stasiun sumber minimum agar estimasi dibuat
+
+# Analisis sensitivitas pada split validasi. Konfigurasi utama tetap
+# power/neighbors di atas (sama dengan fallback); hasil tuned dilaporkan
+# terpisah sebagai pembanding.
+[model.sweep]
+enabled = true
+power = [0.0, 1.0, 2.0, 3.0]
+neighbors = [4, 8, 16, 0]      # 0 = seluruh stasiun
+selection_metric = "rmse"
+
+# ---------------------------------------------------------------- evaluasi
+[evaluation]
+cv_scheme = "leave-one-station-out"
+report_split = "test"          # split yang dilaporkan sebagai hasil baseline
+min_obs_per_station = 24       # stasiun dengan n lebih kecil ditandai data terbatas
+# Ambang galat besar untuk analisis: kelompok dengan RMSE > factor × RMSE agregat.
+high_error_factor = 1.5
+distance_bins_km = [0, 1, 2, 3, 5, 10, 50]
+colocated_m = 100.0            # pasangan stasiun lebih dekat dari ini dilaporkan sebagai berimpit
+local_timezone = "Asia/Jakarta"
+
+# Varian evaluasi tambahan. Hasil utama memakai seluruh stasiun yang lolos
+# kendali mutu; varian membatasi stasiun sumber dan stasiun uji sekaligus.
+# NO2: tiga sensor LCS berlevel 125–148 µg/m³ terhadap 13–110 µg/m³ pada
+# stasiun Reference, sehingga dilaporkan pula hasil Reference saja.
+[[evaluation.variants]]
+name = "no2_reference_only"
+pollutant = "no2"
+station_types = ["Reference"]
+
+# Peta grid 100 m (run_idw_fallback) untuk satu time window contoh pada split uji.
+[evaluation.grid_map]
+enabled = true
+cell_m = 100.0

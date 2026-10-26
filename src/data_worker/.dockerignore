@@ -1,0 +1,15 @@
+# Rahasia tidak masuk image; Railway menyuntikkan variabel saat runtime.
+.env
+.env.*
+!.env.example
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+venv/
+tests/
+data/
+*.sqlite
+*.sqlite-*
+# Data latih hasil praproses (~300 MB) tidak dipakai siklus; pelatihan berjalan di luar Railway.
+dataset_processed/

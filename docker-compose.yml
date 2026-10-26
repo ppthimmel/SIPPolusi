@@ -1,7 +1,9 @@
 # Local development / CI stack for all SIPPolusi services. Mirrors the
-# Railway deployment topology minus the gateway (Railway's built-in gateway
-# has no local equivalent here; the frontend container proxies /v1/* to the
-# backend directly, see src/frontend/default.conf.template).
+# Railway deployment topology: the NGINX API Gateway (src/gateway) is the
+# public entry point for /v1/* on :8081 and the only place that maps paths to
+# services (backend, cache_api). The frontend container hands its /v1/* to the
+# gateway unchanged (src/frontend/default.conf.template).
+# Build/start guide and smoke test: docs/devops/build-runtime.md.
 services:
   postgres:
     image: postgis/postgis:16-3.4
@@ -58,6 +60,41 @@ services:
     env_file: ./src/backend/.env
     ports:
       - "8000:8000"
+    healthcheck:
+      # Liveness only; GET /health/ready also checks the database.
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # Cache API (/v1/osm, /v1/pollution): same source tree as the backend, own
+  # image and process. Health check is built into the image (GET /health).
+  cache_api:
+    build:
+      context: ./src/backend
+      dockerfile: osm/Dockerfile
+      target: runtime
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file: ./src/backend/.env
+    environment:
+      PORT: "8000"
+    ports:
+      - "8001:8000"
+
+  gateway:
+    build: ./src/gateway
+    restart: unless-stopped
+    env_file: ./src/gateway/.env
+    depends_on:
+      backend:
+        condition: service_healthy
+      cache_api:
+        condition: service_healthy
+    ports:
+      - "8081:8080"
 
   data_worker:
     build: ./src/data_worker
@@ -68,13 +105,18 @@ services:
       model_registry:
         condition: service_started
     env_file: ./src/data_worker/.env
+    # Image default is `python main.py cycle` (one cycle then exit, for the
+    # Railway cron in railway.json). With restart: unless-stopped that would
+    # rerun a full SPKU sweep every few minutes, so run the in-process
+    # scheduler instead: one cycle now, then every hour at minute 15.
+    command: ["python", "main.py", "serve", "--now"]
 
   frontend:
     build: ./src/frontend
     restart: unless-stopped
     env_file: ./src/frontend/.env
     depends_on:
-      - backend
+      - gateway
     ports:
       - "8080:80"
 

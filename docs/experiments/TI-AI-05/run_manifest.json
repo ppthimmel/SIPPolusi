@@ -1,0 +1,94 @@
+{
+  "run_id": "20261007T1600Z-idw-p2-k8-fa3431cd",
+  "status": "complete",
+  "time_window": {
+    "start": "2026-10-07T16:00:00+00:00",
+    "end": "2026-10-07T17:00:00+00:00"
+  },
+  "model": {
+    "model_name": "spatial-downscaling",
+    "model_version": "idw-p2-k8",
+    "estimation_source": "idw",
+    "fallback_reason": "ModelUnavailableError: model spatial-downscaling production belum terdaftar di Model Registry",
+    "idw": {
+      "power": 2.0,
+      "neighbors": 8,
+      "config_sha256": "f6f15b8fa7a1de8bd16d73ada2d7c440d3ac85188ffe6af43389b0caa035a0b5"
+    },
+    "confidence": {
+      "formula": "c_max * exp(-d / L)",
+      "c_max_idw": 0.39,
+      "length_scale_m": 3000.0
+    }
+  },
+  "graph_version": "jakarta-20261005",
+  "grid_spec": {
+    "x0": 685800.0,
+    "y0": 9294300.0,
+    "nx": 334,
+    "ny": 334,
+    "cell_m": 100.0,
+    "crs": "EPSG:32748"
+  },
+  "grid_spec_id": "5c7f2ddd008b",
+  "aggregation": "rata-rata nilai sel berbobot panjang potongan ruas di dalam sel (edge_cell_pieces)",
+  "input": {
+    "ground_truth_rows": 115,
+    "stations": {
+      "pm25": 104,
+      "no2": 11
+    },
+    "ground_truth_sha256": "7a7e41a51550f0960f65a79216b89a8d7a9a0b086a829726616cadde0a8627a7"
+  },
+  "output": {
+    "edge_weights": 372069,
+    "edges_without_estimate": 1283,
+    "coverage_ratio": 0.996564,
+    "rows_written": 372069,
+    "confidence_distribution": {
+      "n": 372069,
+      "min": 0.04668992609873707,
+      "p25": 0.2298946450583517,
+      "median": 0.26743576116804985,
+      "p75": 0.30602797982087976,
+      "max": 0.3888040147123852,
+      "mean": 0.2660439383595986,
+      "low_lt_0_4": 372069,
+      "medium_0_4_to_0_7": 0,
+      "high_ge_0_7": 0
+    }
+  },
+  "files": {
+    "ground_truth.parquet": {
+      "rows": 115,
+      "sha256": "b815a6c1419aeb42a52f6888b2ce4c3729f9bf99d249d85fb2270cb165459d58"
+    },
+    "grid_prediction.parquet": {
+      "rows": 111556,
+      "sha256": "8987a5c2942ae2c67d8f4ba2d16a224ee98ce3fe4e34c1854ce1cd96e6bae8f0"
+    },
+    "edge_cell_pieces.parquet": {
+      "rows": 574809,
+      "sha256": "556fcc3d39144445368c04b6b6ebe95feed7917788a8be1dc36901a722c3a955"
+    },
+    "edge_weights.parquet": {
+      "rows": 372069,
+      "sha256": "01504202a004827f6243027dc047ae65089f30c694a4b4a27cda7be231561552"
+    },
+    "edges_without_estimate.parquet": {
+      "rows": 1283,
+      "sha256": "4cf696c37f3c949fa04a3fca65c5828cc5f5fc1fa9ca7e8a983cddae5f8d21d5"
+    }
+  },
+  "code": {
+    "git_commit": "e04c4aaf94a89cc75a58a7bdc75420ccf4d34221",
+    "git_branch": "feat/ti-ai-05-grid-to-edgeweight",
+    "git_dirty": false
+  },
+  "durations_s": {
+    "grid_s": 0.286,
+    "aggregate_s": 0.191,
+    "write_cache_s": 8.144
+  },
+  "created_utc": "2026-10-07T17:33:10+00:00"
+}

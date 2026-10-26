@@ -1,0 +1,13 @@
+# Build context is src/backend; send only the cache API packages.
+*
+!osm
+!pollution
+!planner
+!solver
+!route_model
+**/__pycache__
+**/*.pyc
+**/.pytest_cache
+**/.env
+osm/Dockerfile*
+osm/docker-compose.yml

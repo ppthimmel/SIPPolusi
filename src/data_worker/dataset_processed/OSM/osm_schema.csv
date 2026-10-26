@@ -1,0 +1,24 @@
+table_schema,table_name,ordinal_position,column_name,data_type,is_nullable,column_default,description
+osm,graph_version,1,version,text,NO,,
+osm,graph_version,2,status,text,NO,,
+osm,graph_version,3,osm_timestamp,timestamp with time zone,YES,,
+osm,graph_version,4,built_at,timestamp with time zone,YES,,
+osm,graph_version,5,node_count,integer,YES,,
+osm,graph_version,6,edge_count,integer,YES,,
+osm,road_edge,1,edge_id,bigint,NO,,
+osm,road_edge,2,graph_version,text,NO,,
+osm,road_edge,3,u,bigint,NO,,
+osm,road_edge,4,v,bigint,NO,,
+osm,road_edge,5,length_m,real,YES,,
+osm,road_edge,6,highway,text,YES,,
+osm,road_edge,7,walk_allowed,boolean,NO,true,
+osm,road_edge,8,bike_allowed,boolean,NO,true,
+osm,road_edge,9,geom,"geometry(LineString,4326)",YES,,
+osm,road_edge,10,osm_way_id,bigint,YES,,OpenStreetMap way this segment was cut from
+osm,road_edge,11,name,text,YES,,
+osm,road_edge,12,oneway,boolean,NO,false,Vehicles (incl. bicycles) may only travel u -> v; geometry is stored in that direction
+osm,road_edge,13,tags,jsonb,NO,'{}'::jsonb,"All original OSM tags of the way (sidewalk, cycleway, lanes, surface, bridge, tunnel, access, ...)"
+osm,road_node,1,node_id,bigint,NO,,OpenStreetMap node id
+osm,road_node,2,graph_version,text,NO,,
+osm,road_node,3,geom,"geometry(Point,4326)",YES,,
+osm,road_node,4,tags,jsonb,NO,'{}'::jsonb,"Original OSM tags of the node (traffic_signals, crossing, barrier, ...)"
