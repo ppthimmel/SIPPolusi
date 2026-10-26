@@ -10,10 +10,10 @@ Tabel 3.6, dan Subbab 3.1 (skala warna heatmap).
 | `GET /v1/exposure-surface` | IExposureSurface | bbox + zoom → GeoJSON ruas atau sel grid untuk heatmap |
 
 Kedua endpoint berjalan di Cache API (`osm.app`) dan memakai planner (TI-SE-05) serta solver
-(TI-SE-06, TI-SE-07) yang sudah ada. API Gateway meneruskan **hanya** dua path ini (exact match),
-ditambah `/v1/osm/*` dan `/v1/pollution/*`, ke Cache API. Endpoint inspeksi `/v1/routes/solve`,
-`/plan`, dan `/solver-input` tidak dapat diakses lewat gateway (lihat
-[`src/gateway/README.md`](../../gateway/README.md)).
+(TI-SE-06, TI-SE-07) yang sudah ada. API Gateway meneruskan **hanya** dua path ini (exact match)
+ke Cache API, dengan rate limit per alamat IP. Endpoint inspeksi `/v1/routes/solve`, `/plan`, dan
+`/solver-input`, serta baca internal `/v1/osm/*` dan `/v1/pollution/*`, tidak dapat diakses lewat
+gateway (TI-DO-05, lihat [`src/gateway/README.md`](../../gateway/README.md)).
 
 ## Bukti untuk issue
 
@@ -137,7 +137,7 @@ Semua galat memakai skema `{"error": {"code", "message", "request_id", "reason"?
 | 422 | `outside_study_area` | – | Titik di luar DKI Jakarta | Cache API |
 | 422 | `point_not_on_network` | – | Tidak ada simpul yang dapat dilalui dalam 200 m | Cache API |
 | 422 | `no_route_found` | `same_node` | Asal dan tujuan ter-snap ke simpul yang sama | Cache API |
-| 429 | `rate_limited` | – | Rate limit (Tabel 3.15); **belum diaktifkan** di gateway | Gateway |
+| 429 | `rate_limited` | – | Rate limit per alamat IP (Tabel 3.15): `/v1/routes` 20/menit, burst 5; `/v1/exposure-surface` 60/menit, burst 10. Header `Retry-After` (3 atau 1 detik) | Gateway |
 | 500 | `internal_error` | – | Galat tak terduga; detail hanya di log | Cache API |
 | 502 | `upstream_unavailable` | – | Cache API tidak dapat dihubungi | Gateway |
 | 503 | `cache_unavailable` | `cache_empty`, `database_unavailable`, `query_timeout` | Cache kosong (belum ada time window complete) atau tidak dapat dibaca | Cache API |

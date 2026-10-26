@@ -3,9 +3,9 @@
     python -m public_api.openapi            print to stdout
     python -m public_api.openapi --write    update public_api/openapi.json
 
-Only gateway-routed paths are kept (POST /v1/routes, GET /v1/exposure-surface,
-/v1/osm/*, /v1/pollution/*); the inspection endpoints (/v1/routes/solve, /plan,
-/solver-input) and /health are internal. tests/test_openapi.py fails when
+Only gateway-routed paths are kept (POST /v1/routes, GET /v1/exposure-surface);
+the Cache API's /v1/osm/* and /v1/pollution/* reads, the inspection endpoints
+(/v1/routes/solve, /plan, /solver-input) and /health are internal (TI-DO-05). tests/test_openapi.py fails when
 openapi.json is out of date, so the committed file always matches the code.
 """
 from __future__ import annotations
@@ -16,8 +16,7 @@ import pathlib
 from typing import Any
 
 SPEC_PATH = pathlib.Path(__file__).with_name("openapi.json")
-PUBLIC_EXACT = {"/v1/routes", "/v1/exposure-surface"}
-PUBLIC_PREFIXES = ("/v1/osm/", "/v1/pollution/")
+PUBLIC_PATHS = {"/v1/routes", "/v1/exposure-surface"}
 
 DESCRIPTION = """\
 Kontrak publik SIPPolusi, diakses lewat API Gateway (`https://<gateway>/v1/...`).
@@ -107,7 +106,7 @@ def install_openapi(app) -> None:
 
 
 def is_public(path: str) -> bool:
-    return path in PUBLIC_EXACT or path.startswith(PUBLIC_PREFIXES)
+    return path in PUBLIC_PATHS
 
 
 def _refs(node: Any) -> set[str]:
