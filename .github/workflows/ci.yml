@@ -208,7 +208,8 @@ jobs:
         run: python scripts/ci/check_junit.py --no-skips "$REPORTS"/cacheflow-*.xml
       - name: Start gateway, backend, Cache API and PostGIS (compose)
         run: |
-          for d in postgres backend gateway; do cp "src/$d/.env.example" "src/$d/.env"; done
+          # Compose reads every service's env_file, also of services not started.
+          for f in src/*/.env.example; do cp "$f" "${f%.example}"; done
           docker compose up -d --build --no-deps --wait --wait-timeout 300 postgres backend cache_api gateway
       - name: Smoke test through the gateway
         run: |
