@@ -1,0 +1,205 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              106.799277,
+              -6.200986
+            ],
+            [
+              106.801536,
+              -6.200986
+            ],
+            [
+              106.801536,
+              -6.198725
+            ],
+            [
+              106.799277,
+              -6.198725
+            ],
+            [
+              106.799277,
+              -6.200986
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "cell_id": "250m:47279:-2743",
+        "edge_count": 6,
+        "exposure_index": 1.5778,
+        "exposure_index_max": 2.4667,
+        "pm25_ugm3": 23.3333,
+        "no2_ugm3": 40.0,
+        "confidence_score": 0.0933
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              106.801536,
+              -6.200986
+            ],
+            [
+              106.803795,
+              -6.200986
+            ],
+            [
+              106.803795,
+              -6.198725
+            ],
+            [
+              106.801536,
+              -6.198725
+            ],
+            [
+              106.801536,
+              -6.200986
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "cell_id": "250m:47280:-2743",
+        "edge_count": 4,
+        "exposure_index": 2.05,
+        "exposure_index_max": 2.8,
+        "pm25_ugm3": 37.5,
+        "no2_ugm3": 40.0,
+        "confidence_score": 0.15
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              106.799277,
+              -6.198725
+            ],
+            [
+              106.801536,
+              -6.198725
+            ],
+            [
+              106.801536,
+              -6.196464
+            ],
+            [
+              106.799277,
+              -6.196464
+            ],
+            [
+              106.799277,
+              -6.198725
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "cell_id": "250m:47279:-2742",
+        "edge_count": 8,
+        "exposure_index": 3.5292,
+        "exposure_index_max": 4.6333,
+        "pm25_ugm3": 81.875,
+        "no2_ugm3": 40.0,
+        "confidence_score": 0.3275
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              106.801536,
+              -6.198725
+            ],
+            [
+              106.803795,
+              -6.198725
+            ],
+            [
+              106.803795,
+              -6.196464
+            ],
+            [
+              106.801536,
+              -6.196464
+            ],
+            [
+              106.801536,
+              -6.198725
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "cell_id": "250m:47280:-2742",
+        "edge_count": 6,
+        "exposure_index": 4.4167,
+        "exposure_index_max": 8.0,
+        "pm25_ugm3": 92.5,
+        "no2_ugm3": 40.0,
+        "confidence_score": 0.37
+      }
+    }
+  ],
+  "metadata": {
+    "request_id": "contoh-surface-z13",
+    "kind": "grid",
+    "zoom": 13,
+    "layer": "combined",
+    "bbox": [
+      106.795,
+      -6.205,
+      106.808,
+      -6.192
+    ],
+    "cell_size_m": 250,
+    "aggregation": "Rata-rata berbobot panjang ruas atas ruas yang memiliki nilai; ruas masuk ke sel yang memuat titik tengah kotak pembatasnya. exposure_index_max = nilai ruas tertinggi di sel.",
+    "feature_count": 4,
+    "time_window_start": "2026-10-26T12:00:00Z",
+    "time_window_end": "2026-10-26T13:00:00Z",
+    "data_stale": false,
+    "graph_version": "v1",
+    "model_version": {
+      "downscaling": "idw-p2-k8"
+    },
+    "crs": "urn:ogc:def:crs:OGC::CRS84",
+    "coordinate_order": [
+      "lon",
+      "lat"
+    ],
+    "units": {
+      "exposure_index": "index",
+      "pm25_ugm3": "µg/m³",
+      "no2_ugm3": "µg/m³",
+      "confidence_score": "fraction 0–1",
+      "exposure_index_max": "index",
+      "edge_count": "count",
+      "cell_size_m": "m"
+    },
+    "exposure_index_definition": "I = ½ · (PM2.5 / 15 + NO2 / 25), konsentrasi dalam µg/m³ dibagi pedoman WHO 2021 (rata-rata 24 jam); bila hanya satu polutan tersedia, I = PM2.5 / 15 atau NO2 / 25. Tanpa satuan; 1,0 = tepat pada pedoman.",
+    "exposure_index_classes": [
+      0.5,
+      1.0,
+      2.0,
+      3.0
+    ],
+    "disclaimer": "Estimasi konsentrasi polutan merupakan keluaran model, bukan hasil pengukuran langsung, dan dapat berbeda dari kondisi udara sebenarnya. Gunakan rute ini sebagai alat bantu keputusan."
+  }
+}
