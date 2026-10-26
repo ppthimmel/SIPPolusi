@@ -16,7 +16,7 @@ SATELLITES = ["ndvi", "ndbi", "lst_c", "no2_mol_m2", "ntl"]
 OUTPUTS = ("features.parquet", "nodes.parquet", "edges.parquet", "labels.parquet")
 AGES = {"Landsat NDVI": "ndvi_age_hours", "Sentinel-5P NO2": "no2_mol_m2_age_hours", "VIIRS NTL": "ntl_age_hours",
         "GEOS-CF PM2.5": "geoscf_pm25_age_hours", "GEOS-CF NO2": "geoscf_no2_age_hours",
-        "Open-Meteo": "weather_age_hours"}
+        "Open-Meteo": "weather_age_hours", "GEOS-CF fcst PM2.5 (lead)": "geoscf_fcst_pm25_lead_hours"}
 
 
 def _num(n) -> str:
@@ -86,6 +86,14 @@ def quality_report(directory: Path | str) -> dict:
         cols = [f"geoscf_{var}_time_window_end", f"geoscf_{var}_available_at_utc"]
         leaks[f"geoscf_{var}"] = int((features.loc[valid, cols].gt(features.loc[valid, "time_utc"], axis=0)
                                       .any(axis=1) | features.loc[valid, cols].isna().any(axis=1)).sum())
+    for var in ("pm25", "no2"):
+        valid = features[f"geoscf_fcst_{var}_ugm3"].notna()
+        avail = features.loc[valid, f"geoscf_fcst_{var}_available_at_utc"]
+        valid_time = features.loc[valid, f"geoscf_fcst_{var}_init_utc"] + pd.to_timedelta(
+            features.loc[valid, f"geoscf_fcst_{var}_lead_hours"].astype("float64"), unit="h")
+        tau = features.loc[valid, "time_utc"]
+        leaks[f"geoscf_fcst_{var}"] = int((avail.isna() | avail.gt(tau)
+                                           | valid_time.ne(tau - pd.Timedelta(hours=1))).sum())
     w = features[WEATHER].notna().any(axis=1)
     cols = ["weather_time_utc", "weather_available_at_utc"]
     leaks["weather"] = int((features.loc[w, cols].gt(features.loc[w, "time_utc"], axis=0).any(axis=1)

@@ -1,0 +1,16 @@
+{
+  "fixed_split": {
+    "n": 689,
+    "stations": 15,
+    "groups": 15,
+    "identical_labels": true,
+    "identical_idw": true
+  },
+  "loso": {
+    "n": 4358,
+    "stations": 97,
+    "groups": 95,
+    "identical_labels": true,
+    "identical_idw": true
+  }
+}

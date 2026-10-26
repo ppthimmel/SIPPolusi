@@ -258,3 +258,9 @@ def test_origin_outside_study_area_names_origin(client):
     resp = client.post("/v1/osm/subgraph", json=body)
     assert_error(resp, 422, "outside_study_area")
     assert "asal" in resp.json()["error"]["message"]
+
+
+def test_subgraph_zero_buffer_with_aligned_points_is_not_500(client):
+    body = {"origin": {"lat": ORIGIN_LAT, "lon": ORIGIN_LON},
+            "destination": {"lat": ORIGIN_LAT + 4 * STEP_DEG, "lon": ORIGIN_LON}, "mode": "walk", "buffer_m": 0}
+    assert client.post("/v1/osm/subgraph", json=body).status_code == 200

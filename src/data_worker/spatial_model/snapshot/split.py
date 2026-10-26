@@ -20,13 +20,15 @@ import numpy as np
 import pandas as pd
 
 from feature_matrix.grid import nearest_sensor_distance, to_grid_xy
+from feature_matrix.labels import near_duplicate_pairs
 
 SPLITS = ("train", "val", "test")
 
 
 # Grup ---------------------------------------------------------------------------------
 def station_groups(stations: pd.DataFrame, readings: pd.DataFrame, max_distance_m: float,
-                   duplicate_identical_fraction: float, min_shared: int = 48) -> pd.DataFrame:
+                   duplicate_identical_fraction: float, min_shared: int = 48,
+                   near_duplicate: tuple[float, float, int] | None = None) -> pd.DataFrame:
     """``stations`` (uuid, kode, lat, lng, grid_id, ...) → kolom ``group_id`` dan ``group_reason``.
 
     ``readings``: pembacaan mentah (station_uuid, metric, ts_utc, value) untuk deteksi
@@ -72,6 +74,11 @@ def station_groups(stations: pd.DataFrame, readings: pd.DataFrame, max_distance_
                         duplicate_identical_fraction:
                     i, j = sorted((index[cols[a]], index[cols[b]]))
                     union(i, j, "duplicate_provider")
+        if near_duplicate:
+            # Deret praktis sama (korelasi dan rasio), bukan hanya nilai identik.
+            for a, b, _, _ in near_duplicate_pairs(wide, *near_duplicate):
+                i, j = sorted((index[a], index[b]))
+                union(i, j, "duplicate_provider")
 
     roots = [find(i) for i in range(n)]
     st["group_id"] = ["G_" + st.kode[r] for r in roots]

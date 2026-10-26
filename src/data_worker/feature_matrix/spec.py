@@ -95,6 +95,23 @@ def feature_columns() -> list[dict]:
             dict(name=f"geoscf_{var}_age_hours", dtype="float32", unit="h", role="temporal_age", source=src,
                  alignment="time_utc − akhir valid time"),
         ]
+    for var in ("pm25", "no2"):
+        src = "GEOS-CF v2 fcst (geoscf-fcst-preprocessed-v1)"
+        cols += [
+            dict(name=f"geoscf_fcst_{var}_ugm3", dtype="float32", unit="ug/m3", role="temporal", source=src,
+                 alignment="prakiraan untuk [time_utc − 1 jam, time_utc) dari run terbaru dengan "
+                           "available_at_utc <= time_utc; nilai mentah (belum dikalibrasi)"),
+            dict(name=f"geoscf_fcst_{var}_init_utc", dtype=TS, unit="UTC", role="provenance", source=src,
+                 alignment="awal run prakiraan (09z harian)"),
+            dict(name=f"geoscf_fcst_{var}_available_at_utc", dtype=TS, unit="UTC", role="provenance", source=src,
+                 alignment="Last-Modified lead terakhir run (run lengkap), <= time_utc"),
+            dict(name=f"geoscf_fcst_{var}_lead_hours", dtype="float32", unit="h", role="temporal_age", source=src,
+                 alignment="awal jam label − awal run (11–34 jam pada data 2026)"),
+        ]
+    for name, period in (("hour", "jam WIB / 24"), ("weekday", "hari dalam pekan WIB / 7")):
+        for fn in ("sin", "cos"):
+            cols.append(dict(name=f"{name}_{fn}", dtype="float32", unit="1", role="temporal", source="kalender",
+                             alignment=f"{fn}(2π · {period}) pada awal jam label (time_utc − 1 jam)"))
     cols.append(dict(name="node_index", dtype="int64", unit="-", role="key", source="graf ST-GNN",
                      alignment="indeks node di nodes.parquet"))
     cols.append(dict(name="dist_nearest_sensor_m", dtype="float32", unit="m", role="sensor", source="SPKU station",

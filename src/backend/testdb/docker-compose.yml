@@ -18,7 +18,9 @@ services:
     tmpfs:
       - /var/lib/postgresql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U test -d test"]
+      # Over TCP: the temporary server that runs during first-time init only listens on the
+      # Unix socket, so this turns healthy only once the real server accepts connections.
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U test -d test"]
       interval: 2s
       timeout: 3s
       retries: 30

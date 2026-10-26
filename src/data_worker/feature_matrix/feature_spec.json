@@ -13,11 +13,19 @@
       "surface_pressure",
       "geoscf_pm25_ugm3",
       "geoscf_no2_ugm3",
+      "geoscf_fcst_pm25_ugm3",
+      "geoscf_fcst_no2_ugm3",
+      "hour_sin",
+      "hour_cos",
+      "weekday_sin",
+      "weekday_cos",
       "no2_mol_m2_age_hours",
       "ntl_age_hours",
       "geoscf_pm25_age_hours",
       "geoscf_no2_age_hours",
-      "weather_age_hours"
+      "weather_age_hours",
+      "geoscf_fcst_pm25_lead_hours",
+      "geoscf_fcst_no2_lead_hours"
     ],
     "land_static": [
       "ndvi",
@@ -463,6 +471,102 @@
       "alignment": "time_utc − akhir valid time"
     },
     {
+      "name": "geoscf_fcst_pm25_ugm3",
+      "dtype": "float32",
+      "unit": "ug/m3",
+      "role": "temporal",
+      "source": "GEOS-CF v2 fcst (geoscf-fcst-preprocessed-v1)",
+      "alignment": "prakiraan untuk [time_utc − 1 jam, time_utc) dari run terbaru dengan available_at_utc <= time_utc; nilai mentah (belum dikalibrasi)"
+    },
+    {
+      "name": "geoscf_fcst_pm25_init_utc",
+      "dtype": "timestamp[ns, UTC]",
+      "unit": "UTC",
+      "role": "provenance",
+      "source": "GEOS-CF v2 fcst (geoscf-fcst-preprocessed-v1)",
+      "alignment": "awal run prakiraan (09z harian)"
+    },
+    {
+      "name": "geoscf_fcst_pm25_available_at_utc",
+      "dtype": "timestamp[ns, UTC]",
+      "unit": "UTC",
+      "role": "provenance",
+      "source": "GEOS-CF v2 fcst (geoscf-fcst-preprocessed-v1)",
+      "alignment": "Last-Modified lead terakhir run (run lengkap), <= time_utc"
+    },
+    {
+      "name": "geoscf_fcst_pm25_lead_hours",
+      "dtype": "float32",
+      "unit": "h",
+      "role": "temporal_age",
+      "source": "GEOS-CF v2 fcst (geoscf-fcst-preprocessed-v1)",
+      "alignment": "awal jam label − awal run (11–34 jam pada data 2026)"
+    },
+    {
+      "name": "geoscf_fcst_no2_ugm3",
+      "dtype": "float32",
+      "unit": "ug/m3",
+      "role": "temporal",
+      "source": "GEOS-CF v2 fcst (geoscf-fcst-preprocessed-v1)",
+      "alignment": "prakiraan untuk [time_utc − 1 jam, time_utc) dari run terbaru dengan available_at_utc <= time_utc; nilai mentah (belum dikalibrasi)"
+    },
+    {
+      "name": "geoscf_fcst_no2_init_utc",
+      "dtype": "timestamp[ns, UTC]",
+      "unit": "UTC",
+      "role": "provenance",
+      "source": "GEOS-CF v2 fcst (geoscf-fcst-preprocessed-v1)",
+      "alignment": "awal run prakiraan (09z harian)"
+    },
+    {
+      "name": "geoscf_fcst_no2_available_at_utc",
+      "dtype": "timestamp[ns, UTC]",
+      "unit": "UTC",
+      "role": "provenance",
+      "source": "GEOS-CF v2 fcst (geoscf-fcst-preprocessed-v1)",
+      "alignment": "Last-Modified lead terakhir run (run lengkap), <= time_utc"
+    },
+    {
+      "name": "geoscf_fcst_no2_lead_hours",
+      "dtype": "float32",
+      "unit": "h",
+      "role": "temporal_age",
+      "source": "GEOS-CF v2 fcst (geoscf-fcst-preprocessed-v1)",
+      "alignment": "awal jam label − awal run (11–34 jam pada data 2026)"
+    },
+    {
+      "name": "hour_sin",
+      "dtype": "float32",
+      "unit": "1",
+      "role": "temporal",
+      "source": "kalender",
+      "alignment": "sin(2π · jam WIB / 24) pada awal jam label (time_utc − 1 jam)"
+    },
+    {
+      "name": "hour_cos",
+      "dtype": "float32",
+      "unit": "1",
+      "role": "temporal",
+      "source": "kalender",
+      "alignment": "cos(2π · jam WIB / 24) pada awal jam label (time_utc − 1 jam)"
+    },
+    {
+      "name": "weekday_sin",
+      "dtype": "float32",
+      "unit": "1",
+      "role": "temporal",
+      "source": "kalender",
+      "alignment": "sin(2π · hari dalam pekan WIB / 7) pada awal jam label (time_utc − 1 jam)"
+    },
+    {
+      "name": "weekday_cos",
+      "dtype": "float32",
+      "unit": "1",
+      "role": "temporal",
+      "source": "kalender",
+      "alignment": "cos(2π · hari dalam pekan WIB / 7) pada awal jam label (time_utc − 1 jam)"
+    },
+    {
       "name": "node_index",
       "dtype": "int64",
       "unit": "-",
@@ -565,6 +669,54 @@
       "role": "availability",
       "source": "turunan",
       "alignment": "True tepat bila geoscf_no2_ugm3 finite"
+    },
+    {
+      "name": "geoscf_fcst_pm25_ugm3_available",
+      "dtype": "bool",
+      "unit": "-",
+      "role": "availability",
+      "source": "turunan",
+      "alignment": "True tepat bila geoscf_fcst_pm25_ugm3 finite"
+    },
+    {
+      "name": "geoscf_fcst_no2_ugm3_available",
+      "dtype": "bool",
+      "unit": "-",
+      "role": "availability",
+      "source": "turunan",
+      "alignment": "True tepat bila geoscf_fcst_no2_ugm3 finite"
+    },
+    {
+      "name": "hour_sin_available",
+      "dtype": "bool",
+      "unit": "-",
+      "role": "availability",
+      "source": "turunan",
+      "alignment": "True tepat bila hour_sin finite"
+    },
+    {
+      "name": "hour_cos_available",
+      "dtype": "bool",
+      "unit": "-",
+      "role": "availability",
+      "source": "turunan",
+      "alignment": "True tepat bila hour_cos finite"
+    },
+    {
+      "name": "weekday_sin_available",
+      "dtype": "bool",
+      "unit": "-",
+      "role": "availability",
+      "source": "turunan",
+      "alignment": "True tepat bila weekday_sin finite"
+    },
+    {
+      "name": "weekday_cos_available",
+      "dtype": "bool",
+      "unit": "-",
+      "role": "availability",
+      "source": "turunan",
+      "alignment": "True tepat bila weekday_cos finite"
     },
     {
       "name": "ndvi_available",

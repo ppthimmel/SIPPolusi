@@ -8,8 +8,15 @@ Bukti verifikasi isu #15. Kode dan protokol lengkap:
 | [`dataset/manifest.json`](dataset/manifest.json) | Manifest dataset `sh-a7e5db9bb33f`: sumber, batas kueri, kendali mutu, split beku, checksum |
 | `dataset/station_hour.parquet` | Ground truth stasiun-jam beku (63.110 baris) |
 | [`runs/20261006T093030Z-idw-sh-a7e5db9bb33f-f6f15b8f/`](runs/20261006T093030Z-idw-sh-a7e5db9bb33f-f6f15b8f/report.md) | Run pada split provisional v1: `report.md`, `metrics.json`, `run_manifest.json`, `config.toml`, `tables/`, `figures/` |
-| [`runs/20261010T133746Z-idw-ds-v0.1.0-f6f15b8f/`](runs/20261010T133746Z-idw-ds-v0.1.0-f6f15b8f/report.md) | Run ulang pada snapshot beku [`ds-v0.1.0`](../ds-v0.1.0/README.md) (TI-AI-03): LOSO per grup dan split tetap blind ganda |
+| [`runs/20261010T133746Z-idw-ds-v0.1.0-f6f15b8f/`](runs/20261010T133746Z-idw-ds-v0.1.0-f6f15b8f/report.md) | Run pada snapshot [`ds-v0.1.0`](../ds-v0.1.0/README.md) (TI-AI-03), kini digantikan |
+| [`runs/20261013T101200Z-idw-ds-v0.3.0-f6f15b8f/`](runs/20261013T101200Z-idw-ds-v0.3.0-f6f15b8f/report.md) | **Run yang berlaku** pada [`ds-v0.3.0`](../ds-v0.3.0/README.md): tanpa 12 sensor bersinyal sama |
 
+> **Pembaruan 13 Oktober 2026.** Hasil yang berlaku adalah run `20261013T101200Z-idw-ds-v0.3.0-f6f15b8f` pada
+> ds-v0.3.0. ds-v0.1.0 memuat 12 sensor DKI_PM25_* dengan deret yang praktis sama lintas train/val/test (lihat
+> [`docs/PROTOKOL_EVALUASI.md`](../../PROTOKOL_EVALUASI.md)). Pada ds-v0.3.0, LOSO per grup memberi RMSE PM2.5
+> 24,00 µg/m³ (R² −0,04, 97 stasiun) dan NO2 46,99 µg/m³; split tetap blind ganda PM2.5 18,74 µg/m³ (R² 0,14,
+> 15 stasiun uji).
+>
 > **Pembaruan 10 Oktober 2026.** Split provisional v1 di bawah digantikan oleh snapshot `ds-v0.1.0`. Hasil
 > baseline yang berlaku adalah run `20261010T133746Z-idw-ds-v0.1.0-f6f15b8f`; protokolnya ada di
 > [`docs/PROTOKOL_EVALUASI.md`](../../PROTOKOL_EVALUASI.md). Pada blok test ds-v0.1.0 (29–30 September),

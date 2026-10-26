@@ -62,12 +62,54 @@ class LabelRules:
     stuck_run_min: int | None = None
     #: Buang jam yang jumlah pembacaan validnya kurang dari kadensi stasiun (modus pembacaan per jam).
     require_complete_hour: bool = False
+    #: Buang seluruh stasiun yang deret per jamnya praktis sama dengan stasiun lain (sinyal bersama, bukan
+    #: pengukuran lokal independen): (korelasi minimum, deviasi maksimum median rasio dari 1, jam bersama
+    #: minimum). None = tidak diperiksa.
+    shared_signal: tuple[float, float, int] | None = None
 
 
 BUNDLE_RULES = LabelRules()
 
 REASONS = ("outside_study_area", "excluded_station", "qc_flag", "zero_value", "sentinel", "excluded_since",
-           "stuck_run", "incomplete_hour")
+           "stuck_run", "shared_signal", "incomplete_hour")
+
+
+def near_duplicate_pairs(wide: pd.DataFrame, min_corr: float, max_ratio_dev: float,
+                         min_hours: int) -> list[tuple[str, str, float, float]]:
+    """Pasangan kolom (stasiun) dengan deret praktis sama: korelasi >= ``min_corr`` dan median rasio
+    dalam ``1 ± max_ratio_dev`` pada >= ``min_hours`` jam bersama. ``wide``: indeks waktu × stasiun."""
+    corr = wide.corr(min_periods=min_hours)
+    cols = list(wide.columns)
+    values = wide.to_numpy(dtype=float)
+    pairs = []
+    for i, a in enumerate(cols):
+        for j in range(i + 1, len(cols)):
+            r = corr.iat[i, j]
+            if not (pd.notna(r) and r >= min_corr):
+                continue
+            shared = np.isfinite(values[:, i]) & np.isfinite(values[:, j]) & (values[:, j] != 0)
+            ratio = float(np.median(values[shared, i] / values[shared, j]))
+            if abs(ratio - 1) <= max_ratio_dev:
+                pairs.append((a, cols[j], float(r), ratio))
+    return pairs
+
+
+def _clusters(pairs) -> list[set]:
+    parent: dict = {}
+
+    def find(x):
+        parent.setdefault(x, x)
+        while parent[x] != x:
+            parent[x] = parent[parent[x]]
+            x = parent[x]
+        return x
+
+    for a, b, *_ in pairs:
+        parent[find(a)] = find(b)
+    groups: dict = {}
+    for x in list(parent):
+        groups.setdefault(find(x), set()).add(x)
+    return [g for g in groups.values() if len(g) > 1]
 
 
 def annotate_readings(ground_truth_dir: Path | str, rules: LabelRules = BUNDLE_RULES,
@@ -103,6 +145,15 @@ def annotate_readings(ground_truth_dir: Path | str, rules: LabelRules = BUNDLE_R
         run = obs.value.ne(obs.groupby(key).value.shift()).groupby(key).cumsum()
         length = obs.groupby([obs.station_uuid, obs.metric, run]).value.transform("size")
         mark(length.ge(rules.stuck_run_min), "stuck_run")
+    if rules.shared_signal:
+        min_corr, max_dev, min_hours = rules.shared_signal
+        valid = reason.isna()
+        for metric in METRICS:
+            sel = valid & obs.metric.eq(metric)
+            wide = (obs[sel].assign(_h=obs.ts_utc.dt.floor("h")).groupby(["_h", "station_uuid"]).value.mean()
+                    .unstack("station_uuid"))
+            shared = set().union(*_clusters(near_duplicate_pairs(wide, min_corr, max_dev, min_hours)))
+            mark(obs.metric.eq(metric) & obs.station_uuid.isin(shared), "shared_signal")
     if rules.require_complete_hour:
         hour = obs.ts_utc.dt.floor("h")
         raw = obs.groupby([obs.station_uuid, obs.metric, hour]).value.transform("size")

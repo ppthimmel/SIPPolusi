@@ -1,0 +1,149 @@
+{
+  "status": "completed",
+  "target": "no2",
+  "seed": 42,
+  "device": "cuda",
+  "source_hashes": {
+    "train_stgnn_ds_v0.3.0.ipynb": "b31b14439b00362b3cb062ecfd43b2528035a2bdfc22e598e9c8551413bd28c7",
+    "run_stgnn.py": "d149df9f340d2cb910296248d3fbfaeaa4e315ce53d2ce1e28adafb4dbdf6fac",
+    "run_stgnn_loso.py": "247a6fc2433273fbaa24a4c73772e1a04b95b1da8df0b0dbea295b0cf06df223"
+  },
+  "expected_all_groups": 13,
+  "expected_all_stations": 13,
+  "expected_all_test_labels": 604,
+  "folds": [
+    {
+      "fold": 0,
+      "group_id": "G_DKI1",
+      "test_labels": 47,
+      "status": "completed",
+      "output": "/content/drive/MyDrive/stgnn_runs/loso_no2_cuda_seed42_20261015_0e6b77e4/fold_000_f7f8b12d",
+      "epochs_run": 62,
+      "best_epoch": 50,
+      "elapsed_seconds": 116.38151911199998
+    },
+    {
+      "fold": 1,
+      "group_id": "G_DKI2",
+      "test_labels": 47,
+      "status": "completed",
+      "output": "/content/drive/MyDrive/stgnn_runs/loso_no2_cuda_seed42_20261015_0e6b77e4/fold_001_8f3d4158",
+      "epochs_run": 31,
+      "best_epoch": 19,
+      "elapsed_seconds": 57.490080798000236
+    },
+    {
+      "fold": 2,
+      "group_id": "G_DKI3",
+      "test_labels": 47,
+      "status": "completed",
+      "output": "/content/drive/MyDrive/stgnn_runs/loso_no2_cuda_seed42_20261015_0e6b77e4/fold_002_c1b064c7",
+      "epochs_run": 26,
+      "best_epoch": 14,
+      "elapsed_seconds": 48.83646172899989
+    },
+    {
+      "fold": 3,
+      "group_id": "G_DKI4",
+      "test_labels": 46,
+      "status": "completed",
+      "output": "/content/drive/MyDrive/stgnn_runs/loso_no2_cuda_seed42_20261015_0e6b77e4/fold_003_4173f73e",
+      "epochs_run": 25,
+      "best_epoch": 13,
+      "elapsed_seconds": 48.25781366699994
+    },
+    {
+      "fold": 4,
+      "group_id": "G_DKI5",
+      "test_labels": 47,
+      "status": "completed",
+      "output": "/content/drive/MyDrive/stgnn_runs/loso_no2_cuda_seed42_20261015_0e6b77e4/fold_004_fd5d05b8",
+      "epochs_run": 33,
+      "best_epoch": 21,
+      "elapsed_seconds": 61.39727236600038
+    },
+    {
+      "fold": 5,
+      "group_id": "G_DKI98",
+      "test_labels": 47,
+      "status": "completed",
+      "output": "/content/drive/MyDrive/stgnn_runs/loso_no2_cuda_seed42_20261015_0e6b77e4/fold_005_71a17c68",
+      "epochs_run": 40,
+      "best_epoch": 28,
+      "elapsed_seconds": 73.21228534500005
+    },
+    {
+      "fold": 6,
+      "group_id": "G_DKJ32",
+      "test_labels": 46,
+      "status": "completed",
+      "output": "/content/drive/MyDrive/stgnn_runs/loso_no2_cuda_seed42_20261015_0e6b77e4/fold_006_e299389a",
+      "epochs_run": 25,
+      "best_epoch": 13,
+      "elapsed_seconds": 47.00544474099979
+    },
+    {
+      "fold": 7,
+      "group_id": "G_DKJ33",
+      "test_labels": 47,
+      "status": "completed",
+      "output": "/content/drive/MyDrive/stgnn_runs/loso_no2_cuda_seed42_20261015_0e6b77e4/fold_007_63b6dd3b",
+      "epochs_run": 25,
+      "best_epoch": 13,
+      "elapsed_seconds": 47.18873607400019
+    },
+    {
+      "fold": 8,
+      "group_id": "G_DKJ34",
+      "test_labels": 47,
+      "status": "completed",
+      "output": "/content/drive/MyDrive/stgnn_runs/loso_no2_cuda_seed42_20261015_0e6b77e4/fold_008_0f930073",
+      "epochs_run": 25,
+      "best_epoch": 13,
+      "elapsed_seconds": 47.14154612399989
+    },
+    {
+      "fold": 9,
+      "group_id": "G_DKJ35",
+      "test_labels": 42,
+      "status": "completed",
+      "output": "/content/drive/MyDrive/stgnn_runs/loso_no2_cuda_seed42_20261015_0e6b77e4/fold_009_1b2635ef",
+      "epochs_run": 25,
+      "best_epoch": 13,
+      "elapsed_seconds": 47.1532887569997
+    },
+    {
+      "fold": 10,
+      "group_id": "G_DKJ36",
+      "test_labels": 47,
+      "status": "completed",
+      "output": "/content/drive/MyDrive/stgnn_runs/loso_no2_cuda_seed42_20261015_0e6b77e4/fold_010_acc2909e",
+      "epochs_run": 34,
+      "best_epoch": 22,
+      "elapsed_seconds": 62.80522786699976
+    },
+    {
+      "fold": 12,
+      "group_id": "G_LCS-23",
+      "test_labels": 47,
+      "status": "completed",
+      "output": "/content/drive/MyDrive/stgnn_runs/loso_no2_cuda_seed42_20261015_0e6b77e4/fold_012_c264608d",
+      "epochs_run": 35,
+      "best_epoch": 23,
+      "elapsed_seconds": 65.11425858300026
+    },
+    {
+      "fold": 13,
+      "group_id": "G_LCS-24",
+      "test_labels": 47,
+      "status": "completed",
+      "output": "/content/drive/MyDrive/stgnn_runs/loso_no2_cuda_seed42_20261015_0e6b77e4/fold_013_28dcab8a",
+      "epochs_run": 19,
+      "best_epoch": 7,
+      "elapsed_seconds": 37.727118939999855
+    }
+  ],
+  "current_fold": 13,
+  "completed_folds": 13,
+  "last_session_seconds": 764.6208303610001
+}

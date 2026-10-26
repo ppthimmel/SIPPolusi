@@ -12,7 +12,10 @@ skema database yang sebenarnya (`handoff_database.md`) dan Dokumen Desain:
 Modul ini berdiri sendiri dan **tidak memakai** `main.py`, `database/`, atau `route_model/`.
 
 Aplikasi `osm.app` adalah **Cache API** yang juga menyajikan `/v1/pollution` (Spatial
-Pollution Cache DB) dari modul [`../pollution`](../pollution/README.md). Kedua modul memakai
+Pollution Cache DB) dari modul [`../pollution`](../pollution/README.md),
+`/v1/routes/solver-input` (TI-SE-05) dari modul [`../planner`](../planner/README.md), dan
+`/v1/routes/solve` (TI-SE-06) serta `/v1/routes/plan` (GeoJSON, TI-SE-07) dari modul
+[`../solver`](../solver/README.md). Kedua modul memakai
 pool koneksi dan skema galat yang sama. Bukti TI-SE-04 ada di
 [`../pollution/VERIFICATION.md`](../pollution/VERIFICATION.md).
 
@@ -49,9 +52,9 @@ Semua perintah di bawah dijalankan dari **root repo**, kecuali disebutkan lain.
 
    ```bash
    cd osm
-   pytest -m "not integration"       # unit tes, tanpa database   → 94 passed
+   pytest -m "not integration"       # unit tes, tanpa database   → 100 passed
    pytest -m integration             # baca-saja ke DB asli       → 15 passed
-   pytest                            # keduanya                   → 109 passed
+   pytest                            # keduanya                   → 115 passed
    cd ..
    ```
 
@@ -89,7 +92,7 @@ Semua perintah di bawah dijalankan dari **root repo**, kecuali disebutkan lain.
 ### B. Docker lokal
 
 Image ini berdiri sendiri dan tidak memakai `src/backend/Dockerfile`. Konteks build-nya adalah
-`src/backend` (agar `osm/` dan `pollution/` ikut), dan `osm/Dockerfile.dockerignore` membatasi
+`src/backend` (agar `osm/`, `pollution/`, `planner/`, `solver/`, dan `route_model/` ikut), dan `osm/Dockerfile.dockerignore` membatasi
 berkas yang dikirim hanya ke kedua paket itu. Image runtime memakai `python:3.11-slim`, berjalan sebagai user non-root, punya
 `HEALTHCHECK` ke `/health`, dan mendengarkan pada `PORT` (default 8000). File `.env` tidak ikut
 masuk image; konfigurasi diberikan lewat environment. Pastikan Docker Desktop sudah menyala.
@@ -119,15 +122,16 @@ Semua perintah Docker di bawah memakai path dari **root repo**. Kalau terminal m
    docker run --rm sippolusi-backend-osm-test   # tanpa DB
    ```
 
-   Container menjalankan tes `osm` lalu `pollution`, jadi ada dua baris hasil:
+   Container menjalankan tes `osm`, `pollution`, `planner`, lalu `solver`, jadi ada empat baris
+   hasil:
 
-   | Perintah | `osm` | `pollution` |
-   |---|---|---|
-   | dengan `--env-file` | 109 passed | 20 passed, 10 skipped |
-   | tanpa DB | 94 passed, 15 skipped | 20 passed, 10 skipped |
+   | Perintah | `osm` | `pollution` | `planner` | `solver` |
+   |---|---|---|---|---|
+   | dengan `--env-file` | 115 passed | 20 passed, 10 skipped | 35 passed, 2 skipped | 65 passed, 6 skipped |
+   | tanpa DB | 100 passed, 15 skipped | 20 passed, 10 skipped | 35 passed, 2 skipped | 65 passed, 6 skipped |
 
-   Sepuluh tes `pollution` yang dilewati adalah uji alur tulis → baca; uji ini butuh database
-   uji lokal dan kode Data Worker, jadi dijalankan di luar container (lihat
+   Tes `pollution`, `planner`, dan `solver` yang dilewati adalah uji alur tulis → baca; uji ini butuh
+   database uji lokal dan kode Data Worker, jadi dijalankan di luar container (lihat
    [`../pollution/README.md`](../pollution/README.md)).
 
    ```bash
@@ -202,7 +206,7 @@ Railway membangun image dari GitHub, jadi kodenya harus sudah di-push ke branch 
 1. Di project Railway yang sama dengan database, buat service baru: *New → GitHub Repo →
    SIPPolusi*. Lalu atur:
    - **Branch:** branch yang berisi modul ini.
-   - **Root Directory:** `src/backend`, karena image memuat `osm/` dan `pollution/`.
+   - **Root Directory:** `src/backend`, karena image memuat `osm/`, `pollution/`, `planner/`, `solver/`, dan `route_model/`.
    - **Config-as-code:** Settings → *Config-as-code* → *Railway Config File*
      `/src/backend/osm/railway.json`. Berkas ini memilih `osm/Dockerfile` (relatif terhadap Root
      Directory). Tanpa itu Railway membaca `src/backend/railway.json` milik Backend, yang
@@ -216,12 +220,13 @@ Railway membangun image dari GitHub, jadi kodenya harus sudah di-push ke branch 
 3. **Settings:** set *Healthcheck Path* ke `/health`. Jangan buat domain publik: Cache API hanya
    dijangkau gateway lewat jaringan privat (TI-DO-04, `docs/devops/private-networking.md`).
    Uji dari luar lewat gateway, `https://<gateway>/v1/osm/...`.
-4. Uji dari terminal laptop dengan perintah seperti A-5, tetapi alamatnya diganti domain Railway.
+4. Uji dari terminal laptop dengan perintah seperti A-5, tetapi alamatnya diganti domain publik
+   gateway (`<domain-railway>` di bawah).
    Coba juga perjalanan ±10 km, yang dari laptop kena 503 karena jaringan lambat. Di Railway
    hasilnya seharusnya 200:
 
    ```bash
-   curl -s https://<domain-railway>/health
+   curl -s https://<domain-railway>/v1/osm/version
    curl -s -X POST https://<domain-railway>/v1/osm/subgraph -H "Content-Type: application/json" \
         -d '{"origin":{"lat":-6.1754,"lon":106.8272},"destination":{"lat":-6.2654,"lon":106.8272},"mode":"walk"}'
    ```
@@ -272,7 +277,7 @@ Semua contoh memakai data `jakarta-20261005` dan sudah diuji ke database asli.
 | `POST /v1/osm/subgraph` | *Jalan kaki Monas → Bundaran HI* | lihat di bawah | 200, `origin_node` 10792891204, 3.444 node, 4.282 ruas |
 | | *Sepeda Monas → Bundaran HI* | `"mode":"bike"` | 200, 2.621 node, `origin_snap_distance_m` ±199 |
 | | *Jalan kaki Monas → Jl. Medan Merdeka Utara (±440 m)* | `buffer_m` 200, `include_graph` true | 200, `destination_node` 7114808048, 262 node, 329 ruas, plus daftar node/ruas di `graph` (±100 KB) |
-| | *Tujuan di laut* | tujuan `-6.085, 106.86` | 422 `point_not_on_network` |
+| | *Pantai Ancol → laut* | asal `-6.1225, 106.8420`, tujuan `-6.1000, 106.8420` | 422 `point_not_on_network`, "Titik tujuan: …" |
 | | *Tujuan Kepulauan Seribu* | tujuan `-5.75, 106.55` | 422 `outside_study_area` |
 
 Contoh *request body* `POST /v1/osm/subgraph` (Monas → Bundaran HI):
@@ -330,10 +335,11 @@ Kasus yang tidak bisa dibuat lewat `/docs` diberi perintah `curl`. Semua galat b
 | Tujuan di Kepulauan Seribu | `/subgraph` | body *Tujuan Kepulauan Seribu* | 422 `outside_study_area`, "Titik tujuan …" |
 | Asal di Kepulauan Seribu | `/subgraph` | body *Asal Kepulauan Seribu* | 422 `outside_study_area`, "Titik asal …" |
 | Titik di luar wilayah studi | `/nearest-node`, `/nearest-edge` | ketik `lon=106.55`, `lat=-5.75` | 422 `outside_study_area` |
-| Titik di laut, dalam wilayah studi | `/subgraph`, `/nearest-node` | body *Tujuan di laut*, atau ketik `lon=106.86`, `lat=-6.085` | 422 `point_not_on_network` |
+| Titik di laut, dalam wilayah studi | `/subgraph`, `/nearest-node` | body *Pantai Ancol → laut*, atau ketik `lon=106.86`, `lat=-6.085` | 422 `point_not_on_network` |
 | Radius terlalu kecil | `/nearest-node`, `/nearest-edge` | max_distance_m *5 m* (simpul terdekat 11,7 m) | 422 `point_not_on_network` |
-| Tujuan di komponen jalan terisolasi | `/subgraph` | body *Tujuan di komponen jalan terisolasi* (node 3776134358, komponen 18 simpul) | 422 `no_route_found` |
-| `buffer_m` terlalu kecil memutus jalur | `/subgraph` | body *buffer_m 100 memutus jalur*; tanpa `buffer_m` pasangan titik yang sama terhubung | 422 `no_route_found` |
+| `buffer_m` 0 memotong jalur penghubung | `/subgraph` | body *buffer_m 0 memotong jalur* ((−6,15502; 106,74869) → (−6,15502; 106,75269)); tanpa `buffer_m` pasangan titik yang sama terhubung | 422 `no_route_found` |
+| Tujuan di komponen jalan terisolasi | `/subgraph` | body *Tujuan di komponen terisolasi* (dekat node 3776134358, komponen 18 simpul) | 200: tujuan di-snap ke simpul terdekat yang **terhubung** (7060194880), bukan ke komponen terisolasi |
+| `buffer_m` 0 dengan titik segaris atau asal = tujuan | `/subgraph` | ketik `buffer_m: 0` dengan lintang sama | 200, bukan 500 (bbox diberi margin minimal 1 m) |
 | Di luar DKI tetapi dalam kotak wilayah studi (Tangerang) | `/subgraph` | body *Tangerang, di dalam kotak wilayah studi* | 422 `point_not_on_network`, bukan `outside_study_area` (keterbatasan: wilayah studi masih berupa kotak) |
 
 **Kasus batas yang berhasil (200)**
@@ -405,10 +411,13 @@ Konfigurasi dibaca dari environment, lalu dari `src/backend/.env`.
 | `OSM_CONNECT_TIMEOUT_S` | `5` | Batas waktu membuka koneksi. |
 | `OSM_POOL_MIN_SIZE` / `OSM_POOL_MAX_SIZE` | `2` / `10` | Ukuran pool asyncpg. |
 | `OSM_VERSION_CACHE_TTL_S` | `60` | Lama cache versi graf aktif. |
-| `OSM_SNAP_MAX_DISTANCE_M` | `200` | Jarak terjauh titik ke simpul (`snap_to_graph`). |
+| `OSM_SNAP_MAX_DISTANCE_M` | `200` | Jarak terjauh titik ke simpul (`snap_to_graph`, `assemble_request_subgraph`). |
 | `OSM_MAX_BBOX_KM2` | `25` | Luas bbox terbesar untuk `/graph` dan `/roads`. |
 | `OSM_STUDY_AREA_BBOX` | `106.68,-6.38,106.98,-6.08` | Wilayah studi: daratan DKI Jakarta. Kepulauan Seribu tidak termasuk. |
 | `OSM_WALK_SPEED_MPS` / `OSM_BIKE_SPEED_MPS` | `1.3` / `4.2` | Kecepatan `ModeProfile`. |
+
+Pengaturan penyedia solver dan batas latensi (`ROUTE_SOLVER_*`) ada di
+[`../solver/README.md`](../solver/README.md#konfigurasi).
 
 Setiap sesi database dibuka dengan `default_transaction_read_only = on`. Ini mencegah kode
 Backend menulis secara tidak sengaja, tetapi **bukan batas keamanan**: nilai itu hanya bawaan
@@ -458,16 +467,35 @@ from osm.app import osm_lifespan                 # membuka pool, mengisi app.sta
 from osm.errors import install_error_handling   # skema galat + X-Request-ID
 from osm.router import router as osm_router
 from pollution.router import router as pollution_router
+from planner.router import router as planner_router
 
 app = FastAPI(lifespan=osm_lifespan)
 install_error_handling(app)
 app.include_router(osm_router)
 app.include_router(pollution_router)
+app.include_router(planner_router)
 ```
 
-Untuk `plan_route`, gunakan `OsmRepository.read_road_graph(bbox, mode)` lalu
-`osm.graph.assemble_request_subgraph(...)`. Bobot polusi dipasang terpisah oleh
-`attach_edge_weights`.
+Untuk `plan_route`, gunakan `planner.assembler.build_solver_input(...)`. Fungsi ini
+menjalankan validasi, pembacaan kedua cache, `assemble_request_subgraph`, dan
+`attach_edge_weights` (lihat [`../planner`](../planner/README.md)).
+
+## Snap titik asal dan tujuan
+
+`assemble_request_subgraph` memilih simpul yang **layak**, bukan sekadar terdekat (TI-SE-05):
+
+- simpul asal harus punya ruas yang boleh **ditinggalkan** moda itu, dan simpul tujuan harus
+  punya ruas yang boleh **dimasuki** (berpengaruh untuk sepeda di jalan satu arah);
+- simpul asal terdekat dipilih lebih dulu, lalu simpul tujuan terdekat yang **dapat dicapai**
+  darinya. Bila tidak ada, kandidat asal berikutnya dicoba, semuanya dalam radius
+  `OSM_SNAP_MAX_DISTANCE_M` (200 m);
+- tidak ada kandidat dalam radius menghasilkan 422 `point_not_on_network`, dengan pesan
+  "Titik asal: …" atau "Titik tujuan: …". Ada kandidat tetapi tidak ada yang saling terhubung
+  menghasilkan 422 `no_route_found`.
+
+Aturan ini sejalan dengan baseline rute tim AI (`route_model`, TI-AI-07), sehingga baseline dan
+model MORL dapat memakai simpul hasil snap yang sama. Radiusnya berbeda (200 m menurut
+desain, 300 m di baseline).
 
 ## Perakitan dan validasi graf
 

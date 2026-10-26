@@ -14,6 +14,9 @@ from .errors import NoRouteFound, PointNotOnNetwork
 from .models import BBox, Mode, Point, RoadEdge, RoadGraph, RoadNode, SnapResult, Subgraph, haversine_m
 
 MIN_BUFFER_M = 500.0
+# Floor for an explicit buffer_m, so the bbox never collapses to zero width when the
+# points share a longitude or latitude (or are the same point) and buffer_m is 0.
+MIN_MARGIN_M = 1.0
 BUFFER_RATIO = 0.25
 DEFAULT_SNAP_DISTANCE_M = 200.0
 # Absorbs float rounding so a node exactly at max_distance_m is accepted (UT-BE-05d).
@@ -120,7 +123,7 @@ def compute_request_bbox(origin: Point, destination: Point, buffer_m: float | No
     The margin leaves room for a low-exposure detour while keeping the
     subgraph proportional to the trip length rather than to the city.
     """
-    margin = request_buffer_m(haversine_m(origin, destination), buffer_m)
+    margin = max(request_buffer_m(haversine_m(origin, destination), buffer_m), MIN_MARGIN_M)
     return BBox.around([origin, destination], margin)
 
 
@@ -182,37 +185,77 @@ def _reachable_from(start: int, adjacency: dict[int, list[int]]) -> set[int]:
     return seen
 
 
+def _candidates(point: Point, road_graph: RoadGraph, node_ids: set[int], max_distance_m: float) -> list[SnapResult]:
+    """Nodes in node_ids within max_distance_m of point, nearest first (ties by node id)."""
+    found = []
+    for node_id in node_ids:
+        node = road_graph.nodes.get(node_id)
+        if node is None:
+            continue
+        distance = haversine_m(point, node.point)
+        if distance <= max_distance_m + _DISTANCE_TOLERANCE_M:
+            found.append(SnapResult(node_id, distance))
+    return sorted(found, key=lambda s: (s.distance_m, s.node_id))
+
+
 def assemble_request_subgraph(
     road_graph: RoadGraph,
     origin: Point,
     destination: Point,
     max_distance_m: float = DEFAULT_SNAP_DISTANCE_M,
 ) -> Subgraph:
-    """Subgraph reachable from the origin node (Tabel 3.6, UT-BE-06).
+    """Snap origin and destination to feasible nodes and keep the part of the graph
+    reachable from the origin (Tabel 3.6, UT-BE-05, UT-BE-06).
 
-    Walking treats every edge as two-way, so this is the connected component of
-    the origin. Cycling follows oneway, so it is the set reachable from the
-    origin. Self-loops are dropped. Raises NoRouteFound when the destination
-    node is not in that set.
+    Feasible snapping: the origin node must have an edge the mode may leave by and
+    the destination node an edge the mode may arrive by (oneway matters for bikes).
+    The nearest feasible origin is chosen first, then the nearest destination
+    candidate reachable from it; when none is reachable, the next origin candidate
+    is tried. Walking treats every edge as two-way, so the subgraph is the origin's
+    connected component; cycling follows oneway, so it is the set reachable from
+    the origin. Self-loops are dropped.
+
+    Raises PointNotOnNetwork when an endpoint has no feasible node within
+    max_distance_m, and NoRouteFound when no origin candidate reaches any
+    destination candidate.
     """
     mode = road_graph.mode
-    origin_snap = snap_to_graph(origin, road_graph, max_distance_m, mode)
-    destination_snap = snap_to_graph(destination, road_graph, max_distance_m, mode)
-
     usable = [e for e in road_graph.edges if mode.allows(e) and e.u in road_graph.nodes and e.v in road_graph.nodes]
-    reached = _reachable_from(origin_snap.node_id, _adjacency(usable, mode))
-    if destination_snap.node_id not in reached:
-        raise NoRouteFound("Simpul asal dan simpul tujuan tidak terhubung pada subgraf permintaan.")
+    adjacency = _adjacency(usable, mode)
+    leaving = set(adjacency)
+    arriving = {end for ends in adjacency.values() for end in ends}
 
-    return Subgraph(
-        graph_version=road_graph.graph_version,
-        mode=mode,
-        bbox=road_graph.bbox,
-        origin_node=origin_snap.node_id,
-        destination_node=destination_snap.node_id,
-        origin_snap_distance_m=origin_snap.distance_m,
-        destination_snap_distance_m=destination_snap.distance_m,
-        nodes={n: road_graph.nodes[n] for n in reached},
-        edges=[e for e in usable if not e.is_self_loop and e.u in reached and e.v in reached],
-        rejected=dict(road_graph.rejected),
-    )
+    origins = _candidates(origin, road_graph, leaving, max_distance_m)
+    if not origins:
+        raise PointNotOnNetwork(
+            f"Titik asal: tidak ada simpul yang dapat dilalui moda {mode.value} dalam radius {max_distance_m:g} m."
+        )
+    destinations = _candidates(destination, road_graph, arriving, max_distance_m)
+    if not destinations:
+        raise PointNotOnNetwork(
+            f"Titik tujuan: tidak ada simpul yang dapat dilalui moda {mode.value} dalam radius {max_distance_m:g} m."
+        )
+
+    explored: list[set[int]] = []
+    for origin_snap in origins:
+        # Anything reachable from a node inside an earlier reached set is a subset of it,
+        # so an origin candidate there cannot reach a destination that set missed.
+        if any(origin_snap.node_id in seen for seen in explored):
+            continue
+        reached = _reachable_from(origin_snap.node_id, adjacency)
+        destination_snap = next((d for d in destinations if d.node_id in reached), None)
+        if destination_snap is not None:
+            return Subgraph(
+                graph_version=road_graph.graph_version,
+                mode=mode,
+                bbox=road_graph.bbox,
+                origin_node=origin_snap.node_id,
+                destination_node=destination_snap.node_id,
+                origin_snap_distance_m=origin_snap.distance_m,
+                destination_snap_distance_m=destination_snap.distance_m,
+                nodes={n: road_graph.nodes[n] for n in reached},
+                edges=[e for e in usable if not e.is_self_loop and e.u in reached and e.v in reached],
+                rejected=dict(road_graph.rejected),
+            )
+        explored.append(reached)
+    raise NoRouteFound("Simpul asal dan simpul tujuan tidak terhubung pada subgraf permintaan.")

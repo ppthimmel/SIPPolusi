@@ -19,3 +19,21 @@ NO₂ dalam ppb dan µg/m³ adalah dua representasi variabel yang sama, bukan du
 **Penggabungan:** pilih interval valid paling baru yang sudah selesai dan `available_at_utc <= time_utc`. Nilai dibawa maju; pengamatan lama yang terlambat datang tidak mengganti kondisi lebih baru. PM2.5 dan NO₂ dipilih independen berdasarkan mask. Metadata gabungan memakai awalan `geoscf_pm25_` / `geoscf_no2_`: `time_window_start`, `time_window_end`, `available_at_utc`, `latency_hours`, `age_hours`. Umur dihitung dari akhir interval. Sebelum ada sumber yang memenuhi syarat, nilai kosong dan mask `False`; batas umur opsional melalui `GEOS_CF_MAX_AGE_HOURS` di notebook.
 
 **Asal dan risiko:** manifest mencatat produk, hash, QC, dan konversi. `Last-Modified` bukan bukti publikasi pertama atau waktu produksi; tidak dibuat `produced_at`. CSV bukti ketersediaan dan JSON mentah yang disebut manifest belum tersedia dalam folder proyek, sehingga provenance belum bisa diperiksa sepenuhnya. Akses melalui portal publik NASA; ketentuan lisensi spesifik belum dicatat dalam metadata lokal.
+
+## Prakiraan GEOS-CF v2 (`fcst`)
+
+Tabel `processed/geos-cf/geoscf_fcst_cell_hourly.parquet`: satu baris per (run, awal jam valid, sel), untuk
+9 sel yang sama dengan `ana`. Dibangun oleh `scripts/fetch_geoscf_fcst.py`; ringkasan di `fcst_manifest.json`.
+
+- **Produk:** `aqc_tavg_1hr_glo_L1440x721_slv` (sama dengan `ana`), satu run per hari pada 09z, 120 jam ke depan.
+  Nilai diambil sebagai subset OPeNDAP `opendap.nccs.nasa.gov/dods/gmao/geos-cf/v2/fcst`; berkas mentah
+  `geoscf_fcst_jakarta_2026.json` (di luar repo).
+- **Penyelarasan, satuan, dan QC:** sama dengan `ana` (cap tavg menit ke-30 − 30 menit; PM2.5 `pm25_rh35` µg/m³;
+  NO2 mol/mol → ppb → µg/m³ dengan faktor 1,8804; rentang 0–2000 µg/m³ dan 0–10000 ppb).
+- **Waktu tersedia:** `available_at_utc` = header `Last-Modified` berkas lead terakhir run di portal datashare
+  (run lengkap, ±11 jam sesudah awal run, sekitar 20.00Z). `first_published_utc` = lead pertama (±6,8 jam).
+- **Peran:** berbeda dengan `ana` yang terbit 6–63 jam sesudah jamnya, prakiraan untuk jam t sudah terbit
+  sebelum t. Pada FeatureMatrix, nilai untuk jam label diambil dari run terbaru yang sudah lengkap terbit pada
+  waktu inferensi (lead 11–34 jam). Pada 13–30 September 2026, korelasi rerata kota per jam SPKU dengan
+  prakiraan ini 0,55, dibanding 0,10 untuk `ana` *as-of* dan 0,58 untuk `ana` jam yang sama (tidak tersedia pada
+  waktu inferensi).
