@@ -123,8 +123,8 @@ Koordinat dan `edge_ids` dipotong (`…`).
   `ROUTE_SOLVER_URL`. Kontrak request/response perlu disepakati dengan tim AI.
 - **Penyimpangan desain yang disengaja:** Backend menjalankan fallback baseline sendiri, karena baseline
   sekarang berjalan di Backend. Perilaku desain (503) tersedia dengan `ROUTE_SOLVER_FALLBACK=none`.
-- **Perhitungan baseline di thread tidak dapat dihentikan dari luar.** Bila batas waktunya tercapai,
-  Backend tetap menjawab tepat waktu, sementara perhitungan selesai di latar belakang.
+- **Pembatalan baseline.** Perhitungan baseline kini berhenti setelah batas waktunya tercapai (masukan
+  QA untuk TI-SE-06); lihat [README, "Batas waktu dan pembatalan"](README.md#batas-waktu-dan-pembatalan).
 - **Metrik Prometheus** (`route_fallback_total{reason}`, `route_request_duration_seconds{stage}`,
   IMetricsSink) belum dibuat. Saat ini pencatatan dilakukan lewat log.
 - **Di Railway** cache polusi masih kosong, jadi permintaan valid menjawab 503 `cache_empty` sebelum

@@ -63,6 +63,34 @@ Dipilih dengan `ROUTE_SOLVER_PROVIDER`; endpoint-nya tidak berubah.
 | `baseline` | A* rute tercepat dari `route_model` (TI-AI-07), dijalankan di proses ini pada subgraf dan simpul snap yang sama. `route_source: baseline`, `fallback_reason: policy_unavailable` | Rute nyata sebelum MORL tersedia |
 | `http` | Klien `POST {ROUTE_SOLVER_URL}/internal/v1/solve`, JSON gzip (Kode 3.3) | Layanan Multi-Objective Route Model produksi |
 
+## Batas waktu dan pembatalan
+
+`call_route_solve` membatasi setiap solver dengan `asyncio.wait_for(deadline_ms + grace)`. Batas ini
+hanya dapat terpicu bila event loop tidak tertahan, dan pekerjaan yang sudah lewat batas harus
+benar-benar berhenti. Karena itu `mock` dan `baseline` menjalankan pencarian rute lewat
+[`cancel.py`](cancel.py) (`run_cancellable`), bukan langsung di dalam metode `async`:
+
+- Pencarian berjalan di thread pekerja, sehingga event loop tetap bebas dan batas waktu terpicu
+  tepat waktu.
+- Saat batas waktu tercapai, pemanggil dibatalkan dan `CancelToken` di-set. Pencarian memeriksa
+  token itu di setiap ekspansi simpul, lalu berhenti dengan `Cancelled`.
+- `mock` memeriksa token di loop Dijkstra-nya sendiri. A* `baseline` berada di `route_model` (kode
+  tim AI, tidak diubah), jadi token diperiksa lewat dua dict yang dibaca `RoadRouter`: `coords` (per
+  ruas saat graf dibangun) dan `arcs` (per simpul yang diekspansi A*). `tests/test_cancel.py` gagal
+  bila `route_model` berhenti memakai keduanya.
+- Satu tahap tidak memiliki titik pemeriksaan: komponen terhubung kuat (`networkx`) di konstruktor
+  `RoadRouter`. Tahap ini membatasi berapa lama thread baseline masih berjalan setelah dibatalkan
+  (±0,2 s untuk 180 ribu ruas, ±0,3 s untuk 320 ribu ruas). Respons ke pengguna tetap tepat waktu.
+
+Pada graf uji 400 × 400 (320 ribu ruas, tujuan tidak terjangkau):
+
+| Solver | Batas waktu | Sebelum | Sesudah |
+|---|---|---|---|
+| `mock` | 30 ms | Menjawab setelah 303 ms; batas waktu tidak terpicu karena pencarian menahan event loop | 503 `solver_timeout` setelah 49 ms; pencarian berhenti |
+| `baseline` | 100 ms | 503 setelah 113 ms, tetapi thread terus menghitung sampai 2 235 ms | 503 setelah 113 ms; thread berhenti pada 395 ms |
+
+Penyedia `http` tidak memakai thread: permintaan HTTP dibatalkan langsung oleh `wait_for`.
+
 ## Konfigurasi
 
 | Variabel | Bawaan | Keterangan |
@@ -168,8 +196,8 @@ Endpoint publik `POST /v1/routes` (TI-SE-08) nantinya menyajikan respons `/plan`
 Dari `src/backend/solver`, dengan venv dan dependensi dari [`../pollution`](../pollution/README.md#menguji):
 
 ```bash
-pytest -m "not cacheflow"                                                    # tanpa DB → 65 passed
-TEST_DATABASE_URL=postgresql://test:test@localhost:55432/test pytest         # semua → 71 passed
+pytest -m "not cacheflow"                                                    # tanpa DB → 73 passed
+TEST_DATABASE_URL=postgresql://test:test@localhost:55432/test pytest         # semua → 79 passed
 ```
 
 - **Uji kontrak** (`tests/test_contract.py`) menjalankan ketiga penyedia (mock, baseline, dan HTTP

@@ -109,9 +109,11 @@ Cara membaca:
 
 ## Catatan
 
-- **Batas waktu baseline.** `BaselineSolver` menjalankan A* di thread. Bila batas waktu tercapai,
-  Backend berhenti menunggu dan menjawab 503, tetapi perhitungan di thread itu tetap selesai di
-  latar belakang. Untuk subgraf ukuran kota, waktu A* jauh di bawah batas 8 s.
+- **Batas waktu baseline.** ~~Bila batas waktu tercapai, perhitungan A* di thread tetap selesai di
+  latar belakang.~~ Diperbaiki setelah masukan QA: `mock` dan `baseline` kini berjalan lewat
+  `run_cancellable` dan berhenti setelah batas waktu tercapai. Lihat
+  [README, "Batas waktu dan pembatalan"](README.md#batas-waktu-dan-pembatalan) dan
+  `tests/test_cancel.py`.
 - **Kontrak `IRouteSolve` HTTP** mengikuti Kode 3.3, ditambah atribut per ruas yang disiapkan
   planner (`travel_time_s`, `exposure_index`, `bidirectional`, `weight_source`). Kontrak ini perlu
   disepakati dengan tim AI (TI-AI-10) sebelum layanan Route Model dibangun.
