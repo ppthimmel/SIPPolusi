@@ -16,6 +16,19 @@ All proxied paths share the same timeouts: connect 5 s, read/send 10 s
 (Table 3.15). The frontend container forwards its `/v1/*` here, so this file
 is the only place that maps paths to services.
 
+Errors produced by the gateway itself use the uniform schema
+`{"error": {"code", "message", "request_id"}}` (design Table 3.16):
+
+| Status | `code` | When |
+|---|---|---|
+| 404 | `not_found` | Path not exposed |
+| 413 | `payload_too_large` | Body over 16 KiB on `POST /v1/routes` (other paths keep NGINX's 1 MiB default) |
+| 502 | `upstream_unavailable` | The upstream cannot be reached |
+| 504 | `upstream_timeout` | The upstream did not answer within 10 s |
+
+Error responses from the upstreams themselves are passed through unchanged.
+Rate limiting (429 `rate_limited`, Table 3.15) is not implemented yet.
+
 Every response carries `X-Request-ID`; the same ID is sent to the backend and
 written to the access log. Upstreams also receive `X-Request-Received-At` (epoch
 seconds with millisecond precision, NGINX `$msec`), from which the Cache API
