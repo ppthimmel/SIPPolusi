@@ -156,6 +156,33 @@ def test_cuaca_as_of_waktu_tersedia_brute_force(exported):
     assert f.weather_age_hours.between(3, 8).all()
 
 
+def test_prakiraan_geoscf_as_of_brute_force(exported):
+    f = pd.read_parquet(exported / "features.parquet")
+    fc = pd.read_parquet(SourceReader().root / "geos-cf/geoscf_fcst_cell_hourly.parquet")
+    for r in f.sample(40, random_state=5).itertuples():
+        ws = r.time_utc - pd.Timedelta(hours=1)
+        cand = fc[(fc.cell_id == r.geoscf_cell_id) & (fc.time_window_start == ws)
+                  & (fc.available_at_utc <= r.time_utc) & fc.available_pm25]
+        if not len(cand):
+            assert np.isnan(r.geoscf_fcst_pm25_ugm3) and not r.geoscf_fcst_pm25_ugm3_available
+            continue
+        best = cand.sort_values("init_utc").iloc[-1]
+        assert r.geoscf_fcst_pm25_init_utc == best.init_utc
+        assert r.geoscf_fcst_pm25_ugm3 == pytest.approx(best.pm25_ugm3, rel=1e-6)
+        assert r.geoscf_fcst_pm25_available_at_utc <= r.time_utc
+        assert r.geoscf_fcst_pm25_lead_hours == pytest.approx((ws - best.init_utc) / pd.Timedelta(hours=1))
+
+
+def test_kalender_jam_dan_hari_wib(exported):
+    f = pd.read_parquet(exported / "features.parquet").drop_duplicates("time_utc")
+    local = (f.time_utc - pd.Timedelta(hours=1)).dt.tz_convert("Asia/Jakarta")
+    hour = np.degrees(np.arctan2(f.hour_sin, f.hour_cos)) % 360 / 15
+    weekday = np.degrees(np.arctan2(f.weekday_sin, f.weekday_cos)) % 360 / (360 / 7)
+    assert np.allclose(hour, local.dt.hour, atol=1e-3)
+    assert np.allclose(weekday, local.dt.weekday, atol=1e-3)
+    assert f[["hour_sin_available", "weekday_cos_available"]].all().all()
+
+
 def test_cuaca_aturan_bundle_memakai_valid_time_tau():
     nodes, _ = build_grid_graph(active_cells(), ["r0200_c0200"], 1)
     legacy = SourceReader(weather_delay_hours=None)(nodes.grid_id, "2026-09-20T00:00Z", "2026-09-20T03:00Z")

@@ -1,0 +1,969 @@
+{
+  "status": "completed",
+  "target": "pm25",
+  "seed": 42,
+  "device": "cuda",
+  "source_hashes": {
+    "train_stgnn_ds_v0.3.0.ipynb": "450e169afa59a103939e51fa601a3ee045468246512bf6506519236e07d29823",
+    "run_stgnn.py": "6e1f39917d337a9ebd86563a51b9e5bfad624a2cea25a0be1344c5a055fbc1db",
+    "run_stgnn_loso.py": "b031c180b21d0a5eccb6a915e0f0239e443ed3c541699310f13825b43f4b037e"
+  },
+  "expected_all_groups": 95,
+  "expected_all_stations": 97,
+  "expected_all_test_labels": 4358,
+  "folds": [
+    {
+      "fold": 0,
+      "group_id": "G_BAM02",
+      "test_labels": 47,
+      "status": "completed",
+      "output": "D:\\Github\\SIPPolusi\\graphify-out\\stgnn-ds-v0.3.0\\loso_pm25_gpu_seed42_20261014_a7eabc1b\\fold_000_27a43c63",
+      "epochs_run": 21,
+      "best_epoch": 9,
+      "elapsed_seconds": 55.36113859999932
+    },
+    {
+      "fold": 1,
+      "group_id": "G_DKI1",
+      "test_labels": 47,
+      "status": "completed",
+      "output": "D:\\Github\\SIPPolusi\\graphify-out\\stgnn-ds-v0.3.0\\loso_pm25_gpu_seed42_20261014_a7eabc1b\\fold_001_11e01e8e",
+      "epochs_run": 19,
+      "best_epoch": 7,
+      "elapsed_seconds": 43.93069090000063
+    },
+    {
+      "fold": 2,
+      "group_id": "G_DKI100",
+      "test_labels": 47,
+      "status": "completed",
+      "output": "D:\\Github\\SIPPolusi\\graphify-out\\stgnn-ds-v0.3.0\\loso_pm25_gpu_seed42_20261014_a7eabc1b\\fold_002_e93bc54b",
+      "epochs_run": 21,
+      "best_epoch": 9,
+      "elapsed_seconds": 46.03329400000075
+    },
+    {
+      "fold": 3,
+      "group_id": "G_DKI101",
+      "test_labels": 47,
+      "status": "completed",
+      "output": "D:\\Github\\SIPPolusi\\graphify-out\\stgnn-ds-v0.3.0\\loso_pm25_gpu_seed42_20261014_a7eabc1b\\fold_003_4252b23a",
+      "epochs_run": 21,
+      "best_epoch": 9,
+      "elapsed_seconds": 48.23099149999871
+    },
+    {
+      "fold": 4,
+      "group_id": "G_DKI102",
+      "test_labels": 36,
+      "status": "completed",
+      "output": "D:\\Github\\SIPPolusi\\graphify-out\\stgnn-ds-v0.3.0\\loso_pm25_gpu_seed42_20261014_a7eabc1b\\fold_004_9aabd269",
+      "epochs_run": 21,
+      "best_epoch": 9,
+      "elapsed_seconds": 47.732330199998614
+    },
+    {
+      "fold": 5,
+      "group_id": "G_DKI103",
+      "test_labels": 47,
+      "status": "completed",
+      "output": "D:\\Github\\SIPPolusi\\graphify-out\\stgnn-ds-v0.3.0\\loso_pm25_gpu_seed42_20261014_a7eabc1b\\fold_005_24dd9f87",
+      "epochs_run": 21,
+      "best_epoch": 9,
+      "elapsed_seconds": 47.23654159999933
+    },
+    {
+      "fold": 6,
+      "group_id": "G_DKI104",
+      "test_labels": 47,
+      "status": "completed",
+      "output": "D:\\Github\\SIPPolusi\\graphify-out\\stgnn-ds-v0.3.0\\loso_pm25_gpu_seed42_20261014_a7eabc1b\\fold_006_9d440e06",
+      "epochs_run": 21,
+      "best_epoch": 9,
+      "elapsed_seconds": 47.66484209999908
+    },
+    {
+      "fold": 7,
+      "group_id": "G_DKI105",
+      "test_labels": 47,
+      "status": "completed",
+      "output": "D:\\Github\\SIPPolusi\\graphify-out\\stgnn-ds-v0.3.0\\loso_pm25_gpu_seed42_20261014_a7eabc1b\\fold_007_ef39def2",
+      "epochs_run": 21,
+      "best_epoch": 9,
+      "elapsed_seconds": 44.91084979999869
+    },
+    {
+      "fold": 8,
+      "group_id": "G_DKI2",
+      "test_labels": 94,
+      "status": "completed",
+      "output": "D:\\Github\\SIPPolusi\\graphify-out\\stgnn-ds-v0.3.0\\loso_pm25_gpu_seed42_20261014_a7eabc1b\\fold_008_8b2b0cd8",
+      "epochs_run": 21,
+      "best_epoch": 9,
+      "elapsed_seconds": 47.691704999999274
+    },
+    {
+      "fold": 9,
+      "group_id": "G_DKI3",
+      "test_labels": 47,
+      "status": "completed",
+      "output": "D:\\Github\\SIPPolusi\\graphify-out\\stgnn-ds-v0.3.0\\loso_pm25_gpu_seed42_20261014_a7eabc1b\\fold_009_183e43a1",
+      "epochs_run": 19,
+      "best_epoch": 7,
+      "elapsed_seconds": 41.35026629999993
+    },
+    {
+      "fold": 10,
+      "group_id": "G_DKI4",
+      "test_labels": 44,
+      "status": "completed",
+      "output": "D:\\Github\\SIPPolusi\\graphify-out\\stgnn-ds-v0.3.0\\loso_pm25_gpu_seed42_20261014_a7eabc1b\\fold_010_35afa740",
+      "epochs_run": 27,
+      "best_epoch": 15,
+      "elapsed_seconds": 57.20184000000154
+    },
+    {
+      "fold": 11,
+      "group_id": "G_DKI5",
+      "test_labels": 47,
+      "status": "completed",
+      "output": "D:\\Github\\SIPPolusi\\graphify-out\\stgnn-ds-v0.3.0\\loso_pm25_gpu_seed42_20261014_a7eabc1b\\fold_011_992cc364",
+      "epochs_run": 21,
+      "best_epoch": 9,
+      "elapsed_seconds": 45.51276710000093
+    },
+    {
+      "fold": 12,
+      "group_id": "G_DKI98",
+      "test_labels": 50,
+      "status": "completed",
+      "output": "D:\\Github\\SIPPolusi\\graphify-out\\stgnn-ds-v0.3.0\\loso_pm25_gpu_seed42_20261014_a7eabc1b\\fold_012_a5812247",
+      "epochs_run": 24,
+      "best_epoch": 12,
+      "elapsed_seconds": 51.5711210999998
+    },
+    {
+      "fold": 13,
+      "group_id": "G_DKI99",
+      "test_labels": 47,
+      "status": "completed",
+      "output": "D:\\Github\\SIPPolusi\\graphify-out\\stgnn-ds-v0.3.0\\loso_pm25_gpu_seed42_20261014_a7eabc1b\\fold_013_a1548f41",
+      "epochs_run": 21,
+      "best_epoch": 9,
+      "elapsed_seconds": 45.47302100000161
+    },
+    {
+      "fold": 14,
+      "group_id": "G_DKI_CENDRAWASIH",
+      "test_labels": 47,
+      "status": "completed",
+      "output": "D:\\Github\\SIPPolusi\\graphify-out\\stgnn-ds-v0.3.0\\loso_pm25_gpu_seed42_20261014_a7eabc1b\\fold_014_d429a97e",
+      "epochs_run": 21,
+      "best_epoch": 9,
+      "elapsed_seconds": 45.67586090000077
+    },
+    {
+      "fold": 15,
+      "group_id": "G_DKI_CILANGKAP",
+      "test_labels": 47,
+      "status": "completed",
+      "output": "D:\\Github\\SIPPolusi\\graphify-out\\stgnn-ds-v0.3.0\\loso_pm25_gpu_seed42_20261014_a7eabc1b\\fold_015_6b999859",
+      "epochs_run": 19,
+      "best_epoch": 7,
+      "elapsed_seconds": 47.32827290000023
+    },
+    {
+      "fold": 16,
+      "group_id": "G_DKI_CIRACAS",
+      "test_labels": 47,
+      "status": "completed",
+      "output": "D:\\Github\\SIPPolusi\\graphify-out\\stgnn-ds-v0.3.0\\loso_pm25_gpu_seed42_20261014_a7eabc1b\\fold_016_5a0a93a7",
+      "epochs_run": 21,
+      "best_epoch": 9,
+      "elapsed_seconds": 48.41425750000053
+    },
+    {
+      "fold": 17,
+      "group_id": "G_DKI_GOMBOLPAYA",
+      "test_labels": 47,
+      "status": "completed",
+      "output": "D:\\Github\\SIPPolusi\\graphify-out\\stgnn-ds-v0.3.0\\loso_pm25_gpu_seed42_20261014_a7eabc1b\\fold_017_21429399",
+      "epochs_run": 19,
+      "best_epoch": 7,
+      "elapsed_seconds": 42.15529950000018
+    },
+    {
+      "fold": 18,
+      "group_id": "G_DKI_MANGGALABISMA",
+      "test_labels": 47,
+      "status": "completed",
+      "output": "D:\\Github\\SIPPolusi\\graphify-out\\stgnn-ds-v0.3.0\\loso_pm25_gpu_seed42_20261014_a7eabc1b\\fold_018_53b6f157",
+      "epochs_run": 27,
+      "best_epoch": 15,
+      "elapsed_seconds": 58.20436900000095
+    },
+    {
+      "fold": 19,
+      "group_id": "G_DKI_PENJARINGAN",
+      "test_labels": 47,
+      "status": "completed",
+      "output": "D:\\Github\\SIPPolusi\\graphify-out\\stgnn-ds-v0.3.0\\loso_pm25_gpu_seed42_20261014_a7eabc1b\\fold_019_966158ae",
+      "epochs_run": 21,
+      "best_epoch": 9,
+      "elapsed_seconds": 46.01416770000105
+    },
+    {
+      "fold": 20,
+      "group_id": "G_DKI_PM25_12",
+      "test_labels": 47,
+      "status": "completed",
+      "output": "D:\\Github\\SIPPolusi\\graphify-out\\stgnn-ds-v0.3.0\\loso_pm25_gpu_seed42_20261014_a7eabc1b\\fold_020_60247031",
+      "epochs_run": 21,
+      "best_epoch": 9,
+      "elapsed_seconds": 45.32555890000003
+    },
+    {
+      "fold": 21,
+      "group_id": "G_DKI_PM25_13",
+      "test_labels": 46,
+      "status": "completed",
+      "output": "D:\\Github\\SIPPolusi\\graphify-out\\stgnn-ds-v0.3.0\\loso_pm25_gpu_seed42_20261014_a7eabc1b\\fold_021_cf2810ec",
+      "epochs_run": 21,
+      "best_epoch": 9,
+      "elapsed_seconds": 48.2196397000007
+    },
+    {
+      "fold": 22,
+      "group_id": "G_DKI_PM25_14",
+      "test_labels": 47,
+      "status": "completed",
+      "output": "D:\\Github\\SIPPolusi\\graphify-out\\stgnn-ds-v0.3.0\\loso_pm25_gpu_seed42_20261014_a7eabc1b\\fold_022_3e94bd56",
+      "epochs_run": 21,
+      "best_epoch": 9,
+      "elapsed_seconds": 45.578989400000864
+    },
+    {
+      "fold": 23,
+      "group_id": "G_DKI_PM25_15",
+      "test_labels": 47,
+      "status": "completed",
+      "output": "D:\\Github\\SIPPolusi\\graphify-out\\stgnn-ds-v0.3.0\\loso_pm25_gpu_seed42_20261014_a7eabc1b\\fold_023_87489a00",
+      "epochs_run": 21,
+      "best_epoch": 9,
+      "elapsed_seconds": 47.354417900000044
+    },
+    {
+      "fold": 24,
+      "group_id": "G_DKI_PM25_16",
+      "test_labels": 47,
+      "status": "completed",
+      "output": "D:\\Github\\SIPPolusi\\graphify-out\\stgnn-ds-v0.3.0\\loso_pm25_gpu_seed42_20261014_a7eabc1b\\fold_024_63af2b28",
+      "epochs_run": 21,
+      "best_epoch": 9,
+      "elapsed_seconds": 46.623824700000114
+    },
+    {
+      "fold": 25,
+      "group_id": "G_DKI_PM25_17",
+      "test_labels": 47,
+      "status": "completed",
+      "output": "D:\\Github\\SIPPolusi\\graphify-out\\stgnn-ds-v0.3.0\\loso_pm25_gpu_seed42_20261014_a7eabc1b\\fold_025_ba37d1e4",
+      "epochs_run": 21,
+      "best_epoch": 9,
+      "elapsed_seconds": 45.39794789999905
+    },
+    {
+      "fold": 26,
+      "group_id": "G_DKI_PM25_18",
+      "test_labels": 46,
+      "status": "completed",
+      "output": "D:\\Github\\SIPPolusi\\graphify-out\\stgnn-ds-v0.3.0\\loso_pm25_gpu_seed42_20261014_a7eabc1b\\fold_026_f5cd3fbc",
+      "epochs_run": 21,
+      "best_epoch": 9,
+      "elapsed_seconds": 45.8302177000005
+    },
+    {
+      "fold": 28,
+      "group_id": "G_DKI_PM25_21",
+      "test_labels": 46,
+      "status": "completed",
+      "output": "D:\\Github\\SIPPolusi\\graphify-out\\stgnn-ds-v0.3.0\\loso_pm25_gpu_seed42_20261014_a7eabc1b\\fold_028_f05a1da8",
+      "epochs_run": 21,
+      "best_epoch": 9,
+      "elapsed_seconds": 45.75840059999973
+    },
+    {
+      "fold": 29,
+      "group_id": "G_DKI_PM25_22",
+      "test_labels": 47,
+      "status": "completed",
+      "output": "D:\\Github\\SIPPolusi\\graphify-out\\stgnn-ds-v0.3.0\\loso_pm25_gpu_seed42_20261014_a7eabc1b\\fold_029_f12bf2c5",
+      "epochs_run": 21,
+      "best_epoch": 9,
+      "elapsed_seconds": 46.10433589999957
+    },
+    {
+      "fold": 30,
+      "group_id": "G_DKI_PM25_23",
+      "test_labels": 47,
+      "status": "completed",
+      "output": "D:\\Github\\SIPPolusi\\graphify-out\\stgnn-ds-v0.3.0\\loso_pm25_gpu_seed42_20261014_a7eabc1b\\fold_030_e06e6b3d",
+      "epochs_run": 21,
+      "best_epoch": 9,
+      "elapsed_seconds": 44.27154669999982
+    },
+    {
+      "fold": 31,
+      "group_id": "G_DKI_PM25_24",
+      "test_labels": 19,
+      "status": "completed",
+      "output": "D:\\Github\\SIPPolusi\\graphify-out\\stgnn-ds-v0.3.0\\loso_pm25_gpu_seed42_20261014_a7eabc1b\\fold_031_f2230c17",
+      "epochs_run": 19,
+      "best_epoch": 7,
+      "elapsed_seconds": 40.37653430000137
+    },
+    {
+      "fold": 32,
+      "group_id": "G_DKI_PM25_25",
+      "test_labels": 46,
+      "status": "completed",
+      "output": "D:\\Github\\SIPPolusi\\graphify-out\\stgnn-ds-v0.3.0\\loso_pm25_gpu_seed42_20261014_a7eabc1b\\fold_032_dea7b1e4",
+      "epochs_run": 21,
+      "best_epoch": 9,
+      "elapsed_seconds": 44.24936869999874
+    },
+    {
+      "fold": 33,
+      "group_id": "G_DKI_PM25_26",
+      "test_labels": 47,
+      "status": "completed",
+      "output": "D:\\Github\\SIPPolusi\\graphify-out\\stgnn-ds-v0.3.0\\loso_pm25_gpu_seed42_20261014_a7eabc1b\\fold_033_634381ea",
+      "epochs_run": 21,
+      "best_epoch": 9,
+      "elapsed_seconds": 44.4153656999988
+    },
+    {
+      "fold": 34,
+      "group_id": "G_DKI_PM25_27",
+      "test_labels": 13,
+      "status": "completed",
+      "output": "D:\\Github\\SIPPolusi\\graphify-out\\stgnn-ds-v0.3.0\\loso_pm25_gpu_seed42_20261014_a7eabc1b\\fold_034_d7dd75d4",
+      "epochs_run": 21,
+      "best_epoch": 9,
+      "elapsed_seconds": 44.408906699998624
+    },
+    {
+      "fold": 35,
+      "group_id": "G_DKI_PM25_28",
+      "test_labels": 47,
+      "status": "completed",
+      "output": "D:\\Github\\SIPPolusi\\graphify-out\\stgnn-ds-v0.3.0\\loso_pm25_gpu_seed42_20261014_a7eabc1b\\fold_035_4ef46fb6",
+      "epochs_run": 21,
+      "best_epoch": 9,
+      "elapsed_seconds": 44.65671880000082
+    },
+    {
+      "fold": 36,
+      "group_id": "G_DKI_PM25_29",
+      "test_labels": 47,
+      "status": "completed",
+      "output": "D:\\Github\\SIPPolusi\\graphify-out\\stgnn-ds-v0.3.0\\loso_pm25_gpu_seed42_20261014_a7eabc1b\\fold_036_9ef505d1",
+      "epochs_run": 21,
+      "best_epoch": 9,
+      "elapsed_seconds": 44.53222139999889
+    },
+    {
+      "fold": 37,
+      "group_id": "G_DKI_PM25_30",
+      "test_labels": 47,
+      "status": "completed",
+      "output": "D:\\Github\\SIPPolusi\\graphify-out\\stgnn-ds-v0.3.0\\loso_pm25_gpu_seed42_20261014_a7eabc1b\\fold_037_f5101009",
+      "epochs_run": 19,
+      "best_epoch": 7,
+      "elapsed_seconds": 40.43726940000124
+    },
+    {
+      "fold": 38,
+      "group_id": "G_DKI_PM25_31",
+      "test_labels": 44,
+      "status": "completed",
+      "output": "D:\\Github\\SIPPolusi\\graphify-out\\stgnn-ds-v0.3.0\\loso_pm25_gpu_seed42_20261014_a7eabc1b\\fold_038_79cbce77",
+      "epochs_run": 21,
+      "best_epoch": 9,
+      "elapsed_seconds": 44.742276900000434
+    },
+    {
+      "fold": 40,
+      "group_id": "G_DKI_PM25_34",
+      "test_labels": 47,
+      "status": "completed",
+      "output": "D:\\Github\\SIPPolusi\\graphify-out\\stgnn-ds-v0.3.0\\loso_pm25_gpu_seed42_20261014_a7eabc1b\\fold_040_d508e4d1",
+      "epochs_run": 21,
+      "best_epoch": 9,
+      "elapsed_seconds": 44.21647969999867
+    },
+    {
+      "fold": 41,
+      "group_id": "G_DKI_PM25_35",
+      "test_labels": 46,
+      "status": "completed",
+      "output": "D:\\Github\\SIPPolusi\\graphify-out\\stgnn-ds-v0.3.0\\loso_pm25_gpu_seed42_20261014_a7eabc1b\\fold_041_941565bb",
+      "epochs_run": 21,
+      "best_epoch": 9,
+      "elapsed_seconds": 44.0862601000008
+    },
+    {
+      "fold": 43,
+      "group_id": "G_DKI_PM25_37",
+      "test_labels": 47,
+      "status": "completed",
+      "output": "D:\\Github\\SIPPolusi\\graphify-out\\stgnn-ds-v0.3.0\\loso_pm25_gpu_seed42_20261014_a7eabc1b\\fold_043_d5a5784a",
+      "epochs_run": 21,
+      "best_epoch": 9,
+      "elapsed_seconds": 44.5895554000017
+    },
+    {
+      "fold": 44,
+      "group_id": "G_DKI_PM25_38",
+      "test_labels": 47,
+      "status": "completed",
+      "output": "D:\\Github\\SIPPolusi\\graphify-out\\stgnn-ds-v0.3.0\\loso_pm25_gpu_seed42_20261014_a7eabc1b\\fold_044_86198065",
+      "epochs_run": 29,
+      "best_epoch": 17,
+      "elapsed_seconds": 61.061696999999185
+    },
+    {
+      "fold": 45,
+      "group_id": "G_DKI_PM25_39",
+      "test_labels": 47,
+      "status": "completed",
+      "output": "D:\\Github\\SIPPolusi\\graphify-out\\stgnn-ds-v0.3.0\\loso_pm25_gpu_seed42_20261014_a7eabc1b\\fold_045_59765e00",
+      "epochs_run": 21,
+      "best_epoch": 9,
+      "elapsed_seconds": 46.13645120000001
+    },
+    {
+      "fold": 46,
+      "group_id": "G_DKI_PM25_41",
+      "test_labels": 45,
+      "status": "completed",
+      "output": "D:\\Github\\SIPPolusi\\graphify-out\\stgnn-ds-v0.3.0\\loso_pm25_gpu_seed42_20261014_a7eabc1b\\fold_046_4f98774c",
+      "epochs_run": 21,
+      "best_epoch": 9,
+      "elapsed_seconds": 46.949539000001096
+    },
+    {
+      "fold": 47,
+      "group_id": "G_DKI_PM25_42",
+      "test_labels": 47,
+      "status": "completed",
+      "output": "D:\\Github\\SIPPolusi\\graphify-out\\stgnn-ds-v0.3.0\\loso_pm25_gpu_seed42_20261014_a7eabc1b\\fold_047_51da665e",
+      "epochs_run": 27,
+      "best_epoch": 15,
+      "elapsed_seconds": 56.97301300000072
+    },
+    {
+      "fold": 48,
+      "group_id": "G_DKI_PM25_43",
+      "test_labels": 47,
+      "status": "completed",
+      "output": "D:\\Github\\SIPPolusi\\graphify-out\\stgnn-ds-v0.3.0\\loso_pm25_gpu_seed42_20261014_a7eabc1b\\fold_048_394b223a",
+      "epochs_run": 27,
+      "best_epoch": 15,
+      "elapsed_seconds": 59.866985399999976
+    },
+    {
+      "fold": 49,
+      "group_id": "G_DKI_PM25_44",
+      "test_labels": 46,
+      "status": "completed",
+      "output": "D:\\Github\\SIPPolusi\\graphify-out\\stgnn-ds-v0.3.0\\loso_pm25_gpu_seed42_20261014_a7eabc1b\\fold_049_c814759c",
+      "epochs_run": 21,
+      "best_epoch": 9,
+      "elapsed_seconds": 47.348527600001034
+    },
+    {
+      "fold": 50,
+      "group_id": "G_DKI_PM25_45",
+      "test_labels": 47,
+      "status": "completed",
+      "output": "D:\\Github\\SIPPolusi\\graphify-out\\stgnn-ds-v0.3.0\\loso_pm25_gpu_seed42_20261014_a7eabc1b\\fold_050_a19ac86d",
+      "epochs_run": 21,
+      "best_epoch": 9,
+      "elapsed_seconds": 46.48929440000029
+    },
+    {
+      "fold": 51,
+      "group_id": "G_DKI_PM25_47",
+      "test_labels": 47,
+      "status": "completed",
+      "output": "D:\\Github\\SIPPolusi\\graphify-out\\stgnn-ds-v0.3.0\\loso_pm25_gpu_seed42_20261014_a7eabc1b\\fold_051_8ddf3948",
+      "epochs_run": 21,
+      "best_epoch": 9,
+      "elapsed_seconds": 46.31603509999877
+    },
+    {
+      "fold": 52,
+      "group_id": "G_DKI_PM25_50",
+      "test_labels": 47,
+      "status": "completed",
+      "output": "D:\\Github\\SIPPolusi\\graphify-out\\stgnn-ds-v0.3.0\\loso_pm25_gpu_seed42_20261014_a7eabc1b\\fold_052_5b2cda9b",
+      "epochs_run": 21,
+      "best_epoch": 9,
+      "elapsed_seconds": 47.01585840000007
+    },
+    {
+      "fold": 53,
+      "group_id": "G_DKI_PM25_51",
+      "test_labels": 47,
+      "status": "completed",
+      "output": "D:\\Github\\SIPPolusi\\graphify-out\\stgnn-ds-v0.3.0\\loso_pm25_gpu_seed42_20261014_a7eabc1b\\fold_053_1a0f1dde",
+      "epochs_run": 21,
+      "best_epoch": 9,
+      "elapsed_seconds": 46.50582750000103
+    },
+    {
+      "fold": 54,
+      "group_id": "G_DKI_PM25_52",
+      "test_labels": 47,
+      "status": "completed",
+      "output": "D:\\Github\\SIPPolusi\\graphify-out\\stgnn-ds-v0.3.0\\loso_pm25_gpu_seed42_20261014_a7eabc1b\\fold_054_c8cbff2b",
+      "epochs_run": 21,
+      "best_epoch": 9,
+      "elapsed_seconds": 46.14849370000047
+    },
+    {
+      "fold": 55,
+      "group_id": "G_DKI_PM25_54",
+      "test_labels": 47,
+      "status": "completed",
+      "output": "D:\\Github\\SIPPolusi\\graphify-out\\stgnn-ds-v0.3.0\\loso_pm25_gpu_seed42_20261014_a7eabc1b\\fold_055_c8cda492",
+      "epochs_run": 21,
+      "best_epoch": 9,
+      "elapsed_seconds": 46.652312000000165
+    },
+    {
+      "fold": 56,
+      "group_id": "G_DKI_PM25_55",
+      "test_labels": 47,
+      "status": "completed",
+      "output": "D:\\Github\\SIPPolusi\\graphify-out\\stgnn-ds-v0.3.0\\loso_pm25_gpu_seed42_20261014_a7eabc1b\\fold_056_5952cb21",
+      "epochs_run": 19,
+      "best_epoch": 7,
+      "elapsed_seconds": 45.231584700000894
+    },
+    {
+      "fold": 57,
+      "group_id": "G_DKI_PM25_56",
+      "test_labels": 47,
+      "status": "completed",
+      "output": "D:\\Github\\SIPPolusi\\graphify-out\\stgnn-ds-v0.3.0\\loso_pm25_gpu_seed42_20261014_a7eabc1b\\fold_057_acb8a483",
+      "epochs_run": 27,
+      "best_epoch": 15,
+      "elapsed_seconds": 58.19209779999983
+    },
+    {
+      "fold": 58,
+      "group_id": "G_DKI_PM25_57",
+      "test_labels": 18,
+      "status": "completed",
+      "output": "D:\\Github\\SIPPolusi\\graphify-out\\stgnn-ds-v0.3.0\\loso_pm25_gpu_seed42_20261014_a7eabc1b\\fold_058_4474db80",
+      "epochs_run": 21,
+      "best_epoch": 9,
+      "elapsed_seconds": 45.550814100000935
+    },
+    {
+      "fold": 59,
+      "group_id": "G_DKI_PM25_58",
+      "test_labels": 47,
+      "status": "completed",
+      "output": "D:\\Github\\SIPPolusi\\graphify-out\\stgnn-ds-v0.3.0\\loso_pm25_gpu_seed42_20261014_a7eabc1b\\fold_059_74aab8d6",
+      "epochs_run": 21,
+      "best_epoch": 9,
+      "elapsed_seconds": 47.71097420000115
+    },
+    {
+      "fold": 60,
+      "group_id": "G_DKI_PM25_59",
+      "test_labels": 46,
+      "status": "completed",
+      "output": "D:\\Github\\SIPPolusi\\graphify-out\\stgnn-ds-v0.3.0\\loso_pm25_gpu_seed42_20261014_a7eabc1b\\fold_060_4f3f9e2b",
+      "epochs_run": 21,
+      "best_epoch": 9,
+      "elapsed_seconds": 47.23768080000082
+    },
+    {
+      "fold": 61,
+      "group_id": "G_DKI_PM25_60",
+      "test_labels": 47,
+      "status": "completed",
+      "output": "D:\\Github\\SIPPolusi\\graphify-out\\stgnn-ds-v0.3.0\\loso_pm25_gpu_seed42_20261014_a7eabc1b\\fold_061_7d9b4c21",
+      "epochs_run": 22,
+      "best_epoch": 10,
+      "elapsed_seconds": 49.738231799999994
+    },
+    {
+      "fold": 63,
+      "group_id": "G_DKI_PM25_62",
+      "test_labels": 47,
+      "status": "completed",
+      "output": "D:\\Github\\SIPPolusi\\graphify-out\\stgnn-ds-v0.3.0\\loso_pm25_gpu_seed42_20261014_a7eabc1b\\fold_063_4504f5a5",
+      "epochs_run": 31,
+      "best_epoch": 19,
+      "elapsed_seconds": 68.31663240000125
+    },
+    {
+      "fold": 64,
+      "group_id": "G_DKI_PM25_63",
+      "test_labels": 47,
+      "status": "completed",
+      "output": "D:\\Github\\SIPPolusi\\graphify-out\\stgnn-ds-v0.3.0\\loso_pm25_gpu_seed42_20261014_a7eabc1b\\fold_064_e1b1e902",
+      "epochs_run": 21,
+      "best_epoch": 9,
+      "elapsed_seconds": 48.17742069999986
+    },
+    {
+      "fold": 65,
+      "group_id": "G_DKI_PM25_64",
+      "test_labels": 47,
+      "status": "completed",
+      "output": "D:\\Github\\SIPPolusi\\graphify-out\\stgnn-ds-v0.3.0\\loso_pm25_gpu_seed42_20261014_a7eabc1b\\fold_065_5aab0dd4",
+      "epochs_run": 21,
+      "best_epoch": 9,
+      "elapsed_seconds": 47.07498900000064
+    },
+    {
+      "fold": 66,
+      "group_id": "G_DKI_PM25_65",
+      "test_labels": 47,
+      "status": "completed",
+      "output": "D:\\Github\\SIPPolusi\\graphify-out\\stgnn-ds-v0.3.0\\loso_pm25_gpu_seed42_20261014_a7eabc1b\\fold_066_303b1a86",
+      "epochs_run": 21,
+      "best_epoch": 9,
+      "elapsed_seconds": 46.45986649999941
+    },
+    {
+      "fold": 67,
+      "group_id": "G_DKI_PM25_66",
+      "test_labels": 47,
+      "status": "completed",
+      "output": "D:\\Github\\SIPPolusi\\graphify-out\\stgnn-ds-v0.3.0\\loso_pm25_gpu_seed42_20261014_a7eabc1b\\fold_067_373078e0",
+      "epochs_run": 21,
+      "best_epoch": 9,
+      "elapsed_seconds": 47.2289808000005
+    },
+    {
+      "fold": 68,
+      "group_id": "G_DKI_PM25_69",
+      "test_labels": 47,
+      "status": "completed",
+      "output": "D:\\Github\\SIPPolusi\\graphify-out\\stgnn-ds-v0.3.0\\loso_pm25_gpu_seed42_20261014_a7eabc1b\\fold_068_2504cc12",
+      "epochs_run": 21,
+      "best_epoch": 9,
+      "elapsed_seconds": 46.45683350000036
+    },
+    {
+      "fold": 69,
+      "group_id": "G_DKI_PM25_71",
+      "test_labels": 47,
+      "status": "completed",
+      "output": "D:\\Github\\SIPPolusi\\graphify-out\\stgnn-ds-v0.3.0\\loso_pm25_gpu_seed42_20261014_a7eabc1b\\fold_069_66188531",
+      "epochs_run": 19,
+      "best_epoch": 7,
+      "elapsed_seconds": 43.540725799999564
+    },
+    {
+      "fold": 70,
+      "group_id": "G_DKI_PM25_75",
+      "test_labels": 47,
+      "status": "completed",
+      "output": "D:\\Github\\SIPPolusi\\graphify-out\\stgnn-ds-v0.3.0\\loso_pm25_gpu_seed42_20261014_a7eabc1b\\fold_070_d66e9ad8",
+      "epochs_run": 21,
+      "best_epoch": 9,
+      "elapsed_seconds": 47.32856329999959
+    },
+    {
+      "fold": 71,
+      "group_id": "G_DKI_PM25_76",
+      "test_labels": 47,
+      "status": "completed",
+      "output": "D:\\Github\\SIPPolusi\\graphify-out\\stgnn-ds-v0.3.0\\loso_pm25_gpu_seed42_20261014_a7eabc1b\\fold_071_40051151",
+      "epochs_run": 21,
+      "best_epoch": 9,
+      "elapsed_seconds": 46.76883869999983
+    },
+    {
+      "fold": 72,
+      "group_id": "G_DKI_PM25_77",
+      "test_labels": 47,
+      "status": "completed",
+      "output": "D:\\Github\\SIPPolusi\\graphify-out\\stgnn-ds-v0.3.0\\loso_pm25_gpu_seed42_20261014_a7eabc1b\\fold_072_91855c99",
+      "epochs_run": 21,
+      "best_epoch": 9,
+      "elapsed_seconds": 46.256057800001145
+    },
+    {
+      "fold": 73,
+      "group_id": "G_DKI_PM25_79",
+      "test_labels": 47,
+      "status": "completed",
+      "output": "D:\\Github\\SIPPolusi\\graphify-out\\stgnn-ds-v0.3.0\\loso_pm25_gpu_seed42_20261014_a7eabc1b\\fold_073_f0c76150",
+      "epochs_run": 27,
+      "best_epoch": 15,
+      "elapsed_seconds": 59.37385800000084
+    },
+    {
+      "fold": 74,
+      "group_id": "G_DKI_PM25_80",
+      "test_labels": 47,
+      "status": "completed",
+      "output": "D:\\Github\\SIPPolusi\\graphify-out\\stgnn-ds-v0.3.0\\loso_pm25_gpu_seed42_20261014_a7eabc1b\\fold_074_1bff35b5",
+      "epochs_run": 29,
+      "best_epoch": 17,
+      "elapsed_seconds": 63.86255170000004
+    },
+    {
+      "fold": 75,
+      "group_id": "G_DKI_PM25_81",
+      "test_labels": 47,
+      "status": "completed",
+      "output": "D:\\Github\\SIPPolusi\\graphify-out\\stgnn-ds-v0.3.0\\loso_pm25_gpu_seed42_20261014_a7eabc1b\\fold_075_04b4ad9f",
+      "epochs_run": 19,
+      "best_epoch": 7,
+      "elapsed_seconds": 43.41357609999977
+    },
+    {
+      "fold": 76,
+      "group_id": "G_DKI_PM25_84",
+      "test_labels": 47,
+      "status": "completed",
+      "output": "D:\\Github\\SIPPolusi\\graphify-out\\stgnn-ds-v0.3.0\\loso_pm25_gpu_seed42_20261014_a7eabc1b\\fold_076_605bdc07",
+      "epochs_run": 21,
+      "best_epoch": 9,
+      "elapsed_seconds": 45.72963609999897
+    },
+    {
+      "fold": 77,
+      "group_id": "G_DKI_PM25_85",
+      "test_labels": 40,
+      "status": "completed",
+      "output": "D:\\Github\\SIPPolusi\\graphify-out\\stgnn-ds-v0.3.0\\loso_pm25_gpu_seed42_20261014_a7eabc1b\\fold_077_44c08fd4",
+      "epochs_run": 21,
+      "best_epoch": 9,
+      "elapsed_seconds": 46.5293156000007
+    },
+    {
+      "fold": 78,
+      "group_id": "G_DKI_PM25_86",
+      "test_labels": 47,
+      "status": "completed",
+      "output": "D:\\Github\\SIPPolusi\\graphify-out\\stgnn-ds-v0.3.0\\loso_pm25_gpu_seed42_20261014_a7eabc1b\\fold_078_ea9f6595",
+      "epochs_run": 21,
+      "best_epoch": 9,
+      "elapsed_seconds": 49.862838699998974
+    },
+    {
+      "fold": 79,
+      "group_id": "G_DKI_PM25_87",
+      "test_labels": 16,
+      "status": "completed",
+      "output": "D:\\Github\\SIPPolusi\\graphify-out\\stgnn-ds-v0.3.0\\loso_pm25_gpu_seed42_20261014_a7eabc1b\\fold_079_2e35d54f",
+      "epochs_run": 21,
+      "best_epoch": 9,
+      "elapsed_seconds": 47.85376039999937
+    },
+    {
+      "fold": 80,
+      "group_id": "G_DKI_PM25_88",
+      "test_labels": 47,
+      "status": "completed",
+      "output": "D:\\Github\\SIPPolusi\\graphify-out\\stgnn-ds-v0.3.0\\loso_pm25_gpu_seed42_20261014_a7eabc1b\\fold_080_49aa7636",
+      "epochs_run": 21,
+      "best_epoch": 9,
+      "elapsed_seconds": 48.80368240000098
+    },
+    {
+      "fold": 81,
+      "group_id": "G_DKI_PULOMAS",
+      "test_labels": 47,
+      "status": "completed",
+      "output": "D:\\Github\\SIPPolusi\\graphify-out\\stgnn-ds-v0.3.0\\loso_pm25_gpu_seed42_20261014_a7eabc1b\\fold_081_6f9cafe6",
+      "epochs_run": 21,
+      "best_epoch": 9,
+      "elapsed_seconds": 45.96431459999985
+    },
+    {
+      "fold": 82,
+      "group_id": "G_DKI_RAGUNAN",
+      "test_labels": 47,
+      "status": "completed",
+      "output": "D:\\Github\\SIPPolusi\\graphify-out\\stgnn-ds-v0.3.0\\loso_pm25_gpu_seed42_20261014_a7eabc1b\\fold_082_db3c2921",
+      "epochs_run": 21,
+      "best_epoch": 9,
+      "elapsed_seconds": 46.13821420000022
+    },
+    {
+      "fold": 83,
+      "group_id": "G_DKJ32",
+      "test_labels": 46,
+      "status": "completed",
+      "output": "D:\\Github\\SIPPolusi\\graphify-out\\stgnn-ds-v0.3.0\\loso_pm25_gpu_seed42_20261014_a7eabc1b\\fold_083_d5f2e350",
+      "epochs_run": 21,
+      "best_epoch": 9,
+      "elapsed_seconds": 45.918817700001455
+    },
+    {
+      "fold": 84,
+      "group_id": "G_DKJ33",
+      "test_labels": 47,
+      "status": "completed",
+      "output": "D:\\Github\\SIPPolusi\\graphify-out\\stgnn-ds-v0.3.0\\loso_pm25_gpu_seed42_20261014_a7eabc1b\\fold_084_5599c1da",
+      "epochs_run": 27,
+      "best_epoch": 15,
+      "elapsed_seconds": 56.32064109999919
+    },
+    {
+      "fold": 85,
+      "group_id": "G_DKJ34",
+      "test_labels": 47,
+      "status": "completed",
+      "output": "D:\\Github\\SIPPolusi\\graphify-out\\stgnn-ds-v0.3.0\\loso_pm25_gpu_seed42_20261014_a7eabc1b\\fold_085_fc903054",
+      "epochs_run": 21,
+      "best_epoch": 9,
+      "elapsed_seconds": 45.75374430000011
+    },
+    {
+      "fold": 86,
+      "group_id": "G_DKJ35",
+      "test_labels": 46,
+      "status": "completed",
+      "output": "D:\\Github\\SIPPolusi\\graphify-out\\stgnn-ds-v0.3.0\\loso_pm25_gpu_seed42_20261014_a7eabc1b\\fold_086_3b2cf3b7",
+      "epochs_run": 21,
+      "best_epoch": 9,
+      "elapsed_seconds": 46.482657099999415
+    },
+    {
+      "fold": 87,
+      "group_id": "G_DKJ36",
+      "test_labels": 47,
+      "status": "completed",
+      "output": "D:\\Github\\SIPPolusi\\graphify-out\\stgnn-ds-v0.3.0\\loso_pm25_gpu_seed42_20261014_a7eabc1b\\fold_087_45fbaa37",
+      "epochs_run": 21,
+      "best_epoch": 9,
+      "elapsed_seconds": 45.35043229999974
+    },
+    {
+      "fold": 88,
+      "group_id": "G_LCS-01",
+      "test_labels": 47,
+      "status": "completed",
+      "output": "D:\\Github\\SIPPolusi\\graphify-out\\stgnn-ds-v0.3.0\\loso_pm25_gpu_seed42_20261014_a7eabc1b\\fold_088_883424de",
+      "epochs_run": 27,
+      "best_epoch": 15,
+      "elapsed_seconds": 59.854816399998526
+    },
+    {
+      "fold": 89,
+      "group_id": "G_LCS-02",
+      "test_labels": 47,
+      "status": "completed",
+      "output": "D:\\Github\\SIPPolusi\\graphify-out\\stgnn-ds-v0.3.0\\loso_pm25_gpu_seed42_20261014_a7eabc1b\\fold_089_5955ee66",
+      "epochs_run": 21,
+      "best_epoch": 9,
+      "elapsed_seconds": 47.45566280000094
+    },
+    {
+      "fold": 91,
+      "group_id": "G_LCS-04",
+      "test_labels": 47,
+      "status": "completed",
+      "output": "D:\\Github\\SIPPolusi\\graphify-out\\stgnn-ds-v0.3.0\\loso_pm25_gpu_seed42_20261014_a7eabc1b\\fold_091_a9392673",
+      "epochs_run": 19,
+      "best_epoch": 7,
+      "elapsed_seconds": 43.94500039999912
+    },
+    {
+      "fold": 92,
+      "group_id": "G_LCS-05",
+      "test_labels": 47,
+      "status": "completed",
+      "output": "D:\\Github\\SIPPolusi\\graphify-out\\stgnn-ds-v0.3.0\\loso_pm25_gpu_seed42_20261014_a7eabc1b\\fold_092_e7b90d07",
+      "epochs_run": 21,
+      "best_epoch": 9,
+      "elapsed_seconds": 46.18889059999856
+    },
+    {
+      "fold": 93,
+      "group_id": "G_LCS-06",
+      "test_labels": 47,
+      "status": "completed",
+      "output": "D:\\Github\\SIPPolusi\\graphify-out\\stgnn-ds-v0.3.0\\loso_pm25_gpu_seed42_20261014_a7eabc1b\\fold_093_7af45308",
+      "epochs_run": 21,
+      "best_epoch": 9,
+      "elapsed_seconds": 47.12654409999959
+    },
+    {
+      "fold": 95,
+      "group_id": "G_LCS-08",
+      "test_labels": 47,
+      "status": "completed",
+      "output": "D:\\Github\\SIPPolusi\\graphify-out\\stgnn-ds-v0.3.0\\loso_pm25_gpu_seed42_20261014_a7eabc1b\\fold_095_2c298921",
+      "epochs_run": 38,
+      "best_epoch": 26,
+      "elapsed_seconds": 80.87866030000077
+    },
+    {
+      "fold": 97,
+      "group_id": "G_LCS-12",
+      "test_labels": 47,
+      "status": "completed",
+      "output": "D:\\Github\\SIPPolusi\\graphify-out\\stgnn-ds-v0.3.0\\loso_pm25_gpu_seed42_20261014_a7eabc1b\\fold_097_82c5857e",
+      "epochs_run": 24,
+      "best_epoch": 12,
+      "elapsed_seconds": 53.152107399999295
+    },
+    {
+      "fold": 99,
+      "group_id": "G_LCS-23",
+      "test_labels": 47,
+      "status": "completed",
+      "output": "D:\\Github\\SIPPolusi\\graphify-out\\stgnn-ds-v0.3.0\\loso_pm25_gpu_seed42_20261014_a7eabc1b\\fold_099_edad53f6",
+      "epochs_run": 21,
+      "best_epoch": 9,
+      "elapsed_seconds": 45.55542840000089
+    },
+    {
+      "fold": 100,
+      "group_id": "G_LCS-24",
+      "test_labels": 47,
+      "status": "completed",
+      "output": "D:\\Github\\SIPPolusi\\graphify-out\\stgnn-ds-v0.3.0\\loso_pm25_gpu_seed42_20261014_a7eabc1b\\fold_100_3682c9ef",
+      "epochs_run": 27,
+      "best_epoch": 15,
+      "elapsed_seconds": 56.70810789999996
+    },
+    {
+      "fold": 101,
+      "group_id": "G_LCS-26",
+      "test_labels": 47,
+      "status": "completed",
+      "output": "D:\\Github\\SIPPolusi\\graphify-out\\stgnn-ds-v0.3.0\\loso_pm25_gpu_seed42_20261014_a7eabc1b\\fold_101_a1efdae2",
+      "epochs_run": 21,
+      "best_epoch": 9,
+      "elapsed_seconds": 44.82676029999857
+    },
+    {
+      "fold": 102,
+      "group_id": "G_pm25_kemayoran",
+      "test_labels": 47,
+      "status": "completed",
+      "output": "D:\\Github\\SIPPolusi\\graphify-out\\stgnn-ds-v0.3.0\\loso_pm25_gpu_seed42_20261014_a7eabc1b\\fold_102_06c0806e",
+      "epochs_run": 21,
+      "best_epoch": 9,
+      "elapsed_seconds": 45.21334620000016
+    }
+  ],
+  "current_fold": 102,
+  "completed_folds": 95,
+  "last_session_seconds": 4669.121777100001
+}

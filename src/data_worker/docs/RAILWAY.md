@@ -23,8 +23,8 @@ komponen ada di [`../README.md`](../README.md).
    skema `pollution` dan `osm` juga memakai PostGIS.
 2. **Data Worker**: tambahkan service dari repositori ini dengan
    **Root Directory `src/data_worker`**. `railway.json` menetapkan builder
-   Dockerfile, perintah `python main.py cycle`, restart `NEVER`, dan cron
-   `15 * * * *`. Bila Railway tidak membacanya, isi *Config-as-code path*
+   Dockerfile, restart `NEVER`, dan cron `15 * * * *`; perintah
+   `python main.py cycle` berasal dari `CMD` Dockerfile. Bila Railway tidak membacanya, isi *Config-as-code path*
    dengan `/src/data_worker/railway.json`.
 
    Pada deployment pertama (`railway up`, 30 Sep) nilai cron dan restart dari

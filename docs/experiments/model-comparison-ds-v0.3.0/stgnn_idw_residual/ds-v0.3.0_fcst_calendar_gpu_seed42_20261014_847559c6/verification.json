@@ -1,0 +1,16 @@
+{
+  "test_rmse_improvement_percent": 1.9884215395535976,
+  "paired_test_rmse_difference_95ci": [
+    -0.580659886753839,
+    -0.10438323161443797
+  ],
+  "bootstrap_clusters": "station",
+  "bootstrap_samples": 4000,
+  "bootstrap_seed": 0,
+  "test_stations_better": 11,
+  "test_stations_total": 15,
+  "observed_keys_verified": 689,
+  "checkpoint_sha256": "9dbbab58039ae0219faf7807768b838f56f052006109150141ce640efe0b9e65",
+  "artifact_directory": "D:\\Github\\SIPPolusi\\graphify-out\\stgnn-ds-v0.3.0\\fcst_calendar_gpu_seed42_20261014_847559c6",
+  "matched_mean_correction_constant_rmse_diagnostic": 18.392467528760008
+}

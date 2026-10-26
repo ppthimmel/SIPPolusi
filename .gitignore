@@ -1,5 +1,7 @@
 # Prerequisites
 *.d
+# ...but not nginx entrypoint hook directories
+!docker-entrypoint.d/
 
 # Compiled Object files
 *.slo
@@ -200,6 +202,7 @@ dist
 
 # Estimasi per stasiun-jam hasil run baseline (dapat dibangkitkan ulang dari manifest)
 docs/experiments/**/predictions.parquet
+docs/experiments/model-comparison-ds-v0.3.0/results/*_predictions.parquet
 
 # Local Graphify installation and generated graph.
 /graphify-out/

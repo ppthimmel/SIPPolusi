@@ -14,9 +14,10 @@ import pyarrow.parquet as pq
 
 TEMPORAL_VALUES = ['no2_mol_m2','ntl','temperature_2m','relative_humidity_2m',
     'wind_speed_10m','wind_direction_10m','boundary_layer_height','precipitation',
-    'surface_pressure','geoscf_pm25_ugm3','geoscf_no2_ugm3']
+    'surface_pressure','geoscf_pm25_ugm3','geoscf_no2_ugm3',
+    'geoscf_fcst_pm25_ugm3','geoscf_fcst_no2_ugm3','hour_sin','hour_cos','weekday_sin','weekday_cos']
 TEMPORAL_AGES = ['no2_mol_m2_age_hours','ntl_age_hours','geoscf_pm25_age_hours','geoscf_no2_age_hours',
-    'weather_age_hours']
+    'weather_age_hours','geoscf_fcst_pm25_lead_hours','geoscf_fcst_no2_lead_hours']
 LAND_VALUES = ['ndvi','ndbi']
 LAND_AGES = ['ndvi_age_hours','ndbi_age_hours']
 ROAD_FEATURES = ['road_length_m','road_segment_count','major_road_length_fraction',
@@ -184,6 +185,14 @@ def check_grid_feature_batch(batch,nodes,start,end):
         value=batch[clock]
         if value.loc[valid].isna().any() or value.loc[valid].gt(batch.loc[valid,'time_utc']).any():
             raise ValueError('Unknown or future weather valid time/availability')
+    for variable in ['pm25','no2']:
+        valid=batch[f'geoscf_fcst_{variable}_ugm3'].notna()
+        available=batch[f'geoscf_fcst_{variable}_available_at_utc']
+        valid_time=batch[f'geoscf_fcst_{variable}_init_utc']+pd.to_timedelta(
+            batch[f'geoscf_fcst_{variable}_lead_hours'],unit='h')
+        if (available.loc[valid].isna().any() or available.loc[valid].gt(batch.loc[valid,'time_utc']).any()
+                or not valid_time.loc[valid].eq(batch.loc[valid,'time_utc']-pd.Timedelta(hours=1)).all()):
+            raise ValueError('GEOS-CF forecast not yet published or for a different hour')
 
 
 def sensor_distances(nodes,sensors):
