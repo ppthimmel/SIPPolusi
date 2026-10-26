@@ -19,6 +19,11 @@ Aturan per sumber (``time_utc`` = waktu inferensi τ, akhir jam label):
   (run global ECMWF IFS/ICON/GFS tiap 6 jam; jeda terbit 8 jam, asumsi
   konservatif). Dipakai valid time terbaru dengan ``available_at <= τ``;
   umur = τ − valid time.
+- GEOS-CF ``fcst`` (ds-v0.2.0): prakiraan untuk jam label [τ − 1 jam, τ) dari run
+  terbaru yang lengkap terbit (``available_at_utc`` = Last-Modified lead terakhir) pada
+  τ; ``lead_hours`` = awal jam − awal run.
+- Kalender: jam dan hari dalam pekan (WIB) awal jam label sebagai sin/cos; selalu
+  diketahui pada τ.
 """
 
 from __future__ import annotations
@@ -38,6 +43,8 @@ LANDSAT_FEATURES = ["ndvi", "ndbi", "lst_c"]
 WEATHER = ["temperature_2m", "relative_humidity_2m", "wind_speed_10m", "wind_direction_10m",
            "boundary_layer_height", "precipitation", "surface_pressure"]
 GEOSCF = ["pm25", "no2"]
+CALENDAR = ["hour_sin", "hour_cos", "weekday_sin", "weekday_cos"]
+LOCAL_TZ = "Asia/Jakarta"
 
 S5P_LEFT, S5P_TOP, S5P_RES = 675000.0, 9340000.0, 5000.0
 VIIRS_CELL_DEG = 1 / 240          # 15 detik busur
@@ -110,7 +117,8 @@ class SourceReader:
                 r / "viirs/daily.parquet", r / "viirs/manifest.json",
                 r / "open_meteo/hourly.parquet", r / "open_meteo/manifest.json",
                 r / "geos-cf/geoscf_cell_hourly.parquet", r / "geos-cf/grid100m_geoscf_lookup.parquet",
-                r / "geos-cf/manifest.json"]
+                r / "geos-cf/manifest.json", r / "geos-cf/geoscf_fcst_cell_hourly.parquet",
+                r / "geos-cf/fcst_manifest.json"]
 
     # Pemetaan sel dan event per sumber (sekali per himpunan sel) ------------
     def _prepare(self, grid_ids: tuple[str, ...]) -> dict:
@@ -167,6 +175,16 @@ class SourceReader:
             geos_events[var] = e[["cell_id", "available_at_utc", "time_window_start", "time_window_end",
                                   f"{var}_ugm3", "latency_hours"]].reset_index(drop=True)
 
+        fcst = pd.read_parquet(self.root / "geos-cf/geoscf_fcst_cell_hourly.parquet")
+        fcst["cell_id"] = fcst.cell_id.astype("int64")
+        for col in ("init_utc", "time_window_start", "available_at_utc"):
+            fcst[col] = fcst[col].astype("datetime64[ns, UTC]")
+        fcst_events = {}
+        for var in GEOSCF:
+            e = fcst[fcst[f"available_{var}"]].sort_values(["available_at_utc", "init_utc"])
+            fcst_events[var] = e[["cell_id", "time_window_start", "available_at_utc", "init_utc", "lead_hours",
+                                  f"{var}_ugm3"]].reset_index(drop=True)
+
         weather = pd.read_parquet(self.root / "open_meteo/hourly.parquet")
         for name in WEATHER:
             weather.loc[~weather[f"{name}_available"], name] = np.nan
@@ -178,7 +196,7 @@ class SourceReader:
 
         self._cache_key = grid_ids
         self._cache = dict(
-            cells=cells, mapping=mapping, weather=weather, geos=geos_events,
+            cells=cells, mapping=mapping, weather=weather, geos=geos_events, fcst=fcst_events,
             events={**{f: ("landsat", satellite_events(landsat, f)) for f in LANDSAT_FEATURES},
                     "no2_mol_m2": ("sentinel5p", satellite_events(s5p, "no2_mol_m2")),
                     "ntl": ("viirs", satellite_events(viirs, "ntl"))})
@@ -231,4 +249,23 @@ class SourceReader:
             batch[f"geoscf_{var}_latency_hours"] = joined.latency_hours
             batch[f"geoscf_{var}_age_hours"] = (
                 (batch.time_utc - joined.time_window_end).dt.total_seconds() / 3600)
+
+        # Prakiraan untuk jam label itu sendiri, dari run terbaru yang sudah terbit pada τ.
+        left = batch[["time_utc", "geoscf_cell_id"]].reset_index().assign(
+            window_start=lambda d: d.time_utc - pd.Timedelta(hours=1)).sort_values("time_utc")
+        for var in GEOSCF:
+            joined = pd.merge_asof(left, state["fcst"][var], left_on="time_utc", right_on="available_at_utc",
+                                   left_by=["geoscf_cell_id", "window_start"],
+                                   right_by=["cell_id", "time_window_start"], direction="backward")
+            joined = joined.set_index("index").reindex(batch.index)
+            batch[f"geoscf_fcst_{var}_ugm3"] = joined[f"{var}_ugm3"]
+            batch[f"geoscf_fcst_{var}_init_utc"] = joined.init_utc
+            batch[f"geoscf_fcst_{var}_available_at_utc"] = joined.available_at_utc
+            batch[f"geoscf_fcst_{var}_lead_hours"] = joined.lead_hours.astype("float64")
+
+        local = (batch.time_utc - pd.Timedelta(hours=1)).dt.tz_convert(LOCAL_TZ)
+        hour = 2 * np.pi * local.dt.hour.to_numpy() / 24
+        weekday = 2 * np.pi * local.dt.weekday.to_numpy() / 7
+        batch["hour_sin"], batch["hour_cos"] = np.sin(hour), np.cos(hour)
+        batch["weekday_sin"], batch["weekday_cos"] = np.sin(weekday), np.cos(weekday)
         return batch

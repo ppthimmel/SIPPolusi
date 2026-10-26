@@ -27,6 +27,10 @@ REASON_TEXT = {
                   "Definisi bendera `S` portal diterapkan ulang pada seluruh deret (semua bendera). Portal "
                   "menghitung `S` pada riwayat 48 jam yang bergulir, sehingga ujung deret macet yang panjang "
                   "kehilangan benderanya (mis. DKI_PM25_85 macet 34,00 dan DKI_PM25_57 macet 19,00)."),
+    "shared_signal": ("Stasiun dengan deret per jam praktis sama dengan stasiun lain",
+                      "Korelasi ≥ 0,98 dan median rasio 1 ± 2% pada ≥ 100 jam bersama. Stasiun berjarak hingga "
+                      "puluhan km tidak mungkin mengukur nilai yang sama; deret ini bukan pengukuran lokal "
+                      "independen (diduga diisi dari satu sumber bersama), sehingga seluruh kluster dibuang."),
     "incomplete_hour": ("Jam dengan pembacaan valid lebih sedikit dari kadensi stasiun",
                         "Kadensi = modus jumlah bacaan per jam stasiun-parameter (2 untuk deret 30 menit, 1 untuk "
                         "deret 60 menit). Label jam tidak boleh mewakili hanya sebagian jam."),
@@ -70,9 +74,10 @@ def exclusion_rules(cfg: dict, counts: dict) -> str:
         f"- Deret macet: ≥ {lab['stuck_run_min']} nilai identik berturut-turut.",
         f"- Jam lengkap wajib: {'ya' if lab['require_complete_hour'] else 'tidak'}.", "",
         "## Yang diperiksa tetapi tidak dibuang", "",
-        "- **Duplikat stasiun/penyedia:** tidak ada pasangan stasiun dengan nilai identik pada ≥ 20% cap waktu "
-        "bersama. DKJ37 dan DKI98 (Taman Sungai Kendal) berjarak 1,3 m tetapi nilainya berbeda (median selisih "
-        "PM2.5 27 µg/m³), sehingga keduanya dipertahankan sebagai dua seri dalam satu grup stasiun.",
+        "- **Duplikat stasiun/penyedia:** nilai identik pada ≥ 20% cap waktu bersama, atau deret praktis sama "
+        "(korelasi dan rasio), menyatukan stasiun dalam satu grup; kluster deret praktis sama dibuang bila aturan "
+        "`shared_signal` aktif. DKJ37 dan DKI98 (Taman Sungai Kendal) berjarak 1,3 m tetapi nilainya berbeda "
+        "(median selisih PM2.5 27 µg/m³), sehingga keduanya dipertahankan sebagai dua seri dalam satu grup.",
         "- **Stasiun bias rendah:** stasiun `DKI_PM25_*` bertipe Sensor dengan rerata PM2.5 blok train "
         f"< {lab['low_bias_suspect']['max_mean_ugm3']:g} µg/m³ ditandai `suspected_low_bias`, tidak dibuang.",
         "- **Klaster nilai lintas stasiun pada jam yang sama:** porsi stasiun terbanyak dengan nilai bulat yang "

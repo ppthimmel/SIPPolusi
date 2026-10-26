@@ -6,8 +6,10 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+import pyarrow.parquet as pq
 
 from feature_matrix.grid import nearest_sensor_distance, to_grid_xy
+from feature_matrix.labels import near_duplicate_pairs
 from feature_matrix.sources import WEATHER
 
 from .split import SPLITS, block_gaps_hours
@@ -86,11 +88,21 @@ def leakage_report(out: Path, cfg: dict, labels: pd.DataFrame, stations: pd.Data
                 if shared.sum() >= 48 and (v[shared, i] == v[shared, j]).mean() >= \
                         float(cfg["groups"]["duplicate_identical_fraction"]):
                     dup_cross += 1
+    near_rule = cfg["labels"].get("shared_signal") or dict(min_corr=0.98, max_ratio_deviation=0.02,
+                                                            min_shared_hours=100)
+    near_cross = 0
+    split_of = st.set_index("uuid").station_split
+    for target in cfg["scope"]["targets"]:
+        wide = labels.pivot_table(index="time_window_start", columns="station_uuid", values=f"{target}_ugm3")
+        for a, b, _, _ in near_duplicate_pairs(wide, near_rule["min_corr"], near_rule["max_ratio_deviation"],
+                                               near_rule["min_shared_hours"]):
+            near_cross += int(split_of[a] != split_of[b])
     _check(checks, "identical_observations", "Tidak ada observasi identik lintas split",
-           keys_multi + close_cross + dup_cross,
+           keys_multi + close_cross + dup_cross + near_cross,
            f"kunci (target, stasiun, time window) di >1 split: {keys_multi}; pasangan stasiun berimpit "
            f"(sel sama atau < {cfg['groups']['max_distance_m']:g} m) beda split: {close_cross}; pasangan stasiun "
-           f"beda split dengan nilai per jam identik: {dup_cross}")
+           f"beda split dengan nilai per jam identik: {dup_cross}; pasangan beda split dengan deret praktis sama "
+           f"(r ≥ {near_rule['min_corr']}, rasio 1 ± {near_rule['max_ratio_deviation']}): {near_cross}")
 
     # 5. Fitur berbasis sensor tidak memakai stasiun uji/validasi atau stasiun yang ditahan.
     feats = pd.read_parquet(out / "stgnn" / "features.parquet",
@@ -151,9 +163,23 @@ def leakage_report(out: Path, cfg: dict, labels: pd.DataFrame, stations: pd.Data
     w = pd.read_parquet(out / "stgnn" / "features.parquet",
                         columns=["time_utc", *WEATHER, "weather_time_utc", "weather_available_at_utc"])
     weather_bad = weather_violations(w)
-    _check(checks, "geoscf_available", "Seluruh fitur GEOS-CF (dan cuaca) memenuhi waktu tersedia <= waktu inferensi",
-           geos_bad + weather_bad, f"{len(g):_} baris fitur diperiksa; pelanggaran GEOS-CF {geos_bad}, "
-                                   f"cuaca {weather_bad}".replace("_", "."))
+    fcst_bad = 0
+    fcst_cols = [f"geoscf_fcst_{v}_{c}" for v in ("pm25", "no2")
+                 for c in ("ugm3", "init_utc", "available_at_utc", "lead_hours")]
+    # Snapshot ds-v0.1.0 belum memuat prakiraan; pemeriksaan berlaku bila kolomnya ada.
+    if set(fcst_cols) <= set(pq.ParquetFile(out / "stgnn" / "features.parquet").schema_arrow.names):
+        fc = pd.read_parquet(out / "stgnn" / "features.parquet", columns=["time_utc", *fcst_cols])
+        for var in ("pm25", "no2"):
+            ok = fc[f"geoscf_fcst_{var}_ugm3"].notna()
+            valid_time = fc.loc[ok, f"geoscf_fcst_{var}_init_utc"] + pd.to_timedelta(
+                fc.loc[ok, f"geoscf_fcst_{var}_lead_hours"].astype("float64"), unit="h")
+            avail = fc.loc[ok, f"geoscf_fcst_{var}_available_at_utc"]
+            fcst_bad += int((avail.isna() | avail.gt(fc.loc[ok, "time_utc"])
+                             | valid_time.ne(fc.loc[ok, "time_utc"] - pd.Timedelta(hours=1))).sum())
+    _check(checks, "geoscf_available", "Seluruh fitur GEOS-CF (ana, prakiraan) dan cuaca memenuhi waktu tersedia "
+           "<= waktu inferensi", geos_bad + weather_bad + fcst_bad,
+           f"{len(g):_} baris fitur diperiksa; pelanggaran GEOS-CF ana {geos_bad}, prakiraan {fcst_bad}, "
+           f"cuaca {weather_bad}".replace("_", "."))
 
     # 8. Jendela lag tidak melewati batas split.
     lag_bad = 0

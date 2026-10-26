@@ -1,0 +1,7 @@
+target,max_depth,best_iteration,validation_rmse,device
+direct,2,81,21.177692509797676,cuda:0
+direct,4,38,21.799877338719128,cuda:0
+direct,6,22,22.43305098314681,cuda:0
+resid_idw,2,0,19.836764092898363,cuda:0
+resid_idw,4,0,19.779126096903884,cuda:0
+resid_idw,6,2,19.83022549282204,cuda:0
