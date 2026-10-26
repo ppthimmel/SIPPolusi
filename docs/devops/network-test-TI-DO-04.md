@@ -13,7 +13,7 @@ baru yang kosong.
 | Jalur publik: hanya gateway yang terbuka | lulus 9/9 | belum (lihat §6) |
 | Backend → basis data, cache-api, model_registry | lulus 5/5 | belum |
 | Data Worker → basis data, model_registry | lulus 3/3 + `main.py check` | belum |
-| Gateway → backend lewat nama internal | lulus (smoke test) | belum |
+| Gateway → backend dan cache-api lewat nama internal | lulus 4/4 (smoke test) | belum |
 | DNS internal: terurai di dalam, tidak di luar | lulus | luar: lulus |
 | Layanan internal mendengarkan IPv6 | lulus (backend, cache-api, model_registry) | — |
 | Layanan tidak tersedia | lulus (backend, basis data) | — |
@@ -25,17 +25,15 @@ Hanya gateway yang memetakan port ke host; layanan internal hanya
 mengekspos port di jaringan compose.
 
 ```
+$ docker compose -f docker-compose.yml -f docker-compose.private.yml up -d --build gateway
 $ docker compose ps --format '{{.Service}}\t{{.Status}}\t{{.Ports}}'
-backend         Up About a minute (healthy)     8000/tcp
-cache_api       Up About a minute (unhealthy)   8000/tcp
-gateway         Up Less than a second           0.0.0.0:8081->8080/tcp, [::]:8081->8080/tcp
-minio           Up About a minute (healthy)     9000-9001/tcp
-model_registry  Up About a minute               5000/tcp
-postgres        Up About a minute (healthy)     5432/tcp
+backend         Up 6 seconds (healthy)    8000/tcp
+cache_api       Up 8 seconds (healthy)    8000/tcp
+gateway         Up 1 second               0.0.0.0:8081->8080/tcp, [::]:8081->8080/tcp
+minio           Up 13 seconds (healthy)   9000-9001/tcp
+model_registry  Up 7 seconds              5000/tcp
+postgres        Up 14 seconds (healthy)   5432/tcp
 ```
-
-`cache_api` *unhealthy* karena basis data baru belum memiliki schema `osm`
-(lihat §7), bukan karena jaringan.
 
 ## 2. Jalur publik (dari host)
 
@@ -88,8 +86,18 @@ PASS  unreachable tcp://inference:8000
 5/5 checks passed
 ```
 
-Cache-api menjawab sendiri (JSON galatnya dengan `request_id`), jadi jalur
-jaringannya terbukti; 500 berasal dari schema `osm` yang belum ada (§7).
+Jalannya ini sebelum perbaikan cache-api di §7; cache-api tetap menjawab
+sendiri (JSON galatnya dengan `request_id`), jadi jalur jaringannya
+terbukti. Setelah perbaikan, dari backend yang sama:
+
+```
+PASS  reachable   http://cache_api:8000/health
+      DNS 172.21.0.4; HTTP 200 6 ms {"status":"degraded","database":"ok","graph_version":null,"pollution_time_window":null,"pollution_data_stale":null}
+PASS  reachable   http://cache_api:8000/v1/osm/version
+      DNS 172.21.0.4; HTTP 503 4 ms {"error":{"code":"cache_unavailable","message":"Schema cache belum dibuat (UndefinedTableError).","request_id":"3c5e0a49
+2/2 checks passed
+```
+
 `inference` belum ada sehingga tidak terurai, sesuai tahap MVP.
 
 Dari dalam Data Worker (image dibangun dari cabang ini):
@@ -116,23 +124,23 @@ backend:
 
 ```
 $ python scripts/smoke_test.py --gateway http://localhost:8081
-smoke test 2026-10-26T19:34:03+00:00
+smoke test 2026-10-26T19:44:35+00:00
   gateway: http://localhost:8081
   backend: (not checked directly)
 PASS  gateway liveness               GET http://localhost:8081/healthz
-      HTTP 200 70 ms {"status": "ok", "service": "gateway"} request_id=d40c8c6dd2f2d40fed1319f1c259a8e0
+      HTTP 200 42 ms {"status": "ok", "service": "gateway"} request_id=ae35025627fe4f13df8a54a7b8019c51
 PASS  route request via gateway      POST http://localhost:8081/v1/routes
-      HTTP 503 46 ms {"status": "data_unavailable", "route": null, "metrics": null, "route_source": "fallback", "preference_applied": false, "message": "OSM graph export is unavaila request_id=6b2efc5745f2427fbcc6b9051e5245bb
-FAIL  cache API via gateway          GET http://localhost:8081/v1/osm/version
-      HTTP 500 20 ms {"error": {"code": "internal_error", "message": "Terjadi galat internal pada server.", "request_id": "0a873ade9ebb8da812deaed8dd117938"}} request_id=0a873ade9ebb8da812deaed8dd117938
+      HTTP 503 16 ms {"status": "data_unavailable", "route": null, "metrics": null, "route_source": "fallback", "preference_applied": false, "message": "OSM graph export is unavaila request_id=c422dedfbe93082f672827ba4e08f825
+PASS  cache API via gateway          GET http://localhost:8081/v1/osm/version
+      HTTP 503 12 ms {"error": {"code": "cache_unavailable", "message": "Schema cache belum dibuat (UndefinedTableError).", "request_id": "b33f1f9313729ac9077d3dbbb59fde4b", "reason request_id=b33f1f9313729ac9077d3dbbb59fde4b
 PASS  unknown path not proxied       GET http://localhost:8081/health
-      HTTP 404 7 ms {"error": {"code": "not_found", "message": "Unknown path", "request_id": "bc11f57267d4954be221c9e987470556"}} request_id=bc11f57267d4954be221c9e987470556
-3/4 checks passed
+      HTTP 404 6 ms {"error": {"code": "not_found", "message": "Unknown path", "request_id": "ffc7d045c03ceeaed28563e381a1712e"}} request_id=ffc7d045c03ceeaed28563e381a1712e
+4/4 checks passed
 ```
 
-Pemeriksaan cache-api gagal karena isi, bukan jaringan: gateway meneruskan
-ke `cache_api:8000` dan cache-api menjawab, tetapi dengan 500 alih-alih 503
-`cache_unavailable` yang diharapkan smoke test (§7).
+503 `data_unavailable` dan `cache_unavailable` adalah jawaban layanan itu
+sendiri pada basis data kosong; yang diuji adalah bahwa request sampai ke
+layanan yang benar lewat jaringan privat.
 
 ## 4. IPv6 (syarat jaringan privat Railway)
 
@@ -152,8 +160,7 @@ PASS  reachable   http://[::1]:5000/health
 ```
 
 Backend dan cache-api sudah mendengarkan IPv4 + IPv6 (`host=""`):
-`http://[::1]:8000/health` dijawab keduanya (backend 200, cache-api 500 karena
-§7). Akses dari backend ke `model_registry:5000` lewat IPv4 tetap 200 setelah
+`http://[::1]:8000/health` dijawab keduanya. Akses dari backend ke `model_registry:5000` lewat IPv4 tetap 200 setelah
 perubahan.
 
 ## 5. Layanan tidak tersedia
@@ -199,14 +206,20 @@ jalankan bagian **Railway** di
 yang aktif dan tambahkan hasilnya di sini, termasuk penghapusan TCP proxy
 database dan domain publik backend.
 
-## 7. Temuan di luar cakupan
+## 7. Temuan yang ikut diperbaiki
 
 - **Cache-api pada basis data kosong.** Tanpa schema `osm`, `GET /health`
   dan `GET /v1/osm/version` menjawab **500** `internal_error`
   (`UndefinedTableError: relation "osm.graph_version" does not exist`),
   bukan 503 `cache_unavailable`. Health check image ikut gagal sehingga
-  `docker compose up gateway` berhenti di dependensi `cache_api`. Uji di atas
-  menjalankan gateway dengan `--no-deps`.
+  `docker compose up gateway` berhenti di dependensi `cache_api`.
+  **Perbaikan:** `osm/db.py` memetakan `UndefinedTableError` dan
+  `InvalidSchemaNameError` ke `CacheUnavailable(cache_empty)`, sama seperti
+  belum ada `graph_version` aktif. Hasilnya `/health` 200 `degraded`,
+  `/v1/osm/version` 503 `cache_unavailable`, dan compose berjalan tanpa
+  `--no-deps` (§1, §3). Uji unit baru `osm/tests/test_db.py`; seluruh uji
+  image (`--target test`): osm 97 lulus, pollution 20 lulus.
 - **`src/gateway/.env` lokal lama** belum memuat `CACHE_API_UPSTREAM`
   (ditambahkan pada TI-DO-02), dan gateway menolak start dengan pesan yang
-  menyebut variabel tersebut. Salin ulang dari `.env.example`.
+  menyebut variabel tersebut. Tambahkan baris dari `.env.example`
+  (berkas `.env` tidak masuk repositori).
