@@ -3,6 +3,7 @@
 Panduan membangun, menjalankan, dan memeriksa tiga layanan yang di-deploy ke
 Railway: **Data Worker**, **Backend API**, dan **API Gateway (NGINX custom)**.
 Hasil uji ada di [`smoke-test-TI-DO-02.md`](smoke-test-TI-DO-02.md).
+Pipeline CI/CD dan aturan deployment: [`ci-cd.md`](ci-cd.md).
 
 Konfigurasi ini tidak bergantung pada Traefik atau K3s: build memakai
 Dockerfile per layanan, Railway membangun dan menjalankannya, dan NGINX custom
