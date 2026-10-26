@@ -13,10 +13,10 @@ baru yang kosong.
 | Jalur publik: komponen internal tertutup | lulus 9/9 | lulus 5/5 per environment setelah TCP proxy dan domain backend dihapus (§6) |
 | Backend → basis data, cache-api, model_registry | lulus 5/5 | belum |
 | Data Worker → basis data, model_registry | lulus 3/3 + `main.py check` | basis data: lulus (log cron) |
-| Gateway → backend dan cache-api lewat nama internal | lulus 4/4 (smoke test) | menunggu deploy gateway/backend |
+| Gateway → backend dan cache-api lewat nama internal | lulus 4/4 (smoke test) | cache-api: jalur privat sampai, image salah; backend: menunggu deploy (§6.5) |
 | DNS internal: terurai di dalam, tidak di luar | lulus | luar: lulus |
 | Layanan internal mendengarkan IPv6 | lulus (backend, cache-api, model_registry) | — |
-| Layanan tidak tersedia | lulus (backend, basis data) | — |
+| Layanan tidak tersedia | lulus (backend, basis data) | backend tidak ada: 502, `/healthz` 200 |
 | Backend → layanan inferensi final | — | menunggu layanan inferensi |
 
 ## 1. Port host setelah override
@@ -275,14 +275,75 @@ menjawab `N` pada uji yang sama (`PASS reachable postgres://localhost:55432`).
 - **cache-api:** berjalan (`SUCCESS`) dan health check Railway lulus
   (`GET /health HTTP/1.1 200`); basis datanya hanya
   `postgres.railway.internal`.
-- **Gateway → backend/cache-api dan frontend → gateway:** belum diuji,
-  karena gateway dan backend harus di-deploy dulu (§6.5).
+- **Gateway → cache-api:** request sampai lewat jaringan privat, tetapi
+  service `cache-api` menjalankan image yang salah (§6.5).
+- **Gateway → backend dan frontend → gateway:** belum diuji; backend belum
+  di-deploy (§6.6).
 - **Uji dari dalam container (`railway ssh`):** belum dijalankan; akun
   Railway belum memiliki kunci SSH terdaftar.
 
-### 6.5 Belum dilakukan
+### 6.5 Gateway development (deploy 26 Okt 20:25Z, `dev` @ `4a7140f`)
 
-Deploy gateway dan backend ke development dari cabang ini, lalu:
+Gateway di-deploy dari dashboard (*Deploy the repo*), karena deploy otomatis
+dari GitHub selalu `SKIPPED` ("No changes to watched files"). Backend belum
+punya deployment aktif. Deploy `railway up src/backend --path-as-root` gagal
+dengan `Root directory "src/backend" was not found in the deployed source`:
+`--path-as-root` mengunggah isi `src/backend` saja, sedangkan Root Directory
+service tetap `src/backend`. Deploy CLI harus dari akar repositori tanpa
+`--path-as-root`, atau dari dashboard.
+
+```
+smoke test 2026-10-26T20:28:01+00:00
+  gateway: https://gateway-development-fa8c.up.railway.app
+  backend: (not checked directly)
+PASS  gateway liveness               GET https://gateway-development-fa8c.up.railway.app/healthz
+      HTTP 200 309 ms {"status": "ok", "service": "gateway"} request_id=8fa307539d895d8f7565882621654071
+FAIL  route request via gateway      POST https://gateway-development-fa8c.up.railway.app/v1/routes
+      HTTP 502 302 ms "<html>\r\n<head><title>502 Bad Gateway</title></head>\r\n<body>\r\n<center><h1>502 Bad Gateway</h1></center>\r\n<hr><center>nginx</center>\r\n</body>\r\n</html request_id=42fa3031b4ae3bab61c7c7dfd4dfe184
+FAIL  cache API via gateway          GET https://gateway-development-fa8c.up.railway.app/v1/osm/version
+      HTTP 404 307 ms {"detail": "Not Found"} request_id=9d8b64998efa89402518c94d59c31274
+PASS  unknown path not proxied       GET https://gateway-development-fa8c.up.railway.app/health
+      HTTP 404 286 ms {"error": {"code": "not_found", "message": "Unknown path", "request_id": "c1851ae23816962cac58ab37872de547"}} request_id=c1851ae23816962cac58ab37872de547
+2/4 checks passed
+```
+
+Log gateway untuk request yang sama:
+
+```
+[error] backend.railway.internal could not be resolved (3: Host not found), ... request: "POST /v1/routes HTTP/1.1"
+[ERRO] POST /v1/routes 502 request_id="42fa3031b4ae3bab61c7c7dfd4dfe184" ... upstream_status=""
+[WARN] GET /v1/osm/version 404 request_id="9d8b64998efa89402518c94d59c31274" ... upstream_status="404" upstream_duration_s="0.003"
+```
+
+Yang terbukti:
+
+- **Backend tidak tersedia:** gateway menjawab 502 dalam 0,3 s karena nama
+  `backend.railway.internal` tidak terurai (service tanpa deployment tidak
+  punya alamat privat); `/healthz` tetap 200.
+- **Gateway → cache-api lewat jaringan privat:** request sampai
+  (`upstream_status="404"`, 3 ms) dan tercatat di log cache-api:
+  `10.247.34.84:34528 - "GET /v1/osm/version HTTP/1.1" 404`.
+
+Temuan: service `cache-api` di development ternyata menjalankan **Backend**,
+bukan Cache API. Log start-nya `configuration ok: environment=development ...`
+(`logger="backend"`), build log `load build definition from
+src/backend/Dockerfile`, dan 404-nya berformat FastAPI bawaan
+`{"detail": "Not Found"}`, bukan `{"error": ...}` milik Cache API. Penyebabnya:
+`RAILWAY_DOCKERFILE_PATH=osm/Dockerfile` (relatif) diabaikan tanpa galat.
+Service lain memakai path dari akar repositori (`/src/gateway/Dockerfile`,
+`/src/backend/Dockerfile`), jadi nilainya harus
+`/src/backend/osm/Dockerfile`. Panduan di `build-runtime.md` dan
+`src/backend/osm/README.md` sudah diperbaiki; variabel di Railway belum
+diubah.
+
+### 6.6 Belum dilakukan
+
+1. Ubah `RAILWAY_DOCKERFILE_PATH` service `cache-api` (development) menjadi
+   `/src/backend/osm/Dockerfile`, lalu redeploy.
+2. Deploy backend dari dashboard (*Deploy latest commit*) atau
+   `railway up --service backend --environment development --ci` dari akar
+   repositori.
+3. Ulangi:
 
 ```bash
 python scripts/smoke_test.py --gateway https://gateway-development-fa8c.up.railway.app

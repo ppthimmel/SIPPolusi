@@ -203,13 +203,17 @@ Railway membangun image dari GitHub, jadi kodenya harus sudah di-push ke branch 
    SIPPolusi*. Lalu atur:
    - **Branch:** branch yang berisi modul ini.
    - **Root Directory:** `src/backend`, karena image memuat `osm/` dan `pollution/`.
-   - **Dockerfile:** tambahkan variabel `RAILWAY_DOCKERFILE_PATH=osm/Dockerfile`. Tahap terakhir
-     Dockerfile adalah image runtime.
+   - **Dockerfile:** tambahkan variabel `RAILWAY_DOCKERFILE_PATH=/src/backend/osm/Dockerfile`
+     (dihitung dari akar repositori). Nilai relatif `osm/Dockerfile` diabaikan tanpa pesan galat
+     dan Railway membangun `src/backend/Dockerfile`, sehingga service ini menjalankan Backend,
+     bukan Cache API (terlihat dari log `logger="backend"` dan 404 `{"detail": "Not Found"}`
+     untuk `/v1/osm/*`). Tahap terakhir Dockerfile adalah image runtime.
 2. **Variables:** isi `DATABASE_URL` dengan referensi ke service database, misalnya
    `${{database.DATABASE_URL}}` (sesuaikan nama service). Referensi ini memakai URL privat
    `postgres.railway.internal`. Variabel `PORT` diisi otomatis oleh Railway.
-3. **Settings:** set *Healthcheck Path* ke `/health`. Untuk menguji dari luar, buat domain lewat
-   *Networking → Generate Domain*.
+3. **Settings:** set *Healthcheck Path* ke `/health`. Jangan buat domain publik: Cache API hanya
+   dijangkau gateway lewat jaringan privat (TI-DO-04, `docs/devops/private-networking.md`).
+   Uji dari luar lewat gateway, `https://<gateway>/v1/osm/...`.
 4. Uji dari terminal laptop dengan perintah seperti A-5, tetapi alamatnya diganti domain Railway.
    Coba juga perjalanan ±10 km, yang dari laptop kena 503 karena jaringan lambat. Di Railway
    hasilnya seharusnya 200:
