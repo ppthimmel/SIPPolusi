@@ -124,13 +124,22 @@ expect_route() {
 }
 
 expect_route GET  /healthz                       200 '{"status":"ok","service":"gateway"}'
-expect_route POST /v1/routes                     200 'backend /v1/routes '
+expect_route POST /v1/routes                     200 'cache_api /v1/routes '
+expect_route GET  '/v1/exposure-surface?bbox=106.8,-6.2,106.81,-6.19&zoom=15' 200 'cache_api /v1/exposure-surface?bbox=106.8,-6.2,106.81,-6.19&zoom=15 '
+expect_route POST /v1/routes/solve               200 'backend /v1/routes/solve '
 expect_route GET  /v1/osm/version                200 'cache_api /v1/osm/version '
 expect_route GET  '/v1/osm/roads?mode=walk'      200 'cache_api /v1/osm/roads?mode=walk '
 expect_route GET  /v1/pollution/windows          200 'cache_api /v1/pollution/windows '
 expect_route GET  /v1/other                      200 'backend /v1/other '
 expect_route GET  /health                        404 '{"error":{"code":"not_found"'
 expect_route GET  /                              404 '{"error":{"code":"not_found"'
+
+# The upstream receives when the gateway got the request (epoch seconds with ms).
+received_at=$(curl -s -X POST -o /dev/null -D - "http://127.0.0.1:$PORT/v1/routes" | grep -i '^x-seen-received-at:' | tr -d '\r' | cut -d' ' -f2)
+case "$received_at" in
+    [0-9]*.[0-9][0-9][0-9]) pass "X-Request-Received-At forwarded ($received_at)" ;;
+    *) fail "X-Request-Received-At not forwarded: '$received_at'" ;;
+esac
 
 nginx -s quit
 rm -f /etc/nginx/conf.d/zz-test-stubs.conf /etc/nginx/conf.d/default.conf

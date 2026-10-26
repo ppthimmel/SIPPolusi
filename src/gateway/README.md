@@ -8,7 +8,8 @@ service; NGINX forwards `/v1/*` to the backend over Railway's private network.
 |---|---|
 | `GET /healthz` | Gateway liveness, answered by NGINX itself (Railway health check). Never touches the backend. |
 | `/v1/osm/*`, `/v1/pollution/*` | Proxied unchanged to `CACHE_API_UPSTREAM` (the Cache API, `src/backend/osm/Dockerfile`). |
-| other `/v1/*` (e.g. `/v1/routes`) | Proxied unchanged to `BACKEND_UPSTREAM`. |
+| `POST /v1/routes`, `GET /v1/exposure-surface` (exact paths) | Proxied unchanged to `CACHE_API_UPSTREAM` (public route planning and heatmap, TI-SE-08). The Cache API's `/v1/routes/*` inspection endpoints are not routed there. |
+| other `/v1/*` | Proxied unchanged to `BACKEND_UPSTREAM`. |
 | anything else | `404` JSON error; internal endpoints such as the backend's `/health` are not exposed. |
 
 All proxied paths share the same timeouts: connect 5 s, read/send 10 s
@@ -16,7 +17,9 @@ All proxied paths share the same timeouts: connect 5 s, read/send 10 s
 is the only place that maps paths to services.
 
 Every response carries `X-Request-ID`; the same ID is sent to the backend and
-written to the access log.
+written to the access log. Upstreams also receive `X-Request-Received-At` (epoch
+seconds with millisecond precision, NGINX `$msec`), from which the Cache API
+counts its 8 s latency budget (design Table 3.5).
 
 Rate limiting (429), the final upstream-failure responses, and the private-only
 backend belong to TI-DO-05 and TI-DO-04; this service is their starting point.

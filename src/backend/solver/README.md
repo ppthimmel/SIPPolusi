@@ -196,8 +196,8 @@ Endpoint publik `POST /v1/routes` (TI-SE-08) nantinya menyajikan respons `/plan`
 Dari `src/backend/solver`, dengan venv dan dependensi dari [`../pollution`](../pollution/README.md#menguji):
 
 ```bash
-pytest -m "not cacheflow"                                                    # tanpa DB → 73 passed
-TEST_DATABASE_URL=postgresql://test:test@localhost:55432/test pytest         # semua → 79 passed
+pytest -m "not cacheflow"                                                    # tanpa DB → 74 passed
+TEST_DATABASE_URL=postgresql://test:test@localhost:55432/test pytest         # semua → 80 passed
 ```
 
 - **Uji kontrak** (`tests/test_contract.py`) menjalankan ketiga penyedia (mock, baseline, dan HTTP
