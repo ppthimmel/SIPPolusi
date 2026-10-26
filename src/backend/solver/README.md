@@ -118,7 +118,7 @@ menjalankan A* baseline in-process pada subgraf yang sama. Responsnya diberi pen
 | Solver tidak menjawab dalam batas waktu | `model_timeout` |
 | Layanan solver tidak dapat dihubungi | `model_unavailable` |
 | Solver galat / HTTP 5xx | `model_error` |
-| Jawaban tidak sesuai kontrak (JSON rusak, field hilang, ruas di luar subgraf, rute putus) | `model_invalid_response` |
+| Jawaban tidak sesuai kontrak (JSON rusak, field hilang, ruas di luar subgraf, rute putus, label rute saling bertentangan, rute berlabel baseline bukan rute tercepat) | `model_invalid_response` |
 | Solver menyatakan tidak ada rute, padahal planner menjamin tujuan dapat dicapai | `model_no_route` |
 
 Pada respons fallback:
@@ -141,6 +141,31 @@ Bila fallback ikut gagal, penyebab awalnya yang dilaporkan.
 Ini menyimpang dari Tabel 3.12, yang menetapkan 503 bila Route Model tidak dapat dihubungi. Alasannya,
 baseline sekarang berjalan di Backend (`route_model`), bukan di layanan Route Model. Perilaku desain
 tetap tersedia dengan `ROUTE_SOLVER_FALLBACK=none`.
+
+## Pemeriksaan label rute
+
+Label pada jawaban solver diperiksa, tidak langsung dipercaya, agar rute tidak pernah ditampilkan
+dengan asal-usul yang salah. Pemeriksaan ini berlaku untuk semua penyedia:
+
+- **Label harus konsisten** (`check_provenance`):
+  - `route_source: policy` wajib `preference_applied: true` dan tanpa `fallback_reason`;
+  - `route_source: baseline` wajib `preference_applied: false` dan memiliki `fallback_reason`.
+
+  Bila layanan HTTP tidak mengirim `preference_applied`, nilainya diturunkan dari `route_source`.
+- **Rute berlabel baseline harus rute tercepat** (`check_fastest`). Ini berlaku untuk rute
+  pembanding, dan untuk rute rekomendasi bila `route_source: baseline`. Backend menghitung waktu
+  tempuh tercepat subgraf sendiri dengan Dijkstra ([`paths.py`](paths.py)). Rute lain dengan waktu
+  yang sama juga diterima. Rute rekomendasi `policy` boleh lebih lambat, karena preferensi dapat
+  menukar waktu dengan paparan.
+- **Waktu.** Pencarian rute tercepat berjalan bersamaan dengan panggilan solver, di thread yang
+  dapat dibatalkan, sehingga biasanya tidak menambah latensi. Pencarian ini dibatasi
+  `deadline_ms + grace`; bila lewat, hasilnya `solver_timeout`. Bila solver gagal lebih dulu,
+  pencarian dihentikan.
+- **Pengecualian.** Pencarian ini tidak dijalankan untuk penyedia `baseline` in-process, karena
+  rutenya sudah rute tercepat menurut konstruksinya.
+
+Pelanggaran dianggap `invalid_solver_response`: fallback dengan `model_invalid_response`, atau 503
+bila tidak ada fallback.
 
 ## Pencatatan (log)
 
@@ -168,9 +193,9 @@ Respons galat di bawah muncul bila tidak ada fallback.
 | 503 | `route_service_unavailable` | `solver_timeout` | Solver tidak menjawab dalam `deadline_ms + grace` |
 | 503 | `route_service_unavailable` | `solver_unreachable` | Layanan solver tidak dapat dihubungi |
 | 503 | `route_service_unavailable` | `solver_error` | Solver gagal, HTTP 5xx/4xx, atau melempar galat apa pun |
-| 503 | `route_service_unavailable` | `invalid_solver_response` | Jawaban melanggar kontrak: ruas tidak ada di subgraf, tidak bersambung, arah dilarang, atau format salah |
+| 503 | `route_service_unavailable` | `invalid_solver_response` | Jawaban melanggar kontrak: ruas tidak ada di subgraf, tidak bersambung, arah dilarang, format salah, label rute bertentangan, atau rute berlabel baseline bukan rute tercepat |
+| 503 | `route_service_unavailable` | `solver_no_route` | Solver menyatakan tidak ada rute, termasuk saat tidak ada sisa waktu untuk fallback. Planner hanya meneruskan subgraf yang tujuannya dapat dicapai, jadi ini kegagalan solver, bukan perjalanan tanpa rute |
 | 503 | `route_service_unavailable` | `deadline_exceeded` | Batas latensi habis sebelum solver dipanggil |
-| 422 | `no_route_found` | `solver_no_route` | Solver menyatakan tidak ada rute |
 | 422 | `no_route_found` | `same_node` | Titik asal dan tujuan ter-snap ke simpul yang sama |
 
 Galat validasi (400), wilayah studi, dan snap (422), serta cache (503 `cache_unavailable`)
@@ -196,8 +221,8 @@ Endpoint publik `POST /v1/routes` (TI-SE-08) nantinya menyajikan respons `/plan`
 Dari `src/backend/solver`, dengan venv dan dependensi dari [`../pollution`](../pollution/README.md#menguji):
 
 ```bash
-pytest -m "not cacheflow"                                                    # tanpa DB → 73 passed
-TEST_DATABASE_URL=postgresql://test:test@localhost:55432/test pytest         # semua → 79 passed
+pytest -m "not cacheflow"                                                    # tanpa DB → 92 passed
+TEST_DATABASE_URL=postgresql://test:test@localhost:55432/test pytest         # semua → 98 passed
 ```
 
 - **Uji kontrak** (`tests/test_contract.py`) menjalankan ketiga penyedia (mock, baseline, dan HTTP

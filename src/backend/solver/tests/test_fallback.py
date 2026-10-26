@@ -6,7 +6,6 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
-from osm.errors import NoRouteFound
 from solver.config import SolverSettings
 from solver.contract import RouteServiceUnavailable, SolverError
 from solver.mock import MockSolver
@@ -44,8 +43,10 @@ async def test_fallback_disabled_keeps_the_design_error(osm_repo, pollution_repo
     with pytest.raises(RouteServiceUnavailable) as exc:
         await solve(MockSolver("error"), osm_repo, pollution_repo, settings, fallback="none")
     assert exc.value.reason == "solver_error"
-    with pytest.raises(NoRouteFound):
+    # The planner found a reachable subgraph, so "no route" is the solver's failure: 503, not 422.
+    with pytest.raises(RouteServiceUnavailable) as exc:
         await solve(MockSolver("no_route"), osm_repo, pollution_repo, settings, fallback="none")
+    assert exc.value.reason == "solver_no_route"
 
 
 async def test_no_fallback_when_no_time_is_left(osm_repo, pollution_repo, settings):

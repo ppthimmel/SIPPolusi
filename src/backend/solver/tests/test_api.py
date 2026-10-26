@@ -49,7 +49,7 @@ def test_provider_changes_without_endpoint_change(make_client):
 @pytest.mark.parametrize("fault, status, code, reason", [
     ("error", 503, "route_service_unavailable", "solver_error"),
     ("invalid", 503, "route_service_unavailable", "invalid_solver_response"),
-    ("no_route", 422, "no_route_found", "solver_no_route"),
+    ("no_route", 503, "route_service_unavailable", "solver_no_route"),
 ])
 def test_faults_are_structured(make_client, fault, status, code, reason):
     with make_client(solver=MockSolver(fault)) as c:
