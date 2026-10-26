@@ -3,6 +3,8 @@
 !osm
 !pollution
 !planner
+!solver
+!route_model
 **/__pycache__
 **/*.pyc
 **/.pytest_cache

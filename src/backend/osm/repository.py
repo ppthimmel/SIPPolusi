@@ -179,6 +179,13 @@ LIMIT $3
 """
 
 
+_SQL_EDGE_GEOMETRIES = """
+SELECT edge_id, ST_AsGeoJSON(geom, 6)::json -> 'coordinates' AS coordinates
+FROM osm.road_edge
+WHERE edge_id = ANY($1::bigint[]) AND graph_version = $2
+"""
+
+
 def _like_pattern(query: str) -> str:
     escaped = query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
     return f"%{escaped}%"
@@ -337,6 +344,14 @@ class OsmRepository:
             )
             for r in rows
         ]
+
+    async def read_edge_geometries(self, edge_ids: Sequence[int], graph_version: str) -> dict[int, list[list[float]]]:
+        """[[lon, lat], ...] from u to v for each edge_id of graph_version (route geometry)."""
+        if not edge_ids:
+            return {}
+        async with self._db.connection() as conn:
+            rows = await conn.fetch(_SQL_EDGE_GEOMETRIES, list(edge_ids), graph_version)
+        return {r["edge_id"]: r["coordinates"] for r in rows}
 
     async def ping(self) -> bool:
         return await self._db.ping()

@@ -1,4 +1,5 @@
-# Runs only the Cache API (/v1/osm and /v1/pollution), kept apart from the root docker-compose.yml.
+# Runs only the Cache API (/v1/osm, /v1/pollution, /v1/routes/solver-input, /v1/routes/solve),
+# kept apart from the root docker-compose.yml.
 #   docker compose -f src/backend/osm/docker-compose.yml up --build -d
 # DATABASE_URL (and optional OSM_* / POLLUTION_* settings) come from src/backend/.env.
 services:

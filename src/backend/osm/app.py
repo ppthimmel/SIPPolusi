@@ -1,5 +1,5 @@
-"""Standalone FastAPI app for the cache endpoints (/v1/osm, /v1/pollution) and the
-request planner (/v1/routes/solver-input).
+"""Standalone FastAPI app for the cache endpoints (/v1/osm, /v1/pollution), the
+request planner (/v1/routes/solver-input) and route solving (/v1/routes/solve).
 
 Run from src/backend:
     uvicorn osm.app:app --reload
@@ -24,6 +24,10 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from planner.router import router as planner_router
+from solver.config import SolverSettings, get_solver_settings
+from solver.contract import RouteSolver
+from solver.factory import make_solver
+from solver.router import router as solver_router
 from pollution.config import get_pollution_settings
 from pollution.repository import PollutionRepository
 from pollution.router import router as pollution_router
@@ -50,6 +54,10 @@ async def osm_lifespan(app: FastAPI) -> AsyncIterator[None]:
     app.state.osm_repository = osm_repository
     app.state.pollution_repository = PollutionRepository(
         db, osm_repository, get_pollution_settings().stale_after_s)
+    solver_settings = get_solver_settings()
+    app.state.solver_settings = solver_settings
+    app.state.route_solver = make_solver(solver_settings)
+    logger.info("Route solver provider: %s", app.state.route_solver.name)
     try:
         yield
     finally:
@@ -60,8 +68,10 @@ def create_app(
     repository: OsmRepository | None = None,
     settings: OsmSettings | None = None,
     pollution_repository: PollutionRepository | None = None,
+    solver: RouteSolver | None = None,
+    solver_settings: SolverSettings | None = None,
 ) -> FastAPI:
-    """Build the app. Passing repositories (and settings) skips the database, for tests."""
+    """Build the app. Passing repositories (and settings, solver) skips the database, for tests."""
     if repository is None:
         lifespan = osm_lifespan
     else:
@@ -70,6 +80,8 @@ def create_app(
             app.state.osm_settings = settings or get_settings()
             app.state.osm_repository = repository
             app.state.pollution_repository = pollution_repository
+            app.state.solver_settings = solver_settings or SolverSettings(_env_file=None)
+            app.state.route_solver = solver or make_solver(app.state.solver_settings)
             yield
 
     app = FastAPI(
@@ -85,6 +97,7 @@ def create_app(
     app.include_router(router)
     app.include_router(pollution_router)
     app.include_router(planner_router)
+    app.include_router(solver_router)
 
     @app.get("/health", response_model=HealthOut, tags=["health"])
     async def health():
