@@ -29,6 +29,7 @@ const meta: RouteMetadata = {
   fallbackReason: null,
   downscalingVersion: null,
   routePolicyVersion: null,
+  graphVersion: null,
   deltaTravelTimeMin: null,
   deltaExposurePct: null,
   disclaimer: null,

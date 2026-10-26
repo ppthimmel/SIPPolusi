@@ -5,7 +5,20 @@
 export type Mode = "walk" | "bike";
 export type Pollutant = "pm25" | "no2";
 export type RouteSource = "policy" | "baseline";
-export type FallbackReason = "policy_timeout" | "policy_error" | "invalid_route";
+/** Why the recommended route is the fastest (baseline) route. The model_* values and
+ *  policy_unavailable are what the Backend sends (TI-SE-07/08: Backend fallback and
+ *  the in-process baseline provider); the policy_* / invalid_route values are the
+ *  Route Model's own fallback reasons named in the design (Kode 3.2). */
+export type FallbackReason =
+  | "model_timeout"
+  | "model_unavailable"
+  | "model_error"
+  | "model_invalid_response"
+  | "model_no_route"
+  | "policy_unavailable"
+  | "policy_timeout"
+  | "policy_error"
+  | "invalid_route";
 export type HeatLayer = "combined" | "pm25" | "no2";
 
 export interface Point {
@@ -54,6 +67,8 @@ export interface RouteMetadata {
   fallbackReason: FallbackReason | null;
   downscalingVersion: string | null;
   routePolicyVersion: string | null;
+  /** Version of the OSM road graph the route was computed on. */
+  graphVersion: string | null;
   deltaTravelTimeMin: number | null;
   deltaExposurePct: number | null;
   disclaimer: string | null;

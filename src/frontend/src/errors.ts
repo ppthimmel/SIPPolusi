@@ -112,6 +112,18 @@ export function describeRouteError(err: unknown): ErrorView {
         message: "Layanan pencarian rute tidak merespons. Coba lagi beberapa saat lagi.",
         action: "retry",
       });
+    case "payload_too_large":
+      return make({
+        title: "Permintaan terlalu besar",
+        message: "Server menolak permintaan karena ukurannya melebihi batas. Muat ulang halaman, lalu coba lagi.",
+        action: "retry",
+      });
+    case "upstream_unavailable":
+      return make({
+        title: "Layanan sedang tidak dapat dihubungi",
+        message: "Server sedang tidak dapat dihubungi. Tidak ada hasil yang ditampilkan. Coba lagi beberapa saat lagi.",
+        action: "retry",
+      });
     case "upstream_timeout":
       return make({
         title: "Server terlalu lama merespons",

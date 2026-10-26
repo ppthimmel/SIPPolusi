@@ -14,7 +14,7 @@ const PORT = Number(process.env.PORT ?? 8000);
 
 const ROUTE_SCENARIOS = {
   ok: "Rute rendah paparan + tercepat, data terbaru",
-  fallback: "route_source=baseline, policy_timeout",
+  fallback: "route_source=baseline, model_timeout",
   stale: "data_stale=true (time window 5 jam lalu)",
   partial: "missing_edge_count=7, keyakinan rendah",
   same_route: "Rute rekomendasi identik dengan rute tercepat",
@@ -132,12 +132,18 @@ function buildRoutes(req, scenario) {
       time_window_start: windowStart(scenario === "stale" ? 5 : 1),
       data_stale: scenario === "stale",
       missing_edge_count: scenario === "partial" ? 7 : 0,
-      fallback_reason: fb ? "policy_timeout" : null,
-      model_version: { downscaling: "12", route_policy: "4" },
+      route_source: fb ? "baseline" : "policy",
+      preference_applied: !fb,
+      fallback_reason: fb ? "model_timeout" : null,
+      graph_version: "jakarta-20261005",
+      model_version: { downscaling: "12", route_policy: fb ? "astar-baseline" : "4" },
       comparison: {
         delta_travel_time_min: rec.travel_time_min - fastMin,
         delta_exposure_pct: ((rec.exposure_index_min - fastExp) / fastExp) * 100,
       },
+      crs: "urn:ogc:def:crs:OGC::CRS84",
+      coordinate_order: ["lon", "lat"],
+      units: { travel_time_min: "min", distance_m: "m", exposure_index_min: "index·min", exposure_ug_min_m3: "µg·min/m³" },
       disclaimer: DISCLAIMER,
     },
   };

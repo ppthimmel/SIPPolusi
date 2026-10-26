@@ -175,7 +175,17 @@ function parseRouteFeature(feature: unknown): { result: RouteResult; unit: Expos
   };
 }
 
-const FALLBACK_REASONS: readonly FallbackReason[] = ["policy_timeout", "policy_error", "invalid_route"];
+const FALLBACK_REASONS: readonly FallbackReason[] = [
+  "model_timeout",
+  "model_unavailable",
+  "model_error",
+  "model_invalid_response",
+  "model_no_route",
+  "policy_unavailable",
+  "policy_timeout",
+  "policy_error",
+  "invalid_route",
+];
 
 function parseModelVersion(v: unknown): { downscaling: string | null; routePolicy: string | null } {
   if (isObj(v)) {
@@ -225,6 +235,7 @@ export function parseRouteResponse(body: unknown): RouteResponse {
     fallbackReason: fallback,
     downscalingVersion: version.downscaling,
     routePolicyVersion: version.routePolicy,
+    graphVersion: str(meta.graph_version),
     deltaTravelTimeMin: num(delta.delta_travel_time_min),
     deltaExposurePct: num(delta.delta_exposure_pct),
     disclaimer: str(meta.disclaimer),

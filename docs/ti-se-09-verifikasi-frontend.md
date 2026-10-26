@@ -5,24 +5,28 @@ dengan apa, dan apa yang masih perlu dilengkapi sebelum issue ditutup.
 
 ## Kontrak yang dipakai
 
-Backend (`/v1/routes`) masih berupa placeholder dan belum mengikuti kontrak
-TI-SE-08, sehingga antarmuka dibangun terhadap kontrak pada dokumen desain
-subbab 3.5.2 (`IRouteQuery`, `IExposureSurface`, Tabel 3.16) dan diperiksa
-terhadap mock (`src/frontend/mock/server.mjs`). Asumsi yang perlu dikonfirmasi
-saat Backend siap:
+Antarmuka awalnya dibangun terhadap kontrak dokumen desain subbab 3.5.2
+(`IRouteQuery`, `IExposureSurface`, Tabel 3.16) dan mock
+(`src/frontend/mock/server.mjs`), karena Backend belum siap. Kontrak itu kini
+diimplementasikan Backend (TI-SE-08: `POST /v1/routes` dan `GET /v1/exposure-surface`
+di Cache API, diteruskan API Gateway) dan antarmuka sudah diuji terhadapnya (lihat
+"Uji dengan Backend asli"). Asumsi awal dan hasil pemeriksaannya:
 
-| Hal | Asumsi di antarmuka |
-|---|---|
-| Satuan paparan | Memakai `exposure_index_min` (indeks·menit) bila ada; bila hanya `exposure_ug_min_m3` (contoh respons di dokumen), satuan ditampilkan sebagai µg/m³·menit. |
-| Format `bbox` | `GET /v1/exposure-surface?bbox=minLon,minLat,maxLon,maxLat&zoom=N`. |
-| Zoom ≥ 14 | Bila bbox > 25 km², antarmuka meminta `zoom=13` (sel agregat) agar tidak menerima 400. |
-| Metadata heatmap | `metadata.time_window_start` dan `metadata.data_stale` pada respons exposure-surface (opsional; label waktu tidak tampil bila tidak ada). |
-| Nama jalan | `properties.name` pada fitur exposure-surface (opsional). |
-| Asal/tujuan | Dipilih di peta, diseret, atau diketik sebagai `lat, lon`. Pencarian nama tempat (geocoding) tidak ada di kontrak, jadi belum ada. |
+| Hal | Asumsi di antarmuka | Hasil terhadap Backend |
+|---|---|---|
+| Satuan paparan | Memakai `exposure_index_min` (indeks·menit) bila ada; bila hanya `exposure_ug_min_m3`, satuan µg/m³·menit. | Sesuai: Backend mengirim keduanya, antarmuka memakai indeks·menit. |
+| Format `bbox` | `GET /v1/exposure-surface?bbox=minLon,minLat,maxLon,maxLat&zoom=N`. | Sesuai. |
+| Zoom ≥ 14 | Bila bbox > 25 km², antarmuka meminta `zoom=13` (sel agregat) agar tidak menerima 400. | Sesuai batas Backend. Diperiksa sampai layar 2560 × 1440: semua permintaan 200. |
+| Metadata heatmap | `metadata.time_window_start` dan `metadata.data_stale`. | Sesuai. |
+| Nama jalan | `properties.name` pada fitur exposure-surface (opsional). | Backend tidak mengirim nama jalan; label nama tidak tampil. |
+| Alasan fallback | `policy_timeout`, `policy_error`, `invalid_route` (contoh Kode 3.2). | **Disesuaikan**: Backend mengirim `model_timeout`, `model_unavailable`, `model_error`, `model_invalid_response`, `model_no_route`, `policy_unavailable`. Semua kini punya teks sendiri. |
+| Versi data jalan | Tidak ditampilkan. | **Ditambahkan**: `metadata.graph_version` tampil sebagai "Versi data jalan (OpenStreetMap)". |
+| Asal/tujuan | Dipilih di peta, diseret, atau diketik sebagai `lat, lon`. Pencarian nama tempat (geocoding) tidak ada di kontrak, jadi belum ada. | Tetap. |
 
 ## Keadaan yang diuji
 
-"Unit" = `npm test` (Vitest, 89 kasus). "Browser" = dijalankan di peramban
+"Unit" = `npm test` (Vitest, 94 kasus, termasuk `src/contract.test.ts` yang membaca
+respons asli Backend di `src/fixtures/ti-se-08/`). "Browser" = dijalankan di peramban
 terhadap mock; hasil dibaca dari DOM/peta dan, untuk tata letak, dari tangkapan layar.
 
 ### Pemuatan dan status
@@ -77,15 +81,48 @@ terhadap mock; hasil dibaca dari DOM/peta dan, untuk tata letak, dari tangkapan 
   = keyakinan rendah, abu-abu = tanpa estimasi.
 - Satuan selalu ditulis: menit, km, indeks·menit, µg/m³.
 
+## Uji dengan Backend asli (TI-SE-08)
+
+Tanggal 2026-10-26. Rantai lengkap dijalankan secara lokal:
+
+```
+Data Worker (osm_cache, spatial_model) → PostgreSQL + PostGIS (testdb)
+  → Cache API (feat/ti-se-08, ROUTE_SOLVER_PROVIDER=mock) → API Gateway (src/gateway)
+  → npm run dev (BACKEND_URL = gateway) → peramban
+```
+
+Data uji berupa graf jalan 20 × 20 (400 simpul, 760 ruas, ±110 m per ruas) di sekitar Tanah Abang,
+ditulis kode Data Worker. Graf ini memiliki satu time window complete dengan pita polusi diagonal
+(indeks 0,57 sampai 3,0).
+
+| # | Keadaan | Hasil | Tangkapan layar |
+|---|---|---|---|
+| 1 | Isian perjalanan, prioritas condong ke bersih (α 0,20 · β 0,80) | Tombol aktif setelah dua titik valid | [01](ti-se-09/01-isian-perjalanan.jpg) |
+| 2 | Rute ditemukan | Banner "−12,7% paparan … waktu tempuh yang sama"; kartu rute rendah paparan (garis hijau) dan rute tercepat (garis putus-putus) dengan satuan menit, km, indeks·menit; heatmap per ruas dengan legenda | [02](ti-se-09/02-dua-rute-dan-heatmap.jpg) |
+| 3 | Sumber data dan versi | Jam data (20.00 WIB), sumber rute, versi model downscaling dan rute, versi data jalan, ID permintaan dari gateway, disclaimer server | [03](ti-se-09/03-sumber-data-dan-versi.jpg) |
+| 4 | Model rute galat (`ROUTE_SOLVER_FAULT=error`) → fallback Backend | "Memakai metode cadangan: Model utama mengalami galat …"; lencana "Metode cadangan"; tidak ada klaim prioritas diterapkan | [04](ti-se-09/04-fallback-model-galat.jpg) |
+| 5 | Tujuan jauh dari jalan → 422 `point_not_on_network` | Kolom Tujuan berbingkai merah dengan pesan Backend dan saran menggeser titik | [05](ti-se-09/05-galat-titik-tujuan.jpg) |
+| 6 | Window ditandai `writing` → 503 `cache_unavailable` | "Data kualitas udara belum tersedia" dengan ID permintaan; tidak ada rute digambar; heatmap lama diredupkan dan diberi label "data lama (20.00 WIB), bukan kondisi terbaru" | [06](ti-se-09/06-cache-kosong-heatmap-lama.jpg) |
+| 7 | Tampilan ponsel (375 × 812) | Lembar bawah dengan kartu rute; peta dengan kedua rute dan heatmap | [07](ti-se-09/07-ponsel-hasil-rute.jpg) |
+
+Pemeriksaan tambahan di peramban:
+- Permintaan heatmap pada layar 1920 × 1080 dan 2560 × 1440 saat peta diperkecil semuanya 200.
+- Ganti lapisan tidak memicu permintaan baru.
+- Galat 413 `payload_too_large` dan 502 `upstream_unavailable` (dari gateway) kini memiliki teks sendiri
+  (`src/contract.test.ts`).
+
+Di Railway, cache polusi belum memiliki time window complete, jadi permintaan rute di sana
+akan menampilkan keadaan nomor 6 sampai Data Worker menulis window pertama.
+
 ## Yang belum bisa dibuktikan dari sini
 
 - **Uji kegunaan internal** perlu penguji manusia; belum dilakukan.
   Skenario yang disarankan: (1) cari rute dan jelaskan arti banner selisih,
   (2) bedakan rute rendah paparan dan tercepat tanpa membaca legenda, (3)
   jelaskan arti area bergaris, (4) pulihkan diri dari galat titik tujuan.
-- **Tangkapan layar/rekaman alur** perlu diambil dari peramban dengan mock yang
-  sama (`npm run mock` + `npm run dev`, skenario di atas).
-- **Uji dengan Backend asli** menunggu kontrak TI-SE-08 diimplementasikan.
+- **Rekaman alur** (video) belum dibuat; tangkapan layar di atas mencakup alur utama dan
+  keadaan galat terhadap Backend asli. Keadaan lain (rate limit, timeout, data parsial)
+  hanya dapat dibuat dengan mock.
 - Belum diperiksa dengan pembaca layar sungguhan; yang dipenuhi: elemen form
   standar, label untuk setiap kontrol, target sentuh ≥ 44 px, fokus terlihat,
   pesan galat `role="alert"`, dan pembeda rute yang tidak hanya bergantung warna.

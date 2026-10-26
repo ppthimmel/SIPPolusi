@@ -16,6 +16,12 @@ import type { FallbackReason, Mode, RouteRequest, RouteResponse, RouteResult } f
 const MODE_LABEL: Record<Mode, string> = { walk: "Jalan kaki", bike: "Sepeda" };
 
 const FALLBACK_TEXT: Record<FallbackReason, string> = {
+  model_timeout: "Model utama tidak merespons tepat waktu",
+  model_unavailable: "Model utama sedang tidak dapat dihubungi",
+  model_error: "Model utama mengalami galat",
+  model_invalid_response: "Model utama menghasilkan rute yang tidak valid",
+  model_no_route: "Model utama tidak menghasilkan rute",
+  policy_unavailable: "Model utama belum tersedia",
   policy_timeout: "Model utama tidak merespons tepat waktu",
   policy_error: "Model utama mengalami galat",
   invalid_route: "Model utama menghasilkan rute yang tidak valid",
@@ -215,6 +221,7 @@ function detailSection(resp: RouteResponse): HTMLElement {
   rows.push(["Sumber estimasi", "Model downscaling spasial dari data satelit, meteorologi, dan sensor darat"]);
   if (m.downscalingVersion) rows.push(["Versi model downscaling", m.downscalingVersion]);
   if (m.routePolicyVersion) rows.push(["Versi model rute", m.routePolicyVersion]);
+  if (m.graphVersion) rows.push(["Versi data jalan (OpenStreetMap)", m.graphVersion]);
   rows.push(["Ruas tanpa estimasi", fmtNumber(m.missingEdgeCount, 0)]);
   if (m.requestId) rows.push(["ID permintaan", m.requestId]);
 

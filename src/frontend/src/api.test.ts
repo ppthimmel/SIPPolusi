@@ -48,6 +48,17 @@ const json = (body: unknown, status = 200, headers: Record<string, string> = {})
   new Response(typeof body === "string" ? body : JSON.stringify(body), { status, headers });
 
 describe("parseRouteResponse (UT-FE-04)", () => {
+  it("keeps the Backend's fallback reasons and the road graph version", () => {
+    for (const reason of ["model_timeout", "model_unavailable", "model_error", "model_invalid_response", "model_no_route", "policy_unavailable"]) {
+      const body = sample();
+      Object.assign(body.metadata, { fallback_reason: reason, graph_version: "jakarta-20261005" });
+      expect(parseRouteResponse(body).metadata).toMatchObject({ fallbackReason: reason, graphVersion: "jakarta-20261005" });
+    }
+    const unknown = sample();
+    Object.assign(unknown.metadata, { fallback_reason: "something_new" });
+    expect(parseRouteResponse(unknown).metadata).toMatchObject({ fallbackReason: null, graphVersion: null });
+  });
+
   it("reads the contract's sample response", () => {
     const r = parseRouteResponse(sample());
     expect(r.recommended.travelTimeMin).toBe(28.4);

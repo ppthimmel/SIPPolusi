@@ -88,10 +88,24 @@ npm run dev
 
 `vite.config.ts` proxies `/v1/*` requests to `http://localhost:8000`.
 
-### Frontend without the route model (mock API)
+### Frontend against the real API
 
-The Backend's `/v1/routes` is still a placeholder, so the UI can be developed
-and checked against a mock of the documented API contract (subbab 3.5.2:
+`POST /v1/routes` and `GET /v1/exposure-surface` are served by the Cache API
+behind the API Gateway (TI-SE-08). Point the dev proxy at the gateway of the
+Compose stack:
+
+```bash
+cd src/frontend
+BACKEND_URL=http://localhost:8081 npm run dev
+```
+
+`src/frontend/src/contract.test.ts` checks the UI's parser against real
+responses of that API (`src/frontend/src/fixtures/ti-se-08/`).
+
+### Frontend with the mock API
+
+Every state (fallback, stale data, partial data, every error code, timeouts)
+can be reproduced on demand with a mock of the same contract (subbab 3.5.2:
 `POST /v1/routes`, `GET /v1/exposure-surface`, error codes of Tabel 3.16):
 
 ```bash
