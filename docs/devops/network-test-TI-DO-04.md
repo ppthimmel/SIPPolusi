@@ -398,10 +398,11 @@ Hasil:
 
 ### 6.7 Belum dilakukan
 
-1. Gabungkan PR ini ke `dev` (berkas `src/backend/osm/railway.json` harus ada
-   di branch yang di-deploy), lalu di service `cache-api` (development) isi
-   Settings → *Railway Config File* `/src/backend/osm/railway.json` dan
-   redeploy. Variabel `RAILWAY_DOCKERFILE_PATH` boleh dihapus.
+1. Di service `cache-api` (development) isi Settings → *Railway Config File*
+   `/src/backend/osm/railway.json`. Berkas ini baru ada di cabang `TI-DO-04`,
+   jadi sebelum PR di-review dan digabung, deploy dari checkout cabang ini:
+   `railway up --service cache-api --environment development --ci` dari akar
+   repositori. Variabel `RAILWAY_DOCKERFILE_PATH` boleh dihapus.
 2. Redeploy `frontend` agar `GATEWAY_UPSTREAM` berlaku. Frontend memanggil
    `gateway.railway.internal`; bila environment hanya IPv6, gateway perlu
    `listen [::]` dari PR ini (deployment gateway saat ini dari `dev`).
