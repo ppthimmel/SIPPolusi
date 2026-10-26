@@ -9,7 +9,8 @@ run_cancellable runs the work in a worker thread and hands it a CancelToken.
 When the awaiting task is cancelled (the call_route_solve timeout, or the client
 going away), the token is set and the work stops at its next token.check(),
 which raises Cancelled. Threads cannot be stopped from outside, so the work has
-to call check() regularly: once per node expansion in both searches.
+to call check() regularly: once per node expansion in both searches, and every
+CHECK_EVERY items while preparing their input.
 """
 from __future__ import annotations
 
@@ -19,6 +20,11 @@ from collections.abc import Callable
 from typing import TypeVar
 
 T = TypeVar("T")
+
+
+# Loops that prepare a large input before the search (adjacency, edge lists) take
+# a noticeable fraction of a second, so they check the token every CHECK_EVERY items.
+CHECK_EVERY = 1024
 
 
 class Cancelled(Exception):

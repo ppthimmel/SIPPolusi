@@ -12,12 +12,7 @@ from collections.abc import Callable
 
 from planner.models import PlannedEdge, SolverInput
 
-from .cancel import CancelToken
-
-
-# Building the adjacency of a large input takes a noticeable fraction of a second,
-# so the token is checked every CHECK_EVERY edges or nodes there too.
-CHECK_EVERY = 1024
+from .cancel import CHECK_EVERY, CancelToken
 
 
 def _arcs(edges: list[PlannedEdge],
