@@ -1,9 +1,41 @@
 # Rendered by the nginx image entrypoint (envsubst, filtered to the variables
 # below) after docker-entrypoint.d/10-validate-env.sh has checked them:
 #   PORT                   listen port; Railway injects it
-#   BACKEND_UPSTREAM       scheme://host:port of the backend, no path
-#   CACHE_API_UPSTREAM     scheme://host:port of the Cache API (/v1/osm, /v1/pollution)
+#   CACHE_API_UPSTREAM     scheme://host:port of the Cache API, which serves the
+#                          public API (POST /v1/routes, GET /v1/exposure-surface)
 #   NGINX_LOCAL_RESOLVERS  DNS servers from /etc/resolv.conf (image entrypoint)
+
+# Client address. Railway's edge sets X-Real-IP to the caller's address on every
+# request and replaces any copy the caller sent; the frontend passes it on
+# unchanged when it calls the gateway over the private network. The edge's own
+# addresses are not a documented range, so the header is taken from any peer:
+# on Railway nothing reaches the gateway except through the edge or the private
+# network. Locally (compose) a caller can set it, which the tests use. Without
+# the header $remote_addr stays the TCP peer. Do not put a CDN in front of the
+# gateway without revisiting this: every user would share the CDN's address.
+set_real_ip_from 0.0.0.0/0;
+set_real_ip_from ::/0;
+real_ip_header X-Real-IP;
+
+# Rate limiting per client address (Tabel 3.5 enforce_rate_limit, Tabel 3.15,
+# PNF-05). NGINX's leaky bucket with nodelay behaves as a token bucket: up to
+# burst requests above the rate pass at once, then one per refill interval.
+#   POST /v1/routes             20 per minute (one per 3 s), burst 5
+#   GET  /v1/exposure-surface   60 per minute (one per 1 s), burst 10 (Tabel 3.15
+#                               gives no burst; 10 covers a few quick pans)
+# 10 MB per zone holds about 160 000 addresses.
+limit_req_zone $binary_remote_addr zone=routes:10m rate=20r/m;
+limit_req_zone $binary_remote_addr zone=exposure_surface:10m rate=60r/m;
+limit_req_status 429;
+# Rejections are logged at info, below error_log's warn, so a refused client's
+# address does not reach stderr; the access log still records each 429.
+limit_req_log_level info;
+
+# Retry-After for a 429: one refill interval of the path's zone.
+map $uri $retry_after_s {
+    /v1/routes  3;
+    default     1;
+}
 
 # One JSON object per request on stdout. Railway reads "level"; 5xx are
 # errors, 4xx warnings. Only the path is logged: no query string, headers,
@@ -67,8 +99,17 @@ server {
     # instead of an HTML page. Upstream error responses pass through unchanged
     # (proxy_intercept_errors stays off).
     error_page 413 = @payload_too_large;
+    error_page 429 = @rate_limited;
     error_page 502 = @upstream_unavailable;
     error_page 504 = @upstream_timeout;
+
+    location @rate_limited {
+        default_type application/json;
+        # add_header here replaces the server-level one, so X-Request-ID is repeated.
+        add_header X-Request-ID $request_id always;
+        add_header Retry-After $retry_after_s always;
+        return 429 '{"error":{"code":"rate_limited","message":"Terlalu banyak permintaan. Coba lagi dalam $retry_after_s detik.","request_id":"$request_id"}}';
+    }
 
     location @payload_too_large {
         default_type application/json;
@@ -86,38 +127,28 @@ server {
     }
 
     # A variable in proxy_pass forces the per-request DNS lookup above.
-    # Without a URI part the original request URI is passed unchanged.
+    # The upstream gets the location's own path plus the raw query string, not
+    # the raw request path: NGINX matches locations on the normalised path, so
+    # /v1/osm/x/../../routes matches "= /v1/routes" and must not reach the
+    # Cache API in its raw form.
 
-    # Cache API (src/backend/osm/Dockerfile), a separate service.
-    location /v1/osm/ {
-        set $cache_api_upstream ${CACHE_API_UPSTREAM};
-        proxy_pass $cache_api_upstream;
-    }
-
-    location /v1/pollution/ {
-        set $cache_api_upstream ${CACHE_API_UPSTREAM};
-        proxy_pass $cache_api_upstream;
-    }
-
-    # Public route planning and exposure surface (TI-SE-08, IRouteQuery and
-    # IExposureSurface) are served by the Cache API. Exact matches only, so the
-    # Cache API's /v1/routes/* inspection endpoints stay off the public entry point.
+    # The public API is exactly the two endpoints the Frontend calls (TI-SE-08,
+    # IRouteQuery and IExposureSurface), both served by the Cache API
+    # (src/backend/osm/Dockerfile). Exact matches only: the Cache API's
+    # /v1/routes/* inspection endpoints and its internal /v1/osm/* and
+    # /v1/pollution/* reads stay on the private network, as does the backend.
     location = /v1/routes {
+        limit_req zone=routes burst=5 nodelay;
         # A RouteRequest is about 200 bytes; same limit as the Cache API (API_MAX_BODY_BYTES).
         client_max_body_size 16k;
         set $cache_api_upstream ${CACHE_API_UPSTREAM};
-        proxy_pass $cache_api_upstream;
+        proxy_pass $cache_api_upstream/v1/routes$is_args$args;
     }
 
     location = /v1/exposure-surface {
+        limit_req zone=exposure_surface burst=10 nodelay;
         set $cache_api_upstream ${CACHE_API_UPSTREAM};
-        proxy_pass $cache_api_upstream;
-    }
-
-    # Everything else under /v1/ goes to the backend.
-    location /v1/ {
-        set $backend_upstream ${BACKEND_UPSTREAM};
-        proxy_pass $backend_upstream;
+        proxy_pass $cache_api_upstream/v1/exposure-surface$is_args$args;
     }
 
     # Nothing else is exposed through the public entry point.
