@@ -496,7 +496,7 @@
             }
           },
           "422": {
-            "description": "Titik di luar wilayah studi, tidak dekat ruas yang dapat dilalui, atau tidak ada rute",
+            "description": "Titik di luar wilayah studi, tidak dekat ruas yang dapat dilalui, atau asal dan tujuan pada simpul yang sama",
             "headers": {
               "X-Request-ID": {
                 "description": "Penanda request untuk penelusuran log",
@@ -593,6 +593,16 @@
                         "message": "Layanan penentuan rute tidak merespons tepat waktu. Silakan coba lagi.",
                         "request_id": "7f3c2a9e-51d4-4b8e-9a0f-2c1e5d6b8a13",
                         "reason": "solver_timeout"
+                      }
+                    }
+                  },
+                  "solver_no_route": {
+                    "value": {
+                      "error": {
+                        "code": "route_service_unavailable",
+                        "message": "Layanan penentuan rute tidak dapat menghasilkan rute. Silakan coba lagi.",
+                        "request_id": "7f3c2a9e-51d4-4b8e-9a0f-2c1e5d6b8a13",
+                        "reason": "solver_no_route"
                       }
                     }
                   }

@@ -124,10 +124,30 @@ def test_route_not_available_is_422(make_client, body, code, reason):
     assert detail.get("reason") == reason
 
 
-def test_solver_without_route_is_422_when_no_fallback(make_client):
+def test_solver_without_route_is_503_when_no_fallback(make_client):
+    # The planner found a reachable subgraph: "no route" is the Route Model's failure, not the trip's.
     with make_client(solver=MockSolver("no_route"), solver_settings=SolverSettings(_env_file=None, fallback="none")) as c:
-        detail = error(c.post("/v1/routes", json=request_body()), 422, "no_route_found")
+        detail = error(c.post("/v1/routes", json=request_body()), 503, "route_service_unavailable")
     assert detail["reason"] == "solver_no_route"
+
+
+class MislabelledSolver:
+    """Contract-valid routes, but labelled policy while saying the preference was not applied."""
+
+    name = "http"
+
+    async def solve(self, request):
+        reply = await MockSolver().solve(request)
+        return SolverReply("ok", "policy", False, None, "svc", reply.recommended, reply.comparison)
+
+
+def test_mislabelled_model_reply_is_never_shown_as_policy(make_client):
+    with make_client(solver=MislabelledSolver()) as c:
+        resp = c.post("/v1/routes", json=request_body())
+    assert resp.status_code == 200, resp.text
+    fc = assert_valid_route_geojson(resp.json())
+    assert (fc.metadata.route_source, fc.metadata.preference_applied, fc.metadata.fallback_reason) == \
+        ("baseline", False, "model_invalid_response")
 
 
 # ------------------------------------------------------------------ upstream failure (503)

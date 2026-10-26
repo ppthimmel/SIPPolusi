@@ -102,7 +102,7 @@ ROUTE_RESPONSES: dict[int | str, dict[str, Any]] = {
     413: _errors("Body melebihi API_MAX_BODY_BYTES (bawaan 16 KiB)",
                  ("payload_too_large", error_example("payload_too_large", "Body permintaan melebihi batas 16384 byte."))),
     422: _errors(
-        "Titik di luar wilayah studi, tidak dekat ruas yang dapat dilalui, atau tidak ada rute",
+        "Titik di luar wilayah studi, tidak dekat ruas yang dapat dilalui, atau asal dan tujuan pada simpul yang sama",
         ("outside_study_area", error_example("outside_study_area", "Titik tujuan berada di luar wilayah studi (DKI Jakarta).")),
         ("point_not_on_network", error_example("point_not_on_network", "Titik tujuan: tidak ada simpul yang dapat "
                                                "dilalui moda walk dalam radius 200 m.")),
@@ -114,6 +114,8 @@ ROUTE_RESPONSES: dict[int | str, dict[str, Any]] = {
         *_CACHE_ERRORS,
         ("route_service_unavailable", error_example("route_service_unavailable", "Layanan penentuan rute tidak "
                                                     "merespons tepat waktu. Silakan coba lagi.", "solver_timeout")),
+        ("solver_no_route", error_example("route_service_unavailable", "Layanan penentuan rute tidak dapat "
+                                          "menghasilkan rute. Silakan coba lagi.", "solver_no_route")),
     ),
     **_GATEWAY_RESPONSES,
 }

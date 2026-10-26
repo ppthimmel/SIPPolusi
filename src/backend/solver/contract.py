@@ -30,6 +30,9 @@ SOLVER_UNREACHABLE = "solver_unreachable"    # cannot connect to the solver
 SOLVER_ERROR = "solver_error"                # the solver raised or answered 5xx/4xx
 INVALID_SOLVER_RESPONSE = "invalid_solver_response"  # reply breaks the contract
 DEADLINE_EXCEEDED = "deadline_exceeded"      # no time left before calling the solver
+# The solver found no route although the planner only hands over subgraphs where the
+# destination is reachable: a solver failure (503), not a trip without a route (422).
+SOLVER_NO_ROUTE = "solver_no_route"
 
 
 # What the user sees for each reason; details (exception, HTTP status, URL) only go to the log.
@@ -39,6 +42,7 @@ USER_MESSAGES = {
     SOLVER_ERROR: "Layanan penentuan rute mengalami galat. Silakan coba lagi.",
     INVALID_SOLVER_RESPONSE: "Layanan penentuan rute mengembalikan hasil yang tidak valid. Silakan coba lagi.",
     DEADLINE_EXCEEDED: "Batas waktu permintaan habis sebelum rute dapat dihitung. Silakan coba lagi.",
+    SOLVER_NO_ROUTE: "Layanan penentuan rute tidak dapat menghasilkan rute. Silakan coba lagi.",
 }
 
 # Backend fallback (TI-SE-07): solver failure reason -> fallback_reason in the response.
@@ -47,7 +51,7 @@ MODEL_FALLBACK_REASONS = {
     SOLVER_UNREACHABLE: "model_unavailable",
     SOLVER_ERROR: "model_error",
     INVALID_SOLVER_RESPONSE: "model_invalid_response",
-    "solver_no_route": "model_no_route",
+    SOLVER_NO_ROUTE: "model_no_route",
 }
 
 

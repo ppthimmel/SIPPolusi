@@ -31,8 +31,11 @@ Kontrak jawaban yang diharapkan dari layanan (Kode 3.3):
  "recommended": {"edge_ids": [ ... ]}, "comparison": {"edge_ids": [ ... ]}}
 ```
 
-Jawaban 422 `{"error": {"code": "no_route_found"}}` berarti tidak ada rute. Kode lain atau isi yang
-tidak sesuai kontrak diperlakukan sebagai kegagalan model.
+Jawaban 422 `{"error": {"code": "no_route_found"}}` berarti model tidak menemukan rute. Karena planner
+hanya meneruskan subgraf yang tujuannya dapat dicapai, jawaban ini diperlakukan sebagai kegagalan
+model (`solver_no_route`): fallback bila tersedia, selain itu 503. Kode lain, isi yang tidak sesuai
+kontrak, label yang bertentangan, atau rute berlabel baseline yang bukan rute tercepat juga
+diperlakukan sebagai kegagalan model.
 
 ## Hasil uji
 
@@ -115,6 +118,15 @@ Koordinat dan `edge_ids` dipotong (`…`).
            "message": "Layanan penentuan rute tidak merespons tepat waktu. Silakan coba lagi.",
            "request_id": "trace-D", "reason": "solver_timeout"}}
 ```
+
+## Perbaikan setelah masukan QA
+
+| Masukan | Perbaikan | Bukti uji (`tests/test_provenance.py`, 19 uji) |
+|---|---|---|
+| Label respons dapat menyesatkan: `preference_applied` dari model diterima tanpa dicocokkan dengan `route_source`, dan rute pembanding diberi label baseline tanpa diperiksa sebagai rute tercepat | `check_provenance` (label harus konsisten) dan `check_fastest`: rute pembanding, serta rekomendasi berlabel baseline, wajib setara dengan waktu tempuh tercepat. Waktu tercepat dihitung Backend secara bersamaan dengan panggilan model. Berlaku untuk semua penyedia; lihat README, "Pemeriksaan label rute" | Empat kombinasi label bertentangan → `invalid_solver_response` (dengan fallback → `model_invalid_response`); jawaban HTTP yang bertentangan ditolak dan yang tanpa `preference_applied` diturunkan; pembanding lebih lambat → ditolak; rekomendasi policy yang lebih lambat → diterima; rekomendasi baseline yang lebih lambat → ditolak; alternatif dengan waktu sama → diterima; pencarian tercepat berhenti bila model gagal dan dibatasi deadline |
+| Model menjawab `no_route` tanpa waktu tersisa untuk fallback → 422, seolah perjalanan tidak punya rute | `no_route` dari solver selalu `RouteServiceUnavailable(solver_no_route)`: dengan fallback → `model_no_route`, tanpa fallback atau tanpa waktu → **503** `route_service_unavailable`. 422 `no_route_found` kini hanya untuk `same_node` | `test_no_route_without_time_for_fallback_is_503`, `test_solver_no_route_is_503_not_422`, `test_fallback_disabled_keeps_the_design_error`, `test_faults_are_structured[no_route]` |
+
+Hasil `src/backend/solver` setelah perbaikan dan merge `dev`: **98 passed** (92 tanpa DB).
 
 ## Catatan
 

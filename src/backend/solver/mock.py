@@ -18,59 +18,14 @@ node expansion once that timeout cancels it.
 from __future__ import annotations
 
 import asyncio
-import heapq
-from collections.abc import Callable
 
-from planner.models import PlannedEdge, SolverInput
+from planner.models import SolverInput
 
 from .cancel import CancelToken, run_cancellable
 from .contract import SOLVER_ERROR, SolveRequest, SolverError, SolverReply
+from .paths import shortest_path
 
 MODEL_VERSION = "mock-1"
-
-
-def _arcs(edges: list[PlannedEdge]) -> dict[int, list[tuple[int, int, PlannedEdge]]]:
-    arcs: dict[int, list[tuple[int, int, PlannedEdge]]] = {}
-    for e in edges:
-        if e.u == e.v:
-            continue
-        arcs.setdefault(e.u, []).append((e.v, e.edge_id, e))
-        if e.bidirectional:
-            arcs.setdefault(e.v, []).append((e.u, e.edge_id, e))
-    for out in arcs.values():
-        out.sort(key=lambda a: (a[0], a[1]))
-    return arcs
-
-
-def shortest_path(si: SolverInput, cost: Callable[[PlannedEdge], float],
-                  token: CancelToken | None = None) -> tuple[int, ...] | None:
-    """Edge ids of the cheapest origin -> destination path, or None when unreachable.
-    Raises Cancelled at the next expansion once token is cancelled."""
-    start, goal = si.origin.node_id, si.destination.node_id
-    arcs = _arcs(si.edges)
-    best = {start: 0.0}
-    previous: dict[int, tuple[int, int]] = {}
-    queue = [(0.0, start)]
-    while queue:
-        if token is not None:
-            token.check()
-        dist, node = heapq.heappop(queue)
-        if dist > best.get(node, float("inf")):
-            continue
-        if node == goal:
-            path = []
-            while node != start:
-                parent, edge_id = previous[node]
-                path.append(edge_id)
-                node = parent
-            return tuple(reversed(path))
-        for nxt, edge_id, edge in arcs.get(node, ()):
-            candidate = dist + cost(edge)
-            if candidate < best.get(nxt, float("inf")):
-                best[nxt] = candidate
-                previous[nxt] = (node, edge_id)
-                heapq.heappush(queue, (candidate, nxt))
-    return None
 
 
 class MockSolver:

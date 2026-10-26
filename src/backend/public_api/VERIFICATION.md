@@ -18,8 +18,8 @@ PostGIS 3.6.4 lokal. Uji runtime memakai image Cache API yang terhubung ke basis
 
 | Paket | Hasil |
 |---|---|
-| `src/backend/public_api` | **111 passed**: 104 tanpa DB (rute 30, permukaan paparan 36, OpenAPI 20, koleksi uji 13, contoh 5) + 7 alur di DB lokal |
-| `src/backend/solver`, `planner`, `pollution`, `osm` | 80, 37, 30, 115 passed (osm termasuk 15 uji integrasi ke Railway); `osm.verify`: **LULUS** |
+| `src/backend/public_api` | **112 passed**: 105 tanpa DB (rute 31, permukaan paparan 36, OpenAPI 20, koleksi uji 13, contoh 5) + 7 alur di DB lokal |
+| `src/backend/solver`, `planner`, `pollution`, `osm` | 99, 37, 30, 115 passed (osm termasuk 15 uji integrasi ke Railway); `osm.verify`: **LULUS** |
 | `src/data_worker` | 126 passed. Lima berkas uji tim lain (scraper) tidak terkumpul karena modul `requests` tidak ada di venv uji; kode `data_worker` tidak berubah |
 | Uji tim (`src/backend/tests`, Python 3.11) | 35 passed |
 | Container Cache API (Python 3.11) | `osm` 100, `pollution` 20, `planner` 35, `solver` 74, `public_api` 104 passed; uji yang butuh DB dilewati |
@@ -31,7 +31,8 @@ PostGIS 3.6.4 lokal. Uji runtime memakai image Cache API yang terhubung ke basis
 |---|---|---|
 | Request valid | Mock (rute model), fallback karena model galat, gzip, sama dengan `/plan`, data Data Worker | 200 `application/geo+json`, `Cache-Control: no-store`, lolos skema; fallback bertanda `route_source: baseline`, `fallback_reason: model_error` |
 | Validasi gagal | α + β ≠ 1, α < 0, moda `car`, polutan `co`, lintang 106, tujuan hilang, preferensi bukan objek, body array, JSON rusak, body kosong, `text/plain`, metode GET | 400 `invalid_request` (405 untuk GET), **cache tidak dibaca** |
-| Rute tidak tersedia | Luar wilayah studi, titik jauh dari jalan, asal = tujuan, solver menyatakan tidak ada rute (fallback mati) | 422 `outside_study_area`, `point_not_on_network`, `no_route_found` (`same_node`, `solver_no_route`) |
+| Rute tidak tersedia | Luar wilayah studi, titik jauh dari jalan, asal = tujuan | 422 `outside_study_area`, `point_not_on_network`, `no_route_found` (`same_node`) |
+| Label model (masukan QA TI-SE-07) | Model menyatakan tidak ada rute padahal subgraf terhubung (fallback mati); jawaban berlabel `policy` dengan `preference_applied: false` | 503 `route_service_unavailable` (`solver_no_route`); 200 fallback `model_invalid_response`, tidak pernah ditampilkan sebagai `policy` |
 | Kegagalan upstream | Route Model lambat (fallback mati), Route Model galat, cache kosong, DB tidak terjangkau, query timeout, exception tak terduga | 503 `route_service_unavailable` (`solver_timeout` < 2 s, `solver_error`), 503 `cache_unavailable` (`cache_empty`, `database_unavailable`, `query_timeout`), 500 `internal_error` tanpa detail internal |
 | Ukuran request | `Content-Length` 20 KB, chunked 41 KB, chunked kecil, batas 100 B | 413 `payload_too_large` tanpa membaca cache; body kecil diterima |
 

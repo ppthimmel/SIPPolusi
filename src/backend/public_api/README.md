@@ -76,6 +76,10 @@ Respons 200 (`application/geo+json`, `Cache-Control: no-store` karena berisi koo
   `route_source: "baseline"`, `preference_applied: false`, dan `fallback_reason` (`model_timeout`,
   `model_unavailable`, `model_error`, `model_invalid_response`, `model_no_route`). `notes`
   menjelaskannya kepada pengguna.
+- **Label rute diperiksa.** `route_source`, `preference_applied`, dan `fallback_reason` dari model
+  harus konsisten, dan setiap rute berlabel baseline harus rute tercepat. Jawaban yang melanggar
+  dianggap `model_invalid_response`, jadi rute tidak pernah ditampilkan dengan asal-usul yang salah
+  (lihat [`../solver/README.md`](../solver/README.md#pemeriksaan-label-rute)).
 
 ## `GET /v1/exposure-surface`
 
@@ -120,12 +124,12 @@ Semua galat memakai skema `{"error": {"code", "message", "request_id", "reason"?
 | 413 | `payload_too_large` | – | Body > 16 KiB | Gateway / Cache API |
 | 422 | `outside_study_area` | – | Titik di luar DKI Jakarta | Cache API |
 | 422 | `point_not_on_network` | – | Tidak ada simpul yang dapat dilalui dalam 200 m | Cache API |
-| 422 | `no_route_found` | `same_node`, `solver_no_route` | Asal dan tujuan ke simpul yang sama, atau tidak ada rute (tanpa fallback) | Cache API |
+| 422 | `no_route_found` | `same_node` | Asal dan tujuan ter-snap ke simpul yang sama | Cache API |
 | 429 | `rate_limited` | – | Rate limit (Tabel 3.15); **belum diaktifkan** di gateway | Gateway |
 | 500 | `internal_error` | – | Galat tak terduga; detail hanya di log | Cache API |
 | 502 | `upstream_unavailable` | – | Cache API tidak dapat dihubungi | Gateway |
 | 503 | `cache_unavailable` | `cache_empty`, `database_unavailable`, `query_timeout` | Cache kosong (belum ada time window complete) atau tidak dapat dibaca | Cache API |
-| 503 | `route_service_unavailable` | `solver_timeout`, `solver_unreachable`, `solver_error`, `invalid_solver_response`, `deadline_exceeded` | Route Model gagal dan fallback tidak tersedia | Cache API |
+| 503 | `route_service_unavailable` | `solver_timeout`, `solver_unreachable`, `solver_error`, `invalid_solver_response`, `solver_no_route`, `deadline_exceeded` | Route Model gagal dan fallback tidak tersedia. `solver_no_route`: model tidak menemukan rute padahal planner sudah memastikan tujuan dapat dicapai | Cache API |
 | 504 | `upstream_timeout` | – | Cache API tidak menjawab dalam 10 s | Gateway |
 
 Galat 400 dan 413 dikembalikan tanpa membaca cache. Pesan galat tidak pernah memuat nama
@@ -186,8 +190,8 @@ harus sama dengan `request_id` di body.
 Dari `src/backend/public_api`, dengan venv dan dependensi dari [`../pollution`](../pollution/README.md#menguji):
 
 ```bash
-pytest -m "not cacheflow"                                                    # tanpa DB → 104 passed
-TEST_DATABASE_URL=postgresql://test:test@localhost:55432/test pytest         # semua → 111 passed
+pytest -m "not cacheflow"                                                    # tanpa DB → 105 passed
+TEST_DATABASE_URL=postgresql://test:test@localhost:55432/test pytest         # semua → 112 passed
 ```
 
 Uji `cacheflow` memakai PostGIS lokal ([`../testdb`](../testdb/docker-compose.yml)) dan kode Data

@@ -58,10 +58,9 @@ async def test_unexpected_exception_is_not_a_500(osm_repo, pollution_repo, setti
     await expect_503("solver_error", solve(StubSolver(exc=KeyError("x")), osm_repo, pollution_repo, settings))
 
 
-async def test_no_route_is_422_with_reason(osm_repo, pollution_repo, settings):
-    with pytest.raises(NoRouteFound) as exc:
-        await solve(MockSolver("no_route"), osm_repo, pollution_repo, settings)
-    assert exc.value.reason == "solver_no_route"
+async def test_solver_no_route_is_503_not_422(osm_repo, pollution_repo, settings):
+    # The planner only hands over reachable subgraphs: the solver failed, the trip did not.
+    await expect_503("solver_no_route", solve(MockSolver("no_route"), osm_repo, pollution_repo, settings))
 
 
 async def test_unknown_edge_is_invalid_response(osm_repo, pollution_repo, settings):

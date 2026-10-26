@@ -128,8 +128,8 @@ Semua perintah Docker di bawah memakai path dari **root repo**. Kalau terminal m
 
    | Perintah | `osm` | `pollution` | `planner` | `solver` | `public_api` |
    |---|---|---|---|---|---|
-   | dengan `--env-file` | 115 passed | 20 passed, 10 skipped | 35 passed, 2 skipped | 74 passed, 6 skipped | 104 passed, 7 skipped |
-   | tanpa DB | 100 passed, 15 skipped | 20 passed, 10 skipped | 35 passed, 2 skipped | 74 passed, 6 skipped | 104 passed, 7 skipped |
+   | dengan `--env-file` | 115 passed | 20 passed, 10 skipped | 35 passed, 2 skipped | 93 passed, 6 skipped | 105 passed, 7 skipped |
+   | tanpa DB | 100 passed, 15 skipped | 20 passed, 10 skipped | 35 passed, 2 skipped | 93 passed, 6 skipped | 105 passed, 7 skipped |
 
    Tes `pollution`, `planner`, `solver`, dan `public_api` yang dilewati adalah uji alur tulis → baca; uji ini butuh
    database uji lokal dan kode Data Worker, jadi dijalankan di luar container (lihat
