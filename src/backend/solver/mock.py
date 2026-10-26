@@ -10,6 +10,10 @@ Behaves like the production Route Model without any AI service:
 Ties break on node id and edge id, so the same input always gives the same
 routes. ``fault`` (ROUTE_SOLVER_FAULT) makes every call fail in one way, for
 timeout and failure tests (FAULT_INJECTION, IT-K-04).
+
+Both searches run in a worker thread (solver.cancel), so the event loop stays
+free to enforce the call_route_solve timeout, and the search stops at its next
+node expansion once that timeout cancels it.
 """
 from __future__ import annotations
 
@@ -19,6 +23,7 @@ from collections.abc import Callable
 
 from planner.models import PlannedEdge, SolverInput
 
+from .cancel import CancelToken, run_cancellable
 from .contract import SOLVER_ERROR, SolveRequest, SolverError, SolverReply
 
 MODEL_VERSION = "mock-1"
@@ -37,14 +42,18 @@ def _arcs(edges: list[PlannedEdge]) -> dict[int, list[tuple[int, int, PlannedEdg
     return arcs
 
 
-def shortest_path(si: SolverInput, cost: Callable[[PlannedEdge], float]) -> tuple[int, ...] | None:
-    """Edge ids of the cheapest origin -> destination path, or None when unreachable."""
+def shortest_path(si: SolverInput, cost: Callable[[PlannedEdge], float],
+                  token: CancelToken | None = None) -> tuple[int, ...] | None:
+    """Edge ids of the cheapest origin -> destination path, or None when unreachable.
+    Raises Cancelled at the next expansion once token is cancelled."""
     start, goal = si.origin.node_id, si.destination.node_id
     arcs = _arcs(si.edges)
     best = {start: 0.0}
     previous: dict[int, tuple[int, int]] = {}
     queue = [(0.0, start)]
     while queue:
+        if token is not None:
+            token.check()
         dist, node = heapq.heappop(queue)
         if dist > best.get(node, float("inf")):
             continue
@@ -78,15 +87,20 @@ class MockSolver:
         if self.fault == "invalid":
             return SolverReply("ok", "policy", True, None, MODEL_VERSION, (-1,), (-1,))
 
-        si = request.solver_input
-        fastest = None if self.fault == "no_route" else shortest_path(si, lambda e: e.travel_time_s)
-        if fastest is None:
+        if self.fault == "no_route":
             return SolverReply("no_route", "policy", False, None, MODEL_VERSION)
+        return await run_cancellable(_routes, request.solver_input)
 
-        by_id = {e.edge_id: e for e in si.edges}
-        t_ref = sum(by_id[i].travel_time_s for i in fastest) or 1.0
-        e_ref = sum(by_id[i].exposure_index * by_id[i].travel_time_s for i in fastest) or 1.0
-        alpha, beta = si.preference.alpha, si.preference.beta
-        recommended = shortest_path(
-            si, lambda e: alpha * e.travel_time_s / t_ref + beta * e.exposure_index * e.travel_time_s / e_ref)
-        return SolverReply("ok", "policy", True, None, MODEL_VERSION, recommended or fastest, fastest)
+
+def _routes(token: CancelToken, si: SolverInput) -> SolverReply:
+    fastest = shortest_path(si, lambda e: e.travel_time_s, token)
+    if fastest is None:
+        return SolverReply("no_route", "policy", False, None, MODEL_VERSION)
+
+    by_id = {e.edge_id: e for e in si.edges}
+    t_ref = sum(by_id[i].travel_time_s for i in fastest) or 1.0
+    e_ref = sum(by_id[i].exposure_index * by_id[i].travel_time_s for i in fastest) or 1.0
+    alpha, beta = si.preference.alpha, si.preference.beta
+    recommended = shortest_path(
+        si, lambda e: alpha * e.travel_time_s / t_ref + beta * e.exposure_index * e.travel_time_s / e_ref, token)
+    return SolverReply("ok", "policy", True, None, MODEL_VERSION, recommended or fastest, fastest)
