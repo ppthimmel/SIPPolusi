@@ -1,4 +1,4 @@
-# `solver`: orkestrasi pemanggilan Route Model (TI-SE-06)
+# `solver`: orkestrasi dan integrasi Route Model (TI-SE-06, TI-SE-07)
 
 Lapisan yang memanggil penyelesai rute lewat satu antarmuka, `IRouteSolve`. Penyedianya bisa
 diganti lewat konfigurasi, jadi lapisan ini bisa dipakai sebelum Multi-Objective Route Model
@@ -9,8 +9,9 @@ Tabel 3.14–3.16 (`IRouteSolve`, kode galat), Kode 3.3, UT-BE-08, dan IT-K-04.
 RouteRequest ─► planner.build_solver_input (TI-SE-05)
              ─► compute_deadline: budget 8 000 ms − waktu terpakai − margin 500 ms
              ─► call_route_solve: solver.solve(...), batas waktu deadline_ms + 300 ms
-             ─► periksa rute terhadap subgraf, ambil geometri, hitung metrik
-             ─► SolveResult
+             ─► periksa rute terhadap subgraf
+             ─► gagal? fallback baseline bertanda eksplisit (TI-SE-07, bisa dimatikan)
+             ─► ambil geometri, hitung metrik ─► SolveResult ─► GeoJSON (Kode 3.2)
 ```
 
 ## Antarmuka `IRouteSolve` ([`contract.py`](contract.py))
@@ -100,20 +101,101 @@ Penyedia `http` tidak memakai thread: permintaan HTTP dibatalkan langsung oleh `
 | `ROUTE_SOLVER_BUDGET_MS` | `8000` | Batas latensi Backend |
 | `ROUTE_SOLVER_RESPONSE_MARGIN_MS` | `500` | Waktu yang disisihkan untuk menyusun respons |
 | `ROUTE_SOLVER_GRACE_MS` | `300` | Tambahan batas waktu di atas `deadline_ms` |
+| `ROUTE_SOLVER_FALLBACK` | `baseline` | `baseline` = pakai A* bila solver gagal (bertanda eksplisit); `none` = 503 sesuai desain (Tabel 3.12) |
+| `ROUTE_SOLVER_FALLBACK_TIMEOUT_MS` | `1500` | Batas waktu fallback |
+| `ROUTE_SOLVER_GATEWAY_TIMEOUT_MS` | `10000` | Batas waktu API Gateway; fallback hanya dijalankan bila masih ada sisa waktu di bawah batas ini |
 
 Waktu awal perhitungan diambil dari header `X-Request-Received-At` yang ditambahkan API Gateway.
 Bila header itu tidak ada, dipakai waktu permintaan tiba di Backend.
 
+## Fallback saat solver gagal (TI-SE-07)
+
+Dengan `ROUTE_SOLVER_FALLBACK=baseline` (bawaan), bila solver yang dikonfigurasi gagal, Backend
+menjalankan A* baseline in-process pada subgraf yang sama. Responsnya diberi penanda eksplisit:
+
+| Penyebab | `fallback_reason` |
+|---|---|
+| Solver tidak menjawab dalam batas waktu | `model_timeout` |
+| Layanan solver tidak dapat dihubungi | `model_unavailable` |
+| Solver galat / HTTP 5xx | `model_error` |
+| Jawaban tidak sesuai kontrak (JSON rusak, field hilang, ruas di luar subgraf, rute putus, label rute saling bertentangan, rute berlabel baseline bukan rute tercepat) | `model_invalid_response` |
+| Solver menyatakan tidak ada rute, padahal planner menjamin tujuan dapat dicapai | `model_no_route` |
+
+Pada respons fallback:
+- `route_source` bernilai `"baseline"` dan `preference_applied` bernilai `false`, baik di metadata
+  maupun di setiap Feature;
+- `solver` bernilai `"baseline"` dan `model_version` bernilai `"astar-baseline"`;
+- `fallback` (di `/solve`) mencatat penyedia yang gagal dan penyebabnya;
+- `notes` menjelaskan bahwa preferensi tidak diterapkan.
+
+Rute rekomendasi tidak pernah disajikan seolah-olah memperhitungkan preferensi.
+
+Fallback **tidak** dijalankan bila:
+- `ROUTE_SOLVER_FALLBACK=none`;
+- penyedianya sendiri `baseline`;
+- tidak ada sisa waktu di bawah batas API Gateway;
+- galatnya berasal dari validasi, snap, atau cache.
+
+Bila fallback ikut gagal, penyebab awalnya yang dilaporkan.
+
+Ini menyimpang dari Tabel 3.12, yang menetapkan 503 bila Route Model tidak dapat dihubungi. Alasannya,
+baseline sekarang berjalan di Backend (`route_model`), bukan di layanan Route Model. Perilaku desain
+tetap tersedia dengan `ROUTE_SOLVER_FALLBACK=none`.
+
+## Pemeriksaan label rute
+
+Label pada jawaban solver diperiksa, tidak langsung dipercaya, agar rute tidak pernah ditampilkan
+dengan asal-usul yang salah. Pemeriksaan ini berlaku untuk semua penyedia:
+
+- **Label harus konsisten** (`check_provenance`):
+  - `route_source: policy` wajib `preference_applied: true` dan tanpa `fallback_reason`;
+  - `route_source: baseline` wajib `preference_applied: false` dan memiliki `fallback_reason`.
+
+  Bila layanan HTTP tidak mengirim `preference_applied`, nilainya diturunkan dari `route_source`.
+- **Rute berlabel baseline harus rute tercepat** (`check_fastest`). Ini berlaku untuk rute
+  pembanding, dan untuk rute rekomendasi bila `route_source: baseline`. Backend menghitung waktu
+  tempuh tercepat subgraf sendiri dengan Dijkstra ([`paths.py`](paths.py)). Rute lain dengan waktu
+  yang sama juga diterima. Rute rekomendasi `policy` boleh lebih lambat, karena preferensi dapat
+  menukar waktu dengan paparan.
+- **Waktu.** Pencarian rute tercepat berjalan bersamaan dengan panggilan solver, di thread yang
+  dapat dibatalkan, sehingga biasanya tidak menambah latensi. Pencarian ini dibatasi
+  `deadline_ms + grace`; bila lewat, hasilnya `solver_timeout`. Bila solver gagal lebih dulu,
+  pencarian dihentikan.
+- **Pengecualian.** Pencarian ini tidak dijalankan untuk penyedia `baseline` in-process, karena
+  rutenya sudah rute tercepat menurut konstruksinya.
+
+Pelanggaran dianggap `invalid_solver_response`: fallback dengan `model_invalid_response`, atau 503
+bila tidak ada fallback.
+
+## Pencatatan (log)
+
+Satu baris per permintaan di logger `solver` (format `log_config`: teks lokal, JSON di Railway):
+
+```
+route_inference request_id=… solver=http outcome=fallback route_source=baseline model_version=astar-baseline
+  fallback_reason=model_timeout mode=walk alpha=0.4 beta=0.6 deadline_ms=1409 inference_ms=0.9
+  primary_ms=1513.0 reason=solver_timeout detail='no reply within 1509 ms'
+```
+
+- `outcome` bernilai `ok`, `fallback`, atau `failed`. `ok` dicatat di level INFO, yang lain WARNING.
+- Penyebab teknis (exception, HTTP status) hanya ada di `detail`; respons ke pengguna memakai pesan
+  umum.
+- **Koordinat tidak pernah dicatat** (PNF-06).
+
 ## Respons galat
+
+Pesan galat ke pengguna bersifat umum ("Layanan penentuan rute tidak merespons tepat waktu. Silakan
+coba lagi."). Nama exception, kode HTTP, dan URL layanan tidak pernah dikirim ke pengguna.
+Respons galat di bawah muncul bila tidak ada fallback.
 
 | Status | `code` | `reason` | Kapan |
 |---|---|---|---|
 | 503 | `route_service_unavailable` | `solver_timeout` | Solver tidak menjawab dalam `deadline_ms + grace` |
 | 503 | `route_service_unavailable` | `solver_unreachable` | Layanan solver tidak dapat dihubungi |
 | 503 | `route_service_unavailable` | `solver_error` | Solver gagal, HTTP 5xx/4xx, atau melempar galat apa pun |
-| 503 | `route_service_unavailable` | `invalid_solver_response` | Jawaban melanggar kontrak: ruas tidak ada di subgraf, tidak bersambung, arah dilarang, atau format salah |
+| 503 | `route_service_unavailable` | `invalid_solver_response` | Jawaban melanggar kontrak: ruas tidak ada di subgraf, tidak bersambung, arah dilarang, format salah, label rute bertentangan, atau rute berlabel baseline bukan rute tercepat |
+| 503 | `route_service_unavailable` | `solver_no_route` | Solver menyatakan tidak ada rute, termasuk saat tidak ada sisa waktu untuk fallback. Planner hanya meneruskan subgraf yang tujuannya dapat dicapai, jadi ini kegagalan solver, bukan perjalanan tanpa rute |
 | 503 | `route_service_unavailable` | `deadline_exceeded` | Batas latensi habis sebelum solver dipanggil |
-| 422 | `no_route_found` | `solver_no_route` | Solver menyatakan tidak ada rute |
 | 422 | `no_route_found` | `same_node` | Titik asal dan tujuan ter-snap ke simpul yang sama |
 
 Galat validasi (400), wilayah studi, dan snap (422), serta cache (503 `cache_unavailable`)
@@ -121,21 +203,30 @@ diteruskan apa adanya dari planner (TI-SE-05).
 
 ## Endpoint
 
-`POST /v1/routes/solve` menerima `RouteRequest` yang sama dengan `/v1/routes/solver-input`. Contoh
-request dan galat tersedia di `/docs`. Endpoint publik `POST /v1/routes` (TI-SE-08) nantinya
-menyusun GeoJSON FeatureCollection dari `SolveResult` ini.
+Keduanya menerima `RouteRequest` yang sama dengan `/v1/routes/solver-input`; contoh tersedia di `/docs`.
+
+| Endpoint | Respons |
+|---|---|
+| `POST /v1/routes/solve` | `SolveResult` (JSON internal, TI-SE-06) |
+| `POST /v1/routes/plan` | GeoJSON FeatureCollection (`application/geo+json`, Kode 3.2, TI-SE-07): dua Feature `recommended`/`comparison` dengan `route_source`, `preference_applied`, metrik, dan `edge_ids`; serta `metadata` berisi `route_source`, `fallback_reason`, `model_version` {`downscaling`, `route_policy`}, `data_stale`, `comparison`, `notes`, dan `disclaimer` |
+
+Endpoint publik `POST /v1/routes` (TI-SE-08) nantinya menyajikan respons `/plan` di path finalnya.
 
 **Keadaan saat ini.** Selama cache polusi Railway masih kosong, permintaan valid menjawab 503
-`cache_empty`. Hasil 200 dibuktikan di basis data lokal ([VERIFICATION.md](VERIFICATION.md)).
+`cache_empty`. Hasil 200 dibuktikan di basis data lokal: [VERIFICATION.md](VERIFICATION.md) (TI-SE-06) dan
+[VERIFICATION_TI-SE-07.md](VERIFICATION_TI-SE-07.md) (integrasi model, fallback, GeoJSON).
 
 ## Menguji
 
 Dari `src/backend/solver`, dengan venv dan dependensi dari [`../pollution`](../pollution/README.md#menguji):
 
 ```bash
-pytest -m "not cacheflow"                                                    # tanpa DB → 47 passed
-TEST_DATABASE_URL=postgresql://test:test@localhost:55432/test pytest         # semua → 50 passed
+pytest -m "not cacheflow"                                                    # tanpa DB → 92 passed
+TEST_DATABASE_URL=postgresql://test:test@localhost:55432/test pytest         # semua → 98 passed
 ```
 
-Uji kontrak (`tests/test_contract.py`) menjalankan ketiga penyedia (mock, baseline, dan HTTP ke
-layanan tiruan `httpx.MockTransport`) tanpa layanan AI.
+- **Uji kontrak** (`tests/test_contract.py`) menjalankan ketiga penyedia (mock, baseline, dan HTTP
+  ke layanan tiruan `httpx.MockTransport`) tanpa layanan AI.
+- **Uji integrasi** (`tests/test_model_service.py`) menjalankan server Route Model tiruan
+  sungguhan (uvicorn di port lokal) untuk jawaban valid, malformat, lambat, galat, dan layanan
+  mati.

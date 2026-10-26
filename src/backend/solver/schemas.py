@@ -64,6 +64,12 @@ class SolveContextOut(BaseModel):
     pollution_model_version: str | None
 
 
+class FallbackOut(BaseModel):
+    from_solver: str = Field(description="Penyedia yang gagal")
+    failure_reason: str = Field(description="solver_timeout, solver_unreachable, solver_error, invalid_solver_response, solver_no_route")
+    primary_elapsed_ms: float
+
+
 class SolveResultOut(BaseModel):
     solver: str = Field(description="Penyedia solver: mock, baseline, atau http")
     route_source: Literal["policy", "baseline"]
@@ -77,6 +83,7 @@ class SolveResultOut(BaseModel):
     solver_elapsed_ms: float
     context: SolveContextOut
     notes: list[str]
+    fallback: FallbackOut | None = Field(None, description="Terisi bila Backend memakai baseline karena solver gagal")
 
     @classmethod
     def of(cls, s: SolveResult) -> SolveResultOut:
@@ -98,4 +105,7 @@ class SolveResultOut(BaseModel):
                 data_stale=c.data_stale, missing_edge_count=c.missing_edge_count,
                 pollution_model_version=c.pollution_model_version),
             notes=s.notes,
+            fallback=(FallbackOut(from_solver=s.fallback.from_solver, failure_reason=s.fallback.failure_reason,
+                                  primary_elapsed_ms=round(s.fallback.primary_elapsed_ms, 1))
+                      if s.fallback else None),
         )

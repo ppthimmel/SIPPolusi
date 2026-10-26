@@ -30,6 +30,29 @@ SOLVER_UNREACHABLE = "solver_unreachable"    # cannot connect to the solver
 SOLVER_ERROR = "solver_error"                # the solver raised or answered 5xx/4xx
 INVALID_SOLVER_RESPONSE = "invalid_solver_response"  # reply breaks the contract
 DEADLINE_EXCEEDED = "deadline_exceeded"      # no time left before calling the solver
+# The solver found no route although the planner only hands over subgraphs where the
+# destination is reachable: a solver failure (503), not a trip without a route (422).
+SOLVER_NO_ROUTE = "solver_no_route"
+
+
+# What the user sees for each reason; details (exception, HTTP status, URL) only go to the log.
+USER_MESSAGES = {
+    SOLVER_TIMEOUT: "Layanan penentuan rute tidak merespons tepat waktu. Silakan coba lagi.",
+    SOLVER_UNREACHABLE: "Layanan penentuan rute sedang tidak tersedia. Silakan coba lagi nanti.",
+    SOLVER_ERROR: "Layanan penentuan rute mengalami galat. Silakan coba lagi.",
+    INVALID_SOLVER_RESPONSE: "Layanan penentuan rute mengembalikan hasil yang tidak valid. Silakan coba lagi.",
+    DEADLINE_EXCEEDED: "Batas waktu permintaan habis sebelum rute dapat dihitung. Silakan coba lagi.",
+    SOLVER_NO_ROUTE: "Layanan penentuan rute tidak dapat menghasilkan rute. Silakan coba lagi.",
+}
+
+# Backend fallback (TI-SE-07): solver failure reason -> fallback_reason in the response.
+MODEL_FALLBACK_REASONS = {
+    SOLVER_TIMEOUT: "model_timeout",
+    SOLVER_UNREACHABLE: "model_unavailable",
+    SOLVER_ERROR: "model_error",
+    INVALID_SOLVER_RESPONSE: "model_invalid_response",
+    SOLVER_NO_ROUTE: "model_no_route",
+}
 
 
 class SolverError(Exception):
@@ -40,14 +63,18 @@ class SolverError(Exception):
 
 
 class RouteServiceUnavailable(OsmApiError):
-    """503 route_service_unavailable (Tabel 3.16) with a reason."""
+    """503 route_service_unavailable (Tabel 3.16) with a reason.
+
+    The response carries the generic USER_MESSAGES text; ``detail`` is for the log only.
+    """
 
     status_code = 503
     code = "route_service_unavailable"
 
-    def __init__(self, message: str, reason: str):
-        super().__init__(message)
+    def __init__(self, reason: str, detail: str = ""):
+        super().__init__(USER_MESSAGES.get(reason, USER_MESSAGES[SOLVER_ERROR]))
         self.reason = reason
+        self.detail = detail
 
 
 @dataclass(frozen=True, slots=True)
@@ -131,6 +158,15 @@ class SolveContext:
 
 
 @dataclass(frozen=True, slots=True)
+class FallbackInfo:
+    """Set when the Backend replaced a failed solver with the baseline (TI-SE-07)."""
+
+    from_solver: str
+    failure_reason: str       # solver_timeout, solver_unreachable, ...
+    primary_elapsed_ms: float
+
+
+@dataclass(frozen=True, slots=True)
 class SolveResult:
     """SolveResult (Tabel 3.3): both routes, route source and metadata."""
 
@@ -147,3 +183,4 @@ class SolveResult:
     solver_elapsed_ms: float
     context: SolveContext
     notes: list[str] = field(default_factory=list)
+    fallback: FallbackInfo | None = None

@@ -4,13 +4,28 @@
     compute_deadline                     budget - time spent - response margin
     call_route_solve                     IRouteSolve within deadline_ms + grace
     check routes against the subgraph    edges exist, connect origin -> destination, allowed direction
+    fallback (TI-SE-07)                  baseline when the configured solver fails, explicitly marked
     geometry + metrics                   T(R), E(R), distance, confidence, LineString
 
-Every failure leaves as a structured error (Tabel 3.16):
-    solver timeout / unreachable / error / invalid reply / no time left
-        -> 503 route_service_unavailable with reason
-    no route (solver reply, or origin and destination on the same node)
-        -> 422 no_route_found with reason
+Route provenance is checked, not trusted (TI-SE-07 QA): a reply labelled policy
+must apply the preference, one labelled baseline must not and must say why, and
+every route shown as baseline (the comparison, or a baseline recommendation) must be
+a fastest route of the subgraph. The Backend computes the fastest travel time itself,
+concurrently with the solver call, so the check adds no latency in the usual case.
+
+Errors the user sees are structured and generic (Tabel 3.16); the internal cause
+(exception, HTTP status, URL) only goes to the log:
+    solver timeout / unreachable / error / invalid reply / no route / no time left
+        -> 503 route_service_unavailable with reason (when no fallback is possible)
+    origin and destination on the same node
+        -> 422 no_route_found, reason same_node
+The planner only hands over subgraphs where the destination is reachable, so a
+solver answering "no route" is a solver failure (503 solver_no_route), not a trip
+without a route.
+
+One log line per request (logger "solver", event route_inference) records the
+solver, outcome, route_source, model version, preference, deadline, inference
+time and failure reason. Coordinates are never logged (PNF-06).
 """
 from __future__ import annotations
 
@@ -18,6 +33,7 @@ import asyncio
 import logging
 import time
 from collections.abc import Callable, Mapping
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any
 
@@ -29,11 +45,15 @@ from planner.models import IMPUTED_MEDIAN, PlannedEdge, SolverInput
 from pollution.repository import PollutionRepository
 
 from .config import SolverSettings
+from .cancel import run_cancellable
 from .contract import (
     DEADLINE_EXCEEDED,
     INVALID_SOLVER_RESPONSE,
+    MODEL_FALLBACK_REASONS,
     SOLVER_ERROR,
+    SOLVER_NO_ROUTE,
     SOLVER_TIMEOUT,
+    FallbackInfo,
     RouteMetrics,
     RouteResult,
     RouteServiceUnavailable,
@@ -45,9 +65,9 @@ from .contract import (
     SolverReply,
 )
 from .deadline import compute_deadline
+from .paths import fastest_time_s
 
 logger = logging.getLogger("solver")
-
 
 def _utcnow() -> datetime:
     return datetime.now(timezone.utc)
@@ -66,15 +86,15 @@ async def call_route_solve(solver: RouteSolver, request: SolveRequest, grace_ms:
         reply = await asyncio.wait_for(solver.solve(request), timeout=(request.deadline_ms + grace_ms) / 1000)
     except (asyncio.TimeoutError, TimeoutError) as exc:
         raise RouteServiceUnavailable(
-            f"Route Model tidak merespons dalam {request.deadline_ms + grace_ms} ms.", SOLVER_TIMEOUT) from exc
+            SOLVER_TIMEOUT, f"no reply within {request.deadline_ms + grace_ms} ms") from exc
     except SolverError as exc:
-        raise RouteServiceUnavailable(exc.message, exc.reason) from exc
+        raise RouteServiceUnavailable(exc.reason, exc.message) from exc
     except Exception as exc:  # noqa: BLE001 - any solver crash is a solver error, not a Backend 500
-        logger.exception("request_id=%s solver %s failed", request.request_id, solver.name)
-        raise RouteServiceUnavailable(f"Route Model gagal ({type(exc).__name__}).", SOLVER_ERROR) from exc
+        logger.exception("request_id=%s solver=%s raised", request.request_id, solver.name)
+        raise RouteServiceUnavailable(SOLVER_ERROR, f"{type(exc).__name__}: {exc}") from exc
     elapsed_ms = (time.perf_counter() - started) * 1000
     if not isinstance(reply, SolverReply):
-        raise RouteServiceUnavailable("Jawaban solver tidak sesuai kontrak IRouteSolve.", INVALID_SOLVER_RESPONSE)
+        raise RouteServiceUnavailable(INVALID_SOLVER_RESPONSE, f"reply of type {type(reply).__name__}")
     return reply, elapsed_ms
 
 
@@ -139,6 +159,113 @@ def route_line(path: list[tuple[PlannedEdge, bool]], geometries: Mapping[int, li
     return line
 
 
+@dataclass(slots=True)
+class _Attempt:
+    solver: str
+    reply: SolverReply
+    recommended: list[tuple[PlannedEdge, bool]]
+    comparison: list[tuple[PlannedEdge, bool]]
+    elapsed_ms: float
+
+
+# Relative tolerance when comparing a route's travel time with the fastest one.
+_FASTEST_TOLERANCE = 1e-9
+
+
+def check_provenance(reply: SolverReply) -> None:
+    """route_source, preference_applied and fallback_reason must agree; ValueError otherwise.
+
+    policy:   the preference was applied and there is no fallback reason;
+    baseline: the preference was not applied and fallback_reason says why."""
+    if reply.route_source == "policy" and (not reply.preference_applied or reply.fallback_reason):
+        raise ValueError(f"route_source policy dengan preference_applied={reply.preference_applied}, "
+                         f"fallback_reason={reply.fallback_reason!r}")
+    if reply.route_source == "baseline" and (reply.preference_applied or not reply.fallback_reason):
+        raise ValueError(f"route_source baseline dengan preference_applied={reply.preference_applied}, "
+                         f"fallback_reason={reply.fallback_reason!r}")
+
+
+def check_fastest(label: str, path: list[tuple[PlannedEdge, bool]], fastest_s: float | None) -> None:
+    """ValueError unless path is a fastest route (ties allowed)."""
+    seconds = sum(e.travel_time_s for e, _ in path)
+    if fastest_s is None or seconds > fastest_s * (1 + _FASTEST_TOLERANCE) + 1e-9:
+        raise ValueError(f"rute {label} berlabel baseline {seconds:.3f} s, rute tercepat {fastest_s} s")
+
+
+async def _attempt(solver: RouteSolver, request: SolveRequest, grace_ms: int) -> _Attempt:
+    """Call one solver and check its routes; raises RouteServiceUnavailable.
+
+    For any solver other than the in-process baseline (whose routes are the
+    fastest by construction), the fastest travel time is computed concurrently
+    and the routes labelled baseline are checked against it."""
+    si = request.solver_input
+    limit_s = (request.deadline_ms + grace_ms) / 1000
+    started = time.perf_counter()
+    fastest = None if solver.name == "baseline" else asyncio.create_task(run_cancellable(fastest_time_s, si))
+    try:
+        reply, elapsed_ms = await call_route_solve(solver, request, grace_ms)
+        if reply.status == "no_route":
+            raise RouteServiceUnavailable(SOLVER_NO_ROUTE, "solver reported no route on a reachable subgraph")
+        try:
+            check_provenance(reply)
+            recommended = trace_route(reply.recommended, si)
+            comparison = trace_route(reply.comparison, si)
+        except ValueError as exc:
+            raise RouteServiceUnavailable(INVALID_SOLVER_RESPONSE, str(exc)) from exc
+        if fastest is not None:
+            remaining_s = max(limit_s - (time.perf_counter() - started), 0.0)
+            try:
+                fastest_s = await asyncio.wait_for(fastest, timeout=remaining_s)
+            except (asyncio.TimeoutError, TimeoutError) as exc:
+                raise RouteServiceUnavailable(
+                    SOLVER_TIMEOUT, f"fastest-route check did not finish within {limit_s * 1000:.0f} ms") from exc
+            try:
+                check_fastest("pembanding", comparison, fastest_s)
+                if reply.route_source == "baseline":
+                    check_fastest("rekomendasi", recommended, fastest_s)
+            except ValueError as exc:
+                raise RouteServiceUnavailable(INVALID_SOLVER_RESPONSE, str(exc)) from exc
+    finally:
+        if fastest is not None:
+            # When the solver failed first: cancel, and wait until the token is set so the
+            # search thread stops now (run_cancellable does not wait for the thread itself).
+            fastest.cancel()
+            await asyncio.gather(fastest, return_exceptions=True)
+    return _Attempt(solver.name, reply, recommended, comparison, elapsed_ms)
+
+
+def _failure_reason(exc: Exception) -> str | None:
+    """Solver failure reason that allows a fallback, or None."""
+    if isinstance(exc, RouteServiceUnavailable) and exc.reason in MODEL_FALLBACK_REASONS:
+        return exc.reason
+    return None
+
+
+def _log(outcome: str, *, si: SolverInput | None, solver: str, deadline_ms: int | None, attempt: _Attempt | None = None,
+         reason: str | None = None, detail: str = "", fallback: FallbackInfo | None = None, request_id: str = "") -> None:
+    reply = attempt.reply if attempt else None
+    fields = {
+        "request_id": si.request_id if si else request_id,
+        "solver": solver,
+        "outcome": outcome,                                  # ok | fallback | failed
+        "route_source": reply.route_source if reply else None,
+        "model_version": reply.model_version if reply else None,
+        "fallback_reason": (MODEL_FALLBACK_REASONS.get(fallback.failure_reason) if fallback
+                            else reply.fallback_reason if reply else None),
+        "mode": si.mode.value if si else None,
+        "alpha": si.preference.alpha if si else None,
+        "beta": si.preference.beta if si else None,
+        "deadline_ms": deadline_ms,
+        "inference_ms": round(attempt.elapsed_ms, 1) if attempt else None,
+        "primary_ms": round(fallback.primary_elapsed_ms, 1) if fallback else None,
+        "reason": reason or (fallback.failure_reason if fallback else None),
+    }
+    line = "route_inference " + " ".join(f"{k}={v}" for k, v in fields.items() if v is not None)
+    if detail:
+        line += f" detail={detail!r}"
+    (logger.warning if outcome != "ok" else logger.info)(line)
+
+
 async def solve_route_request(
     payload: Any,
     *,
@@ -150,6 +277,7 @@ async def solve_route_request(
     request_id: str,
     received_at: datetime,
     clock: Callable[[], datetime] = _utcnow,
+    fallback_solver: RouteSolver | None = None,
 ) -> SolveResult:
     si = await build_solver_input(payload, osm=osm, pollution=pollution, settings=osm_settings,
                                   request_id=request_id)
@@ -158,46 +286,80 @@ async def solve_route_request(
 
     deadline_ms = compute_deadline(received_at, clock(), solver_settings.budget_ms, solver_settings.response_margin_ms)
     if deadline_ms <= 0:
-        raise RouteServiceUnavailable("Batas latensi habis sebelum Route Model dipanggil.", DEADLINE_EXCEEDED)
+        _log("failed", si=si, solver=solver.name, deadline_ms=deadline_ms, reason=DEADLINE_EXCEEDED)
+        raise RouteServiceUnavailable(DEADLINE_EXCEEDED, f"deadline {deadline_ms} ms")
 
-    reply, elapsed_ms = await call_route_solve(solver, SolveRequest(si, deadline_ms), solver_settings.grace_ms)
-    if reply.status == "no_route":
-        raise _no_route("Route Model tidak menemukan rute antara simpul asal dan simpul tujuan.", "solver_no_route")
-
+    fallback: FallbackInfo | None = None
+    failure_detail = ""
+    primary_started = time.perf_counter()
     try:
-        recommended = trace_route(reply.recommended, si)
-        comparison = trace_route(reply.comparison, si)
-    except ValueError as exc:
-        raise RouteServiceUnavailable(f"Rute dari solver tidak valid: {exc}.", INVALID_SOLVER_RESPONSE) from exc
+        attempt = await _attempt(solver, SolveRequest(si, deadline_ms), solver_settings.grace_ms)
+    except RouteServiceUnavailable as exc:
+        reason = _failure_reason(exc)
+        detail = getattr(exc, "detail", "") or exc.message
+        if reason is None or solver_settings.fallback != "baseline" or solver.name == "baseline":
+            _log("failed", si=si, solver=solver.name, deadline_ms=deadline_ms,
+                 reason=getattr(exc, "reason", None), detail=detail)
+            raise
+        # Remaining time, so the whole request stays within the API Gateway timeout.
+        spent_ms = (clock() - received_at).total_seconds() * 1000
+        budget_ms = int(min(solver_settings.fallback_timeout_ms,
+                            solver_settings.gateway_timeout_ms - spent_ms - solver_settings.response_margin_ms))
+        if budget_ms <= 0:
+            _log("failed", si=si, solver=solver.name, deadline_ms=deadline_ms, reason=reason,
+                 detail=f"{detail}; no time left for the fallback")
+            raise
+        fallback = FallbackInfo(solver.name, reason, (time.perf_counter() - primary_started) * 1000)
+        failure_detail = detail
+        if fallback_solver is None:
+            from .baseline import BaselineSolver
+            fallback_solver = BaselineSolver()
+        try:
+            attempt = await _attempt(fallback_solver, SolveRequest(si, budget_ms), 0)
+        except RouteServiceUnavailable as fallback_exc:
+            _log("failed", si=si, solver=solver.name, deadline_ms=deadline_ms, reason=reason,
+                 detail=f"{detail}; fallback failed: {getattr(fallback_exc, 'detail', '') or fallback_exc.message}")
+            raise exc from fallback_exc
 
-    ids = sorted({e.edge_id for e, _ in recommended} | {e.edge_id for e, _ in comparison})
+    reply = attempt.reply
+    route_source = "baseline" if fallback else reply.route_source
+    preference_applied = False if fallback else reply.preference_applied
+    fallback_reason = MODEL_FALLBACK_REASONS[fallback.failure_reason] if fallback else reply.fallback_reason
+
+    ids = sorted({e.edge_id for e, _ in attempt.recommended} | {e.edge_id for e, _ in attempt.comparison})
     geometries = await osm.read_edge_geometries(ids, si.source.graph_version)
+    rec_metrics, cmp_metrics = route_metrics(attempt.recommended), route_metrics(attempt.comparison)
 
-    rec_metrics, cmp_metrics = route_metrics(recommended), route_metrics(comparison)
     notes = []
-    if not reply.preference_applied:
+    if fallback:
+        notes.append("Layanan model rute tidak dapat dipakai untuk permintaan ini; rute rekomendasi adalah "
+                     "rute tercepat (baseline) dan preferensi waktu-paparan tidak diterapkan.")
+    elif not preference_applied:
         notes.append("Preferensi waktu-paparan tidak diterapkan; rute rekomendasi berasal dari baseline.")
     if si.weights.data_stale:
         notes.append("Estimasi polusi berasal dari time window yang lebih lama dari batas kebaruan.")
     if rec_metrics.imputed_edge_count:
         notes.append(f"{rec_metrics.imputed_edge_count} ruas pada rute rekomendasi tanpa estimasi; diisi median wilayah.")
 
+    _log("fallback" if fallback else "ok", si=si, solver=solver.name, deadline_ms=deadline_ms,
+         attempt=attempt, fallback=fallback, detail=failure_detail)
     return SolveResult(
-        solver=solver.name,
-        route_source=reply.route_source,
-        preference_applied=reply.preference_applied,
-        fallback_reason=reply.fallback_reason,
+        solver=attempt.solver,
+        route_source=route_source,
+        preference_applied=preference_applied,
+        fallback_reason=fallback_reason,
         model_version=reply.model_version,
-        recommended=RouteResult("recommended", reply.route_source, reply.preference_applied,
-                                tuple(reply.recommended), route_line(recommended, geometries, si), rec_metrics),
-        comparison=RouteResult("comparison", "baseline", False,
-                               tuple(reply.comparison), route_line(comparison, geometries, si), cmp_metrics),
+        recommended=RouteResult("recommended", route_source, preference_applied, tuple(reply.recommended),
+                                route_line(attempt.recommended, geometries, si), rec_metrics),
+        # Labelled baseline: checked to be a fastest route in _attempt (or the baseline solver's own).
+        comparison=RouteResult("comparison", "baseline", False, tuple(reply.comparison),
+                               route_line(attempt.comparison, geometries, si), cmp_metrics),
         delta_travel_time_min=round(rec_metrics.travel_time_min - cmp_metrics.travel_time_min, 3),
         delta_exposure_pct=(round((rec_metrics.exposure_index_min - cmp_metrics.exposure_index_min)
                                   / cmp_metrics.exposure_index_min * 100, 2)
                             if cmp_metrics.exposure_index_min > 0 else None),
         deadline_ms=deadline_ms,
-        solver_elapsed_ms=round(elapsed_ms, 1),
+        solver_elapsed_ms=round(attempt.elapsed_ms, 1),
         context=SolveContext(
             request_id=si.request_id, mode=si.mode, preference=si.preference, pollutant=si.pollutant,
             origin_node=si.origin.node_id, destination_node=si.destination.node_id,
@@ -208,4 +370,5 @@ async def solve_route_request(
             pollution_model_version=si.source.pollution_model_version,
         ),
         notes=notes,
+        fallback=fallback,
     )

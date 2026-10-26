@@ -1,4 +1,6 @@
-"""Timeout, failures and routes without an answer become structured errors."""
+"""Timeout, failures and routes without an answer become structured errors (fallback off).
+
+Fallback behaviour (TI-SE-07) is tested in test_fallback.py."""
 from __future__ import annotations
 
 import asyncio
@@ -14,7 +16,7 @@ from solver.orchestrator import solve_route_request
 
 from .conftest import request_body
 
-FAST = SolverSettings(_env_file=None, budget_ms=400, response_margin_ms=0, grace_ms=50)
+FAST = SolverSettings(_env_file=None, budget_ms=400, response_margin_ms=0, grace_ms=50, fallback="none")
 
 
 async def solve(solver, osm_repo, pollution_repo, settings, solver_settings=FAST, body=None, received_at=None):
@@ -56,10 +58,9 @@ async def test_unexpected_exception_is_not_a_500(osm_repo, pollution_repo, setti
     await expect_503("solver_error", solve(StubSolver(exc=KeyError("x")), osm_repo, pollution_repo, settings))
 
 
-async def test_no_route_is_422_with_reason(osm_repo, pollution_repo, settings):
-    with pytest.raises(NoRouteFound) as exc:
-        await solve(MockSolver("no_route"), osm_repo, pollution_repo, settings)
-    assert exc.value.reason == "solver_no_route"
+async def test_solver_no_route_is_503_not_422(osm_repo, pollution_repo, settings):
+    # The planner only hands over reachable subgraphs: the solver failed, the trip did not.
+    await expect_503("solver_no_route", solve(MockSolver("no_route"), osm_repo, pollution_repo, settings))
 
 
 async def test_unknown_edge_is_invalid_response(osm_repo, pollution_repo, settings):

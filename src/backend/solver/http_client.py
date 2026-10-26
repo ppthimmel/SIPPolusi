@@ -98,6 +98,9 @@ class HttpSolver:
             body = _ReplyIn.model_validate_json(resp.content)
         except ValidationError as exc:
             raise SolverError(INVALID_SOLVER_RESPONSE, "Jawaban Route Model tidak sesuai kontrak IRouteSolve.") from exc
+        # Taken as reported, or derived when absent. The orchestrator rejects replies whose
+        # labels contradict each other or whose baseline routes are not fastest (check_provenance,
+        # check_fastest), so a label from the model is never shown unchecked.
         applied = body.route_source == "policy" if body.preference_applied is None else body.preference_applied
         return SolverReply("ok", body.route_source, applied, body.fallback_reason, body.model_version,
                            tuple(body.recommended.edge_ids), tuple(body.comparison.edge_ids))
