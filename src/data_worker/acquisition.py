@@ -18,16 +18,41 @@ log = logging.getLogger("data_worker.acquisition")
 Step = Callable[[TimeWindow, Config], dict]
 
 
+def ground_truth_status(run_status: str | None, available: bool) -> str:
+    """Status langkah ground truth dari status lintasan SPKU dan ketersediaan data.
+
+    Lintasan yang gagal atau dibatalkan tidak pernah dilaporkan ``ok``, walaupun
+    time window masih berisi data dari lintasan sebelumnya (riwayat 48 jam):
+    sumbernya gagal pada siklus ini (Tabel 3.12). Lintasan ``partial`` berarti
+    sebagian stasiun tetap gagal setelah dicoba ulang, sehingga ``degraded``.
+    """
+    if run_status in ("failed", "aborted") or run_status is None:
+        return "failed"
+    if not available:
+        return "unavailable"
+    return "ok" if run_status == "ok" else "degraded"
+
+
 def _step_ground_truth(time_window: TimeWindow, config: Config) -> dict:
     batch = fetch_ground_truth("spku", JAKARTA_BBOX, time_window, config=config)
+    run = batch.run
+    status = ground_truth_status(run.get("status"), batch.available)
+    note = batch.note
+    if status == "failed":
+        note = (f"lintasan SPKU {run.get('status')}: {run.get('note')}"
+                + ("; time window masih berisi data lintasan sebelumnya" if batch.available else ""))
     return {
-        "status": "ok" if batch.available else "unavailable",
+        "status": status,
+        "source": "spku",
+        "available": batch.available,
         "measurements": len(batch.measurements),
         "stations": len({m.station_id for m in batch.measurements}),
         "unavailable_stations": len(batch.unavailable_stations),
-        "run_id": batch.run.get("run_id"),
-        "run_status": batch.run.get("status"),
-        "note": batch.note,
+        "run_id": run.get("run_id"),
+        "run_status": run.get("status"),
+        "retried_requests": run.get("retried_requests", 0),
+        "failed_requests": run.get("failed_requests", 0),
+        "note": note,
     }
 
 
@@ -88,11 +113,14 @@ def schedule_acquisition(
     *,
     config: Config | None = None,
     steps: list[tuple[str, Step | None]] | None = None,
+    progress: Callable[[list[dict]], None] | None = None,
 ) -> dict:
     """Jalankan satu siklus akuisisi untuk ``time_window``.
 
     Setiap langkah dijalankan berurutan dan statusnya dicatat. Galat pada
     satu langkah tidak menghentikan langkah berikutnya (UT-DW-01b, PF-14).
+    ``progress`` (opsional) menerima daftar status langkah setelah setiap langkah,
+    agar siklus yang dihentikan di tengah tetap meninggalkan catatan.
     """
     config = config or Config.load()
     report: dict = {"time_window": str(time_window), "steps": []}
@@ -108,6 +136,11 @@ def schedule_acquisition(
                 entry = {"step": name, "status": "failed", "error": f"{type(exc).__name__}: {exc}"}
         entry["duration_s"] = round(time.monotonic() - started, 2)
         report["steps"].append(entry)
-        log.info("siklus %s: %s -> %s", time_window, name, entry["status"])
+        level = logging.WARNING if entry["status"] in ("failed", "degraded", "unavailable") else logging.INFO
+        log.log(level, "siklus %s: %s -> %s%s", time_window, name, entry["status"],
+                f" ({entry.get('note') or entry.get('error')})"
+                if entry["status"] not in ("ok", "not_implemented") and (entry.get("note") or entry.get("error")) else "")
+        if progress is not None:
+            progress(report["steps"])
     report["failed"] = [s["step"] for s in report["steps"] if s["status"] == "failed"]
     return report

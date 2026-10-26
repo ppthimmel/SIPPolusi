@@ -23,13 +23,15 @@ _DSN_EXAMPLE = "postgresql://USER:PASSWORD@HOST:5432/DBNAME"
 
 #: Modul yang baru diimpor di tengah siklus. Dependensi yang hilang harus
 #: ketahuan saat build/cek, bukan pada langkah ke-8 sebuah cron.
-RUNTIME_MODULES = ("acquisition", "database", "spatial_model.inference", "spku.store", "psycopg", "psycopg2")
+RUNTIME_MODULES = ("acquisition", "database", "spatial_model.inference", "spku.store", "worker_runs",
+                   "psycopg", "psycopg2")
 
 #: (variabel, tipe, nilai minimum)
 _NUMERIC = (
     ("SPKU_DELAY_SECONDS", float, 0),
     ("SPKU_TIMEOUT_SECONDS", int, 1),
     ("SPKU_RETRIES", int, 0),
+    ("WORKER_LOCK_WAIT_SECONDS", float, 0),
 )
 
 
@@ -64,9 +66,10 @@ def config_problems(environ: Mapping[str, str] | None = None) -> list[str]:
         if problem:
             problems.append(problem)
 
-    schema = env.get("SPKU_DB_SCHEMA", "").strip()
-    if schema and not _SCHEMA_NAME_RE.match(schema):
-        problems.append(f"SPKU_DB_SCHEMA={schema!r} bukan nama skema yang sah (huruf kecil, angka, garis bawah).")
+    for var in ("SPKU_DB_SCHEMA", "WORKER_DB_SCHEMA"):
+        schema = env.get(var, "").strip()
+        if schema and not _SCHEMA_NAME_RE.match(schema):
+            problems.append(f"{var}={schema!r} bukan nama skema yang sah (huruf kecil, angka, garis bawah).")
 
     for name, cast, minimum in _NUMERIC:
         raw = env.get(name, "").strip()
