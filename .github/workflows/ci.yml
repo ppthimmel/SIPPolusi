@@ -210,7 +210,12 @@ jobs:
         run: |
           # Compose reads every service's env_file, also of services not started.
           for f in src/*/.env.example; do cp "$f" "${f%.example}"; done
-          docker compose up -d --build --no-deps --wait --wait-timeout 300 postgres backend cache_api gateway
+          docker compose up -d --no-deps --wait postgres
+          # On Railway the Data Worker creates the osm and pollution schemas
+          # before the Cache API serves anything; do the same here with its
+          # own DDL (osm_cache.schema_sql), leaving the tables empty.
+          python -c "import sys; sys.path.insert(0, 'src/data_worker'); from osm_cache import schema_sql; print(schema_sql())"             | docker compose exec -T postgres sh -c 'psql -v ON_ERROR_STOP=1 -q -U "$POSTGRES_USER" -d "$POSTGRES_DB"'
+          docker compose up -d --build --no-deps --wait --wait-timeout 300 backend cache_api gateway
       - name: Smoke test through the gateway
         run: |
           for i in $(seq 1 30); do curl -fsS http://localhost:8081/healthz >/dev/null && break; sleep 2; done
