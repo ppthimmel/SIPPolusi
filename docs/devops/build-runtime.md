@@ -111,6 +111,12 @@ Untuk setiap layanan: *New Service → GitHub Repo*, lalu di Settings:
    otomatis. Nilai yang diisi manual di dashboard mengalahkan berkas ini;
    kosongkan isian dashboard agar berkas yang berlaku.
 3. **Variables**: sesuai tabel variabel di atas.
+   Deploy manual: *Deploy latest commit* di dashboard, atau
+   `railway up --service <nama> --environment <env> --ci` dari **akar
+   repositori**. Jangan pakai `railway up src/<folder> --path-as-root`:
+   Root Directory service tetap diterapkan pada unggahan sehingga build gagal
+   (`Root directory "src/backend" was not found`). `.railwayignore`
+   mengecualikan data dan dokumen agar unggahan tidak ditolak (413).
 4. **Networking**: hanya **gateway** (dan frontend) yang diberi domain
    publik. Layanan lain dijangkau lewat `*.railway.internal`; langkah
    menutup domain publik dan TCP proxy basis data serta uji jaringannya ada
