@@ -1,0 +1,190 @@
+{
+  "directory": "stgnn",
+  "feature_rows": 473976,
+  "feature_columns": 71,
+  "nodes": 1044,
+  "label_nodes": 116,
+  "hours": 454,
+  "start_utc": "2026-09-12T02:00:00+00:00",
+  "end_utc_exclusive": "2026-10-01T00:00:00+00:00",
+  "checks": [
+    {
+      "check": "manifest lengkap dan hash keluaran cocok",
+      "status": "lolos",
+      "detail": "status complete; hash wajib 4: hilang [], tak dikenal [], tidak cocok []"
+    },
+    {
+      "check": "kolom dan tipe fitur sesuai data dictionary",
+      "status": "lolos",
+      "detail": "71 kolom"
+    },
+    {
+      "check": "kolom dan tipe label sesuai data dictionary",
+      "status": "lolos",
+      "detail": "16 kolom"
+    },
+    {
+      "check": "cakupan sel × jam lengkap",
+      "status": "lolos",
+      "detail": "1.044 sel × 454 jam = 473.976; tersedia 473.976 baris"
+    },
+    {
+      "check": "tanpa kunci ganda",
+      "status": "lolos",
+      "detail": "fitur (grid_id, time_utc): 0; label (station_uuid, time_utc): 0"
+    },
+    {
+      "check": "penanda ketersediaan konsisten dengan NaN",
+      "status": "lolos",
+      "detail": "0 pelanggaran pada 15 penanda"
+    },
+    {
+      "check": "tanpa kebocoran waktu (sumber tersedia <= time_utc, tanpa label di fitur)",
+      "status": "lolos",
+      "detail": "0 pelanggaran"
+    },
+    {
+      "check": "setiap label memiliki baris fitur",
+      "status": "lolos",
+      "detail": "0 label tanpa fitur"
+    }
+  ],
+  "missing_fraction": {
+    "no2_mol_m2": 0.0,
+    "ntl": 0.0,
+    "temperature_2m": 0.0,
+    "relative_humidity_2m": 0.0,
+    "wind_speed_10m": 0.0,
+    "wind_direction_10m": 0.0,
+    "boundary_layer_height": 0.0,
+    "precipitation": 0.0,
+    "surface_pressure": 0.0,
+    "geoscf_pm25_ugm3": 0.0,
+    "geoscf_no2_ugm3": 0.0,
+    "ndvi": 0.026238,
+    "ndbi": 0.026238,
+    "lst_c": 0.963602,
+    "dist_nearest_sensor_m": 0.0
+  },
+  "availability_fraction": {
+    "no2_mol_m2_available": 1.0,
+    "ntl_available": 1.0,
+    "temperature_2m_available": 1.0,
+    "relative_humidity_2m_available": 1.0,
+    "wind_speed_10m_available": 1.0,
+    "wind_direction_10m_available": 1.0,
+    "boundary_layer_height_available": 1.0,
+    "precipitation_available": 1.0,
+    "surface_pressure_available": 1.0,
+    "geoscf_pm25_ugm3_available": 1.0,
+    "geoscf_no2_ugm3_available": 1.0,
+    "ndvi_available": 0.973762,
+    "ndbi_available": 0.973762,
+    "lst_c_available": 0.036398,
+    "dist_nearest_sensor_m_available": 1.0
+  },
+  "availability_per_hour_min": {
+    "no2_mol_m2_available": 1.0,
+    "ntl_available": 1.0,
+    "temperature_2m_available": 1.0,
+    "relative_humidity_2m_available": 1.0,
+    "wind_speed_10m_available": 1.0,
+    "wind_direction_10m_available": 1.0,
+    "boundary_layer_height_available": 1.0,
+    "precipitation_available": 1.0,
+    "surface_pressure_available": 1.0,
+    "geoscf_pm25_ugm3_available": 1.0,
+    "geoscf_no2_ugm3_available": 1.0,
+    "ndvi_available": 0.971264,
+    "ndbi_available": 0.971264,
+    "lst_c_available": 0.036398,
+    "dist_nearest_sensor_m_available": 1.0
+  },
+  "temporal_leakage": {
+    "ndvi": 0,
+    "ndbi": 0,
+    "lst_c": 0,
+    "no2_mol_m2": 0,
+    "ntl": 0,
+    "geoscf_pm25": 0,
+    "geoscf_no2": 0,
+    "weather": 0,
+    "target_in_features": 0
+  },
+  "age_hours": {
+    "Landsat NDVI": {
+      "min": 46.99822998046875,
+      "median": 335.0007019042969,
+      "max": 4819.99853515625
+    },
+    "Sentinel-5P NO2": {
+      "min": 0.765826940536499,
+      "median": 39.93576431274414,
+      "max": 256.14410400390625
+    },
+    "VIIRS NTL": {
+      "min": 178.00027465820312,
+      "median": 212.00027465820312,
+      "max": 399.0002746582031
+    },
+    "GEOS-CF PM2.5": {
+      "min": 7.0,
+      "median": 18.0,
+      "max": 28.0
+    },
+    "GEOS-CF NO2": {
+      "min": 7.0,
+      "median": 18.0,
+      "max": 28.0
+    },
+    "Open-Meteo": {
+      "min": 3.0,
+      "median": 5.0,
+      "max": 8.0
+    }
+  },
+  "sensor_distance_m": {
+    "labelled_nodes": {
+      "max": 3497.090087890625
+    },
+    "context_nodes": {
+      "min": 51.07331848144531,
+      "max": 3635.939453125
+    }
+  },
+  "labels": {
+    "rows": 43319,
+    "stations": 117,
+    "finite": {
+      "target_pm25": 43207,
+      "target_no2": 5372
+    },
+    "splits": {
+      "train": {
+        "rows": 18748,
+        "stations": 77,
+        "first": "2026-09-13 01:00:00+00:00",
+        "last": "2026-09-24 00:00:00+00:00"
+      },
+      "validation": {
+        "rows": 1008,
+        "stations": 14,
+        "first": "2026-09-25 01:00:00+00:00",
+        "last": "2026-09-28 00:00:00+00:00"
+      },
+      "test": {
+        "rows": 756,
+        "stations": 17,
+        "first": "2026-09-29 01:00:00+00:00",
+        "last": "2026-09-30 23:00:00+00:00"
+      },
+      "none": {
+        "rows": 22807,
+        "stations": 112,
+        "first": "2026-09-13 01:00:00+00:00",
+        "last": "2026-09-30 23:00:00+00:00"
+      }
+    }
+  },
+  "passed": true
+}

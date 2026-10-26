@@ -137,6 +137,14 @@ def _md_table(df: pd.DataFrame, cols: list[str], floatfmt: str = ".2f") -> str:
     return "\n".join(lines)
 
 
+def _split_range(rm: dict) -> str:
+    b = rm["dataset"]["split_boundaries"]
+    split = rm["evaluation"]["report_split"]
+    if "val_end" in b:                                   # split temporal bersambung (TI-AI-04 v1)
+        return f"[{b['val_end']}, {b['end']})"
+    return f"[{b[split]['first_window']}, {b[split]['end_window_exclusive']})"   # blok snapshot TI-AI-03
+
+
 def write_report(path: pathlib.Path, ctx: dict) -> None:
     rm = ctx["run_manifest"]
     lines = [
@@ -151,7 +159,7 @@ def write_report(path: pathlib.Path, ctx: dict) -> None:
         f"(manifest SHA-256 `{rm['dataset']['manifest_sha256'][:16]}…`)",
         f"- Sumber ground truth: {rm['dataset']['source_type']}, snapshot {rm['dataset'].get('source_snapshot_utc')}",
         f"- Split dilaporkan: **{rm['evaluation']['report_split']}** "
-        f"[{rm['dataset']['split_boundaries']['val_end']}, {rm['dataset']['split_boundaries']['end']})",
+        f"{_split_range(rm)}",
         f"- Skema: {rm['evaluation']['cv_scheme']}; model IDW power = {rm['model']['power']:g}, "
         f"neighbors = {rm['model']['neighbors']}, jarak pada {rm['model']['crs']}",
         f"- Seed: {rm['seed']}; commit `{rm['code'].get('git_commit', '?')[:10]}`"
@@ -194,6 +202,14 @@ def write_report(path: pathlib.Path, ctx: dict) -> None:
         if vrows:
             lines += [_md_table(pd.DataFrame(vrows), list(vrows[0].keys()), ".3f"), ""]
 
+    if ctx.get("fixed_split"):
+        lines += ["", "## Split tetap blind ganda", "",
+                  "Estimasi di stasiun uji pada blok uji hanya dari stasiun train (stasiun validasi dan uji tidak "
+                  "menjadi sumber).", ""]
+        rows = [{"polutan": LABEL[p], "n": f["metrics"]["n"], "stasiun uji": f["metrics"]["n_stations"],
+                 "MAE": f["metrics"]["mae"], "RMSE": f["metrics"]["rmse"], "R²": f["metrics"]["r2"],
+                 "bias": f["metrics"]["bias"]} for p, f in ctx["fixed_split"].items()]
+        lines.append(_md_table(pd.DataFrame(rows), list(rows[0].keys()), ".3f"))
     if ctx.get("tuned"):
         lines += ["## Analisis sensitivitas (split validasi)", "",
                   "Konfigurasi terbaik pada validasi, lalu dievaluasi pada split uji sebagai pembanding. "

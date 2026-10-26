@@ -44,9 +44,11 @@ POLLUTANTS = ("PM25", "PM10", "SO2", "NO2", "CO", "O3")
 #: Parameter meteorologi yang muncul sebagai kanal "metrics" pada tiga stasiun LCS.
 METEO_METRICS = ("AT", "RH", "AIR_HUMID")
 
-#: Satuan yang DIASUMSIKAN. Portal tidak menyatakan satuan di mana pun; nilai CO
-#: berkisar 500-3100 sehingga konsisten dengan mikrogram per meter kubik, bukan
-#: ppm. Konfirmasi satuan termasuk butir yang diminta melalui PPID.
+#: Satuan konsentrasi. Portal tidak menyatakan satuan, tetapi ISPU yang
+#: dipublikasikan portal sama dengan ISPU yang dihitung ulang dari konsentrasi
+#: dengan batas µg/m³ Permen LHK P.14/2020 (scripts/check_ispu_units.py).
+#: Nama ASSUMED_UNITS dan kolom station_metric.unit_assumed dipertahankan agar
+#: skema basis data operasional tidak berubah.
 ASSUMED_UNITS = {
     "PM25": "ug/m3",
     "PM10": "ug/m3",

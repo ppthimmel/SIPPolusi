@@ -162,6 +162,12 @@ def findings(
                 groups = ", ".join(f"{r[key]} (RMSE {r['rmse']:.1f}, n {r['n']})" for _, r in t.iterrows())
                 items.append(f"{name}: galat besar menurut {label}: {groups}.")
         for a, b, dist in colocated_pairs(st, float(eval_cfg.get("colocated_m", 100.0))):
+            if eval_cfg.get("group_loso"):
+                items.append(
+                    f"{name}: {a.kode} ({a.type}) dan {b.kode} ({b.type}) berjarak {dist:.0f} m dan satu grup, "
+                    f"sehingga ditahan bersama pada LOSO per grup; RMSE {a.rmse:.1f} dan {b.rmse:.1f} µg/m³ "
+                    f"(bias {a.bias:+.1f} / {b.bias:+.1f}) berasal dari stasiun sumber lain.")
+                continue
             items.append(
                 f"{name}: {a.kode} ({a.type}) dan {b.kode} ({b.type}) berjarak {dist:.0f} m; pada LOSO "
                 f"masing-masing diestimasi hampir seluruhnya dari yang lain, sehingga RMSE {a.rmse:.1f} dan "

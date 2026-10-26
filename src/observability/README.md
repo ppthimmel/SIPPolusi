@@ -2,8 +2,8 @@
 
 Prometheus, Pushgateway, and Grafana (PNF-04, PNF-06 traceability; used in
 load/stress/endurance testing in Bab V). Not a custom application — this
-directory only holds configuration, mirroring how the API Gateway is
-Traefik/NGINX configuration rather than bespoke source code.
+directory only holds configuration, mirroring how the API Gateway
+([src/gateway](../gateway)) is NGINX configuration rather than bespoke source code.
 
 - `prometheus/prometheus.yml` — scrape targets: Backend (which also serves
   Multi-Objective Route Model inference in-process) via `GET /metrics`, and

@@ -1,0 +1,65 @@
+# Snapshot dataset ds-v0.1.0 (TI-AI-03, isu #14).
+# Dokumen Desain: subbab 4.4 (evaluasi leave-one-station-out), EAI-02 (split spasial), ABD-01.
+# Berkas ini disalin utuh ke folder snapshot beserta SHA-256-nya.
+
+version = "ds-v0.1.0"
+seed = 42
+
+[scope]
+# Label time window (UTC, awal jam). Batas data satelit dan Open-Meteo: 30 Sep 23:00.
+# Time window terakhir (30 Sep 23:00) tidak dipakai karena cuaca pada waktu inferensinya
+# (1 Okt 00:00) belum ada.
+first_window = "2026-09-13T00:00:00Z"
+end_window = "2026-09-30T23:00:00Z"        # eksklusif
+# Hanya pembacaan sebelum batas ini yang dibaca dari ekspor ground truth.
+readings_until = "2026-10-01T00:00:00Z"
+targets = ["pm25", "no2"]
+
+[features]
+lag_windows = 24                           # L (K3): satu siklus harian
+context_hops = 1
+viirs_cell_rule = "tile"
+# Open-Meteo: nilai valid time t dianggap tersedia pada floor(t, 6 jam) + jeda terbit (asumsi konservatif).
+weather_delay_hours = 8.0
+
+# Aturan eksklusi pembacaan; alasan lengkap di exclusion_rules.md.
+[labels]
+sentinel = 999.99
+excluded_stations = ["DKI_PM25_40"]
+stuck_run_min = 12                         # definisi bendera S portal, dihitung ulang pada deret penuh
+require_complete_hour = true               # jumlah pembacaan valid >= kadensi stasiun
+
+[[labels.excluded_from]]
+kode = "DKI_PM25_33"
+metric = "PM25"
+since = "2026-09-19T10:00:00Z"
+
+[labels.low_bias_suspect]                  # ditandai, tidak dibuang (sama dengan TI-AI-04)
+kode_prefix = "DKI_PM25_"
+station_type = "Sensor"
+max_mean_ugm3 = 10.0
+
+[groups]
+# Satu grup = stasiun pada sel 100 m yang sama atau berjarak < 300 m (transitif),
+# atau duplikat penyedia (nilai identik pada >= 20% cap waktu bersama).
+max_distance_m = 300.0
+duplicate_identical_fraction = 0.2
+
+[station_split]
+# Proporsi grup train/val/test; acak berstrata (tipe stasiun, kota administrasi).
+fractions = { train = 0.70, val = 0.15, test = 0.15 }
+strata = ["station_type", "kota"]
+
+# Blok temporal pada awal time window (UTC); batas atas eksklusif.
+# Jarak antarblok >= max(L, 24 jam).
+[blocks]
+train = ["2026-09-13T00:00:00Z", "2026-09-24T00:00:00Z"]
+val = ["2026-09-25T00:00:00Z", "2026-09-28T00:00:00Z"]
+test = ["2026-09-29T00:00:00Z", "2026-09-30T23:00:00Z"]
+min_gap_hours = 24
+
+[evaluation]
+# PM2.5: split tetap blind ganda (stasiun x periode) dan LOSO per grup sebagai protokol utama.
+# NO2: 14 stasiun, LOSO per grup penuh tanpa stasiun validasi terpisah.
+pm25 = ["fixed_split", "loso"]
+no2 = ["loso"]
