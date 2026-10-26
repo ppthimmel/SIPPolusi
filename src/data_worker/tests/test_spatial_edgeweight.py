@@ -15,10 +15,10 @@ import pandas as pd
 import pytest
 
 from contracts import BBox, EdgeWeight, TimeWindow
-from spatial_model.aggregate import aggregate_grid_to_edges, edge_cell_pieces
-from spatial_model.confidence import IDW_CAP, estimate_confidence
-from spatial_model.grid import GridSpec, to_grid_xy, to_lonlat
-from spatial_model.idw import NoGroundTruthError
+from spatial_model.inference.aggregate import aggregate_grid_to_edges, edge_cell_pieces
+from spatial_model.inference.confidence import IDW_CAP, estimate_confidence
+from spatial_model.data.grid import GridSpec, to_grid_xy, to_lonlat
+from spatial_model.models.idw import NoGroundTruthError
 from spatial_model.inference import load_idw_settings, make_run_id, run_downscale_inference, to_edge_weights
 
 UTC = dt.timezone.utc
@@ -145,8 +145,10 @@ def test_ut_sdm_01a_c_tanpa_model_jatuh_ke_idw_dan_runsummary_lengkap(tmp_path):
     settings = load_idw_settings()
     assert summary.status == "complete"
     assert summary.estimation_source == "idw"
-    assert summary.model_version == f"idw-p{settings['power']:g}-k{settings['neighbors']}"
-    assert "ModelUnavailableError" in summary.fallback_reason
+    assert summary.model_version.startswith("spatial-")
+    assert summary.model_metadata["pm25"]["source"] == "idw"
+    assert summary.model_metadata["no2"]["source"] == "idw"
+    assert summary.fallback_reason
     assert summary.coverage_ratio == pytest.approx(3 / 4)          # satu ruas di luar grid
     dist = summary.confidence_distribution
     assert dist["n"] == 3 and dist["max"] < 0.4 and dist["low_lt_0_4"] == 3
@@ -225,7 +227,7 @@ def _synthetic_weights(n, start_id=1_000_000, value=20.0):
 
 
 def test_ut_ops_02a_b_tulis_1000_baris_dan_ulang_tanpa_duplikat(cache_db):
-    from spatial_model import cache
+    from spatial_model.inference import cache
 
     conn, s = cache_db
     n = cache.write_pollution_weight(conn, _synthetic_weights(1000), WINDOW, "g-test", "idw-p2-k8",
@@ -241,7 +243,7 @@ def test_ut_ops_02a_b_tulis_1000_baris_dan_ulang_tanpa_duplikat(cache_db):
 
 
 def test_ut_ops_02c_galat_di_tengah_transaksi_tidak_meninggalkan_apa_pun(cache_db):
-    from spatial_model import cache
+    from spatial_model.inference import cache
 
     conn, s = cache_db
     previous = TimeWindow.starting_at(WINDOW.start - dt.timedelta(hours=1))
@@ -262,7 +264,7 @@ def test_ut_ops_02c_galat_di_tengah_transaksi_tidak_meninggalkan_apa_pun(cache_d
 
 
 def test_ut_ops_01_baca_time_window_complete_terakhir_dan_bbox(cache_db):
-    from spatial_model import cache
+    from spatial_model.inference import cache
 
     conn, s = cache_db
     # (c) belum ada time window complete
@@ -284,7 +286,7 @@ def test_ut_ops_01_baca_time_window_complete_terakhir_dan_bbox(cache_db):
 
 
 def test_kompatibilitas_cache_tulis_baca_ulang_dan_idempoten(cache_db, tmp_path):
-    from spatial_model import cache
+    from spatial_model.inference import cache
 
     conn, s = cache_db
     first = _run(conn=conn, artifact_dir=tmp_path, pollution_schema=s["pollution"], osm_schema=s["osm"])
@@ -314,7 +316,7 @@ def test_kompatibilitas_cache_tulis_baca_ulang_dan_idempoten(cache_db, tmp_path)
 
 
 def test_retensi_cache_hanya_menyimpan_time_window_terakhir(cache_db):
-    from spatial_model import cache
+    from spatial_model.inference import cache
 
     conn, s = cache_db
     starts = [WINDOW.start + dt.timedelta(hours=h) for h in range(4)]

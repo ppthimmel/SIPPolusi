@@ -41,6 +41,7 @@ class EdgeWeightOut(BaseModel):
     confidence_score: float | None
     background_source: str | None
     estimation_source: str | None
+    model_metadata: dict = Field(default_factory=dict)
     graph_version: str | None
     model_version: str | None
 

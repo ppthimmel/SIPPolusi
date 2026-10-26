@@ -5,3 +5,5 @@ __pycache__/
 *.sqlite
 *.sqlite-*
 data/
+!/spatial_model/data/
+!/spatial_model/data/*.py

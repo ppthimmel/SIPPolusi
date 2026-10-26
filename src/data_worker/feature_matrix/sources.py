@@ -19,7 +19,7 @@ Aturan per sumber (``time_utc`` = waktu inferensi τ, akhir jam label):
   (run global ECMWF IFS/ICON/GFS tiap 6 jam; jeda terbit 8 jam, asumsi
   konservatif). Dipakai valid time terbaru dengan ``available_at <= τ``;
   umur = τ − valid time.
-- GEOS-CF ``fcst`` (ds-v0.2.0): prakiraan untuk jam label [τ − 1 jam, τ) dari run
+- GEOS-CF ``fcst`` (ds-v0.3.0): prakiraan untuk jam label [τ − 1 jam, τ) dari run
   terbaru yang lengkap terbit (``available_at_utc`` = Last-Modified lead terakhir) pada
   τ; ``lead_hours`` = awal jam − awal run.
 - Kalender: jam dan hari dalam pekan (WIB) awal jam label sebagai sin/cos; selalu

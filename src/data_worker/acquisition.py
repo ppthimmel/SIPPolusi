@@ -32,7 +32,7 @@ def _step_ground_truth(time_window: TimeWindow, config: Config) -> dict:
 
 
 def _step_downscale_inference(time_window: TimeWindow, config: Config) -> dict:
-    """trigger_downscale_inference: ST-GNN, jatuh ke IDW bila gagal, lalu EdgeWeight ke cache.
+    """Registered PM2.5 correction/NO2 LightGBM, per-pollutant IDW fallback, then cache.
 
     Aktif hanya bila DOWNSCALE_WRITE_CACHE=1, karena setiap time window menulis
     sekitar 372 ribu baris (±92 MB) ke pollution.edge_pollution. Setelah
@@ -44,7 +44,7 @@ def _step_downscale_inference(time_window: TimeWindow, config: Config) -> dict:
         return {"status": "disabled", "note": "atur DOWNSCALE_WRITE_CACHE=1 untuk menulis EdgeWeight ke cache"}
     import psycopg
 
-    from spatial_model import cache
+    from spatial_model.inference import cache
     from spatial_model.inference import load_ground_truth_window, load_idw_settings, run_downscale_inference
 
     settings = load_idw_settings()
@@ -56,9 +56,15 @@ def _step_downscale_inference(time_window: TimeWindow, config: Config) -> dict:
         if graph_version is None:
             return {"status": "unavailable", "note": "tidak ada graf road network berstatus active"}
         edges = cache.read_road_edges(conn, graph_version)
+        from spatial_model.inference.runtime import worker_inputs
+        try:
+            inputs = worker_inputs(conn, time_window, settings, config.db_schema)
+        except (ValueError, FileNotFoundError, KeyError):
+            log.warning("Model input preparation unavailable; use per-pollutant fallback")
+            inputs = None
         summary = run_downscale_inference(
             time_window, ground_truth=ground_truth, edges=edges, graph_version=graph_version, conn=conn,
-            settings=settings, artifact_dir=artifact_dir,
+            settings=settings, artifact_dir=artifact_dir, inputs=inputs,
             pieces_cache_dir=(pathlib.Path(artifact_dir) / "pieces") if artifact_dir else None,
         )
         pruned = cache.prune_pollution_windows(conn, int(os.environ.get("DOWNSCALE_KEEP_WINDOWS") or 6))

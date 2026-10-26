@@ -69,13 +69,14 @@ CREATE TABLE __POLLUTION__.edge_pollution (
     confidence_score real,
     background_source text,
     estimation_source text,
+    model_metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
     graph_version text,
     model_version text,
     geom public.geometry(LineString, 4326),
     written_at timestamp with time zone DEFAULT now() NOT NULL,
     CONSTRAINT edge_pollution_pkey PRIMARY KEY (edge_id, time_window_start),
     CONSTRAINT ck_edge_pollution_background_source CHECK (background_source = ANY (ARRAY['aod'::text, 'reanalysis'::text])),
-    CONSTRAINT ck_edge_pollution_estimation_source CHECK (estimation_source = ANY (ARRAY['stgnn'::text, 'idw'::text]))
+    CONSTRAINT ck_edge_pollution_estimation_source CHECK (estimation_source = ANY (ARRAY['stgnn'::text, 'idw'::text, 'hybrid'::text]))
 );
 CREATE INDEX idx_edge_pollution_geom ON __POLLUTION__.edge_pollution USING gist (geom);
 

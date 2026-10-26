@@ -1,0 +1,98 @@
+{
+  "status": "passed",
+  "dataset": "ds-v0.3.0",
+  "registered_versions": {
+    "pm25": {
+      "name": "spatial-downscaling-pm25",
+      "version": "5",
+      "run_id": "63f3ba0502114e0088a7c239c1d71be2"
+    },
+    "no2": {
+      "name": "spatial-downscaling-no2",
+      "version": "5",
+      "run_id": "60697f779ed44481876dc170a39332c2"
+    }
+  },
+  "window_start": "2026-09-29T11:00:00+00:00",
+  "grid_cells": 2,
+  "run": {
+    "run_id": "20260929T1100Z-spatial-8b2c1e676722ebb9c2d086a708a13c3b783036d6fa3d9c24c62bd4c5ba29fe93-18e9ccc81e02-ca580785",
+    "status": "complete",
+    "time_window_start": "2026-09-29 11:00:00+00:00",
+    "model_version": "spatial-8b2c1e676722ebb9c2d086a708a13c3b783036d6fa3d9c24c62bd4c5ba29fe93-18e9ccc81e02",
+    "estimation_source": "hybrid",
+    "coverage_ratio": 1.0,
+    "confidence_distribution": {
+      "n": 1,
+      "min": 0.3815585088742094,
+      "p25": 0.3815585088742094,
+      "median": 0.3815585088742094,
+      "p75": 0.3815585088742094,
+      "max": 0.3815585088742094,
+      "mean": 0.3815585088742094,
+      "low_lt_0_4": 1,
+      "medium_0_4_to_0_7": 0,
+      "high_ge_0_7": 0
+    },
+    "duration_s": 1.424,
+    "graph_version": "registered-model-verification",
+    "rows_written": 1,
+    "fallback_reason": null,
+    "artifacts": {
+      "dir": "D:\\Github\\SIPPolusi\\.cache\\registered-grid-trace\\20260929T1100Z-spatial-8b2c1e676722ebb9c2d086a708a13c3b783036d6fa3d9c24c62bd4c5ba29fe93-18e9ccc81e02-ca580785",
+      "files": [
+        "edge_cell_pieces.parquet",
+        "edge_weights.parquet",
+        "edges_without_estimate.parquet",
+        "grid_prediction.parquet",
+        "ground_truth.parquet"
+      ]
+    },
+    "model_metadata": {
+      "pm25": {
+        "source": "idw_stgnn_residual",
+        "model_version": "spatial-downscaling-pm25:5",
+        "fallback_cells": 0
+      },
+      "no2": {
+        "source": "lightgbm",
+        "model_version": "spatial-downscaling-no2:5",
+        "fallback_cells": 0
+      }
+    },
+    "input_fingerprint": "0a2b6360ef9fd7be625248641eb1a40f08f07ce2e59d0af096a6b04e85084c5c"
+  },
+  "repeat_status": "skipped",
+  "backend_readback": {
+    "edge_id": 987654321,
+    "time_window_start": "2026-09-29 11:00:00+00:00",
+    "pm25_ugm3": 22.1675,
+    "no2_ugm3": 88.5067,
+    "exposure_index": 2.5091,
+    "confidence_score": 0.3816,
+    "background_source": null,
+    "estimation_source": "hybrid",
+    "graph_version": "registered-model-verification",
+    "model_version": "spatial-8b2c1e676722ebb9c2d086a708a13c3b783036d6fa3d9c24c62bd4c5ba29fe93-18e9ccc81e02",
+    "written_at": "2026-10-26 11:28:57.910858+00:00",
+    "model_metadata": {
+      "no2": {
+        "source": "lightgbm",
+        "cell_sources": [
+          "lightgbm"
+        ],
+        "model_version": "spatial-downscaling-no2:5",
+        "fallback_cells": 0
+      },
+      "pm25": {
+        "source": "idw_stgnn_residual",
+        "cell_sources": [
+          "idw_stgnn_residual"
+        ],
+        "model_version": "spatial-downscaling-pm25:5",
+        "fallback_cells": 0
+      }
+    }
+  },
+  "limits": "Historical local replay on a small grid; not citywide accuracy or Railway deployment."
+}

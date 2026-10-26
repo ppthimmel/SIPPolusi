@@ -98,6 +98,9 @@ services:
 
   data_worker:
     build: ./src/data_worker
+    volumes:
+      # Training inputs are excluded from the image; expose processed features read-only locally.
+      - ./src/data_worker/dataset_processed:/app/dataset_processed:ro
     restart: unless-stopped
     depends_on:
       postgres:

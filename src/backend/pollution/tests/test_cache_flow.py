@@ -1,7 +1,7 @@
 """TI-SE-04: write with the Data Worker, read with the Backend, on a local PostGIS.
 
 Writers are the real Data Worker functions: osm_cache.write_road_graph and
-spatial_model.cache.write_pollution_weight (TI-AI-05). Readers are the Backend
+spatial_model.inference.cache.write_pollution_weight (TI-AI-05). Readers are the Backend
 repositories (osm.repository, pollution.repository) and the HTTP API.
 Run with TEST_DATABASE_URL pointing at src/backend/testdb.
 """
@@ -58,13 +58,28 @@ def write_graph(conn, version, **kw):
 
 def write_weights(conn, start, edge_ids, graph_version, pm25=20.0, model="idw-p2-k8"):
     from contracts import EdgeWeight, TimeWindow as WorkerWindow
-    from spatial_model.cache import write_pollution_weight
+    from spatial_model.inference.cache import write_pollution_weight
 
     weights = [EdgeWeight(edge_id=e, time_window_start=start, pm25_ugm3=pm25, no2_ugm3=40.0,
                           exposure_index=0.5 * (pm25 / 15 + 40 / 25), confidence_score=0.3,
                           background_source=None, estimation_source="idw") for e in edge_ids]
     return write_pollution_weight(conn, weights, WorkerWindow.starting_at(start), graph_version, model,
                                   coverage_ratio=1.0)
+
+
+def test_additive_provenance_migration_preserves_historical_rows(writer):
+    """Upgrade a cache without metadata, twice, preserving existing concentrations."""
+    from pathlib import Path
+    write_graph(writer, "migration-fixture")
+    write_weights(writer, W1, [1], "migration-fixture", pm25=27.0)
+    writer.execute("ALTER TABLE pollution.edge_pollution DROP COLUMN model_metadata")
+    migration = (Path(__file__).resolve().parents[3] / "data_worker/database/spatial_migration.sql").read_text(encoding="utf-8")
+    for _ in range(2):
+        with writer.transaction():
+            writer.execute(migration)
+    row = writer.execute("SELECT pm25_ugm3, model_metadata FROM pollution.edge_pollution WHERE edge_id=1").fetchone()
+    assert row == (27.0, {})
+    writer.execute("UPDATE pollution.edge_pollution SET estimation_source='hybrid' WHERE edge_id=1")
 
 
 # ---------------------------------------------------------------- Backend side

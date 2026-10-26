@@ -57,7 +57,7 @@ SELECT p.edge_id, p.time_window_start,
        round(p.exposure_index::numeric, 4)::float8 AS exposure_index,
        round(p.confidence_score::numeric, 4)::float8 AS confidence_score,
        p.background_source, p.estimation_source,
-       p.graph_version, p.model_version, p.written_at,
+       p.graph_version, p.model_version, p.written_at, p.model_metadata,
        e.walk_allowed, e.bike_allowed
 FROM pollution.edge_pollution p
 LEFT JOIN osm.road_edge e ON e.edge_id = p.edge_id AND e.graph_version = p.graph_version
@@ -165,7 +165,13 @@ class PollutionRepository:
                 if not allowed:
                     excluded["not_allowed_for_mode"] += 1
                     continue
-            weights.append(EdgeWeight(**{k: r[k] for k in _WEIGHT_FIELDS}))
+            data = {k: r[k] for k in _WEIGHT_FIELDS if k in r}
+            metadata = data.get("model_metadata", {})
+            if isinstance(metadata, str):
+                import json
+                metadata = json.loads(metadata)
+            data["model_metadata"] = metadata
+            weights.append(EdgeWeight(**data))
         if excluded:
             logger.debug("pollution rows excluded in bbox: %s", dict(excluded))
 

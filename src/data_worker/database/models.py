@@ -21,7 +21,7 @@ from sqlalchemy import (
     func,
     text,
 )
-from sqlalchemy.dialects.postgresql import REAL
+from sqlalchemy.dialects.postgresql import REAL, JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 SCHEMAS = ("pollution", "osm", "mlflow")
@@ -39,7 +39,7 @@ class EdgePollution(PollutionBase):
     __tablename__ = "edge_pollution"
     __table_args__ = (
         CheckConstraint("background_source IN ('aod', 'reanalysis')", name="ck_edge_pollution_background_source"),
-        CheckConstraint("estimation_source IN ('stgnn', 'idw')", name="ck_edge_pollution_estimation_source"),
+        CheckConstraint("estimation_source IN ('stgnn', 'idw', 'hybrid')", name="ck_edge_pollution_estimation_source"),
     )
 
     edge_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
@@ -50,6 +50,7 @@ class EdgePollution(PollutionBase):
     confidence_score: Mapped[float | None] = mapped_column(REAL)
     background_source: Mapped[str | None] = mapped_column(Text)
     estimation_source: Mapped[str | None] = mapped_column(Text)
+    model_metadata: Mapped[dict] = mapped_column(JSONB, server_default=text("'{}'::jsonb"), nullable=False)
     graph_version: Mapped[str | None] = mapped_column(Text)
     model_version: Mapped[str | None] = mapped_column(Text)
     geom = mapped_column(Geometry("LINESTRING", srid=4326))  # GiST index created by GeoAlchemy2

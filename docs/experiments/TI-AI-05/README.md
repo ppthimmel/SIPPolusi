@@ -1,5 +1,57 @@
 # TI-AI-05: Estimasi grid sampai EdgeWeight
 
+## Model sistem
+
+PM2.5 memakai **IDW + koreksi ST-GNN**; NO₂ memakai **LightGBM seluruh fitur**.
+Training Python dan notebook memakai implementasi yang sama, dataset ds-v0.3.0, dan bundle
+terversi MLflow dengan payload MinIO. [Panduan training/inference](../../../src/data_worker/spatial_model/README.md).
+Agregasi dan cache di bawah merupakan bukti historis IDW; verifikasi model terdaftar dilaporkan terpisah.
+
+## Perbandingan ds-v0.3.0
+
+RMSE dalam µg/m³; seluruh angka berikut berasal dari [laporan eksperimen](../model-comparison-ds-v0.3.0/README.md),
+sesuai tabel laporan tahap 1. Hasil baru tidak menggantikan angka historis ini.
+
+| PM2.5 | Metode | RMSE | R² |
+|---|---|---:|---:|
+| Fixed split (689 observasi) | IDW | 18.745 | 0.141 |
+| Fixed split | IDW + XGBoost | 18.478 | 0.165 |
+| Fixed split | IDW + ST-GNN | 18.372 | 0.175 |
+| LOSO (4358 observasi; 95 fold) | IDW | 23.995 | -0.040 |
+| LOSO | IDW + XGBoost | 23.288 | 0.021 |
+| LOSO | IDW + ST-GNN | 23.740 | -0.018 |
+
+| NO₂ LOSO, fitur interpolasi | RMSE | R² |
+|---|---:|---:|
+| IDW | 46.992 | 0.141 |
+| Ridge | 41.307 | 0.336 |
+| MLP | 42.027 | 0.313 |
+| IDW p=1 + LightGBM | 42.644 | 0.292 |
+| Ensemble 6 model | 42.778 | 0.288 |
+| XGBoost | 46.449 | 0.160 |
+| Random forest | 46.643 | 0.153 |
+| Extra trees | 47.214 | 0.133 |
+| LightGBM | 48.179 | 0.097 |
+
+| NO₂ LOSO, fitur lengkap | RMSE | R² |
+|---|---:|---:|
+| IDW | 46.992 | 0.141 |
+| IDW + ST-GNN | 47.168 | 0.134 |
+| LightGBM | 27.429 | 0.707 |
+| Random forest | 31.312 | 0.618 |
+| XGBoost | 34.820 | 0.528 |
+| Extra trees | 38.428 | 0.425 |
+| MLP | 65.938 | -0.692 |
+| Ridge (IDW + geometri sensor) | 69.979 | -0.906 |
+
+ST-GNN adalah pilihan implementasi PM2.5; bukti tidak menunjukkan superioritas konsisten terhadap
+interpolator yang disetel. Perbandingan fitur lengkap antararsitektur tidak memakai representasi identik.
+NO₂ LightGBM memprediksi konsentrasi langsung; keuntungan terutama terkait fitur geometri sensor dan
+perlu verifikasi bias LCS sebelum klaim generalisasi grid. Confidence masih provisional.
+
+## Bukti grid-ke-ruas historis
+
+
 Bukti verifikasi isu #16. Kode dan definisinya:
 [`src/data_worker/spatial_model`](../../../src/data_worker/spatial_model/README.md).
 
@@ -135,9 +187,7 @@ sekaligus, dengan sisa sekitar 2 GB.
 
 ## Keterbatasan
 
-- **ST-GNN belum ada.** Inferensi FeatureMatrix dengan ST-GNN belum dapat dijalankan karena
-  FeatureMatrix dan artefak modelnya belum tersedia (TI-AI-02, TI-AI-09). Jalur ST-GNN sudah disiapkan
-  dan saat ini selalu jatuh ke fallback IDW, sesuai Tabel 3.12.
+- **Integrasi model:** Worker memakai MLflow/MinIO bila versi dan input tersedia; kegagalan per polutan jatuh ke IDW dengan provenance eksplisit.
 - **Suku latar belum dipakai.** Suku latar berskala makro (AOD/reanalysis) belum dipakai, sehingga
   `background_source` masih kosong.
 - **Confidence score provisional.** Rumusnya masih provisional sampai kalibrasi PF-12 dilakukan.
@@ -145,3 +195,27 @@ sekaligus, dengan sisa sekitar 2 GB.
   menghasilkan kontrak bersama; Backend perlu memakai struktur yang sama.
 - **Artefak di Railway belum persisten.** Artefak penelusuran di Railway akan hilang setiap kontainer
   berhenti sampai tersedia Railway Volume atau object storage (TI-DO-03).
+
+## Verifikasi integrasi model terdaftar (26 Oktober 2026)
+
+[registered_verification.json](registered_verification.json) mencatat replay lokal dengan model
+terlatih, registrasi MLflow, payload MinIO, pengunduhan cache baru, inferensi dua polutan,
+agregasi ruas yang melintasi dua sel, penulisan PostGIS, dan pembacaan melalui repository backend.
+Pemanggilan ulang input/versi yang sama menghasilkan `skipped`. Metadata per ruas membedakan sumber
+kedua polutan. Ini verifikasi fungsi integrasi pada grid kecil, bukan evaluasi akurasi seluruh kota
+atau bukti deployment Railway.
+
+Training ulang PM2.5 CPU (seed 42, validation memilih epoch 1) menghasilkan RMSE fixed-split test
+18.346 µg/m³ dibanding IDW 18.745 pada 689 pasangan yang sama. Angka ini run baru, terpisah dari
+hasil historis pada tabel di atas. LightGBM memakai 4.6.0 untuk kompatibilitas native Windows;
+konfigurasi full-feature direct tetap mengikuti pemilihan validation yang terdokumentasi.
+
+Pembersihan dokumentasi dataset mengubah label provenans teks dan checksum terkait. Seluruh
+13 berkas Parquet pada manifest ds-v0.3.0 diverifikasi identik dengan hash sebelum perubahan;
+observasi, fitur, split dan aturan eksklusi data tidak direlabel atau dibangun ulang.
+
+Uji akhir lokal: **210 test Data Worker** dan **31 test pollution API/cache flow** lulus.
+Migrasi aditif diuji dua kali pada tabel tanpa kolom metadata dan mempertahankan konsentrasi historis.
+Satu pembacaan laporan pada test baseline diperbaiki agar eksplisit UTF-8 di Windows.
+Model terdaftar pada stack verifikasi lokal menggunakan versi 5 untuk kedua polutan; deployment
+Railway tidak dijalankan.
