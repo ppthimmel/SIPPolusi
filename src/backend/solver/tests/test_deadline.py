@@ -25,3 +25,13 @@ def test_parse_received_at():
     assert parse_received_at("2026-10-26T12:00:00+07:00") == T0
     assert parse_received_at("2026-10-26T05:00:00") == T0  # no zone: UTC
     assert parse_received_at("kemarin") is None and parse_received_at(None) is None
+
+
+def test_parse_received_at_accepts_nginx_msec():
+    from datetime import datetime, timezone
+    from solver.deadline import parse_received_at
+    assert parse_received_at("1793017500.729") == datetime.fromtimestamp(1793017500.729, tz=timezone.utc)
+    assert parse_received_at(" 1793017500.729 ") is not None
+    assert parse_received_at("nan") is None
+    assert parse_received_at("1e400") is None
+    assert parse_received_at("bukan-waktu") is None
