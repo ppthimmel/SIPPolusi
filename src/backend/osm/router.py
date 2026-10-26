@@ -137,9 +137,9 @@ SubgraphBody = Annotated[SubgraphRequest, Body(openapi_examples={
         "origin": {"lat": -6.1754, "lon": 106.8272},
         "destination": {"lat": -6.17148, "lon": 106.8277989},
         "mode": "walk", "buffer_m": 200, "include_graph": True}),
-    "tujuan_di_laut": _ex("Tujuan di laut → 422 point_not_on_network", {
-        "origin": {"lat": -6.1754, "lon": 106.8272},
-        "destination": {"lat": -6.085, "lon": 106.86},
+    "tujuan_di_laut": _ex("Pantai Ancol → laut → 422 point_not_on_network (titik tujuan)", {
+        "origin": {"lat": -6.1225, "lon": 106.8420},
+        "destination": {"lat": -6.1000, "lon": 106.8420},
         "mode": "walk"}),
     "tujuan_kepulauan_seribu": _ex("Tujuan Kepulauan Seribu → 422 outside_study_area", {
         "origin": {"lat": -6.1754, "lon": 106.8272},
@@ -153,14 +153,14 @@ SubgraphBody = Annotated[SubgraphRequest, Body(openapi_examples={
         "origin": {"lat": -6.1754, "lon": 106.8272},
         "destination": {"lat": -6.1754, "lon": 106.8272},
         "mode": "walk"}),
-    "tujuan_terisolasi": _ex("Tujuan di komponen jalan terisolasi → 422 no_route_found", {
+    "dekat_komponen_terisolasi": _ex("Tujuan di komponen terisolasi → 200, di-snap ke simpul terdekat yang terhubung", {
         "origin": {"lat": -6.1754, "lon": 106.8272},
         "destination": {"lat": -6.1819823, "lon": 106.8198083},
         "mode": "walk"}),
-    "buffer_terlalu_kecil": _ex("buffer_m 100 memutus jalur → 422 no_route_found (tanpa buffer_m: terhubung)", {
-        "origin": {"lat": -6.1754, "lon": 106.8272},
-        "destination": {"lat": -6.1760, "lon": 106.8245},
-        "mode": "walk", "buffer_m": 100}),
+    "buffer_nol": _ex("buffer_m 0 memotong jalur → 422 no_route_found (tanpa buffer_m: terhubung)", {
+        "origin": {"lat": -6.15502, "lon": 106.74869},
+        "destination": {"lat": -6.15502, "lon": 106.75269},
+        "mode": "walk", "buffer_m": 0}),
     "luar_dki_dalam_kotak": _ex("Tangerang, di dalam kotak wilayah studi → 422 point_not_on_network", {
         "origin": {"lat": -6.1754, "lon": 106.8272},
         "destination": {"lat": -6.20, "lon": 106.69},

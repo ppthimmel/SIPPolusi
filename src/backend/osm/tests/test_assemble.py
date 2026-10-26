@@ -10,7 +10,7 @@ import math
 
 import pytest
 
-from osm.errors import NoRouteFound
+from osm.errors import NoRouteFound, PointNotOnNetwork
 from osm.graph import (
     REJECT_DUPLICATE_ID,
     REJECT_ENDPOINT_MISMATCH,
@@ -116,11 +116,14 @@ def test_access_differs_between_modes():
 
 
 def test_oneway_survives_assembly_and_limits_bike_direction():
-    g = build([edge_row(10, N1, N2, oneway=True)], Mode.BIKE)
+    # ~550 m apart, so each point has only its own node within the 200 m snap radius.
+    far = (2, 106.805, -6.200)
+    g = build([edge_row(10, N1, far, oneway=True, length_m=550.0)], Mode.BIKE,
+              nodes=[node_row(N1), node_row(far)])
     assert g.edges[0].oneway is True
     a, b = g.nodes[1].point, g.nodes[2].point
     assert assemble_request_subgraph(g, a, b).destination_node == 2
-    with pytest.raises(NoRouteFound):
+    with pytest.raises(PointNotOnNetwork, match="Titik asal"):
         assemble_request_subgraph(g, b, a)
 
 

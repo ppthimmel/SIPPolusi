@@ -1,7 +1,8 @@
-# Build context is src/backend; send only the two cache packages.
+# Build context is src/backend; send only the cache API packages.
 *
 !osm
 !pollution
+!planner
 **/__pycache__
 **/*.pyc
 **/.pytest_cache
