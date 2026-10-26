@@ -203,11 +203,13 @@ Railway membangun image dari GitHub, jadi kodenya harus sudah di-push ke branch 
    SIPPolusi*. Lalu atur:
    - **Branch:** branch yang berisi modul ini.
    - **Root Directory:** `src/backend`, karena image memuat `osm/` dan `pollution/`.
-   - **Dockerfile:** tambahkan variabel `RAILWAY_DOCKERFILE_PATH=/src/backend/osm/Dockerfile`
-     (dihitung dari akar repositori). Nilai relatif `osm/Dockerfile` diabaikan tanpa pesan galat
-     dan Railway membangun `src/backend/Dockerfile`, sehingga service ini menjalankan Backend,
-     bukan Cache API (terlihat dari log `logger="backend"` dan 404 `{"detail": "Not Found"}`
-     untuk `/v1/osm/*`). Tahap terakhir Dockerfile adalah image runtime.
+   - **Config-as-code:** Settings → *Config-as-code* → *Railway Config File*
+     `/src/backend/osm/railway.json`. Berkas ini memilih `osm/Dockerfile` (relatif terhadap Root
+     Directory). Tanpa itu Railway membaca `src/backend/railway.json` milik Backend, yang
+     `dockerfilePath`-nya mengalahkan variabel `RAILWAY_DOCKERFILE_PATH` dan isian dashboard,
+     sehingga service ini menjalankan Backend, bukan Cache API (terlihat dari log
+     `logger="backend"` dan 404 `{"detail": "Not Found"}` untuk `/v1/osm/*`). Tahap terakhir
+     Dockerfile adalah image runtime.
 2. **Variables:** isi `DATABASE_URL` dengan referensi ke service database, misalnya
    `${{database.DATABASE_URL}}` (sesuaikan nama service). Referensi ini memakai URL privat
    `postgres.railway.internal`. Variabel `PORT` diisi otomatis oleh Railway.

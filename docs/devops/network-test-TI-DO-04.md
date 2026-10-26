@@ -10,10 +10,10 @@ baru yang kosong.
 
 | Uji | Lokal (compose) | Railway |
 |---|---|---|
-| Jalur publik: komponen internal tertutup | lulus 9/9 | lulus 5/5 per environment setelah TCP proxy dan domain backend dihapus (§6) |
+| Jalur publik: komponen internal tertutup | lulus 9/9 | lulus 5/5 per environment; development dengan gateway + backend aktif 7/7 (§6) |
 | Backend → basis data, cache-api, model_registry | lulus 5/5 | belum |
 | Data Worker → basis data, model_registry | lulus 3/3 + `main.py check` | basis data: lulus (log cron) |
-| Gateway → backend dan cache-api lewat nama internal | lulus 4/4 (smoke test) | cache-api: jalur privat sampai, image salah; backend: menunggu deploy (§6.5) |
+| Gateway → backend dan cache-api lewat nama internal | lulus 4/4 (smoke test) | backend: lulus; cache-api: jalur privat sampai, image salah (§6.6) |
 | DNS internal: terurai di dalam, tidak di luar | lulus | luar: lulus |
 | Layanan internal mendengarkan IPv6 | lulus (backend, cache-api, model_registry) | — |
 | Layanan tidak tersedia | lulus (backend, basis data) | backend tidak ada: 502, `/healthz` 200 |
@@ -275,10 +275,10 @@ menjawab `N` pada uji yang sama (`PASS reachable postgres://localhost:55432`).
 - **cache-api:** berjalan (`SUCCESS`) dan health check Railway lulus
   (`GET /health HTTP/1.1 200`); basis datanya hanya
   `postgres.railway.internal`.
+- **Gateway → backend:** lulus (§6.6).
 - **Gateway → cache-api:** request sampai lewat jaringan privat, tetapi
-  service `cache-api` menjalankan image yang salah (§6.5).
-- **Gateway → backend dan frontend → gateway:** belum diuji; backend belum
-  di-deploy (§6.6).
+  service `cache-api` menjalankan image Backend (§6.5–6.6).
+- **Frontend → gateway:** belum lulus; frontend perlu redeploy (§6.6).
 - **Uji dari dalam container (`railway ssh`):** belum dijalankan; akun
   Railway belum memiliki kunci SSH terdaftar.
 
@@ -328,26 +328,88 @@ Temuan: service `cache-api` di development ternyata menjalankan **Backend**,
 bukan Cache API. Log start-nya `configuration ok: environment=development ...`
 (`logger="backend"`), build log `load build definition from
 src/backend/Dockerfile`, dan 404-nya berformat FastAPI bawaan
-`{"detail": "Not Found"}`, bukan `{"error": ...}` milik Cache API. Penyebabnya:
-`RAILWAY_DOCKERFILE_PATH=osm/Dockerfile` (relatif) diabaikan tanpa galat.
-Service lain memakai path dari akar repositori (`/src/gateway/Dockerfile`,
-`/src/backend/Dockerfile`), jadi nilainya harus
-`/src/backend/osm/Dockerfile`. Panduan di `build-runtime.md` dan
-`src/backend/osm/README.md` sudah diperbaiki; variabel di Railway belum
-diubah.
+`{"detail": "Not Found"}`, bukan `{"error": ...}` milik Cache API. Penyebabnya
+dibahas di §6.6.
 
-### 6.6 Belum dilakukan
+### 6.6 Development lengkap (backend 26 Okt 20:46Z)
 
-1. Ubah `RAILWAY_DOCKERFILE_PATH` service `cache-api` (development) menjadi
-   `/src/backend/osm/Dockerfile`, lalu redeploy.
-2. Deploy backend dari dashboard (*Deploy latest commit*) atau
-   `railway up --service backend --environment development --ci` dari akar
-   repositori.
+Backend di-deploy dengan `railway up` dari akar repositori (setelah
+`.railwayignore`), cache-api di-redeploy dengan
+`RAILWAY_DOCKERFILE_PATH=/src/backend/osm/Dockerfile`.
+
+```
+smoke test 2026-10-26T20:56:32+00:00
+  gateway: https://gateway-development-fa8c.up.railway.app
+  backend: (not checked directly)
+PASS  gateway liveness               GET https://gateway-development-fa8c.up.railway.app/healthz
+      HTTP 200 358 ms {"status": "ok", "service": "gateway"} request_id=3e2e9d4d4ffa0326e84deb88d70e3bad
+PASS  route request via gateway      POST https://gateway-development-fa8c.up.railway.app/v1/routes
+      HTTP 503 322 ms {"status": "data_unavailable", "route": null, "metrics": null, "route_source": "fallback", "preference_applied": false, "message": "OSM graph export is unavaila request_id=4cd1a2a70d7ce165ad2a1937d761151b
+FAIL  cache API via gateway          GET https://gateway-development-fa8c.up.railway.app/v1/osm/version
+      HTTP 404 312 ms {"detail": "Not Found"} request_id=7ba90ce81f923f2c123d00d8632461e3
+PASS  unknown path not proxied       GET https://gateway-development-fa8c.up.railway.app/health
+      HTTP 404 277 ms {"error": {"code": "not_found", "message": "Unknown path", "request_id": "76b15c0c4a6f68ce5bbb0548ff5da74c"}} request_id=76b15c0c4a6f68ce5bbb0548ff5da74c
+3/4 checks passed
+```
+
+```
+network test 2026-10-26T20:56:34+00:00 from evexr_
+PASS  reachable   https://gateway-development-fa8c.up.railway.app/healthz
+      DNS 69.46.46.90; HTTP 200 287 ms {"status":"ok","service":"gateway"}
+PASS  reachable   https://frontend-development-49bf.up.railway.app/
+      DNS 69.46.46.93; HTTP 200 1340 ms <!doctype html> <html lang="id">   <head>     <meta charset="UTF-8" />     <meta name="viewport" content="width=device-w
+PASS  unreachable https://backend-development-0740.up.railway.app/health
+      DNS 69.46.46.77; Railway edge: domain not routed to a service (404 {"status":"error","code":404,"message":"Application not found","request_id":"fg-61qTOQkSemyqVJH0Vcg"})
+PASS  unreachable postgres://tokaido.proxy.rlwy.net:51696
+      DNS 66.33.22.222; PostgreSQL: An existing connection was forcibly closed by the remote host
+PASS  unreachable tcp://backend.railway.internal:8000
+      DNS: backend.railway.internal not resolvable (getaddrinfo failed)
+PASS  unreachable tcp://cache-api.railway.internal:8000
+      DNS: cache-api.railway.internal not resolvable (getaddrinfo failed)
+PASS  unreachable tcp://postgres.railway.internal:5432
+      DNS: postgres.railway.internal not resolvable (getaddrinfo failed)
+7/7 checks passed
+```
+
+Hasil:
+
+- **Gateway → backend lewat jaringan privat: lulus.** Backend menjawab
+  sendiri (`data_unavailable`, karena basis data development belum memiliki
+  ekspor graf OSM); log backend:
+  `10.247.34.84:33248 - "POST /v1/routes HTTP/1.1" 503`, dan start-up
+  `configuration ok: ... database=postgres.railway.internal:5432/railway`
+  (backend → basis data privat).
+- **Jalur publik: 7/7.** Gateway dan frontend terbuka; domain lama backend,
+  TCP proxy basis data, dan nama `*.railway.internal` tertutup dari internet.
+- **Gateway → cache-api: gagal, image salah.** Build cache-api masih
+  `load build definition from src/backend/Dockerfile`. Metadata deployment
+  menunjukkan berkas konfigurasi ikut dibaca (`propertyFileMapping`:
+  `build.dockerfilePath ← $.build.dockerfilePath`): cache-api memakai
+  `src/backend/railway.json` milik Backend, yang `"dockerfilePath":
+  "Dockerfile"`-nya mengalahkan variabel `RAILWAY_DOCKERFILE_PATH` dan isian
+  dashboard. Jadi bukan soal path relatif atau absolut. Perbaikan: berkas
+  baru `src/backend/osm/railway.json` (`dockerfilePath: osm/Dockerfile`),
+  dipasang sebagai *Railway Config File* service cache-api.
+- **Frontend → gateway: gagal, deployment lama.** `/v1/routes` lewat
+  frontend 502; log frontend `gateway could not be resolved (3: Host not
+  found)`. Frontend masih berjalan dari deployment sebelum
+  `GATEWAY_UPSTREAM` diisi (variabel diisi dengan `--skip-deploys`), sehingga
+  memakai nilai bawaan `http://gateway:8080`.
+
+### 6.7 Belum dilakukan
+
+1. Gabungkan PR ini ke `dev` (berkas `src/backend/osm/railway.json` harus ada
+   di branch yang di-deploy), lalu di service `cache-api` (development) isi
+   Settings → *Railway Config File* `/src/backend/osm/railway.json` dan
+   redeploy. Variabel `RAILWAY_DOCKERFILE_PATH` boleh dihapus.
+2. Redeploy `frontend` agar `GATEWAY_UPSTREAM` berlaku. Frontend memanggil
+   `gateway.railway.internal`; bila environment hanya IPv6, gateway perlu
+   `listen [::]` dari PR ini (deployment gateway saat ini dari `dev`).
 3. Ulangi:
 
 ```bash
 python scripts/smoke_test.py --gateway https://gateway-development-fa8c.up.railway.app
-python scripts/network_test.py --open https://gateway-development-fa8c.up.railway.app/healthz     --open https://frontend-development-49bf.up.railway.app/
+curl -s -X POST -H 'Content-Type: application/json' -d '{"origin":{"lon":106.8227,"lat":-6.1754},"destination":{"lon":106.8456,"lat":-6.2088},"mode":"walk","alpha":0.5,"beta":0.5}' https://frontend-development-49bf.up.railway.app/v1/routes
 ```
 
 Variabel `DATABASE_PUBLIC_URL` pada service `database` masih ada (dibuat

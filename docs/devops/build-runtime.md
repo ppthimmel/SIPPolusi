@@ -14,7 +14,7 @@ Manifes `k3s/` lama (Ingress Traefik) sudah dihapus.
 | Layanan | Folder (Root Directory Railway) | Start (CMD Dockerfile) | Mode Railway | Pemeriksaan |
 |---|---|---|---|---|
 | Backend API | `src/backend` | `python serve.py` | Service web, restart `ON_FAILURE` | `GET /health` (hidup), `GET /health/ready` (basis data) |
-| Cache API (`/v1/osm`, `/v1/pollution`) | `src/backend`, `RAILWAY_DOCKERFILE_PATH=/src/backend/osm/Dockerfile` (dari akar repositori) | `uvicorn osm.app:app` | Service web privat | `GET /health` (`HEALTHCHECK` image) |
+| Cache API (`/v1/osm`, `/v1/pollution`) | `src/backend`, config file `/src/backend/osm/railway.json` | `uvicorn osm.app:app` | Service web privat | `GET /health` (`HEALTHCHECK` image) |
 | API Gateway | `src/gateway` | entrypoint image `nginx` | Service web publik, restart `ON_FAILURE` | `GET /healthz` |
 | Data Worker | `src/data_worker` | `python main.py cycle` | Cron `15 * * * *`, restart `NEVER` | `python main.py check` |
 
