@@ -141,6 +141,10 @@ server {
         limit_req zone=routes burst=5 nodelay;
         # A RouteRequest is about 200 bytes; same limit as the Cache API (API_MAX_BODY_BYTES).
         client_max_body_size 16k;
+        # Keep every accepted body in memory. The default buffer (8k on 64-bit)
+        # spills larger bodies to a temporary file and logs a warning carrying
+        # the client address for each one.
+        client_body_buffer_size 16k;
         set $cache_api_upstream ${CACHE_API_UPSTREAM};
         proxy_pass $cache_api_upstream/v1/routes$is_args$args;
     }

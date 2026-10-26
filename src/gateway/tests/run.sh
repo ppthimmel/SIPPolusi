@@ -111,7 +111,10 @@ client_ip() {
 
 echo "== 3. routing with a stub upstream"
 cp /tests/stubs.conf /etc/nginx/conf.d/zz-test-stubs.conf
-nginx
+# A copy of the error log (warn and above, like stderr) for the checks on what
+# NGINX itself writes there.
+ERROR_LOG=/tmp/gateway-error.log
+nginx -g "error_log $ERROR_LOG warn;"
 for _ in 1 2 3 4 5 6 7 8 9 10; do
     curl -s -o /dev/null "http://127.0.0.1:$PORT/healthz" && break
     sleep 0.2
@@ -202,6 +205,11 @@ head -c 16000 /dev/zero | tr '\0' 'x' > /tmp/ok_body
 expect_json_error POST /v1/routes 413 payload_too_large --data-binary @/tmp/big_body -H 'Content-Type: application/json'
 status=$(curl -s -o /dev/null -w '%{http_code}' -H "X-Real-IP: $(client_ip)" --data-binary @/tmp/ok_body "http://127.0.0.1:$PORT/v1/routes")
 [ "$status" = 200 ] && pass "POST /v1/routes with 16 000 bytes reaches the Cache API" || fail "16 000-byte body: HTTP $status"
+if grep -q "buffered to a temporary file" "$ERROR_LOG"; then
+    fail "an accepted /v1/routes body was spilled to disk and logged: $(grep 'temporary file' "$ERROR_LOG")"
+else
+    pass "accepted /v1/routes bodies stay in memory (no temp-file warning with the client address)"
+fi
 
 echo "== 4. rate limiting (per client address)"
 # status_of PATH CLIENT_IP [curl args...]: HTTP status of one request.
@@ -269,6 +277,14 @@ expect_retry_after 1
 # The gateway's health check is never limited.
 got=$(i=0; while [ "$i" -lt 30 ]; do status_of /healthz 198.51.100.10; echo; i=$((i + 1)); done | sort -u | tr '\n' ' ')
 [ "$got" = "200 " ] && pass "/healthz: 30 quick requests all 200 (not limited)" || fail "/healthz under load: $got"
+
+# Rejections are logged at info, below the error log's threshold, so a refused
+# client's address does not reach it (the access log still records each 429).
+if grep -q "limiting requests" "$ERROR_LOG"; then
+    fail "rate-limit rejections reach the error log: $(grep 'limiting requests' "$ERROR_LOG" | head -1)"
+else
+    pass "rate-limit rejections are not written to the error log"
+fi
 
 echo "== 5. upstream failures"
 # Without the stub, the Cache API port refuses connections: 502.

@@ -55,7 +55,7 @@ Urutan pemrosesan satu request di gateway:
    exact match yang terbuka; selebihnya `404 not_found`.
 3. **Rate limit** (`limit_req`) per alamat klien dan per path; bila terlampaui,
    `429 rate_limited` tanpa menyentuh Cache API.
-4. **Batas body** 16 KiB pada `/v1/routes` (`413 payload_too_large`).
+4. **Batas body** 16 KiB pada `/v1/routes` (`413 payload_too_large`); body yang diterima tetap di memori.
 5. **Proxy** ke `CACHE_API_UPSTREAM` dengan path lokasi itu sendiri ditambah
    query string apa adanya, header `X-Request-ID` dan `X-Request-Received-At`,
    connect timeout 5 s, read/send timeout 10 s. Gagal terhubung → `502`,
@@ -109,6 +109,7 @@ server {
     location = /v1/routes {
         limit_req zone=routes burst=5 nodelay;
         client_max_body_size 16k;
+        client_body_buffer_size 16k;
         set $cache_api_upstream <CACHE_API_UPSTREAM>;
         proxy_pass $cache_api_upstream/v1/routes$is_args$args;
     }
@@ -134,6 +135,7 @@ server {
 | `X-Real-IP` dipercaya dari peer mana pun | Rentang alamat edge Railway tidak terdokumentasi dan dapat berubah, sehingga `set_real_ip_from` sempit tidak dapat diandalkan. Di Railway gateway hanya dapat dicapai lewat edge (yang menimpa header) atau jaringan privat (Frontend, yang meneruskannya). Jangan menaruh CDN di depan gateway tanpa meninjau ini. |
 | Path tetap pada `proxy_pass` | NGINX mencocokkan lokasi pada path yang sudah dinormalkan, sedangkan `proxy_pass` tanpa URI meneruskan path mentah. `/v1/osm/x/../../routes` cocok dengan `= /v1/routes`, sehingga path tetap mencegah bentuk mentahnya sampai ke Cache API. |
 | `limit_req_log_level info` | Penolakan tidak ditulis ke stderr (yang memuat alamat klien); log akses tetap mencatat setiap 429 sebagai `warn` tanpa alamat klien. |
+| `client_body_buffer_size 16k` pada `/v1/routes` | Sama dengan batas body. Dengan bawaan 8 KiB, setiap body 8–16 KiB ditulis ke berkas sementara dan dicatat sebagai `warn` beserta alamat klien. |
 | Traefik tidak dipakai | Sesuai ruang lingkup issue; API gateway bawaan Railway hanya sebagai edge TLS. |
 
 ## Hasil uji
@@ -144,7 +146,7 @@ server {
 docker build --target test src/gateway
 ```
 
-80 pemeriksaan, 80 lulus, ±15 s. Bagian 1 (validasi variabel, 34 kasus) dan
+82 pemeriksaan, 82 lulus, ±15 s. Bagian 1 (validasi variabel, 34 kasus) dan
 2 (render template + `nginx -t`) tidak ditampilkan. Bagian 3–5 (badan respons
 dipotong):
 
@@ -180,6 +182,7 @@ PASS  GET /v1/routes/../osm/version -> HTTP 404 ...
 PASS  X-Request-Received-At forwarded (1793049790.822)
 PASS  POST /v1/routes -> HTTP 413 payload_too_large (JSON)
 PASS  POST /v1/routes with 16 000 bytes reaches the Cache API
+PASS  accepted /v1/routes bodies stay in memory (no temp-file warning with the client address)
 == 4. rate limiting (per client address)
 PASS  /v1/routes: 6 quick requests from 198.51.100.7 pass (rate + burst)
 PASS  POST /v1/routes -> HTTP 429 rate_limited (JSON)
@@ -191,6 +194,7 @@ PASS  GET /v1/exposure-surface?zoom=13 -> HTTP 429 rate_limited (JSON)
 PASS  429 carries Retry-After: 1 and the same wait in the message
 PASS  limits are per path: /v1/routes unaffected by the heatmap limit
 PASS  /healthz: 30 quick requests all 200 (not limited)
+PASS  rate-limit rejections are not written to the error log
 == 5. upstream failures
 PASS  POST /v1/routes -> HTTP 502 upstream_unavailable (JSON)
 PASS  GET /v1/exposure-surface -> HTTP 502 upstream_unavailable (JSON)

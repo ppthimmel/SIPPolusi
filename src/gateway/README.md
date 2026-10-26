@@ -122,12 +122,14 @@ fails the build. It needs no network and takes about 15 seconds, most of it the
    upstream and in the response; raw paths with `..` or `%2E%2E` reach it only
    as the public path; every other path (the Cache API's internal and
    inspection endpoints, `/v1/*` near misses, health endpoints, `/docs`, `/`)
-   gets the gateway's `404`; bodies over 16 KiB get `413`;
+   gets the gateway's `404`; bodies over 16 KiB get `413`, and an accepted
+   16 000-byte body stays in memory (no temp-file warning in the error log);
 4. rate limiting: 6 quick `POST /v1/routes` from one address pass and the 7th
    gets `429 rate_limited` with `Retry-After: 3`; another address is not
    affected; the refused address passes again after 3 s; 11 quick heatmap
    requests pass and the 12th gets `429` with `Retry-After: 1`; the two limits
-   are separate; 30 quick `/healthz` all get 200;
+   are separate; 30 quick `/healthz` all get 200; no rejection reaches the
+   error log;
 5. upstream failures: a refused connection gives `502 upstream_unavailable`; an
    upstream that accepts but never answers gives `504 upstream_timeout` after
    10 s; `/healthz` still answers 200.
@@ -150,6 +152,9 @@ request line, so it is kept for failures only (e.g. `cache_api could not be
 resolved ... client: 203.0.113.7`); with `X-Real-IP` that address is now the
 end user's, not the edge's. Rate-limit rejections are logged by NGINX at `info`,
 below that threshold, so a refused client's address does not reach stderr.
+`POST /v1/routes` keeps bodies up to its 16 KiB limit in memory
+(`client_body_buffer_size 16k`); with the 8 KiB default, each larger body was
+written to a temporary file and logged as a warning with the client address.
 
 ```json
 {"time":"2026-10-09T07:40:01+00:00","level":"info","message":"POST /v1/routes 200","request_id":"4b0c…","method":"POST","path":"/v1/routes","status":200,"bytes_sent":112,"duration_s":0.004,"upstream_status":"200","upstream_duration_s":"0.004"}
