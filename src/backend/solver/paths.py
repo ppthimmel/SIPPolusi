@@ -2,7 +2,8 @@
 check that a route labelled baseline is a fastest route (TI-SE-07 QA).
 
 Ties break on node id and edge id, so the same input always gives the same path.
-The search checks a CancelToken once per expansion (solver.cancel).
+The search checks a CancelToken once per expansion, and while it builds the
+adjacency (solver.cancel).
 """
 from __future__ import annotations
 
@@ -14,15 +15,25 @@ from planner.models import PlannedEdge, SolverInput
 from .cancel import CancelToken
 
 
-def _arcs(edges: list[PlannedEdge]) -> dict[int, list[tuple[int, int, PlannedEdge]]]:
+# Building the adjacency of a large input takes a noticeable fraction of a second,
+# so the token is checked every CHECK_EVERY edges or nodes there too.
+CHECK_EVERY = 1024
+
+
+def _arcs(edges: list[PlannedEdge],
+          token: CancelToken | None = None) -> dict[int, list[tuple[int, int, PlannedEdge]]]:
     arcs: dict[int, list[tuple[int, int, PlannedEdge]]] = {}
-    for e in edges:
+    for i, e in enumerate(edges):
+        if token is not None and i % CHECK_EVERY == 0:
+            token.check()
         if e.u == e.v:
             continue
         arcs.setdefault(e.u, []).append((e.v, e.edge_id, e))
         if e.bidirectional:
             arcs.setdefault(e.v, []).append((e.u, e.edge_id, e))
-    for out in arcs.values():
+    for i, out in enumerate(arcs.values()):
+        if token is not None and i % CHECK_EVERY == 0:
+            token.check()
         out.sort(key=lambda a: (a[0], a[1]))
     return arcs
 
@@ -32,7 +43,7 @@ def shortest_path(si: SolverInput, cost: Callable[[PlannedEdge], float],
     """Edge ids of the cheapest origin -> destination path, or None when unreachable.
     Raises Cancelled at the next expansion once token is cancelled."""
     start, goal = si.origin.node_id, si.destination.node_id
-    arcs = _arcs(si.edges)
+    arcs = _arcs(si.edges, token)
     best = {start: 0.0}
     previous: dict[int, tuple[int, int]] = {}
     queue = [(0.0, start)]
