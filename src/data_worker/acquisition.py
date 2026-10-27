@@ -11,11 +11,15 @@ from typing import Callable
 
 from contracts import JAKARTA_BBOX, TimeWindow
 from ground_truth import fetch_ground_truth
+from log_config import log_event
 from spku.config import Config
 
 log = logging.getLogger("data_worker.acquisition")
 
 Step = Callable[[TimeWindow, Config], dict]
+
+#: Status langkah yang berarti hasilnya tidak ada atau tidak lengkap.
+_PROBLEM_STATUSES = {"failed": logging.ERROR, "unavailable": logging.WARNING, "partial": logging.WARNING}
 
 
 def _step_ground_truth(time_window: TimeWindow, config: Config) -> dict:
@@ -108,6 +112,10 @@ def schedule_acquisition(
                 entry = {"step": name, "status": "failed", "error": f"{type(exc).__name__}: {exc}"}
         entry["duration_s"] = round(time.monotonic() - started, 2)
         report["steps"].append(entry)
-        log.info("siklus %s: %s -> %s", time_window, name, entry["status"])
+        default_level = logging.WARNING if entry.get("fallback_reason") else logging.INFO
+        level = _PROBLEM_STATUSES.get(entry["status"], default_level)
+        log_event(log, "job_step", level, time_window=str(time_window), step=name, status=entry["status"],
+                  duration_s=entry["duration_s"], run_id=entry.get("run_id"),
+                  fallback_reason=entry.get("fallback_reason"), error=entry.get("error"))
     report["failed"] = [s["step"] for s in report["steps"] if s["status"] == "failed"]
     return report

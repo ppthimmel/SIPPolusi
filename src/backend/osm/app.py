@@ -22,7 +22,9 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.responses import JSONResponse
 
+from log_config import configure_logging
 from planner.router import router as planner_router
 from solver.config import SolverSettings, get_solver_settings
 from solver.contract import RouteSolver
@@ -31,6 +33,7 @@ from solver.router import router as solver_router
 from pollution.config import get_pollution_settings
 from pollution.repository import PollutionRepository
 from pollution.router import router as pollution_router
+from telemetry import install_request_observability
 
 from .config import OsmSettings, get_settings
 from .db import OsmDatabase
@@ -40,6 +43,8 @@ from .router import router
 from .schemas import HealthOut
 
 logger = logging.getLogger("osm")
+
+SERVICE = "cache-api"
 
 
 @asynccontextmanager
@@ -94,6 +99,7 @@ def create_app(
         lifespan=lifespan,
     )
     install_error_handling(app)
+    install_request_observability(app, SERVICE)
     app.include_router(router)
     app.include_router(pollution_router)
     app.include_router(planner_router)
@@ -120,8 +126,47 @@ def create_app(
                 out.pollution_data_stale = pollution.staleness(window)[0]
         return out
 
+    @app.get("/health/live", tags=["health"])
+    async def liveness():
+        """Liveness: the process is up and serving; no dependency is touched."""
+        return {"status": "ok", "service": SERVICE}
+
+    @app.get("/health/ready", tags=["health"])
+    async def readiness():
+        """Readiness: 503 unless the cache database answers and holds an active road graph.
+
+        Pollution data that is missing or stale does not make the API unready (routes are
+        still served, labelled stale), but it is reported: it means the Data Worker is behind.
+        """
+        repo: OsmRepository = app.state.osm_repository
+        checks = {"database": "ok", "graph": "ok", "pollution": "not_configured"}
+        if not await repo.ping():
+            checks.update(database="unavailable", graph="unknown", pollution="unknown")
+        else:
+            try:
+                await repo.get_active_version()
+            except CacheUnavailable as exc:
+                checks["graph"] = "empty" if exc.reason == CacheUnavailable.CACHE_EMPTY else "unavailable"
+            pollution: PollutionRepository | None = app.state.pollution_repository
+            if pollution is not None:
+                try:
+                    window = await pollution.latest_complete_window()
+                except CacheUnavailable:
+                    window = None
+                checks["pollution"] = ("empty" if window is None
+                                       else "stale" if pollution.staleness(window)[0] else "ok")
+        ready = checks["database"] == "ok" and checks["graph"] == "ok"
+        if not ready:
+            logger.warning("readiness failed: %s", checks)
+        return JSONResponse(
+            status_code=200 if ready else 503,
+            content={"status": "ready" if ready else "not_ready", "service": SERVICE, "checks": checks},
+        )
+
     return app
 
 
-logging.basicConfig(level=logging.INFO)
+# Under uvicorn the root logger has no handler yet; tests and embedding apps keep theirs.
+if not logging.getLogger().handlers:
+    configure_logging(service=SERVICE)
 app = create_app()

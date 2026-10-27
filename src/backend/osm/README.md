@@ -94,7 +94,7 @@ Semua perintah di bawah dijalankan dari **root repo**, kecuali disebutkan lain.
 Image ini berdiri sendiri dan tidak memakai `src/backend/Dockerfile`. Konteks build-nya adalah
 `src/backend` (agar `osm/`, `pollution/`, `planner/`, `solver/`, dan `route_model/` ikut), dan `osm/Dockerfile.dockerignore` membatasi
 berkas yang dikirim hanya ke kedua paket itu. Image runtime memakai `python:3.11-slim`, berjalan sebagai user non-root, punya
-`HEALTHCHECK` ke `/health`, dan mendengarkan pada `PORT` (default 8000). File `.env` tidak ikut
+`HEALTHCHECK` ke `/health/live`, dan mendengarkan pada `PORT` (default 8000). File `.env` tidak ikut
 masuk image; konfigurasi diberikan lewat environment. Pastikan Docker Desktop sudah menyala.
 
 Semua perintah Docker di bawah memakai path dari **root repo**. Kalau terminal masih di
@@ -212,7 +212,7 @@ Railway membangun image dari GitHub, jadi kodenya harus sudah di-push ke branch 
 2. **Variables:** isi `DATABASE_URL` dengan referensi ke service database, misalnya
    `${{database.DATABASE_URL}}` (sesuaikan nama service). Referensi ini memakai URL privat
    `postgres.railway.internal`. Variabel `PORT` diisi otomatis oleh Railway.
-3. **Settings:** set *Healthcheck Path* ke `/health`. Untuk menguji dari luar, buat domain lewat
+3. **Settings:** set *Healthcheck Path* ke `/health/live`. Untuk menguji dari luar, buat domain lewat
    *Networking → Generate Domain*.
 4. Uji dari terminal laptop dengan perintah seperti A-5, tetapi alamatnya diganti domain Railway.
    Coba juga perjalanan ±10 km, yang dari laptop kena 503 karena jaringan lambat. Di Railway
@@ -432,6 +432,9 @@ sesi dan bisa dimatikan oleh sesi mana pun. Selama Backend masih memakai user `p
 | GET | `/streets?q=&limit=` | Cari nama jalan; `q` wajib memuat ≥ 3 huruf/angka berurutan agar index trigram terpakai | handoff 9.8 |
 | POST | `/subgraph` | Bagian OSM dari R8–R10: `compute_request_bbox`, `read_road_graph`, `snap_to_graph`, `assemble_request_subgraph` | Tabel 3.6, UT-BE-04..06 |
 | GET | `/health` | Status koneksi database, versi graf aktif, time window polusi terakhir dan `pollution_data_stale` | |
+| GET | `/health/live` | Liveness: 200 selama proses melayani, tanpa menyentuh database | TI-DO-08 |
+| GET | `/health/ready` | Readiness: 503 bila database atau graf aktif tidak siap; `checks.pollution` (`ok`/`stale`/`empty`) hanya dilaporkan | TI-DO-08 |
+| GET | `/metrics` | Metrik Prometheus: jumlah request per route/status, latency | TI-DO-08 |
 
 - **Format data:**
   - `bbox` ditulis `min_lon,min_lat,max_lon,max_lat`.

@@ -13,15 +13,17 @@ Manifes `k3s/` lama (Ingress Traefik) sudah dihapus.
 
 | Layanan | Folder (Root Directory Railway) | Start (CMD Dockerfile) | Mode Railway | Pemeriksaan |
 |---|---|---|---|---|
-| Backend API | `src/backend` | `python serve.py` | Service web, restart `ON_FAILURE` | `GET /health` (hidup), `GET /health/ready` (basis data) |
-| Cache API (`/v1/osm`, `/v1/pollution`) | `src/backend`, `RAILWAY_DOCKERFILE_PATH=osm/Dockerfile` | `uvicorn osm.app:app` | Service web privat | `GET /health` (`HEALTHCHECK` image) |
+| Backend API | `src/backend` | `python serve.py` | Service web, restart `ON_FAILURE` | `GET /health` (hidup), `GET /health/ready` (basis data, graf rute) |
+| Cache API (`/v1/osm`, `/v1/pollution`) | `src/backend`, `RAILWAY_DOCKERFILE_PATH=osm/Dockerfile` | `uvicorn osm.app:app` | Service web privat | `GET /health/live` (hidup, `HEALTHCHECK` image), `GET /health/ready` (basis data, graf aktif) |
 | API Gateway | `src/gateway` | entrypoint image `nginx` | Service web publik, restart `ON_FAILURE` | `GET /healthz` |
-| Data Worker | `src/data_worker` | `python main.py cycle` | Cron `15 * * * *`, restart `NEVER` | `python main.py check` |
+| Data Worker | `src/data_worker` | `python main.py cycle` | Cron `15 * * * *`, restart `NEVER` | `python main.py check`, `python main.py health` (job tertinggal) |
 
 Setiap folder memuat `Dockerfile`, `.dockerignore`, `.env.example`, dan
 `railway.json` (builder, *watch path*, health check, restart, cron). Cache API
 memakai folder dan berkas yang sama dengan Backend, dengan Dockerfile sendiri
 (panduan: [`src/backend/osm/README.md`](../../src/backend/osm/README.md)).
+Skema log, correlation ID, metrik, dan arti setiap pemeriksaan ada di
+[`observability-TI-DO-08.md`](observability-TI-DO-08.md).
 
 Pemetaan jalur ke layanan hanya ada di gateway: `/v1/osm/*` dan
 `/v1/pollution/*` ke Cache API, `/v1/*` lainnya ke Backend. Container frontend

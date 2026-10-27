@@ -30,6 +30,7 @@ COPY pollution/ pollution/
 COPY planner/ planner/
 COPY solver/ solver/
 COPY route_model/*.py route_model/
+COPY log_config.py telemetry.py ./
 # Integration tests also run when DATABASE_URL is passed (docker run -e/--env-file).
 # Cache-flow tests (TEST_DATABASE_URL + src/data_worker) are skipped in this image.
 CMD ["sh", "-c", "s=0; for p in osm pollution planner solver; do cd /app/$p && pytest -p no:cacheprovider || s=1; done; exit $s"]
@@ -41,14 +42,17 @@ COPY pollution/*.py pollution/
 COPY planner/*.py planner/
 COPY solver/*.py solver/
 COPY route_model/*.py route_model/
+# Redacting JSON logs and the request-ID/latency middleware, shared with src/backend/main.py (TI-DO-08).
+COPY log_config.py telemetry.py ./
 RUN useradd --create-home --uid 10001 app
 USER app
 
 # Configuration comes from environment variables (DATABASE_URL, OSM_*, POLLUTION_*, ROUTE_SOLVER_*),
 # not a baked-in .env. Railway provides PORT.
 EXPOSE 8000
+# Liveness only: a database outage shows on /health/ready (503) instead of restarting the container.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-    CMD python -c "import os, urllib.request; urllib.request.urlopen(f'http://127.0.0.1:{os.environ.get(\"PORT\", \"8000\")}/health', timeout=4)"
+    CMD python -c "import os, urllib.request; urllib.request.urlopen(f'http://127.0.0.1:{os.environ.get(\"PORT\", \"8000\")}/health/live', timeout=4)"
 
 # Empty host = all interfaces (IPv4 for Railway's public edge, IPv6 for its
 # private network), same as src/backend/Dockerfile. exec lets uvicorn receive SIGTERM.

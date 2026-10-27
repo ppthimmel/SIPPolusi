@@ -5,6 +5,8 @@
 !planner
 !solver
 !route_model
+!log_config.py
+!telemetry.py
 **/__pycache__
 **/*.pyc
 **/.pytest_cache

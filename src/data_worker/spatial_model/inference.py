@@ -32,6 +32,7 @@ import numpy as np
 import pandas as pd
 
 from contracts import JAKARTA_BBOX, EdgeWeight, RunSummary, TimeWindow
+from log_config import log_event
 from spatial_model.aggregate import aggregate_grid_to_edges, edge_cell_pieces, grid_spec_id
 from spatial_model.confidence import confidence_distribution, estimate_confidence
 from spatial_model.grid import GridSpec
@@ -182,6 +183,9 @@ def run_downscale_inference(
         resolved_version = model_version
     except ModelUnavailableError as exc:
         fallback_reason = f"{type(exc).__name__}: {exc}"
+        # Fallback dicatat sebagai peringatan, tidak hanya sebagai run yang "complete" (TI-DO-08).
+        log_event(log, "downscale_fallback", logging.WARNING, time_window=str(time_window), fallback="idw",
+                  reason=fallback_reason)
         estimation_source, background_source = "idw", None
         resolved_version = idw_model_version(settings["power"], settings["neighbors"])
         grid = None
