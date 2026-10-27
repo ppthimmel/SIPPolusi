@@ -1,10 +1,10 @@
 {
   "summary": {
-    "started_at": "2026-10-27T12:16:57+00:00",
-    "finished_at": "2026-10-27T12:19:24+00:00",
-    "checks": 62,
-    "passed": 60,
-    "failed": 2
+    "started_at": "2026-10-27T12:50:19+00:00",
+    "finished_at": "2026-10-27T12:52:56+00:00",
+    "checks": 63,
+    "passed": 62,
+    "failed": 1
   },
   "results": [
     {
@@ -154,7 +154,7 @@
       "passed": true,
       "evidence": {
         "status": 200,
-        "elapsed_s": 0.406
+        "elapsed_s": 0.408
       }
     },
     {
@@ -182,6 +182,27 @@
     },
     {
       "scenario": "E2E-02 sukses Worker -> frontend",
+      "check": "metadata.estimation menyebut sumber estimasi dan polutan fallback yang dicatat Worker",
+      "passed": true,
+      "evidence": {
+        "estimation": {
+          "source": "idw",
+          "fallback_pollutants": [
+            "no2",
+            "pm25"
+          ]
+        },
+        "worker": {
+          "estimation_source": "idw",
+          "fallback": [
+            "no2",
+            "pm25"
+          ]
+        }
+      }
+    },
+    {
+      "scenario": "E2E-02 sukses Worker -> frontend",
       "check": "tidak ada paparan nol pada rute 200",
       "passed": true,
       "evidence": {
@@ -200,7 +221,7 @@
       "check": "korelasi: X-Request-ID = metadata.request_id = log gateway = log Cache API",
       "passed": true,
       "evidence": {
-        "x_request_id": "fddf7cf5b735acd3c5c8857a3524b17a"
+        "x_request_id": "9c3cf57120c0089f0397529f5992ebed"
       }
     },
     {
@@ -210,15 +231,15 @@
       "evidence": {
         "level": "info",
         "logger": "solver",
-        "correlation_id": "fddf7cf5b735acd3c5c8857a3524b17a"
+        "correlation_id": "9c3cf57120c0089f0397529f5992ebed"
       }
     },
     {
       "scenario": "E2E-02 sukses Worker -> frontend",
       "check": "missing_edge_count di respons sesuai cakupan Worker (100 %)",
-      "passed": false,
+      "passed": true,
       "evidence": {
-        "missing_edge_count": 3,
+        "missing_edge_count": 0,
         "worker_coverage": 1.0
       }
     },
@@ -353,7 +374,7 @@
       "evidence": {
         "status": 200,
         "fallback_reason": "model_timeout",
-        "elapsed_s": 7.911
+        "elapsed_s": 7.936
       }
     },
     {
@@ -375,7 +396,7 @@
       "scenario": "E2E-06 inferensi rute gagal, fallback aktif",
       "check": "model slow: log mencatat outcome=fallback dan penyebab solver_timeout",
       "passed": true,
-      "evidence": "star-baseline fallback_reason=model_timeout mode=walk alpha=0.3 beta=0.7 deadline_ms=7377 inference_ms=48.8 primary_ms=7681.2 reason=solver_timeout detail='no reply within 7677 ms'\", \"service\": \"cache-api\", \"correlation_id\": \"b14963e86f8e2058cba91a99e1f8068a\"}"
+      "evidence": "star-baseline fallback_reason=model_timeout mode=walk alpha=0.3 beta=0.7 deadline_ms=7379 inference_ms=58.5 primary_ms=7686.1 reason=solver_timeout detail='no reply within 7679 ms'\", \"service\": \"cache-api\", \"correlation_id\": \"79ef3b3123663332b20a0ed69e6db5ab\"}"
     },
     {
       "scenario": "E2E-06 inferensi rute gagal, fallback aktif",
@@ -384,7 +405,7 @@
       "evidence": {
         "status": 200,
         "fallback_reason": "model_error",
-        "elapsed_s": 0.234
+        "elapsed_s": 0.294
       }
     },
     {
@@ -406,7 +427,7 @@
       "scenario": "E2E-06 inferensi rute gagal, fallback aktif",
       "check": "model error: log mencatat outcome=fallback dan penyebab solver_error",
       "passed": true,
-      "evidence": "ar-baseline fallback_reason=model_error mode=walk alpha=0.3 beta=0.7 deadline_ms=7412 inference_ms=32.8 primary_ms=110.7 reason=solver_error detail='Route Model menjawab HTTP 500.'\", \"service\": \"cache-api\", \"correlation_id\": \"32f1e3419fb07111e1db22810540ef4d\"}"
+      "evidence": "ar-baseline fallback_reason=model_error mode=walk alpha=0.3 beta=0.7 deadline_ms=7391 inference_ms=54.8 primary_ms=125.2 reason=solver_error detail='Route Model menjawab HTTP 500.'\", \"service\": \"cache-api\", \"correlation_id\": \"76fe378dd267721e6e248c6addd51e9c\"}"
     },
     {
       "scenario": "E2E-06 inferensi rute gagal, fallback aktif",
@@ -415,7 +436,7 @@
       "evidence": {
         "status": 200,
         "fallback_reason": "model_invalid_response",
-        "elapsed_s": 0.263
+        "elapsed_s": 0.387
       }
     },
     {
@@ -437,7 +458,7 @@
       "scenario": "E2E-06 inferensi rute gagal, fallback aktif",
       "check": "model mislabel: log mencatat outcome=fallback dan penyebab invalid_solver_response",
       "passed": true,
-      "evidence": "ha=0.3 beta=0.7 deadline_ms=7389 inference_ms=54.0 primary_ms=95.2 reason=invalid_solver_response detail='route_source policy dengan preference_applied=False, fallback_reason=None'\", \"service\": \"cache-api\", \"correlation_id\": \"592a108c4689a95c1c364de4f90018f6\"}"
+      "evidence": "a=0.3 beta=0.7 deadline_ms=7330 inference_ms=77.7 primary_ms=135.7 reason=invalid_solver_response detail='route_source policy dengan preference_applied=False, fallback_reason=None'\", \"service\": \"cache-api\", \"correlation_id\": \"3125ef2fac38df06de59e5c7449cea5d\"}"
     },
     {
       "scenario": "E2E-06 inferensi rute gagal, fallback aktif",
@@ -446,7 +467,7 @@
       "evidence": {
         "status": 200,
         "fallback_reason": "model_no_route",
-        "elapsed_s": 0.254
+        "elapsed_s": 0.308
       }
     },
     {
@@ -468,7 +489,7 @@
       "scenario": "E2E-06 inferensi rute gagal, fallback aktif",
       "check": "model no_route: log mencatat outcome=fallback dan penyebab solver_no_route",
       "passed": true,
-      "evidence": "ason=model_no_route mode=walk alpha=0.3 beta=0.7 deadline_ms=7407 inference_ms=61.5 primary_ms=96.4 reason=solver_no_route detail='solver reported no route on a reachable subgraph'\", \"service\": \"cache-api\", \"correlation_id\": \"4982c007e74f3c5e2a054a2eb0e3fa01\"}"
+      "evidence": "son=model_no_route mode=walk alpha=0.3 beta=0.7 deadline_ms=7387 inference_ms=64.7 primary_ms=126.5 reason=solver_no_route detail='solver reported no route on a reachable subgraph'\", \"service\": \"cache-api\", \"correlation_id\": \"fd9cddcee0ee29229ab811e4679c2aac\"}"
     },
     {
       "scenario": "E2E-06 inferensi rute gagal, fallback aktif",
@@ -489,7 +510,7 @@
           "route_service_unavailable",
           "solver_timeout"
         ],
-        "elapsed_s": 7.805
+        "elapsed_s": 7.872
       }
     },
     {

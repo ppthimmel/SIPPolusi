@@ -1,12 +1,12 @@
 {
-  "git_commit": "4638b08",
+  "git_commit": "d5c5dea",
   "git_branch": "feat/ti-se-10",
   "git_dirty": false,
   "components": {
     "data_worker": "c9fd83d 2026-10-27 fix(data_worker): sesi yatim dari kontainer yang dihentikan tidak menahan siklus",
-    "cache_api": "6f197ab 2026-10-27 Merge pull request #62 from ppthimmel/TI-DO-08",
+    "cache_api": "d5c5dea 2026-10-27 feat: sumber estimasi polusi di metadata rute dan UI (D-07 TI-SE-10)",
     "gateway": "585c781 2026-10-27 feat(gateway): key IPv6 clients by /64, allow only each path's method",
-    "frontend": "b50780d 2026-10-27 fix: heatmap lama tidak tampil sebagai data terbaru dan satuan paparan konsisten"
+    "frontend": "d5c5dea 2026-10-27 feat: sumber estimasi polusi di metadata rute dan UI (D-07 TI-SE-10)"
   },
   "images": {
     "db": {
@@ -15,7 +15,7 @@
     },
     "worker": {
       "image": "sippolusi-e2e-worker",
-      "id": "sha256:dce2b2af013c"
+      "id": "sha256:db552abb7763"
     },
     "spku_portal": {
       "image": "python:3.11-slim",
@@ -23,19 +23,19 @@
     },
     "route_model": {
       "image": "sippolusi-e2e-route_model",
-      "id": "sha256:030f11a3a235"
+      "id": "sha256:b090be73d488"
     },
     "cache_api": {
       "image": "sippolusi-e2e-cache_api",
-      "id": "sha256:8ca88a1d5483"
+      "id": "sha256:c5db68ce18c1"
     },
     "gateway": {
       "image": "sippolusi-e2e-gateway",
-      "id": "sha256:7a9916f60f0b"
+      "id": "sha256:714bebf128f7"
     },
     "frontend": {
       "image": "sippolusi-e2e-frontend",
-      "id": "sha256:7e11ac59d271"
+      "id": "sha256:0574a4d5a004"
     }
   },
   "dataset": {
