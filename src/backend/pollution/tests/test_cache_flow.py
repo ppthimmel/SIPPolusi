@@ -349,6 +349,8 @@ async def test_legacy_cache_readable_without_claiming_cell_trace(writer, backend
 async def test_route_read_without_lineage_matches_full_read(writer, cache_dsn):
     write_graph(writer, "v1", footway_edge=0)
     write_weights(writer, W2, range(1, 25), "v1")
+    # The fixture run carries no model metadata; give the rows some, as a registered model run does.
+    writer.execute("""UPDATE pollution.edge_pollution SET model_metadata = '{"pm25": {"source": "idw"}}'""")
     db = OsmDatabase(OsmSettings(_env_file=None, DATABASE_URL=cache_dsn))
     try:
         pollution = PollutionRepository(db, OsmRepository(db, version_cache_ttl_s=0), clock=lambda: NOW,
