@@ -6,12 +6,37 @@ Two Features (recommended, comparison) with LineString geometry in [lon, lat]
 from (route_source, preference_applied), and metadata.fallback_reason plus
 notes say why when the recommendation is a fallback, so a baseline route is
 never presented as a preference-aware one (PF-12, PNF-07).
+
+Coordinates are WGS 84 longitude, latitude (RFC 7946 section 4). RFC 7946 removed
+the top-level "crs" member, so the reference system and the unit of every metric
+are stated in metadata ("crs", "coordinate_order", "units") instead (TI-SE-08).
 """
 from __future__ import annotations
 
 from typing import Any
 
 from .contract import RouteResult, SolveResult
+
+# RFC 7946 section 4: GeoJSON coordinates are always this CRS, longitude first.
+CRS84 = "urn:ogc:def:crs:OGC::CRS84"
+COORDINATE_ORDER = ["lon", "lat"]
+# Subbab 3.3.1: WHO 2021 24-hour guidelines, 15 µg/m³ PM2.5 and 25 µg/m³ NO2.
+EXPOSURE_INDEX_DEFINITION = (
+    "I = ½ · (PM2.5 / 15 + NO2 / 25), konsentrasi dalam µg/m³ dibagi pedoman WHO 2021 (rata-rata 24 jam); "
+    "bila hanya satu polutan tersedia, I = PM2.5 / 15 atau NO2 / 25. Tanpa satuan; 1,0 = tepat pada pedoman.")
+
+# Unit of each numeric field in route Features and metadata.comparison.
+ROUTE_UNITS = {
+    "travel_time_min": "min",
+    "distance_m": "m",
+    "exposure_index_min": "index·min",
+    "exposure_ug_min_m3": "µg·min/m³",
+    "concentration_coverage": "fraction 0–1",
+    "confidence_score": "fraction 0–1",
+    "imputed_edge_count": "count",
+    "delta_travel_time_min": "min",
+    "delta_exposure_pct": "%",
+}
 
 DISCLAIMER = (
     "Estimasi konsentrasi polutan merupakan keluaran model, bukan hasil pengukuran langsung, dan dapat "
@@ -64,6 +89,10 @@ def build_geojson_response(result: SolveResult) -> dict[str, Any]:
                 "delta_exposure_pct": result.delta_exposure_pct,
             },
             "notes": list(result.notes),
+            "crs": CRS84,
+            "coordinate_order": COORDINATE_ORDER,
+            "units": ROUTE_UNITS,
+            "exposure_index_definition": EXPOSURE_INDEX_DEFINITION,
             "disclaimer": DISCLAIMER,
         },
     }

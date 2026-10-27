@@ -15,20 +15,33 @@ Manifes `k3s/` lama (Ingress Traefik) sudah dihapus.
 | Layanan | Folder (Root Directory Railway) | Start (CMD Dockerfile) | Mode Railway | Pemeriksaan |
 |---|---|---|---|---|
 | Backend API | `src/backend` | `python serve.py` | Service web, restart `ON_FAILURE` | `GET /health` (hidup), `GET /health/ready` (basis data) |
-| Cache API (`/v1/osm`, `/v1/pollution`) | `src/backend`, `RAILWAY_DOCKERFILE_PATH=osm/Dockerfile` | `uvicorn osm.app:app` | Service web privat | `GET /health` (`HEALTHCHECK` image) |
+| Cache API (API publik `/v1/routes`, `/v1/exposure-surface`; baca internal `/v1/osm`, `/v1/pollution`) | `src/backend`, *Dockerfile Path* `/src/backend/osm/Dockerfile` (dashboard) | `uvicorn osm.app:app` | Service web privat | `GET /health` (`HEALTHCHECK` image) |
 | API Gateway | `src/gateway` | entrypoint image `nginx` | Service web publik, restart `ON_FAILURE` | `GET /healthz` |
 | Data Worker | `src/data_worker` | `python main.py cycle` | Cron `15 * * * *`, restart `NEVER` | `python main.py check` |
 
 Setiap folder memuat `Dockerfile`, `.dockerignore`, `.env.example`, dan
 `railway.json` (builder, *watch path*, health check, restart, cron). Cache API
-memakai folder dan berkas yang sama dengan Backend, dengan Dockerfile sendiri
+memakai folder yang sama dengan Backend, dengan Dockerfile sendiri yang dipilih
+lewat *Dockerfile Path* di dashboard
 (panduan: [`src/backend/osm/README.md`](../../src/backend/osm/README.md)).
+Railway membaca `src/backend/railway.json` untuk kedua service, jadi berkas itu
+tidak boleh memuat `dockerfilePath`.
 
-Pemetaan jalur ke layanan hanya ada di gateway: `/v1/osm/*` dan
-`/v1/pollution/*` ke Cache API, `/v1/*` lainnya ke Backend. Container frontend
-meneruskan `/v1/*` apa adanya ke gateway (`GATEWAY_UPSTREAM`), tidak langsung
-ke Backend, sehingga request dari aplikasi web mendapat batas waktu,
-`X-Request-ID`, dan (nanti) rate limit yang sama dengan klien lain.
+> **Config as Code dihentikan Railway.** Berkas `railway.json` yang sudah
+> dipakai tetap berlaku sampai **1 Desember 2026**; sejak 28 Agustus 2026
+> service yang belum pernah memakainya tidak bisa mengaktifkannya. Setelah
+> tanggal itu, builder, Dockerfile Path, *watch path*, health check, restart,
+> dan cron harus diisi di Settings tiap service (lihat tabel di atas).
+> Pengganti (Infrastructure as Code) dikerjakan terpisah.
+
+Pemetaan jalur ke layanan hanya ada di gateway, dan gateway hanya membuka API
+publik: `POST /v1/routes` dan `GET /v1/exposure-surface` ke Cache API, dengan
+rate limit per alamat IP. Jalur lain, termasuk `/v1/osm/*`, `/v1/pollution/*`,
+dan seluruh Backend, dijawab 404 oleh gateway dan hanya dapat dicapai lewat
+jaringan privat (TI-DO-05, [`src/gateway/README.md`](../../src/gateway/README.md)).
+Container frontend meneruskan `/v1/*` apa adanya ke gateway (`GATEWAY_UPSTREAM`),
+tidak langsung ke layanan di belakangnya, sehingga request dari aplikasi web
+mendapat batas waktu, `X-Request-ID`, dan rate limit yang sama dengan klien lain.
 
 ## Konfigurasi per layanan dan environment
 
@@ -63,7 +76,6 @@ ke Backend, sehingga request dari aplikasi web mendapat batas waktu,
 | Backend | `DATABASE_URL` | di luar development | `${{database.DATABASE_URL}}` |
 | Backend | `PORT` | tidak (bawaan 8000) | `8000`; gateway merujuknya |
 | Backend, Data Worker | `LOG_LEVEL`, `LOG_FORMAT` | tidak | `INFO`; `json` otomatis di Railway |
-| Gateway | `BACKEND_UPSTREAM` | ya | `http://${{backend.RAILWAY_PRIVATE_DOMAIN}}:${{backend.PORT}}` |
 | Gateway | `CACHE_API_UPSTREAM` | ya | `http://${{cache-api.RAILWAY_PRIVATE_DOMAIN}}:${{cache-api.PORT}}` (sesuaikan nama service) |
 | Gateway | `PORT` | tidak | disuntikkan Railway |
 | Cache API | `DATABASE_URL` | ya | `${{database.DATABASE_URL}}` |
@@ -96,8 +108,7 @@ docker build -t sippolusi-gateway src/gateway
 docker build -t sippolusi-data-worker src/data_worker
 docker run --rm -p 8000:8000 --env-file src/backend/.env sippolusi-backend
 docker run --rm -p 8001:8000 --env-file src/backend/.env sippolusi-cache-api
-docker run --rm -p 8081:8080 -e BACKEND_UPSTREAM=http://host.docker.internal:8000 \
-    -e CACHE_API_UPSTREAM=http://host.docker.internal:8001 sippolusi-gateway
+docker run --rm -p 8081:8080 -e CACHE_API_UPSTREAM=http://host.docker.internal:8001 sippolusi-gateway
 docker run --rm --env-file src/data_worker/.env sippolusi-data-worker python main.py check
 ```
 
@@ -108,13 +119,22 @@ docker run --rm --env-file src/data_worker/.env sippolusi-data-worker python mai
 Untuk setiap layanan: *New Service → GitHub Repo*, lalu di Settings:
 
 1. **Source → Root Directory**: folder pada tabel ringkasan.
-2. **Config-as-code**: `/src/<folder>/railway.json` bila tidak terbaca
-   otomatis. Nilai yang diisi manual di dashboard mengalahkan berkas ini;
-   kosongkan isian dashboard agar berkas yang berlaku.
+2. **Build dan Deploy**: isi Dockerfile Path, *watch path*, health check,
+   restart, dan cron di Settings sesuai tabel ringkasan. Service lama yang
+   sudah membaca `railway.json` tetap memakainya sampai 1 Desember 2026, dan
+   nilai berkas itu mengalahkan isian dashboard; service baru tidak bisa
+   lagi mengaktifkan Config as Code.
 3. **Variables**: sesuai tabel variabel di atas.
-4. **Networking**: hanya **gateway** yang diberi domain publik. Backend cukup
-   dijangkau lewat `backend.railway.internal`; penutupan domain publiknya
-   dikerjakan pada TI-DO-04.
+   Deploy manual: *Deploy latest commit* di dashboard, atau
+   `railway up --service <nama> --environment <env> --ci` dari **akar
+   repositori**. Jangan pakai `railway up src/<folder> --path-as-root`:
+   Root Directory service tetap diterapkan pada unggahan sehingga build gagal
+   (`Root directory "src/backend" was not found`). `.railwayignore`
+   mengecualikan data dan dokumen agar unggahan tidak ditolak (413).
+4. **Networking**: hanya **gateway** (dan frontend) yang diberi domain
+   publik. Layanan lain dijangkau lewat `*.railway.internal`; langkah
+   menutup domain publik dan TCP proxy basis data serta uji jaringannya ada
+   di [`private-networking.md`](private-networking.md) (TI-DO-04).
 
 Environment `staging` (proyek `humble-endurance`) dibuat dengan menduplikasi
 `development`, lalu hanya menyisakan `database`, `backend`, dan service baru
@@ -136,9 +156,9 @@ cara memperbaikinya, tanpa mengulang kata sandi.
 |---|---|---|
 | Build backend | `python -c "import main"` | `build check failed: 'import main' raised; see the traceback above (missing package in requirements.txt?)` |
 | Build Data Worker | impor modul yang dipakai siklus (`preflight.RUNTIME_MODULES`) | `build check gagal: modul 'spatial_model.inference' gagal diimpor (ModuleNotFoundError: ...); periksa requirements.txt lalu build ulang image.` |
-| Build gateway | tahap `test` (`tests/run.sh`): validasi variabel, render template lewat entrypoint asli + `nginx -t`, routing ke upstream tiruan | baris `FAIL  ...` per kasus, atau `nginx: [emerg] ...` dengan nomor baris |
+| Build gateway | tahap `test` (`tests/run.sh`): validasi variabel, render template lewat entrypoint asli + `nginx -t`, routing ke upstream tiruan, rate limit 429, 502/504 | baris `FAIL  ...` per kasus, atau `nginx: [emerg] ...` dengan nomor baris |
 | Start backend | `settings.load_settings()` sebelum port dibuka; kode keluar 2 | `- DATABASE_URL is required in staging; set it in the service variables (Railway: ${{database.DATABASE_URL}}).` |
-| Start gateway | `10-validate-env.sh` sebelum template dirender; kode keluar 1. Nilai upstream yang ditolak tidak dicetak | `gateway: invalid configuration: BACKEND_UPSTREAM is not set; Railway: http://backend.railway.internal:8000, compose: http://backend:8000` |
+| Start gateway | `10-validate-env.sh` sebelum template dirender; kode keluar 1. Nilai upstream yang ditolak tidak dicetak | `gateway: invalid configuration: CACHE_API_UPSTREAM is not set; Railway: http://cache-api.railway.internal:8000 (the service built from src/backend/osm/Dockerfile), compose: http://cache_api:8000` |
 | Start Data Worker | `preflight.config_problems()` sebelum siklus; kode keluar 2 | `- DATABASE_URL belum diatur. Lokal: salin src/data_worker/.env.example ke .env; Railway: isi dengan referensi ${{database.DATABASE_URL}} ...` |
 
 Backend dan Data Worker melaporkan seluruh masalah konfigurasi sekaligus;
@@ -185,18 +205,18 @@ Deployments → View logs. Untuk satu request, cari `request_id` dari header
 
 ## Smoke test
 
-`scripts/smoke_test.py` (pustaka standar saja) memeriksa gateway hidup, request
-`POST /v1/routes` lewat gateway sampai backend, `GET /v1/osm/version` lewat
-gateway sampai Cache API, jalur yang tidak dikenal tidak diteruskan, serta
-(bila `--backend` diberikan) liveness dan readiness backend. Kode keluar 1 bila
-ada pemeriksaan gagal.
+`scripts/smoke_test.py` (pustaka standar saja) memeriksa gateway hidup,
+`POST /v1/routes` dan `GET /v1/exposure-surface` lewat gateway sampai Cache API,
+jalur internal (`/v1/osm/version`, `/v1/routes/solve`, `/health`) dijawab 404
+oleh gateway, serta (bila `--backend` diberikan) liveness dan readiness backend.
+Kode keluar 1 bila ada pemeriksaan gagal.
 
 Pemeriksaan lewat gateway menguji bahwa layanan yang benar menjawab, bukan
 bahwa datanya tersedia. Environment baru tanpa graf jalan tetap lulus selama
-Backend menjawab dengan `status` rutenya (misalnya 503 `data_unavailable`) dan
-Cache API menjawab dengan versi graf atau galat `cache_unavailable`-nya
-sendiri. 502/504 dari gateway atau request yang sampai ke layanan yang salah
-dinyatakan gagal.
+Cache API menjawab dengan galat seragamnya sendiri (misalnya 503
+`cache_unavailable`). 502/504 dari gateway, 404 dari gateway untuk jalur
+publik, atau 429 dinyatakan gagal. Smoke test mengirim empat request ke API
+publik, jauh di bawah batas rate limit.
 
 ```bash
 python scripts/smoke_test.py --gateway https://<domain-gateway> --backend https://<domain-backend>

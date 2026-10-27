@@ -1,4 +1,4 @@
-"""Runtime smoke test for the gateway, backend and Cache API (TI-DO-02).
+"""Runtime smoke test for the gateway, backend and Cache API (TI-DO-02, TI-DO-05).
 
 Standard library only, so it runs anywhere Python 3.10+ does:
 
@@ -10,10 +10,13 @@ checked through the gateway alone. Prints one line per check and exits 1 if
 any check fails. The Data Worker has no HTTP surface; check it with
 `python main.py check` (see docs/devops/build-runtime.md).
 
-The proxied checks verify that the right service answered, not that it had
-data: a fresh environment without an imported road graph still passes as
-long as the backend or Cache API itself replies (e.g. 503 data_unavailable).
-A 502/504 from the gateway or a request routed to the wrong service fails.
+The gateway exposes only the public API (POST /v1/routes, GET
+/v1/exposure-surface, both on the Cache API); internal paths must get the
+gateway's own 404. The proxied checks verify that the Cache API answered, not
+that it had data: a fresh environment without an imported road graph still
+passes as long as the Cache API itself replies (e.g. 503 cache_unavailable).
+An error the gateway produces itself (404, 429, 502, 504) on a public path
+fails. Four requests reach the public API, well under its rate limits.
 """
 from __future__ import annotations
 
@@ -25,32 +28,34 @@ import time
 import urllib.error
 import urllib.request
 
+# RouteRequest (design Kode 3.1, src/backend/public_api/README.md): Monas to Bundaran HI.
 ROUTE_REQUEST = {
-    "origin": {"lon": 106.8227, "lat": -6.1754},
-    "destination": {"lon": 106.8456, "lat": -6.2088},
+    "origin": {"lat": -6.1754, "lon": 106.8272},
+    "destination": {"lat": -6.1950, "lon": 106.8230},
     "mode": "walk",
-    "alpha": 0.5,
-    "beta": 0.5,
+    "pollutant": "pm25",
+    "preference": {"alpha": 0.5, "beta": 0.5},
 }
+SURFACE_QUERY = "bbox=106.822,-6.180,106.832,-6.170&zoom=15"
 
-# HTTP codes the backend's /v1/routes uses (main.route_response); every one of
-# its bodies carries a route "status" such as ok, no_route or data_unavailable.
-ROUTE_HTTP_CODES = {200, 404, 422, 503}
-
-
-def answered_by_backend(status: int, headers, payload) -> bool:
-    return (status in ROUTE_HTTP_CODES and isinstance(payload, dict) and "status" in payload
-            and bool(headers.get("X-Request-ID")))
+# Error codes the gateway produces itself (src/gateway/README.md); on a public
+# path they mean the request never got a real answer from the Cache API.
+GATEWAY_ERRORS = {"not_found", "rate_limited", "upstream_unavailable", "upstream_timeout"}
 
 
 def answered_by_cache_api(status: int, headers, payload) -> bool:
-    """200 with the active graph version, or the Cache API's own 503 when its database is not ready."""
-    if not isinstance(payload, dict):
+    """A GeoJSON FeatureCollection, or an error in the uniform schema that the Cache API produced."""
+    if not isinstance(payload, dict) or not headers.get("X-Request-ID"):
         return False
     if status == 200:
-        return "version" in payload
+        return payload.get("type") == "FeatureCollection"
     error = payload.get("error")
-    return status == 503 and isinstance(error, dict) and error.get("code") == "cache_unavailable"
+    return isinstance(error, dict) and "code" in error and error["code"] not in GATEWAY_ERRORS
+
+
+def closed_by_gateway(status: int, headers, payload) -> bool:
+    error = payload.get("error") if isinstance(payload, dict) else None
+    return status == 404 and isinstance(error, dict) and error.get("code") == "not_found"
 
 
 def request(method: str, url: str, body: dict | None = None, timeout: float = 15):
@@ -81,10 +86,12 @@ def main(argv: list[str] | None = None) -> int:
     checks = [
         ("gateway liveness", "GET", f"{gateway}/healthz", None,
          lambda s, h, p: s == 200 and isinstance(p, dict) and p.get("status") == "ok"),
-        ("route request via gateway", "POST", f"{gateway}/v1/routes", ROUTE_REQUEST, answered_by_backend),
-        ("cache API via gateway", "GET", f"{gateway}/v1/osm/version", None, answered_by_cache_api),
-        ("unknown path not proxied", "GET", f"{gateway}/health", None,
-         lambda s, h, p: s == 404 and isinstance(p, dict) and "error" in p),
+        ("route request via gateway", "POST", f"{gateway}/v1/routes", ROUTE_REQUEST, answered_by_cache_api),
+        ("heatmap via gateway", "GET", f"{gateway}/v1/exposure-surface?{SURFACE_QUERY}", None,
+         answered_by_cache_api),
+        ("Cache API internals closed", "GET", f"{gateway}/v1/osm/version", None, closed_by_gateway),
+        ("route inspection closed", "POST", f"{gateway}/v1/routes/solve", ROUTE_REQUEST, closed_by_gateway),
+        ("health endpoints closed", "GET", f"{gateway}/health", None, closed_by_gateway),
     ]
     if backend:
         checks += [

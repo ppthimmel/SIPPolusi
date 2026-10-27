@@ -1,0 +1,20 @@
+# Override that mirrors Railway private networking (TI-DO-04): only the
+# public entry points (gateway :8081, frontend :8080) and the observability
+# UIs keep host ports; the services below are reachable only by service name
+# inside the compose network, like *.railway.internal on Railway.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.private.yml up -d
+#
+# Test procedure and results: docs/devops/private-networking.md.
+# `!reset` needs Docker Compose 2.24 or newer.
+services:
+  postgres:
+    ports: !reset []
+  minio:
+    ports: !reset []
+  model_registry:
+    ports: !reset []
+  backend:
+    ports: !reset []
+  cache_api:
+    ports: !reset []

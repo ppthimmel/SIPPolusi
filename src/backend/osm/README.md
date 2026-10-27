@@ -15,8 +15,9 @@ Aplikasi `osm.app` adalah **Cache API** yang juga menyajikan `/v1/pollution` (Sp
 Pollution Cache DB) dari modul [`../pollution`](../pollution/README.md),
 `/v1/routes/solver-input` (TI-SE-05) dari modul [`../planner`](../planner/README.md), dan
 `/v1/routes/solve` (TI-SE-06) serta `/v1/routes/plan` (GeoJSON, TI-SE-07) dari modul
-[`../solver`](../solver/README.md). Kedua modul memakai
-pool koneksi dan skema galat yang sama. Bukti TI-SE-04 ada di
+[`../solver`](../solver/README.md), serta API publik `POST /v1/routes` dan
+`GET /v1/exposure-surface` (TI-SE-08) dari modul [`../public_api`](../public_api/README.md).
+Semua modul memakai pool koneksi dan skema galat yang sama. Bukti TI-SE-04 ada di
 [`../pollution/VERIFICATION.md`](../pollution/VERIFICATION.md).
 
 ## Menjalankan dan menguji
@@ -122,15 +123,15 @@ Semua perintah Docker di bawah memakai path dari **root repo**. Kalau terminal m
    docker run --rm sippolusi-backend-osm-test   # tanpa DB
    ```
 
-   Container menjalankan tes `osm`, `pollution`, `planner`, lalu `solver`, jadi ada empat baris
-   hasil:
+   Container menjalankan tes `osm`, `pollution`, `planner`, `solver`, lalu `public_api`, jadi ada
+   lima baris hasil:
 
-   | Perintah | `osm` | `pollution` | `planner` | `solver` |
-   |---|---|---|---|---|
-   | dengan `--env-file` | 115 passed | 20 passed, 10 skipped | 35 passed, 2 skipped | 65 passed, 6 skipped |
-   | tanpa DB | 100 passed, 15 skipped | 20 passed, 10 skipped | 35 passed, 2 skipped | 65 passed, 6 skipped |
+   | Perintah | `osm` | `pollution` | `planner` | `solver` | `public_api` |
+   |---|---|---|---|---|---|
+   | dengan `--env-file` | 115 passed | 20 passed, 10 skipped | 35 passed, 2 skipped | 93 passed, 6 skipped | 119 passed, 7 skipped |
+   | tanpa DB | 100 passed, 15 skipped | 20 passed, 10 skipped | 35 passed, 2 skipped | 93 passed, 6 skipped | 119 passed, 7 skipped |
 
-   Tes `pollution`, `planner`, dan `solver` yang dilewati adalah uji alur tulis → baca; uji ini butuh
+   Tes `pollution`, `planner`, `solver`, dan `public_api` yang dilewati adalah uji alur tulis → baca; uji ini butuh
    database uji lokal dan kode Data Worker, jadi dijalankan di luar container (lihat
    [`../pollution/README.md`](../pollution/README.md)).
 
@@ -207,19 +208,31 @@ Railway membangun image dari GitHub, jadi kodenya harus sudah di-push ke branch 
    SIPPolusi*. Lalu atur:
    - **Branch:** branch yang berisi modul ini.
    - **Root Directory:** `src/backend`, karena image memuat `osm/`, `pollution/`, `planner/`, `solver/`, dan `route_model/`.
-   - **Dockerfile:** tambahkan variabel `RAILWAY_DOCKERFILE_PATH=osm/Dockerfile`. Tahap terakhir
-     Dockerfile adalah image runtime.
+   - **Dockerfile:** Settings → Build → *Dockerfile Path* `/src/backend/osm/Dockerfile` (atau
+     variabel `RAILWAY_DOCKERFILE_PATH` dengan nilai yang sama). Tahap terakhir Dockerfile adalah
+     image runtime.
+   - **Deploy:** *Healthcheck Path* `/health`, *Restart Policy* `On Failure` dengan 5 percobaan.
+     Isi di dashboard, bukan lewat berkas config: Railway menghentikan Config as Code (berkas
+     `railway.json` yang sudah dipakai masih berlaku sampai **1 Desember 2026**; sejak 28 Agustus
+     2026 service baru tidak bisa mengaktifkannya).
+   - **Catatan:** Railway otomatis membaca `src/backend/railway.json` (milik Backend) untuk
+     service ini karena Root Directory-nya sama. Berkas itu sengaja tidak memuat
+     `dockerfilePath`: bila ada, nilainya mengalahkan Dockerfile Path di atas dan service ini
+     menjalankan Backend, bukan Cache API (terlihat dari log `logger="backend"` dan 404
+     `{"detail": "Not Found"}` untuk `/v1/osm/*`).
 2. **Variables:** isi `DATABASE_URL` dengan referensi ke service database, misalnya
    `${{database.DATABASE_URL}}` (sesuaikan nama service). Referensi ini memakai URL privat
    `postgres.railway.internal`. Variabel `PORT` diisi otomatis oleh Railway.
-3. **Settings:** set *Healthcheck Path* ke `/health`. Untuk menguji dari luar, buat domain lewat
-   *Networking → Generate Domain*.
-4. Uji dari terminal laptop dengan perintah seperti A-5, tetapi alamatnya diganti domain Railway.
+3. **Networking:** jangan buat domain publik: Cache API hanya
+   dijangkau gateway lewat jaringan privat (TI-DO-04, `docs/devops/private-networking.md`).
+   Uji dari luar lewat gateway, `https://<gateway>/v1/osm/...`.
+4. Uji dari terminal laptop dengan perintah seperti A-5, tetapi alamatnya diganti domain publik
+   gateway (`<domain-railway>` di bawah).
    Coba juga perjalanan ±10 km, yang dari laptop kena 503 karena jaringan lambat. Di Railway
    hasilnya seharusnya 200:
 
    ```bash
-   curl -s https://<domain-railway>/health
+   curl -s https://<domain-railway>/v1/osm/version
    curl -s -X POST https://<domain-railway>/v1/osm/subgraph -H "Content-Type: application/json" \
         -d '{"origin":{"lat":-6.1754,"lon":106.8272},"destination":{"lat":-6.2654,"lon":106.8272},"mode":"walk"}'
    ```
@@ -410,7 +423,8 @@ Konfigurasi dibaca dari environment, lalu dari `src/backend/.env`.
 | `OSM_WALK_SPEED_MPS` / `OSM_BIKE_SPEED_MPS` | `1.3` / `4.2` | Kecepatan `ModeProfile`. |
 
 Pengaturan penyedia solver dan batas latensi (`ROUTE_SOLVER_*`) ada di
-[`../solver/README.md`](../solver/README.md#konfigurasi).
+[`../solver/README.md`](../solver/README.md#konfigurasi); batas ukuran body, batas bbox heatmap,
+dan CORS (`API_*`) ada di [`../public_api/README.md`](../public_api/README.md#konfigurasi).
 
 Setiap sesi database dibuka dengan `default_transaction_read_only = on`. Ini mencegah kode
 Backend menulis secara tidak sengaja, tetapi **bukan batas keamanan**: nilai itu hanya bawaan

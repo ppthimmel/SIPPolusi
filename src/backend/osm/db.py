@@ -3,14 +3,16 @@
 Every session is opened with default_transaction_read_only = on and the
 statement_timeout from Tabel 3.15. That stops this code from writing by accident,
 but it is only a session default, not a security boundary: write protection needs
-a database role with SELECT only (backend_reader). Connection failures and
-timeouts surface as CacheUnavailable (503 cache_unavailable).
+a database role with SELECT only (backend_reader). Connection failures,
+timeouts and a missing cache schema/table surface as CacheUnavailable
+(503 cache_unavailable).
 """
 from __future__ import annotations
 
 import asyncio
 import json
 import logging
+import re
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
@@ -22,6 +24,9 @@ from .errors import CacheUnavailable
 logger = logging.getLogger("osm")
 
 APPLICATION_NAME = "sippolusi-backend-osm"
+
+# 'relation "osm.graph_version" does not exist', 'schema "pollution" does not exist'
+_CACHE_SCHEMA_RE = re.compile(r'"(osm|pollution)[."]')
 
 # Errors meaning "the cache cannot be read right now", as opposed to bugs.
 _UNAVAILABLE_ERRORS = (
@@ -96,6 +101,15 @@ class OsmDatabase:
         try:
             async with pool.acquire(timeout=self._settings.connect_timeout_s) as conn:
                 yield conn
+        except (asyncpg.InvalidSchemaNameError, asyncpg.UndefinedTableError) as exc:
+            # A fresh database the importer has not filled yet: same as no active graph.
+            # Only for the two cache schemas (every query names them); anything else,
+            # e.g. a typo'd table, stays a 500.
+            if not _CACHE_SCHEMA_RE.search(str(exc)):
+                raise
+            logger.warning("cache schema missing, answering cache_empty: %s: %s", type(exc).__name__, exc)
+            raise CacheUnavailable(f"Schema cache belum dibuat ({type(exc).__name__}).",
+                                   CacheUnavailable.CACHE_EMPTY) from exc
         except asyncpg.QueryCanceledError as exc:
             raise CacheUnavailable("Kueri basis data cache melewati statement_timeout.",
                                    CacheUnavailable.QUERY_TIMEOUT) from exc

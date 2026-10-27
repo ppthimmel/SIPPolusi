@@ -67,6 +67,9 @@ MANIFEST
 
 # Virtual environments
 venv/
+.venv-spatial/
+.cache/
+mlruns/
 env/
 ENV/
 env.bak/
@@ -209,6 +212,7 @@ docs/experiments/model-comparison-ds-v0.3.0/results/*_predictions.parquet
 /.codex/skills/graphify/
 /.codex/hooks.json
 /AGENTS.md
+docs/experiments/ds-v0.1.0.zip
 
 # JUnit reports and logs written by the CI workflow (also when run locally).
 /ci-reports/

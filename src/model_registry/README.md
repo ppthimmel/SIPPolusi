@@ -1,15 +1,14 @@
 # Model Registry
 
-MLflow tracking server and model registry (PNF-04, PNF-10). Stores experiment
-runs, versions, and aliases (`production`) for two registered models:
+MLflow 2.17.2 menyimpan run, parameter, metrik, versi dan alias. PostgreSQL menyediakan schema
+`mlflow`; MinIO menyimpan payload pada `s3://mlflow/artifacts` melalui API S3.
 
-- `spatial-downscaling` — ST-GNN used by the Spatial Downscaling Model
-- `morl-route-policy` — actor-critic policy used by the Multi-Objective Route Model
+| Nama model | Peran |
+|---|---|
+| `spatial-downscaling-pm25` | IDW + koreksi ST-GNN PM2.5 |
+| `spatial-downscaling-no2` | Full-feature LightGBM NO₂ |
+| `morl-route-policy` | Policy rute |
 
-Backend store: schema `mlflow` on the shared PostgreSQL/PostGIS instance
-(the schema is created by the model registry container on start; cache schemas are SQLAlchemy models in the Data Worker). Artifact store: S3-compatible object
-storage (MinIO locally, Railway-compatible bucket in production).
-
-Inference services (Backend, Data Worker) only read artifacts at a pinned
-version/alias via the MLflow REST API; only the Model Training Pipeline
-writes new versions.
+Training membuat versi dan alias `candidate`. Promotion memverifikasi model sebelum menetapkan
+`production`. Worker hanya membaca, menyelesaikan alias sekali per run, dan memverifikasi checksum
+artefak. Kredensial berasal dari environment. [Panduan lengkap](../data_worker/spatial_model/README.md).

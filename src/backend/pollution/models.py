@@ -71,6 +71,8 @@ class EdgeWeight:
     graph_version: str | None
     model_version: str | None
     written_at: datetime | None = None
+    model_metadata: dict = field(default_factory=dict)
+    trace_run_id: str | None = None
 
 
 @dataclass(slots=True)

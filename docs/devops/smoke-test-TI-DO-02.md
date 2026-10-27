@@ -31,7 +31,7 @@ ERROR: failed to build: ... did not complete successfully: exit code: 1
 | Data Worker (`src/data_worker/tests`, PostGIS sementara) | 123 lulus, 1 gagal |
 
 Satu kegagalan Data Worker (`test_spatial_baseline.py::test_run_dapat_diulang_dari_manifest_yang_sama`)
-**tidak terkait perubahan ini**: `spatial_model/baseline/report.py:157`
+**tidak terkait perubahan ini**: `spatial_model/evaluation/idw/report.py:157`
 memotong `git_commit` yang bernilai `None` karena `git` tidak ada di dalam
 container. Akan muncul juga di CI; dilaporkan terpisah.
 
