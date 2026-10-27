@@ -14,11 +14,16 @@ from connectors.http import scrub
 from contracts import JAKARTA_BBOX, TimeWindow
 from feature_store import steps as feature_steps
 from ground_truth import fetch_ground_truth
+from log_config import log_event
 from spku.config import Config
 
 log = logging.getLogger("data_worker.acquisition")
 
 Step = Callable[[TimeWindow, Config], dict]
+
+#: Level log per status langkah, selaras dengan worker_runs.cycle_status (failed -> siklus failed,
+#: degraded/unavailable -> siklus degraded). Status lain: INFO, atau WARNING bila ada fallback.
+_STEP_LEVELS = {"failed": logging.ERROR, "degraded": logging.WARNING, "unavailable": logging.WARNING}
 
 
 def ground_truth_status(run_status: str | None, available: bool) -> str:
@@ -164,9 +169,12 @@ def _run_steps(time_window, config, steps, progress, context, report) -> None:
                 entry = {"step": name, "status": "failed", "error": scrub(f"{type(exc).__name__}: {exc}")}
         entry["duration_s"] = round(time.monotonic() - started, 2)
         report["steps"].append(entry)
-        level = logging.WARNING if entry["status"] in ("failed", "degraded", "unavailable") else logging.INFO
-        log.log(level, "siklus %s: %s -> %s%s", time_window, name, entry["status"],
-                f" ({entry.get('note') or entry.get('error')})"
-                if entry["status"] not in ("ok", "not_implemented") and (entry.get("note") or entry.get("error")) else "")
+        default_level = logging.WARNING if entry.get("fallback_reason") else logging.INFO
+        problem = entry["status"] not in ("ok", "not_implemented")
+        # run_id siklus sudah menjadi correlation_id; run_id milik langkah (SPKU, inferensi) = step_run_id.
+        log_event(log, "job_step", _STEP_LEVELS.get(entry["status"], default_level), time_window=str(time_window),
+                  step=name, status=entry["status"], duration_s=entry["duration_s"],
+                  step_run_id=entry.get("run_id"), fallback_reason=entry.get("fallback_reason"),
+                  error=entry.get("error"), note=entry.get("note") if problem else None)
         if progress is not None:
             progress(report["steps"])

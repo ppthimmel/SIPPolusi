@@ -14,10 +14,10 @@ Manifes `k3s/` lama (Ingress Traefik) sudah dihapus.
 
 | Layanan | Folder (Root Directory Railway) | Start (CMD Dockerfile) | Mode Railway | Pemeriksaan |
 |---|---|---|---|---|
-| Backend API | `src/backend` | `python serve.py` | Service web, restart `ON_FAILURE` | `GET /health` (hidup), `GET /health/ready` (basis data) |
-| Cache API (API publik `/v1/routes`, `/v1/exposure-surface`; baca internal `/v1/osm`, `/v1/pollution`) | `src/backend`, *Dockerfile Path* `/src/backend/osm/Dockerfile` (dashboard) | `uvicorn osm.app:app` | Service web privat | `GET /health` (`HEALTHCHECK` image) |
+| Backend API | `src/backend` | `python serve.py` | Service web, restart `ON_FAILURE` | `GET /health` (hidup), `GET /health/ready` (basis data; graf rute hanya dilaporkan) |
+| Cache API (API publik `/v1/routes`, `/v1/exposure-surface`; baca internal `/v1/osm`, `/v1/pollution`) | `src/backend`, *Dockerfile Path* `/src/backend/osm/Dockerfile` (dashboard) | `uvicorn osm.app:app` | Service web privat | `GET /health/live` (hidup, `HEALTHCHECK` image), `GET /health/ready` (basis data, graf aktif) |
 | API Gateway | `src/gateway` | entrypoint image `nginx` | Service web publik, restart `ON_FAILURE` | `GET /healthz` |
-| Data Worker | `src/data_worker` | `python main.py cycle` | Cron `15 * * * *`, restart `NEVER` | `python main.py check` |
+| Data Worker | `src/data_worker` | `python main.py cycle` | Cron `15 * * * *`, restart `NEVER` | `python main.py check`, `python main.py status` (jadwal), `python main.py health` (kesegaran data) |
 
 Setiap folder memuat `Dockerfile`, `.dockerignore`, `.env.example`, dan
 `railway.json` (builder, *watch path*, health check, restart, cron). Cache API
@@ -26,6 +26,8 @@ lewat *Dockerfile Path* di dashboard
 (panduan: [`src/backend/osm/README.md`](../../src/backend/osm/README.md)).
 Railway membaca `src/backend/railway.json` untuk kedua service, jadi berkas itu
 tidak boleh memuat `dockerfilePath`.
+Skema log, correlation ID, metrik, dan arti setiap pemeriksaan ada di
+[`observability-TI-DO-08.md`](observability-TI-DO-08.md).
 
 > **Config as Code dihentikan Railway.** Berkas `railway.json` yang sudah
 > dipakai tetap berlaku sampai **1 Desember 2026**; sejak 28 Agustus 2026

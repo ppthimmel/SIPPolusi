@@ -7,6 +7,7 @@ Perintah:
     python main.py serve [--now]         # proses menetap; siklus tiap jam pada menit ke-15
     python main.py check [--skip-db]     # pemeriksaan konfigurasi, impor modul, dan basis data
     python main.py status [--hours 24] [--json]   # eksekusi terjadwal: berhasil, terlambat, gagal, tidak ada
+    python main.py health [--max-lag-hours 2]     # kesegaran data hasil job di basis data (TI-DO-08)
     python main.py spku collect|snapshot|health|export ...   # perintah kolektor SPKU
     python main.py features status|fetch|seed|rebuild ...    # data sumber sekunder dan FeatureMatrix (TI-SE-02)
 
@@ -16,10 +17,20 @@ karena siklus lain masih berjalan, atau dihentikan sebelum selesai),
 2 konfigurasi tidak sah (proses berhenti sebelum menyentuh portal).
 Kode keluar ``status``: 0 sehat, 1 eksekusi terakhir gagal, 3 jadwal tidak
 berjalan (tidak ada eksekusi untuk time window yang sudah jatuh tempo).
+Kode keluar ``health``: 0 data segar, 1 data tertinggal atau basis data tidak terbaca.
+
+``status`` menilai jadwal (apakah siklus berjalan dan berhasil); ``health``
+menilai hasilnya (apakah ground truth dan cache polusi masih segar). Siklus
+dapat berstatus ``ok`` sementara datanya tetap basi, dan sebaliknya; yang
+dipantau di Railway ada di docs/devops/observability-TI-DO-08.md.
 
 Setiap siklus dicatat pada tabel ``worker.cycle_run`` (lihat ``worker_runs.py``);
 data sumber sekunder dan manifest FeatureMatrix pada skema ``features``
-(lihat ``feature_store/``).
+(lihat ``feature_store/``). ``run_id`` siklus juga menjadi ``correlation_id``
+semua baris log siklus itu, sehingga baris ``status`` yang gagal langsung
+menunjuk ke log-nya. Awal dan akhir siklus dicatat sebagai event
+``job_started`` dan ``job_finished``; ``status`` event itu sama dengan status
+pada ``cycle_run``.
 
 Di Railway, service ini dijalankan sebagai cron job ``15 * * * *`` dengan
 perintah ``python main.py cycle`` (lihat railway.json), sesuai Tabel 3.9:
@@ -39,12 +50,13 @@ import time
 
 from acquisition import schedule_acquisition
 from contracts import TimeWindow
-from log_config import configure_logging
+from log_config import configure_logging, correlation, log_event
 from preflight import config_problems, database_problems, import_problems
 import worker_runs
 
 log = logging.getLogger("data_worker")
 
+SERVICE = "data_worker"
 EXIT_CONFIG = 2
 EXIT_FAILED = 1
 
@@ -125,6 +137,7 @@ def run_cycle(window: TimeWindow | None = None, *, trigger: str = "schedule",
     window = window or TimeWindow.just_ended()
     if lock_wait_seconds is None:
         lock_wait_seconds = float(os.environ.get("WORKER_LOCK_WAIT_SECONDS") or 600)
+    started = time.monotonic()
     owns_recorder = recorder is None
     if recorder is None:
         _init_cache_schemas()
@@ -132,53 +145,77 @@ def run_cycle(window: TimeWindow | None = None, *, trigger: str = "schedule",
             recorder = worker_runs.CycleRecorder.connect(os.environ["DATABASE_URL"])
         except Exception:  # noqa: BLE001 - tanpa basis data siklus tidak dapat dicatat maupun ditulis
             log.exception("basis data tidak terjangkau; siklus %s tidak dijalankan", window)
+            _job_finished(window, trigger, "failed", started, note="basis data tidak terjangkau")
             return EXIT_FAILED
     try:
         recorder.ensure_schema()
         if not recorder.acquire_lock(lock_wait_seconds):
-            run_id = recorder.start(window, trigger, status="skipped",
-                                    note=f"siklus lain masih berjalan setelah menunggu {lock_wait_seconds:.0f} detik")
-            log.error("siklus %s dilewati (%s): siklus lain masih memegang kunci", window, run_id)
+            note = f"siklus lain masih berjalan setelah menunggu {lock_wait_seconds:.0f} detik"
+            run_id = recorder.start(window, trigger, status="skipped", note=note)
+            with correlation(run_id):
+                log.error("siklus %s dilewati (%s): siklus lain masih memegang kunci", window, run_id)
+                _job_finished(window, trigger, "skipped", started, note=note)
             print(json.dumps({"run_id": run_id, "time_window": str(window), "status": "skipped"}))
             return EXIT_FAILED
         abandoned = recorder.close_abandoned()
         if abandoned:
             log.warning("baris running dari proses yang berhenti ditutup sebagai failed: %s", ", ".join(abandoned))
         run_id = recorder.start(window, trigger)
-        log.info("siklus %s dimulai (run %s, pemicu %s)", window, run_id, trigger)
-        steps_so_far: list[dict] = []
-
-        def progress(current):
-            steps_so_far[:] = current
-            recorder.update_steps(run_id, current)
-
-        previous = signal.getsignal(signal.SIGTERM)
-        signal.signal(signal.SIGTERM, _raise_interrupted)
-        try:
-            report = schedule_acquisition(window, config=config, steps=steps, progress=progress,
-                                          context={"run_id": run_id})
-        except BaseException as exc:
-            note = str(exc) if isinstance(exc, CycleInterrupted) else f"{type(exc).__name__}: {exc}"
-            recorder.finish(run_id, "failed", steps_so_far, note=note)
-            log.error("siklus %s (run %s) tidak selesai: %s", window, run_id, note)
-            if isinstance(exc, CycleInterrupted):
-                return EXIT_FAILED
-            raise
-        finally:
-            signal.signal(signal.SIGTERM, previous)
-        outcome = worker_runs.cycle_status(report["steps"])
-        recorder.finish(run_id, outcome, report["steps"])
-        report.update(run_id=run_id, trigger=trigger, status=outcome)
-        print(json.dumps(report, indent=2, ensure_ascii=False, default=str))
-        level = logging.INFO if outcome == "ok" else logging.WARNING if outcome == "degraded" else logging.ERROR
-        log.log(level, "siklus %s (run %s) selesai: %s", window, run_id, outcome)
-        return 0 if outcome in worker_runs.SUCCESS_STATUSES else EXIT_FAILED
+        # run_id cycle_run menjadi correlation ID: baris `status` yang gagal menunjuk ke log-nya.
+        with correlation(run_id):
+            return _run_recorded(recorder, run_id, window, trigger, started, steps=steps, config=config)
     finally:
         if owns_recorder:
             recorder.close()
         else:
             recorder.release_lock()
 
+
+def _run_recorded(recorder, run_id: str, window: TimeWindow, trigger: str, started: float, *, steps, config) -> int:
+    """Badan siklus setelah kunci diperoleh dan baris ``running`` dibuat."""
+    log.info("siklus %s dimulai (run %s, pemicu %s)", window, run_id, trigger)
+    log_event(log, "job_started", job="acquisition_cycle", time_window=str(window), trigger=trigger)
+    steps_so_far: list[dict] = []
+
+    def progress(current):
+        steps_so_far[:] = current
+        recorder.update_steps(run_id, current)
+
+    previous = signal.getsignal(signal.SIGTERM)
+    signal.signal(signal.SIGTERM, _raise_interrupted)
+    try:
+        report = schedule_acquisition(window, config=config, steps=steps, progress=progress,
+                                      context={"run_id": run_id})
+    except BaseException as exc:
+        interrupted = isinstance(exc, CycleInterrupted)
+        note = str(exc) if interrupted else f"{type(exc).__name__}: {exc}"
+        recorder.finish(run_id, "failed", steps_so_far, note=note)
+        log.error("siklus %s (run %s) tidak selesai: %s", window, run_id, note)
+        _job_finished(window, trigger, "failed", started, steps_so_far, note=note, interrupted=interrupted)
+        if interrupted:
+            return EXIT_FAILED
+        raise
+    finally:
+        signal.signal(signal.SIGTERM, previous)
+    outcome = worker_runs.cycle_status(report["steps"])
+    recorder.finish(run_id, outcome, report["steps"])
+    report.update(run_id=run_id, trigger=trigger, status=outcome)
+    print(json.dumps(report, indent=2, ensure_ascii=False, default=str))
+    _job_finished(window, trigger, outcome, started, report["steps"])
+    return 0 if outcome in worker_runs.SUCCESS_STATUSES else EXIT_FAILED
+
+
+def _job_finished(window: TimeWindow, trigger: str, status: str, started: float, steps=(), *,
+                  note: str | None = None, interrupted: bool = False) -> None:
+    """Event ``job_finished``; ``status`` sama dengan yang tercatat pada ``cycle_run``."""
+    failed = [s["step"] for s in steps if s.get("status") == "failed"]
+    degraded = [s["step"] for s in steps if s.get("status") in worker_runs.DEGRADED_STEP_STATUSES]
+    fallbacks = [s["step"] for s in steps if s.get("fallback_reason")]
+    level = logging.INFO if status == "ok" else logging.WARNING if status == "degraded" else logging.ERROR
+    log_event(log, "job_finished", level, job="acquisition_cycle", time_window=str(window), trigger=trigger,
+              status=status, duration_s=round(time.monotonic() - started, 2),
+              failed_steps=",".join(failed) or None, degraded_steps=",".join(degraded) or None,
+              fallback_steps=",".join(fallbacks) or None, interrupted=interrupted or None, note=note)
 
 def status(hours: int, as_json: bool, grace_minutes: float, stuck_minutes: float) -> int:
     """Bandingkan eksekusi tercatat dengan jadwal; tidak menulis apa pun."""
@@ -190,6 +227,24 @@ def status(hours: int, as_json: bool, grace_minutes: float, stuck_minutes: float
         stuck_after=dt.timedelta(minutes=stuck_minutes))
     print(json.dumps(summary, indent=2, ensure_ascii=False) if as_json else worker_runs.format_status(summary))
     return summary["exit_code"]
+
+
+def health(max_lag_hours: float) -> int:
+    """Laporan kesegaran hasil job (lihat job_health); 0 sehat, 1 tertinggal atau tidak terbaca."""
+    from job_health import check as check_job_health
+    from spku.config import Config
+
+    config = Config.load()
+    result = check_job_health(
+        config.database, ground_truth_schema=config.db_schema,
+        downscale_enabled=os.environ.get("DOWNSCALE_WRITE_CACHE") == "1",
+        max_lag=dt.timedelta(hours=max_lag_hours),
+    )
+    print(json.dumps(result, indent=2, ensure_ascii=False))
+    healthy = result["status"] == "healthy"
+    log_event(log, "job_health", logging.INFO if healthy else logging.ERROR, status=result["status"],
+              **{name: c["status"] for name, c in result["checks"].items()})
+    return 0 if healthy else 1
 
 
 def serve(run_now: bool) -> int:
@@ -209,7 +264,7 @@ def serve(run_now: bool) -> int:
 
 def main(argv: list[str] | None = None) -> int:
     argv = sys.argv[1:] if argv is None else argv
-    configure_logging()
+    configure_logging(service=SERVICE)
     if argv and argv[0] == "spku":
         from spku.cli import main as spku_main
 
@@ -234,6 +289,9 @@ def main(argv: list[str] | None = None) -> int:
                           help="toleransi setelah waktu terjadwal sebelum dianggap tidak ada eksekusi; bawaan 30")
     p_status.add_argument("--stuck-minutes", type=float, default=60,
                           help="siklus running lebih lama dari ini dianggap macet; bawaan 60")
+    p_health = sub.add_parser("health", help="kesegaran data hasil job (exit 1 bila tertinggal)")
+    p_health.add_argument("--max-lag-hours", type=float, default=2.0,
+                          help="umur maksimum hasil terakhir sebelum dianggap tertinggal (bawaan 2)")
     sub.add_parser("spku", help="perintah kolektor SPKU (collect, snapshot, health, export)")
     sub.add_parser("features", help="data sumber sekunder dan FeatureMatrix (status, fetch, seed, rebuild)")
     args = parser.parse_args(argv)
@@ -253,6 +311,10 @@ def main(argv: list[str] | None = None) -> int:
         return status(args.hours, args.json, args.grace_minutes, args.stuck_minutes)
     if args.command == "serve":
         return serve(args.now)
+    if args.command == "health":
+        if not _config_ok():
+            return EXIT_CONFIG
+        return health(args.max_lag_hours)
     return 2
 
 

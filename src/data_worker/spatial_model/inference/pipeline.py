@@ -13,6 +13,7 @@ import numpy as np
 import pandas as pd
 
 from contracts import JAKARTA_BBOX, EdgeWeight, RunSummary, TimeWindow
+from log_config import log_event
 from spatial_model.inference.aggregate import aggregate_grid_to_edges, edge_cell_pieces, grid_spec_id
 from spatial_model.inference.confidence import confidence_distribution, estimate_confidence
 from spatial_model.data.grid import GridSpec
@@ -94,6 +95,10 @@ def run_downscale_inference(
     background_source = None
     reasons = {p: m["fallback_reason"] for p, m in model_metadata.items() if m.get("fallback_reason")}
     fallback_reason = json.dumps(reasons) if reasons else None
+    if reasons:
+        # Fallback dicatat sebagai peringatan, tidak hanya sebagai run yang "complete" (TI-DO-08).
+        log_event(log, "downscale_fallback", logging.WARNING, time_window=str(time_window),
+                  pollutants=",".join(sorted(reasons)), reason=fallback_reason)
     run_id = make_run_id(time_window, resolved_version)
 
     if conn is not None and not force:
