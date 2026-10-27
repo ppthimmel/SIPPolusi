@@ -176,7 +176,7 @@ Simulasi sepuluh siklus per jam pada PostgreSQL 18 dengan retensi 6 time window 
 Satu node PostgreSQL + PostGIS cukup untuk ground truth, graf road network, dan cache EdgeWeight
 sekaligus, dengan sisa sekitar 2 GB.
 
-## Pemenuhan acceptance criteria
+## Pemenuhan acceptance criteria historis
 
 | Kriteria | Bukti |
 |---|---|
@@ -185,16 +185,21 @@ sekaligus, dengan sisa sekitar 2 GB.
 | Agregasi menangani ruas yang melintasi lebih dari satu sel | Pemotongan pada batas sel dengan bobot panjang; UT-SDM-07b dan 07e; ruas 44451 (66 sel) |
 | Kompatibel dengan kontrak TI-SE-01 dan dapat ditulis/dibaca melalui cache | `contracts.EdgeWeight` (Tabel 3.3); tabel uji di atas; UT-OPS-01 dan 02 |
 
+Tabel di atas menjelaskan bukti IDW historis. Untuk kontrak aktif, lihat verifikasi provenance
+27 Oktober 2026 di bawah; berkas lokal historis tidak menjamin trace untuk semua window operasional.
+
 ## Keterbatasan
 
 - **Integrasi model:** Worker memakai MLflow/MinIO bila versi dan input tersedia; kegagalan per polutan jatuh ke IDW dengan provenance eksplisit.
-- **Suku latar belum dipakai.** Suku latar berskala makro (AOD/reanalysis) belum dipakai, sehingga
-  `background_source` masih kosong.
+- **Spesifikasi sumber direvisi.** [Spesifikasi aktif](../../SPATIAL_MODEL_SPEC.md) memakai
+  GEOS-CF sebagai fitur pelatihan dan operasi. Tidak ada pergantian AOD/MERRA-2 atau komponen
+  aditif setelah prediksi; `background_source` kosong sesuai kontrak tersebut.
 - **Confidence score provisional.** Rumusnya masih provisional sampai kalibrasi PF-12 dilakukan.
 - **Kontrak TI-SE-01 belum resmi.** `EdgeWeight` mengikuti Tabel 3.3 karena TI-SE-01 belum
   menghasilkan kontrak bersama; Backend perlu memakai struktur yang sama.
-- **Artefak di Railway belum persisten.** Artefak penelusuran di Railway akan hilang setiap kontainer
-  berhenti sampai tersedia Railway Volume atau object storage (TI-DO-03).
+- **Retensi dan deployment.** Artefak lokal tetap opsional; trace baru disimpan di PostgreSQL
+  selama window cache dipertahankan. Upgrade Railway memerlukan migrasi dan verifikasi deployment
+  terpisah; replay lokal tidak membuktikan bahwa deployment tersebut sudah dilakukan.
 
 ## Verifikasi integrasi model terdaftar (26 Oktober 2026)
 
@@ -219,3 +224,23 @@ Migrasi aditif diuji dua kali pada tabel tanpa kolom metadata dan mempertahankan
 Satu pembacaan laporan pada test baseline diperbaiki agar eksplisit UTF-8 di Windows.
 Model terdaftar pada stack verifikasi lokal menggunakan versi 5 untuk kedua polutan; deployment
 Railway tidak dijalankan.
+
+## Penutupan gap provenance 27 Oktober 2026
+
+Setiap penulisan cache baru melalui Worker wajib memiliki `InferenceTrace` yang dapat
+merekonstruksi nilai ruas. Tabel `inference_run`, `grid_prediction`, dan `edge_cell` disimpan
+dalam transaksi yang sama dengan `edge_pollution`; setiap bobot memiliki `trace_run_id`.
+Trace memuat GridSpec, awal/akhir waktu, versi model per polutan, fingerprint input,
+konfigurasi, nilai sel, sumber, dan panjang potongan. Perubahan model/input/graf atau kebijakan
+trace/confidence mengubah identitas cache. Run ID yang sama tidak menerima trace berbeda.
+
+[provenance_verification.json](provenance_verification.json) membuktikan model nyata dari
+MLflow/MinIO → grid dua sel → ruas multisel → PostGIS → backend, dengan artefak lokal dimatikan.
+Nilai yang dihitung ulang dari sel dan panjang pada trace cocok dengan nilai cache pada toleransi
+presisi penyimpanan. Endpoint `GET /v1/pollution/edge-weights/{edge_id}/trace` menyediakan jejaknya.
+Uji mencakup rollback cache/trace, retensi, pengulangan, penolakan trace salah, dan pembacaan
+historis tanpa trace. Tidak dibuat riwayat sintetis untuk baris lama.
+
+Ruang lingkup lokal TI-AI-05 mengikuti [spesifikasi revisi](../../SPATIAL_MODEL_SPEC.md).
+Confidence tetap provisional; ketelitian grid seluruh kota, kalibrasi, UI, dan deployment Railway
+tidak disimpulkan dari bukti replay ini.

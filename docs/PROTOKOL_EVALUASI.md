@@ -23,6 +23,10 @@ PostgreSQL (`ground_truth.*`, `pollution.*`) terus berubah dan tidak dipakai lan
 
 Hanya ds-v0.3.0 dipakai. Aturan `shared_signal` mengecualikan kluster sensor dengan deret praktis identik lintas lokasi.
 
+Revisi spesifikasi 27 Oktober 2026 menetapkan GEOS-CF analisis/prakiraan sebagai fitur atmosfer
+pada pelatihan dan operasi; AOD dan MERRA-2 tidak masuk kontrak aktif. Tidak ada suku latar
+aditif atau pergantian sumber akibat AOD kosong. Lihat [spesifikasi aktif](SPATIAL_MODEL_SPEC.md).
+
 ## Pembagian data
 
 - **Grup stasiun:**

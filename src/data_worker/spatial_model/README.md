@@ -2,6 +2,9 @@
 
 Dataset: **ds-v0.3.0**. Grid 100 m → agregasi ruas berbobot panjang → `EdgeWeight`.
 
+[Spesifikasi aktif](../../../docs/SPATIAL_MODEL_SPEC.md) menetapkan GEOS-CF sebagai fitur
+pelatihan dan operasi, tanpa pergantian AOD/MERRA-2 atau suku latar aditif setelah prediksi.
+
 | Polutan | Model | Keluaran |
 |---|---|---|
 | PM2.5 | IDW + koreksi ST-GNN | `max(0, IDW + target_scale × correction)` |
@@ -129,6 +132,19 @@ Ruas dipotong pada batas sel. Konsentrasi ruas adalah `Σ(length × concentratio
 potongan dengan nilai tersedia. Indeks paparan dihitung sesudah agregasi. `model_metadata` merekam
 sumber, versi dan alasan fallback per polutan; identitas cache mengikat input, model, grid dan graf.
 Confidence bersifat provisional dan dibatasi 0,39 sampai kalibrasi tersedia.
+
+Setiap penulisan cache wajib menyimpan trace di PostgreSQL: `inference_run`,
+`grid_prediction`, dan `edge_cell`, dengan tautan `EdgeWeight.trace_run_id`. Writer menolak
+trace yang hilang atau tidak merekonstruksi konsentrasi, indeks paparan, dan confidence ruas.
+Cache dan trace di-commit dalam satu transaksi; kegagalan membatalkan keduanya. Run ID
+immutable mengikat versi model, fingerprint input, graf/grid, versi format trace, dan kebijakan
+confidence. Retensi menghapus window dan trace bersamaan. Parquet lokal tetap opsional.
+
+Backend mengembalikan `trace_run_id` bersama bobot dan menyediakan
+`GET /v1/pollution/edge-weights/{edge_id}/trace?time_window_start=latest` untuk sel, panjang,
+nilai sumber, metadata model, waktu, dan checksum. Baris historis tidak diberi trace sintetis:
+endpoint mengembalikan `legacy_unavailable`; pipeline menghitung ulang jika window tersebut
+diproses kembali. Penelusuran dijamin selama window cache masih dipertahankan.
 
 Sebelum memperbarui backend/cache API:
 

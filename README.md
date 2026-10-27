@@ -26,6 +26,8 @@ SIPPolusi: Sistem Informasi Pemandu Perjalanan dalam Polusi
 - [Spatial model training](src/data_worker/spatial_model/README.md) — ds-v0.3.0,
   PM2.5 IDW + ST-GNN correction and NO₂ LightGBM; Python and
   [notebook workflows](notebooks/spatial_model), MLflow/MinIO registration and Worker inference.
+- [Spatial model specification](docs/SPATIAL_MODEL_SPEC.md) — GEOS-CF feature policy,
+  pollutant-specific fallback, and mandatory cached grid-to-road provenance.
 
 Railway's edge terminates TLS; the NGINX API Gateway ([src/gateway](src/gateway))
 behind it is the single public entry point and forwards `/v1/*` to the backend
