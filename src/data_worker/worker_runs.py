@@ -50,6 +50,8 @@ NEUTRAL_STEP_STATUSES = {"ok", "disabled", "not_implemented", "skipped"}
 DEGRADED_STEP_STATUSES = {"degraded", "unavailable"}
 #: Status siklus yang dihitung berhasil (EDO-04): data diproses, walau mungkin sebagian.
 SUCCESS_STATUSES = {"ok", "degraded"}
+#: Pemicu yang berasal dari jadwal (cron Railway atau penjadwal internal ``serve``).
+SCHEDULED_TRIGGERS = ("schedule", "serve")
 
 _SCHEMA_NAME_RE = re.compile(r"^[a-z_][a-z0-9_]{0,62}$")
 
@@ -280,6 +282,12 @@ def classify_windows(runs: Iterable[RunRow], now: dt.datetime, hours: int = 24,
     pada ``hours`` jam terakhir diberi satu keadaan. ``missing`` (tidak ada baris
     sama sekali setelah toleransi) dibedakan dari ``failed``/``skipped``/``stuck``
     (eksekusi ada tetapi gagal) dan dari keterlambatan (``late_minutes``).
+
+    ``state`` adalah hasil eksekusi terakhir window, termasuk eksekusi ulang
+    manual. Keadaan jadwal dan putusan hanya memakai eksekusi terjadwal
+    (``schedule``/``serve``): window yang hanya dieksekusi manual setelah
+    toleransi ditandai ``schedule_missed``, sehingga eksekusi manual tidak
+    menyamarkan cron yang tidak berjalan.
     """
     runs = sorted(runs, key=lambda r: r.started_utc)
     by_window: dict[dt.datetime, list[RunRow]] = {}
@@ -292,7 +300,10 @@ def classify_windows(runs: Iterable[RunRow], now: dt.datetime, hours: int = 24,
         w = TimeWindow.starting_at(last_due.start - dt.timedelta(hours=k))
         sched = scheduled_for(w)
         attempts = by_window.get(w.start, [])
-        entry = {"time_window": str(w), "scheduled_utc": sched.isoformat(), "attempts": len(attempts)}
+        scheduled_runs = [r for r in attempts if r.trigger in SCHEDULED_TRIGGERS]
+        entry = {"time_window": str(w), "scheduled_utc": sched.isoformat(), "attempts": len(attempts),
+                 "scheduled_attempts": len(scheduled_runs),
+                 "schedule_missed": not scheduled_runs and now >= sched + grace}
         if not attempts:
             entry["state"] = "pending" if now < sched + grace else "missing"
         else:
@@ -306,7 +317,6 @@ def classify_windows(runs: Iterable[RunRow], now: dt.datetime, hours: int = 24,
                 entry["failed_steps"] = list(latest.failed_steps)
             if latest.note:
                 entry["note"] = latest.note
-            scheduled_runs = [r for r in attempts if r.trigger in ("schedule", "serve")]
             first = scheduled_runs[0] if scheduled_runs else attempts[0]
             delay = (first.started_utc - sched).total_seconds() / 60
             entry["delay_minutes"] = round(delay, 1)
@@ -320,17 +330,19 @@ def classify_windows(runs: Iterable[RunRow], now: dt.datetime, hours: int = 24,
         counts[w["state"]] = counts.get(w["state"], 0) + 1
     due = [w for w in windows if w["state"] != "pending"]
     on_schedule = [w for w in due if w.get("first_scheduled_status") in SUCCESS_STATUSES]
-    in_range = [r for r in runs if r.started_utc >= now - dt.timedelta(hours=hours) - SCHEDULE_OFFSET]
+    # Hanya eksekusi terjadwal yang membuktikan jadwal berjalan; eksekusi manual tidak.
+    in_range = [r for r in runs if r.trigger in SCHEDULED_TRIGGERS
+                and r.started_utc >= now - dt.timedelta(hours=hours) - SCHEDULE_OFFSET]
 
     latest_due = windows[0] if windows else None
     if not in_range:
         schedule_state = "no_runs"
-    elif len(windows) >= 2 and windows[0]["state"] in ("missing", "pending") and windows[1]["state"] == "missing":
+    elif len(windows) >= 2 and not windows[0]["scheduled_attempts"] and windows[1]["schedule_missed"]:
         schedule_state = "stopped"
     else:
         schedule_state = "active"
 
-    if schedule_state in ("no_runs", "stopped") or (latest_due and latest_due["state"] == "missing"):
+    if schedule_state in ("no_runs", "stopped") or (latest_due and latest_due["schedule_missed"]):
         verdict, code = "schedule_missing", STATUS_MISSING
     elif latest_due and latest_due["state"] in ("failed", "skipped", "stuck"):
         verdict, code = "failing", STATUS_FAILING
@@ -369,6 +381,8 @@ def format_status(summary: dict) -> str:
             extra.append(f"{w['attempts']} eksekusi")
         if w.get("manual_rerun"):
             extra.append("ada eksekusi ulang manual")
+        if w.get("schedule_missed") and w.get("attempts"):
+            extra.append("tanpa eksekusi terjadwal (hanya manual)")
         if w.get("failed_steps"):
             extra.append("gagal: " + ", ".join(w["failed_steps"]))
         lines.append(f"{w['time_window']}  {w['state']:<8} {WINDOW_LABELS[w['state']]}"
