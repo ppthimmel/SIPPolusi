@@ -1,6 +1,6 @@
 # Laporan Uji Integrasi End-to-End (TI-SE-10)
 
-Tanggal eksekusi: 2026-10-27, 12:50–12:52 UTC, pada `dev` terkini beserta perbaikan D-01 dan D-07. Pipeline yang diuji:
+Tanggal eksekusi: 2026-10-27, 13:10–13:12 UTC, pada `dev` terkini beserta perbaikan defect yang ditemukan uji ini. Pipeline yang diuji:
 
 ```
 Data Worker (portal SPKU → QC → downscaling) → Spatial Pollution Cache DB / OSM Cache DB
@@ -8,19 +8,20 @@ Data Worker (portal SPKU → QC → downscaling) → Spatial Pollution Cache DB 
                         ↘ Route Model (stub IRouteSolve)
 ```
 
-**Hasil: 62 dari 63 pemeriksaan lulus.** Satu pemeriksaan yang gagal adalah defect D-02 (gateway, DevOps).
-D-01 dan D-07 ditemukan oleh uji ini dan sudah diperbaiki di branch yang sama. Matriks
+**Hasil: 63 dari 63 pemeriksaan lulus.** Defect D-01, D-02, D-06, dan D-07 ditemukan oleh uji ini dan
+sudah diperbaiki di branch yang sama; D-03, D-04, dan D-05 tertutup oleh perubahan di `dev`. Tidak ada
+defect terbuka. Matriks
 lengkap: [MATRIKS.md](MATRIKS.md); data mentah: [hasil/](hasil/).
 
 ## 1. Versi yang diuji
 
 | Komponen | Versi |
 |---|---|
-| Aplikasi | commit `d5c5dea` di `feat/ti-se-10` = `dev` `f15c8f9` + harness `tests/e2e/` + perbaikan D-01 (`9eba0bd`) dan D-07 (`d5c5dea`); tree bersih saat eksekusi |
+| Aplikasi | commit `e56ea81` di `feat/ti-se-10` = `dev` `f15c8f9` + harness `tests/e2e/` + perbaikan D-01 (`9eba0bd`), D-07 (`d5c5dea`), D-02 (`e834e02`), D-06 (`e56ea81`); tree bersih saat eksekusi |
 | Data Worker | `src/data_worker` `c9fd83d` (termasuk TI-SE-02 #63, TI-DO-07 #57, TI-AI-05 #64, TI-DO-08 #62, #66), image `sippolusi-e2e-worker` |
 | Cache API | `src/backend` `d5c5dea` (TI-SE-04 sampai 08, #61, TI-DO-08, perbaikan D-01 dan D-07), image `sippolusi-e2e-cache_api` |
-| API Gateway | `src/gateway` `585c781`, image `sippolusi-e2e-gateway` |
-| Frontend | `src/frontend` `d5c5dea` (TI-SE-09 beserta perbaikan QA, sumber estimasi D-07), image `sippolusi-e2e-frontend` |
+| API Gateway | `src/gateway` `e834e02` (perbaikan D-02), image `sippolusi-e2e-gateway` |
+| Frontend | `src/frontend` `e56ea81` (TI-SE-09 beserta perbaikan QA, D-07, D-06), image `sippolusi-e2e-frontend` |
 | Basis data | PostgreSQL 18.6 + PostGIS 3.6.4 (`postgis/postgis:18-3.6`, sama dengan Railway) |
 | Model downscaling | `spatial-<hash>` per window (mis. 12:00 `spatial-efaaa52e…`). Untuk kedua polutan, Model Registry tidak dikonfigurasi di harness, sehingga keduanya fallback ke IDW `idw-p2-k8` dengan `fallback_reason: resolve_registry:ValueError` |
 | Model rute | `stub-e2e-1` (stub IRouteSolve, `tests/e2e/route_model_stub.py`); fallback Backend `astar-baseline`. MORL belum ada (TI-AI-10/11) |
@@ -49,7 +50,7 @@ Digest setiap image ada di [hasil/versions.json](hasil/versions.json).
     akan terhapus oleh riwayat 3 jam.
 - Cache API memakai `LOG_FORMAT=json`, sama seperti di Railway.
 - Runner `tests/e2e/run_e2e.py` (Python standar, `docker compose`, `psql`) menjalankan 11 skenario
-  berurutan dari keadaan bersih. Dua eksekusi berturut-turut memberi hasil yang sama (62/63).
+  berurutan dari keadaan bersih. Dua eksekusi berturut-turut memberi hasil yang sama (63/63).
 - Window fixture berasal dari 26 Oktober, jadi pada eksekusi ini datanya sudah lebih dari 3 jam. Respons
   dan UI menandainya `data_stale` ("Data kualitas udara belum diperbarui"). Itu perilaku yang benar, dan
   diperiksa di E2E-04.
@@ -71,11 +72,11 @@ Satu permintaan dapat ditelusuri dari frontend sampai inferensi, dan dari cache 
 ```
 Worker   run_id=20261026T1200Z-spatial-efaaa52e…-c36e8d1a rows_written=21987 coverage=1.0
 cache    edge_pollution.trace_run_id=20261026T1200Z-spatial-efaaa52e…-c36e8d1a  (→ pollution.inference_run)
-gateway  {"message":"POST /v1/routes 200","request_id":"9c3cf57120c0089f0397529f5992ebed","duration_s":0.407, ...}
-API      {"level":"info","logger":"solver","correlation_id":"9c3cf57120c0089f0397529f5992ebed",
-          "message":"route_inference request_id=9c3cf571… solver=http outcome=ok route_source=policy
-          model_version=stub-e2e-1 mode=walk alpha=0.3 beta=0.7 deadline_ms=7294 inference_ms=160.2"}
-respons  X-Request-ID = metadata.request_id = 9c3cf571…; metadata.time_window_start = 2026-10-26T12:00:00Z
+gateway  {"message":"POST /v1/routes 200","request_id":"1afb7900d615ab222a8197d5778e8476","duration_s":0.333, ...}
+API      {"level":"info","logger":"solver","correlation_id":"1afb7900d615ab222a8197d5778e8476",
+          "message":"route_inference request_id=1afb7900… solver=http outcome=ok route_source=policy
+          model_version=stub-e2e-1 mode=walk alpha=0.3 beta=0.7 deadline_ms=7342 inference_ms=140.5"}
+respons  X-Request-ID = metadata.request_id = 1afb7900…; metadata.time_window_start = 2026-10-26T12:00:00Z
 ```
 
 ID permintaan yang tampil di UI ([02](02-sukses-sumber-dan-versi.jpg)) juga tercatat di log gateway dan
@@ -92,7 +93,7 @@ Cache API. Log semua layanan diperiksa: tidak ada DSN, kata sandi, atau koordina
 | E2E-05 window sedang ditulis (2/2) | Window `writing` tidak terbaca; begitu `complete`, langsung dipakai |
 | E2E-06 inferensi gagal, fallback aktif (13/13) | Lambat, galat, label salah, no_route, layanan mati → rute tercepat bertanda baseline dengan `fallback_reason` yang tepat, < 10 s; log `outcome=fallback` dengan penyebab |
 | E2E-07 inferensi timeout, fallback mati (3/3) | 503 `solver_timeout` dalam batas gateway; no_route model → 503 `solver_no_route` (bukan 422) |
-| E2E-08 API dan basis data gagal (6/7) | Basis data mati → 503 `database_unavailable`, `/health/ready` 503, `/health/live` 200, pulih otomatis. Cache API mati → galat JSON dari gateway, tetapi 504 alih-alih 502 (D-02) |
+| E2E-08 API dan basis data gagal (7/7) | Basis data mati → 503 `database_unavailable`, `/health/ready` 503, `/health/live` 200, pulih otomatis. Cache API mati → langsung 502 `upstream_unavailable` dari gateway (D-02 diperbaiki), juga lewat frontend ([05](05-api-gagal-502.jpg)) |
 | E2E-09 versi graf dan cache tidak cocok (3/3) | Estimasi dari graf lain diabaikan → 503 `cache_empty`, bukan paparan nol |
 | E2E-10 kontrak API publik (1/1) | Koleksi uji 17 kasus (validasi, 413, 422, heatmap) lulus lewat gateway |
 | E2E-11 log aman (2/2) | Tanpa rahasia dan tanpa koordinat |
@@ -101,17 +102,17 @@ Cache API. Log semua layanan diperiksa: tidak ada DSN, kata sandi, atau koordina
 
 ### Terbuka
 
-| ID | Prioritas | Komponen (pemilik) | Defect | Langkah reproduksi | Usulan perbaikan |
-|---|---|---|---|---|---|
-| D-02 | Rendah | API Gateway (DO) | Selama ±10 s setelah Cache API berhenti, gateway menunggu `proxy_connect_timeout` 5 s lalu menjawab 504 `upstream_timeout`, bukan 502 `upstream_unavailable`. Penyebabnya, IP lama masih tersimpan di cache DNS (`resolver … valid=10s`). Pengguna menunggu 5 s dan melihat pesan "terlalu lama merespons". Setelah itu 502 seperti seharusnya ([05](05-api-gagal-502.jpg)) | E2E-08: `docker compose stop cache_api`, lalu langsung `POST /v1/routes` → 504 setelah ±5 s; permintaan berikutnya → 502 | Kecilkan `proxy_connect_timeout` di jaringan privat (mis. 2 s), atau tetap diterima dengan catatan |
-| D-06 | Sedang (UX) | Model downscaling dan frontend (AI/FE) | Semua confidence IDW < 0,4 (median 0,30), sehingga seluruh heatmap bergaris "keyakinan rendah" dan setiap rute berlencana "Keyakinan Rendah". Peta jadi padat dan pembeda keyakinan tidak informatif | Laporan Worker: `low_lt_0_4 = 21987` dari 21 987 ([hasil/worker-2026-10-26T1200Z.json](hasil/worker-2026-10-26T1200Z.json)) | Tinjau rumus confidence IDW atau ambang kelas (subbab 3.1) bersama tim AI |
+Tidak ada.
 
 ### Diperbaiki di branch ini (diverifikasi pada eksekusi ini)
 
 | ID | Defect semula | Perbaikan | Bukti |
 |---|---|---|---|
 | D-01 | Ruas yang kotak pembatasnya menyentuh bbox permintaan tetapi garisnya tidak, masuk subgraf (`&&`) namun bobotnya tersaring `ST_Intersects`. Ruas itu diisi median wilayah dengan confidence 0, dan UI menampilkan "3 ruas tanpa estimasi" walau semua ruas punya estimasi (Monas → Bundaran HI; ruas 111493, 359388, 370670). Terkonfirmasi juga di Railway oleh QA | `9eba0bd`: `_SQL_WEIGHTS` memakai filter bbox yang sama dengan subgraf (`&&`). Uji regresi `test_weights_cover_every_edge_of_the_road_graph_bbox` (ruas diagonal) gagal dengan query lama dan lulus setelah perbaikan | E2E-02: `missing_edge_count: 0`; UI tanpa catatan ruas tanpa estimasi ([01](01-sukses-rute-dari-data-worker.jpg)). Perlu deploy ke Railway agar hilang di sana |
-| D-07 | Fallback downscaling tidak terlihat oleh pengguna: respons hanya membawa `model_version.downscaling: spatial-<hash>`, dan frontend menulis tetap "Model downscaling spasial dari data satelit, meteorologi, dan sensor darat" walau estimasi berasal dari IDW sensor darat | `d5c5dea`: `metadata.estimation` `{source, fallback_pollutants}` dari baris cache ruas rute (OpenAPI dan contoh diperbarui); frontend menulis sumber estimasi sesuai nilai itu | E2E-02: `estimation` = laporan Worker; panel "Sumber estimasi": "Interpolasi dari sensor darat SPKU (IDW); model downscaling tidak tersedia" ([02](02-sukses-sumber-dan-versi.jpg)). Catatan: disclaimer umum di kaki panel (`DISCLAIMER` frontend) masih menyebut "data satelit dan sensor darat"; teks itu deskripsi sistem dari desain, perlu keputusan FE/PO bila ingin ikut menyesuaikan |
+| D-07 | Fallback downscaling tidak terlihat oleh pengguna: respons hanya membawa `model_version.downscaling: spatial-<hash>`, dan frontend menulis tetap "Model downscaling spasial dari data satelit, meteorologi, dan sensor darat" walau estimasi berasal dari IDW sensor darat | `d5c5dea`: `metadata.estimation` `{source, fallback_pollutants}` dari baris cache ruas rute (OpenAPI dan contoh diperbarui); frontend menulis sumber estimasi sesuai nilai itu | E2E-02: `estimation` = laporan Worker; panel "Sumber estimasi": "Interpolasi dari sensor darat SPKU (IDW); model downscaling tidak tersedia" ([02](02-sukses-sumber-dan-versi.jpg)). Disclaimer di kaki panel juga disesuaikan (`e56ea81`): satelit dan meteorologi disebut hanya bila model downscaling tersedia |
+
+| D-02 | Selama ±10 s setelah Cache API berhenti, gateway menunggu `proxy_connect_timeout` 5 s lalu menjawab 504 `upstream_timeout`, bukan 502 `upstream_unavailable`, karena IP lama masih tersimpan di cache DNS (`resolver … valid=10s`) | `e834e02`: `proxy_connect_timeout` 2 s di jaringan privat; 504 yang koneksi upstream-nya tidak pernah terbuka (`$upstream_connect_time` kosong) dijawab 502 `upstream_unavailable`. Timeout baca tetap 504. Uji bawaan gateway (`docker build --target test`) lulus | E2E-08: Cache API dimatikan lalu langsung `POST /v1/routes` → 502; tangkapan [05](05-api-gagal-502.jpg) diambil segera setelah Cache API berhenti. Kasus alamat tak terjangkau tidak dapat disimulasikan di uji build gateway (Docker Desktop menerima koneksi TCP ke alamat apa pun), sehingga buktinya E2E-08 |
+| D-06 | Semua confidence IDW < 0,4 (median 0,30), sehingga seluruh heatmap bergaris "keyakinan rendah"; peta padat dan garis tidak membedakan apa pun | `e56ea81` (frontend). Rumus confidence **tidak** diubah: batas IDW < 0,4 adalah ketentuan desain (Tabel 3.8, `docs/SPATIAL_MODEL_SPEC.md`). Bila seluruh area yang tampil berkeyakinan rendah, peta tidak diberi garis dan legenda menyatakannya sekali; garis tetap dipakai bila keyakinan bervariasi | Peta dan legenda "Keyakinan estimasi rendah di seluruh area yang tampil, jadi peta tidak diberi garis" ([01](01-sukses-rute-dari-data-worker.jpg)); uji unit `allLowConfidence`. Lencana "Keyakinan Rendah" per rute tetap ditampilkan karena memang benar |
 
 ### Tertutup oleh perubahan di `dev` (diverifikasi ulang pada eksekusi ini)
 
@@ -128,7 +129,7 @@ Cache API. Log semua layanan diperiksa: tidak ada DSN, kata sandi, atau koordina
 | Model Registry dan ST-GNN/LightGBM terdaftar (TI-AI-05, TI-AI-11) | Kode ada di `dev`; registry tidak disertakan di harness | Hanya jalur fallback per polutan yang teruji. Jalur model terdaftar perlu diuji dengan MLflow (atau setara) di stack |
 | Multi-Objective Route Model (TI-AI-10/11) | Belum ada layanan | Rute "policy" berasal dari stub yang memenuhi kontrak IRouteSolve; perilaku MORL sebenarnya belum teruji |
 | Sumber sekunder (TI-SE-02) | Dimatikan di harness (`FEATURES_SOURCES=none`) | FeatureMatrix dari satelit dan meteorologi tidak teruji; butuh fixture skema `features` |
-| Railway | TI-SE-08/09 sudah di-merge; `DOWNSCALE_WRITE_CACHE=1` aktif di `development` sejak 27 Okt; `public_api.smoke` lewat gateway Railway 17/17 lulus (QA) | Uji asap Railway sudah dilakukan; D-01 terkonfirmasi di sana. Perbaikan D-01 dan D-07 berlaku di Railway setelah PR ini di-merge dan di-deploy |
+| Railway | TI-SE-08/09 sudah di-merge; `DOWNSCALE_WRITE_CACHE=1` aktif di `development` sejak 27 Okt; `public_api.smoke` lewat gateway Railway 17/17 lulus (QA) | Uji asap Railway sudah dilakukan; D-01 terkonfirmasi di sana. Perbaikan D-01, D-02, D-06, dan D-07 berlaku di Railway setelah PR ini di-merge dan di-deploy; tidak ada variabel lingkungan baru |
 
 ## 6. Cara mengulang
 
