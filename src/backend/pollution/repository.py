@@ -82,11 +82,16 @@ _WEIGHT_FIELDS = tuple(EdgeWeight.__dataclass_fields__)
 
 # The run's per-pollutant provenance (source, model version, fallback reason) from
 # one row of the window, for routes read without lineage: one run writes a whole
-# window at once, so every row carries the same model_metadata.
+# window at once, so every row carries the same model_metadata. No index starts
+# with time_window_start (the key is (edge_id, time_window_start)), so a bare
+# LIMIT 1 seq-scans until it meets the window: up to 1.8 s on Railway, depending
+# on where the window's rows sit in the heap. ORDER BY edge_id walks the primary
+# key instead and stops at the first edge, which every window covers (0.09 ms).
 _SQL_WINDOW_MODEL_METADATA = """
 SELECT model_metadata
 FROM pollution.edge_pollution
 WHERE time_window_start = $1
+ORDER BY edge_id
 LIMIT 1
 """
 
