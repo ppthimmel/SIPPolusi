@@ -23,13 +23,15 @@ _DSN_EXAMPLE = "postgresql://USER:PASSWORD@HOST:5432/DBNAME"
 
 #: Modul yang baru diimpor di tengah siklus. Dependensi yang hilang harus
 #: ketahuan saat build/cek, bukan pada langkah ke-8 sebuah cron.
-RUNTIME_MODULES = ("acquisition", "database", "spatial_model.inference", "spku.store", "psycopg", "psycopg2")
+RUNTIME_MODULES = ("acquisition", "database", "spatial_model.inference", "spku.store", "worker_runs",
+                   "feature_store.steps", "feature_store.cli", "psycopg", "psycopg2", "h5py", "rasterio")
 
 #: (variabel, tipe, nilai minimum)
 _NUMERIC = (
     ("SPKU_DELAY_SECONDS", float, 0),
     ("SPKU_TIMEOUT_SECONDS", int, 1),
     ("SPKU_RETRIES", int, 0),
+    ("WORKER_LOCK_WAIT_SECONDS", float, 0),
 )
 
 
@@ -64,9 +66,10 @@ def config_problems(environ: Mapping[str, str] | None = None) -> list[str]:
         if problem:
             problems.append(problem)
 
-    schema = env.get("SPKU_DB_SCHEMA", "").strip()
-    if schema and not _SCHEMA_NAME_RE.match(schema):
-        problems.append(f"SPKU_DB_SCHEMA={schema!r} bukan nama skema yang sah (huruf kecil, angka, garis bawah).")
+    for var in ("SPKU_DB_SCHEMA", "WORKER_DB_SCHEMA", "FEATURES_DB_SCHEMA"):
+        schema = env.get(var, "").strip()
+        if schema and not _SCHEMA_NAME_RE.match(schema):
+            problems.append(f"{var}={schema!r} bukan nama skema yang sah (huruf kecil, angka, garis bawah).")
 
     for name, cast, minimum in _NUMERIC:
         raw = env.get(name, "").strip()
@@ -83,6 +86,14 @@ def config_problems(environ: Mapping[str, str] | None = None) -> list[str]:
     level = env.get("LOG_LEVEL", "").strip().upper()
     if level and level not in _LOG_LEVELS:
         problems.append(f"LOG_LEVEL={level!r} tidak dikenal; pakai salah satu dari {', '.join(_LOG_LEVELS)}.")
+
+    sources = env.get("FEATURES_SOURCES", "").strip()
+    if sources and sources not in ("all", "none"):
+        known = ("open_meteo", "geoscf_ana", "geoscf_fcst", "sentinel5p", "landsat", "viirs")
+        unknown = sorted({x.strip() for x in sources.split(",") if x.strip()} - set(known))
+        if unknown:
+            problems.append(f"FEATURES_SOURCES memuat sumber tak dikenal {unknown}; pakai all, none, "
+                            f"atau daftar dari {', '.join(known)}.")
 
     environment = env.get("ENVIRONMENT", "").strip().lower()
     if environment and _ALIASES.get(environment, environment) not in ENVIRONMENTS:

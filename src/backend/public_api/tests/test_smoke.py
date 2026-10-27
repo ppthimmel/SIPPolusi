@@ -1,6 +1,7 @@
 """The test collection (public_api/smoke.py, requests.http)."""
 from __future__ import annotations
 
+import httpx
 import pytest
 
 from public_api import smoke
@@ -22,6 +23,25 @@ def test_collection_covers_the_acceptance_criteria():
     assert {None, "invalid_request", "payload_too_large", "outside_study_area", "point_not_on_network",
             "no_route_found", "cache_unavailable"} <= expected
     assert {c.path for c in smoke.CASES} == {"/v1/routes", "/v1/exposure-surface"}
+
+
+def test_rate_limited_case_is_resent_after_retry_after():
+    class GatewayRateLimit:
+        """Answers 429 with Retry-After twice, then lets the request through."""
+        def __init__(self):
+            self.calls = 0
+
+        def request(self, *args, **kwargs):
+            self.calls += 1
+            if self.calls <= 2:
+                return httpx.Response(429, headers={"Retry-After": "3"}, json={"error": {
+                    "code": "rate_limited", "message": "Coba lagi dalam 3 detik.", "request_id": "r"}})
+            return httpx.Response(400, json={"error": {"code": "invalid_request", "message": "m",
+                                                       "request_id": "r"}})
+
+    client, waits = GatewayRateLimit(), []
+    resp = smoke.send_waiting_out_rate_limit(client, smoke.CASES[2], sleep=waits.append)
+    assert (resp.status_code, client.calls, waits) == (400, 3, [3, 3])
 
 
 @pytest.mark.parametrize("case", OFFLINE, ids=[c.name for c in OFFLINE])

@@ -9,6 +9,8 @@ also accept 503 cache_unavailable/cache_empty, because the Railway cache has no
 complete time window yet; validation and study-area errors come before the cache
 and must match exactly. 200 bodies are checked against the response schemas,
 errors against the uniform error schema, and X-Request-ID must be echoed.
+Through the API Gateway the collection exceeds the /v1/routes rate limit (20 per
+minute, burst 5); a 429 rate_limited is waited out (Retry-After) and the case resent.
 """
 from __future__ import annotations
 
@@ -16,6 +18,7 @@ import argparse
 import json
 import pathlib
 import sys
+import time
 import uuid
 from dataclasses import dataclass, field
 from typing import Any
@@ -25,6 +28,7 @@ HTTP_FILE = pathlib.Path(__file__).with_name("requests.http")
 MONAS = {"lat": -6.1754, "lon": 106.8272}
 BUNDARAN_HI = {"lat": -6.1950, "lon": 106.8230}
 CACHE_EMPTY = (503, "cache_unavailable")
+RATE_LIMIT_RETRIES = 5
 
 
 def _route(**overrides) -> dict[str, Any]:
@@ -115,6 +119,19 @@ def check(case: Case, resp) -> str | None:
     return None
 
 
+def send_waiting_out_rate_limit(client, case: Case, sleep=time.sleep):
+    """send(), resent after Retry-After while the API Gateway answers 429 rate_limited."""
+    resp = send(client, case)
+    for _ in range(RATE_LIMIT_RETRIES):
+        if resp.status_code != 429:
+            break
+        wait_s = int(resp.headers.get("retry-after", "1"))
+        print(f"      429 dari API Gateway, tunggu {wait_s} s (Retry-After)")
+        sleep(wait_s)
+        resp = send(client, case)
+    return resp
+
+
 def send(client, case: Case):
     headers = {"X-Request-ID": f"smoke-{uuid.uuid4().hex[:12]}"}
     if case.raw is not None:
@@ -128,7 +145,7 @@ def run(client, cases: list[Case] = CASES) -> int:
     """Send every case with client (an httpx.Client or a FastAPI TestClient); returns the failures."""
     failures = 0
     for case in cases:
-        resp = send(client, case)
+        resp = send_waiting_out_rate_limit(client, case)
         problem = check(case, resp)
         if problem is None:
             outcome = "200" if resp.status_code == 200 else f"{resp.status_code} {resp.json()['error']['code']}"

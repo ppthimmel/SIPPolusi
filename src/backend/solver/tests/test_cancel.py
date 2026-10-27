@@ -84,7 +84,10 @@ async def test_mock_search_does_not_block_the_timeout(big, tokens):
         await call_route_solve(MockSolver(), SolveRequest(big, deadline_ms=30), grace_ms=0)
     elapsed = time.perf_counter() - started
     assert exc.value.reason == SOLVER_TIMEOUT
-    assert elapsed < 0.15, f"timeout fired after {elapsed:.2f} s; the search held the event loop"
+    # Same headroom over the deadline as the baseline test: on shared CI runners the
+    # GIL handoff to the event loop alone has taken over 0.12 s. A search that held
+    # the loop would take the whole uncancelled search (over 1 s there).
+    assert elapsed < 0.3, f"timeout fired after {elapsed:.2f} s; the search held the event loop"
     (token,) = tokens
     assert token.finished.wait(0.5) and token.raised
     assert token.checks < len(big.nodes)  # stopped before expanding every node

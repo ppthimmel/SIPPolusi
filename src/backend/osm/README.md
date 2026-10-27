@@ -95,7 +95,7 @@ Semua perintah di bawah dijalankan dari **root repo**, kecuali disebutkan lain.
 Image ini berdiri sendiri dan tidak memakai `src/backend/Dockerfile`. Konteks build-nya adalah
 `src/backend` (agar `osm/`, `pollution/`, `planner/`, `solver/`, dan `route_model/` ikut), dan `osm/Dockerfile.dockerignore` membatasi
 berkas yang dikirim hanya ke kedua paket itu. Image runtime memakai `python:3.11-slim`, berjalan sebagai user non-root, punya
-`HEALTHCHECK` ke `/health`, dan mendengarkan pada `PORT` (default 8000). File `.env` tidak ikut
+`HEALTHCHECK` ke `/health/live`, dan mendengarkan pada `PORT` (default 8000). File `.env` tidak ikut
 masuk image; konfigurasi diberikan lewat environment. Pastikan Docker Desktop sudah menyala.
 
 Semua perintah Docker di bawah memakai path dari **root repo**. Kalau terminal masih di
@@ -208,19 +208,31 @@ Railway membangun image dari GitHub, jadi kodenya harus sudah di-push ke branch 
    SIPPolusi*. Lalu atur:
    - **Branch:** branch yang berisi modul ini.
    - **Root Directory:** `src/backend`, karena image memuat `osm/`, `pollution/`, `planner/`, `solver/`, dan `route_model/`.
-   - **Dockerfile:** tambahkan variabel `RAILWAY_DOCKERFILE_PATH=osm/Dockerfile`. Tahap terakhir
-     Dockerfile adalah image runtime.
+   - **Dockerfile:** Settings → Build → *Dockerfile Path* `/src/backend/osm/Dockerfile` (atau
+     variabel `RAILWAY_DOCKERFILE_PATH` dengan nilai yang sama). Tahap terakhir Dockerfile adalah
+     image runtime.
+   - **Deploy:** *Healthcheck Path* `/health/live`, *Restart Policy* `On Failure` dengan 5 percobaan.
+     Isi di dashboard, bukan lewat berkas config: Railway menghentikan Config as Code (berkas
+     `railway.json` yang sudah dipakai masih berlaku sampai **1 Desember 2026**; sejak 28 Agustus
+     2026 service baru tidak bisa mengaktifkannya).
+   - **Catatan:** Railway otomatis membaca `src/backend/railway.json` (milik Backend) untuk
+     service ini karena Root Directory-nya sama. Berkas itu sengaja tidak memuat
+     `dockerfilePath`: bila ada, nilainya mengalahkan Dockerfile Path di atas dan service ini
+     menjalankan Backend, bukan Cache API (terlihat dari log `logger="backend"` dan 404
+     `{"detail": "Not Found"}` untuk `/v1/osm/*`).
 2. **Variables:** isi `DATABASE_URL` dengan referensi ke service database, misalnya
    `${{database.DATABASE_URL}}` (sesuaikan nama service). Referensi ini memakai URL privat
    `postgres.railway.internal`. Variabel `PORT` diisi otomatis oleh Railway.
-3. **Settings:** set *Healthcheck Path* ke `/health`. Untuk menguji dari luar, buat domain lewat
-   *Networking → Generate Domain*.
-4. Uji dari terminal laptop dengan perintah seperti A-5, tetapi alamatnya diganti domain Railway.
+3. **Networking:** jangan buat domain publik: Cache API hanya
+   dijangkau gateway lewat jaringan privat (TI-DO-04, `docs/devops/private-networking.md`).
+   Uji dari luar lewat gateway, `https://<gateway>/v1/osm/...`.
+4. Uji dari terminal laptop dengan perintah seperti A-5, tetapi alamatnya diganti domain publik
+   gateway (`<domain-railway>` di bawah).
    Coba juga perjalanan ±10 km, yang dari laptop kena 503 karena jaringan lambat. Di Railway
    hasilnya seharusnya 200:
 
    ```bash
-   curl -s https://<domain-railway>/health
+   curl -s https://<domain-railway>/v1/osm/version
    curl -s -X POST https://<domain-railway>/v1/osm/subgraph -H "Content-Type: application/json" \
         -d '{"origin":{"lat":-6.1754,"lon":106.8272},"destination":{"lat":-6.2654,"lon":106.8272},"mode":"walk"}'
    ```
@@ -434,6 +446,9 @@ sesi dan bisa dimatikan oleh sesi mana pun. Selama Backend masih memakai user `p
 | GET | `/streets?q=&limit=` | Cari nama jalan; `q` wajib memuat ≥ 3 huruf/angka berurutan agar index trigram terpakai | handoff 9.8 |
 | POST | `/subgraph` | Bagian OSM dari R8–R10: `compute_request_bbox`, `read_road_graph`, `snap_to_graph`, `assemble_request_subgraph` | Tabel 3.6, UT-BE-04..06 |
 | GET | `/health` | Status koneksi database, versi graf aktif, time window polusi terakhir dan `pollution_data_stale` | |
+| GET | `/health/live` | Liveness: 200 selama proses melayani, tanpa menyentuh database | TI-DO-08 |
+| GET | `/health/ready` | Readiness: 503 bila database atau graf aktif tidak siap; `checks.pollution` (`ok`/`stale`/`empty`) hanya dilaporkan | TI-DO-08 |
+| GET | `/metrics` | Metrik Prometheus: jumlah request per route/status, latency | TI-DO-08 |
 
 - **Format data:**
   - `bbox` ditulis `min_lon,min_lat,max_lon,max_lat`.

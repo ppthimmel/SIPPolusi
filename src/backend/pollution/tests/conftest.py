@@ -38,9 +38,7 @@ def admin_dsn() -> str:
     return dsn
 
 
-@pytest.fixture
-def cache_dsn(admin_dsn):
-    """A new database with schemas osm and pollution, dropped after the test."""
+def _temporary_database(admin_dsn: str, with_schemas: bool):
     import psycopg
 
     from osm_cache import schema_sql
@@ -49,11 +47,24 @@ def cache_dsn(admin_dsn):
     with psycopg.connect(admin_dsn, autocommit=True) as admin:
         admin.execute(f'CREATE DATABASE "{name}"')
     dsn = _with_database(admin_dsn, name)
-    with psycopg.connect(dsn, autocommit=True) as conn:
-        conn.execute(schema_sql())
+    if with_schemas:
+        with psycopg.connect(dsn, autocommit=True) as conn:
+            conn.execute(schema_sql())
     yield dsn
     with psycopg.connect(admin_dsn, autocommit=True) as admin:
         admin.execute(f'DROP DATABASE IF EXISTS "{name}" WITH (FORCE)')
+
+
+@pytest.fixture
+def cache_dsn(admin_dsn):
+    """A new database with schemas osm and pollution, dropped after the test."""
+    yield from _temporary_database(admin_dsn, with_schemas=True)
+
+
+@pytest.fixture
+def bare_dsn(admin_dsn):
+    """A new database without the cache schemas (before the Data Worker's first run)."""
+    yield from _temporary_database(admin_dsn, with_schemas=False)
 
 
 @pytest.fixture

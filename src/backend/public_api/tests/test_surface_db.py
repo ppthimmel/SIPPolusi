@@ -13,7 +13,7 @@ from osm.models import BBox
 from planner.tests.test_flow import body as route_body
 from pollution.config import get_pollution_settings
 from pollution.tests.conftest import admin_dsn, cache_dsn, writer  # noqa: F401  (fixtures)
-from pollution.tests.test_cache_flow import write_graph, write_weights
+from pollution.tests.test_cache_flow import write_graph, write_weights, trace_for_weights
 from public_api.config import get_api_settings
 from public_api.schemas import RouteFeatureCollection, SurfaceFeatureCollection
 from public_api.surface import Grid
@@ -49,7 +49,7 @@ def _write_varied(writer):
     """One complete window where PM2.5 = 5 µg/m³ × edge_id (NO2 missing on edge 24), so cell
     averages differ from cell to cell. A window is written whole: the Data Worker replaces it."""
     from contracts import EdgeWeight, TimeWindow as WorkerWindow
-    from spatial_model.cache import write_pollution_weight
+    from spatial_model.inference.cache import write_pollution_weight
 
     start = _window()
     weights = []
@@ -59,7 +59,8 @@ def _write_varied(writer):
         weights.append(EdgeWeight(edge_id=e, time_window_start=start, pm25_ugm3=pm25, no2_ugm3=no2,
                                   exposure_index=index, confidence_score=round(0.02 * e, 2),
                                   background_source=None, estimation_source="idw"))
-    write_pollution_weight(writer, weights, WorkerWindow.starting_at(start), "v1", "idw-p2-k8", coverage_ratio=1.0)
+    write_pollution_weight(writer, weights, WorkerWindow.starting_at(start), "v1", "idw-p2-k8", coverage_ratio=1.0,
+                           trace=trace_for_weights(weights, start, "v1"))
 
 
 def _surface(client, zoom, bbox=AROUND_GRID):

@@ -1,4 +1,7 @@
 # SIPPolusi
+
+[![CI](https://github.com/ppthimmel/SIPPolusi/actions/workflows/ci.yml/badge.svg?branch=dev)](https://github.com/ppthimmel/SIPPolusi/actions/workflows/ci.yml?query=branch%3Adev)
+
 SIPPolusi: Sistem Informasi Pemandu Perjalanan dalam Polusi
 
 ## Layout
@@ -19,10 +22,15 @@ SIPPolusi: Sistem Informasi Pemandu Perjalanan dalam Polusi
   registry.
 - [src/observability](src/observability) — Prometheus, Pushgateway, and
   Grafana configuration.
-- [db](db) — schema migrations for the single PostgreSQL/PostGIS instance
+- [database migration](src/data_worker/database/spatial_migration.sql) — additive model provenance migration for PostgreSQL/PostGIS
   (schemas: `pollution`, `osm`, `mlflow`).
 - [docs/experiments](docs/experiments) — frozen dataset snapshots and model
   experiment results (e.g. the TI-AI-04 IDW baseline).
+- [Spatial model training](src/data_worker/spatial_model/README.md) — ds-v0.3.0,
+  PM2.5 IDW + ST-GNN correction and NO₂ LightGBM; Python and
+  [notebook workflows](notebooks/spatial_model), MLflow/MinIO registration and Worker inference.
+- [Spatial model specification](docs/SPATIAL_MODEL_SPEC.md) — GEOS-CF feature policy,
+  pollutant-specific fallback, and mandatory cached grid-to-road provenance.
 
 Railway's edge terminates TLS; the NGINX API Gateway ([src/gateway](src/gateway))
 behind it is the single public entry point and forwards `/v1/*` to the backend
@@ -30,6 +38,9 @@ over Railway's private network (design document, Table 3.2). Build/start
 definitions, health checks, logging and the smoke test for the gateway,
 backend and data worker are in
 [docs/devops/build-runtime.md](docs/devops/build-runtime.md).
+CI/CD (build, test, regression, and the rule that Railway deploys a commit
+pushed to `dev` only after the pipeline passes) is in
+[docs/devops/ci-cd.md](docs/devops/ci-cd.md).
 
 ## Environment variables
 

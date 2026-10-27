@@ -1,7 +1,9 @@
 # Tes modul pollution. Runtime-nya sama dengan osm (src/backend/osm/requirements.txt).
 -r ../osm/requirements-dev.txt
 # Uji alur tulis -> baca (tests/test_cache_flow.py) memanggil penulis Data Worker:
-# osm_cache.write_road_graph dan spatial_model.cache.write_pollution_weight.
+# osm_cache.write_road_graph dan spatial_model.inference.cache.write_pollution_weight.
 psycopg[binary]>=3.1
 numpy>=1.26
 pandas>=2.1
+# Impor spatial_model.inference memuat spatial_model.data.grid (pyproj), TI-AI-05.
+pyproj>=3.6

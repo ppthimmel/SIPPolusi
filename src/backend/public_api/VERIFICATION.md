@@ -110,9 +110,10 @@ tetap:
 
 ## Catatan
 
-- **Rate limiting (429 `rate_limited`, Tabel 3.15) belum diterapkan di gateway.** Kodenya sudah
-  didokumentasikan di OpenAPI dengan catatan itu. Penerapannya butuh alamat IP klien yang
-  sebenarnya di belakang edge Railway (`set_real_ip_from`), jadi perlu diputuskan bersama DevOps.
+- **Rate limiting (429 `rate_limited`, Tabel 3.15) belum diterapkan di gateway** pada saat
+  verifikasi ini. Kini diterapkan oleh TI-DO-05, dengan alamat klien dari header `X-Real-IP`
+  edge Railway; hasil ujinya ada di
+  [`docs/devops/gateway-TI-DO-05.md`](../../../docs/devops/gateway-TI-DO-05.md).
 - **CRS ada di `metadata`**, bukan member `crs` tingkat atas. RFC 7946 menghapus member itu, dan
   koordinat GeoJSON selalu CRS84.
 - **Kinerja agregasi grid pada data Jakarta penuh belum diukur**, karena cache polusi Railway masih
