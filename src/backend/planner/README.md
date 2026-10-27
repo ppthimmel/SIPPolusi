@@ -1,5 +1,8 @@
 # `planner`: RouteRequest → masukan solver (TI-SE-05)
 
+Kontrak RouteRequest dan SolverInput lintas komponen (TI-SE-01):
+[`data-contracts-TI-SE-01.md`](../../../docs/software/data-contracts-TI-SE-01.md).
+
 Modul Backend yang menerjemahkan `RouteRequest` menjadi subgraf siap-selesaikan untuk
 Multi-Objective Route Model. Langkahnya mengikuti Gambar 3.9 (R5–R11) dan Tabel 3.6:
 

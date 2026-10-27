@@ -1,0 +1,970 @@
+{
+  "contract_version": "1.0.0",
+  "valid": {
+    "Point": {
+      "lon": 106.8,
+      "lat": -6.2
+    },
+    "RouteRequest": {
+      "origin": {
+        "lon": 106.8,
+        "lat": -6.2
+      },
+      "destination": {
+        "lon": 106.801,
+        "lat": -6.2
+      },
+      "mode": "walk",
+      "preference": {
+        "alpha": 0.6,
+        "beta": 0.4
+      }
+    },
+    "RoadGraph": {
+      "graph_version": "g1",
+      "mode": "walk",
+      "bbox": [
+        106.7,
+        -6.3,
+        106.9,
+        -6.1
+      ],
+      "node_count": 2,
+      "edge_count": 1,
+      "rejected": {},
+      "nodes": [
+        {
+          "node_id": 1,
+          "lon": 106.8,
+          "lat": -6.2,
+          "tags": {}
+        },
+        {
+          "node_id": 2,
+          "lon": 106.801,
+          "lat": -6.2,
+          "tags": {}
+        }
+      ],
+      "edges": [
+        {
+          "edge_id": 10,
+          "u": 1,
+          "v": 2,
+          "length_m": 110.0,
+          "highway": null,
+          "name": null,
+          "oneway": false,
+          "walk_allowed": true,
+          "bike_allowed": true,
+          "osm_way_id": null,
+          "coordinates": [
+            [
+              106.8,
+              -6.2
+            ],
+            [
+              106.801,
+              -6.2
+            ]
+          ]
+        }
+      ]
+    },
+    "EdgeWeight": {
+      "edge_id": 10,
+      "pm25_ugm3": 0.0,
+      "no2_ugm3": null,
+      "exposure_index": 0.0,
+      "confidence_score": 0.0,
+      "background_source": null,
+      "estimation_source": "idw",
+      "model_metadata": {},
+      "trace_run_id": null,
+      "graph_version": "g1",
+      "model_version": "idw-v1"
+    },
+    "TimeWindow": {
+      "time_window_start": "2026-10-27T05:00:00Z",
+      "time_window_end": "2026-10-27T06:00:00Z"
+    },
+    "EdgeWeights": {
+      "time_window_start": "2026-10-27T05:00:00Z",
+      "time_window_end": "2026-10-27T06:00:00Z",
+      "model_version": "idw-v1",
+      "coverage_ratio": 1.0,
+      "graph_version": "g1",
+      "mode": "walk",
+      "bbox": [
+        106.7,
+        -6.3,
+        106.9,
+        -6.1
+      ],
+      "data_stale": false,
+      "age_minutes": 0.0,
+      "count": 1,
+      "excluded": {},
+      "weights": [
+        {
+          "edge_id": 10,
+          "pm25_ugm3": 0.0,
+          "no2_ugm3": null,
+          "exposure_index": 0.0,
+          "confidence_score": 0.0,
+          "background_source": null,
+          "estimation_source": "idw",
+          "model_metadata": {},
+          "trace_run_id": null,
+          "graph_version": "g1",
+          "model_version": "idw-v1"
+        }
+      ]
+    },
+    "RouteOutput": {
+      "type": "FeatureCollection",
+      "features": [
+        {
+          "type": "Feature",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                106.8,
+                -6.2
+              ],
+              [
+                106.801,
+                -6.2
+              ],
+              [
+                106.802,
+                -6.2
+              ],
+              [
+                106.803,
+                -6.2
+              ],
+              [
+                106.803,
+                -6.199
+              ],
+              [
+                106.803,
+                -6.198
+              ],
+              [
+                106.803,
+                -6.197
+              ]
+            ]
+          },
+          "properties": {
+            "role": "recommended",
+            "route_source": "policy",
+            "preference_applied": true,
+            "travel_time_min": 8.462,
+            "distance_m": 660.0,
+            "exposure_index_min": 18.7563,
+            "exposure_ug_min_m3": 359.614,
+            "concentration_coverage": 1.0,
+            "confidence_score": 0.2421,
+            "imputed_edge_count": 0,
+            "edge_ids": [
+              1,
+              3,
+              5,
+              7,
+              14,
+              21
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                106.8,
+                -6.2
+              ],
+              [
+                106.801,
+                -6.2
+              ],
+              [
+                106.802,
+                -6.2
+              ],
+              [
+                106.803,
+                -6.2
+              ],
+              [
+                106.803,
+                -6.199
+              ],
+              [
+                106.803,
+                -6.198
+              ],
+              [
+                106.803,
+                -6.197
+              ]
+            ]
+          },
+          "properties": {
+            "role": "comparison",
+            "route_source": "baseline",
+            "preference_applied": false,
+            "travel_time_min": 8.462,
+            "distance_m": 660.0,
+            "exposure_index_min": 18.7563,
+            "exposure_ug_min_m3": 359.614,
+            "concentration_coverage": 1.0,
+            "confidence_score": 0.2421,
+            "imputed_edge_count": 0,
+            "edge_ids": [
+              1,
+              3,
+              5,
+              7,
+              14,
+              21
+            ]
+          }
+        }
+      ],
+      "metadata": {
+        "request_id": "contoh-route-policy",
+        "mode": "walk",
+        "pollutant": "pm25",
+        "preference": {
+          "alpha": 0.5,
+          "beta": 0.5
+        },
+        "route_source": "policy",
+        "preference_applied": true,
+        "fallback_reason": null,
+        "time_window_start": "2026-10-26T12:00:00Z",
+        "data_stale": false,
+        "missing_edge_count": 0,
+        "graph_version": "v1",
+        "model_version": {
+          "downscaling": "idw-p2-k8",
+          "route_policy": "mock-1"
+        },
+        "solver": "mock",
+        "comparison": {
+          "delta_travel_time_min": 0.0,
+          "delta_exposure_pct": 0.0
+        },
+        "notes": [],
+        "crs": "urn:ogc:def:crs:OGC::CRS84",
+        "coordinate_order": [
+          "lon",
+          "lat"
+        ],
+        "units": {
+          "travel_time_min": "min",
+          "distance_m": "m",
+          "exposure_index_min": "index·min",
+          "exposure_ug_min_m3": "µg·min/m³",
+          "concentration_coverage": "fraction 0–1",
+          "confidence_score": "fraction 0–1",
+          "imputed_edge_count": "count",
+          "delta_travel_time_min": "min",
+          "delta_exposure_pct": "%"
+        },
+        "exposure_index_definition": "I = ½ · (PM2.5 / 15 + NO2 / 25), konsentrasi dalam µg/m³ dibagi pedoman WHO 2021 (rata-rata 24 jam); bila hanya satu polutan tersedia, I = PM2.5 / 15 atau NO2 / 25. Tanpa satuan; 1,0 = tepat pada pedoman.",
+        "disclaimer": "Estimasi konsentrasi polutan merupakan keluaran model, bukan hasil pengukuran langsung, dan dapat berbeda dari kondisi udara sebenarnya. Gunakan rute ini sebagai alat bantu keputusan."
+      }
+    }
+  },
+  "invalid": [
+    {
+      "type": "Point",
+      "reason": "latitude di luar WGS 84",
+      "validation": "schema",
+      "payload": {
+        "lon": 106.8,
+        "lat": 91
+      }
+    },
+    {
+      "type": "Point",
+      "reason": "longitude wajib",
+      "validation": "schema",
+      "payload": {
+        "lat": -6.2
+      }
+    },
+    {
+      "type": "RouteRequest",
+      "reason": "destination wajib",
+      "validation": "schema",
+      "payload": {
+        "origin": {
+          "lon": 106.8,
+          "lat": -6.2
+        },
+        "mode": "walk",
+        "preference": {
+          "alpha": 0.6,
+          "beta": 0.4
+        }
+      }
+    },
+    {
+      "type": "RouteRequest",
+      "reason": "mode car tidak didukung",
+      "validation": "schema",
+      "payload": {
+        "origin": {
+          "lon": 106.8,
+          "lat": -6.2
+        },
+        "destination": {
+          "lon": 106.801,
+          "lat": -6.2
+        },
+        "mode": "car",
+        "preference": {
+          "alpha": 0.6,
+          "beta": 0.4
+        }
+      }
+    },
+    {
+      "type": "RouteRequest",
+      "reason": "alpha + beta harus 1",
+      "validation": "semantic",
+      "payload": {
+        "origin": {
+          "lon": 106.8,
+          "lat": -6.2
+        },
+        "destination": {
+          "lon": 106.801,
+          "lat": -6.2
+        },
+        "mode": "walk",
+        "preference": {
+          "alpha": 0.6,
+          "beta": 0.5
+        }
+      }
+    },
+    {
+      "type": "RouteRequest",
+      "reason": "angka tidak boleh boolean",
+      "validation": "schema",
+      "payload": {
+        "origin": {
+          "lon": true,
+          "lat": -6.2
+        },
+        "destination": {
+          "lon": 106.801,
+          "lat": -6.2
+        },
+        "mode": "walk",
+        "preference": {
+          "alpha": 0.6,
+          "beta": 0.4
+        }
+      }
+    },
+    {
+      "type": "TimeWindow",
+      "reason": "format waktu tidak valid",
+      "validation": "schema",
+      "payload": {
+        "time_window_start": "kemarin",
+        "time_window_end": "2026-10-27T06:00:00Z"
+      }
+    },
+    {
+      "type": "TimeWindow",
+      "reason": "zona waktu wajib",
+      "validation": "schema",
+      "payload": {
+        "time_window_start": "2026-10-27T05:00:00",
+        "time_window_end": "2026-10-27T06:00:00"
+      }
+    },
+    {
+      "type": "TimeWindow",
+      "reason": "durasi harus satu jam",
+      "validation": "semantic",
+      "payload": {
+        "time_window_start": "2026-10-27T05:00:00Z",
+        "time_window_end": "2026-10-27T07:00:00Z"
+      }
+    },
+    {
+      "type": "TimeWindow",
+      "reason": "awal harus sejajar jam",
+      "validation": "semantic",
+      "payload": {
+        "time_window_start": "2026-10-27T05:30:00Z",
+        "time_window_end": "2026-10-27T06:30:00Z"
+      }
+    },
+    {
+      "type": "EdgeWeight",
+      "reason": "confidence harus 0..1",
+      "validation": "schema",
+      "payload": {
+        "edge_id": 10,
+        "pm25_ugm3": 0.0,
+        "no2_ugm3": null,
+        "exposure_index": 0.0,
+        "confidence_score": 1.1,
+        "background_source": null,
+        "estimation_source": "idw",
+        "model_metadata": {},
+        "trace_run_id": null,
+        "graph_version": "g1",
+        "model_version": "idw-v1"
+      }
+    },
+    {
+      "type": "EdgeWeight",
+      "reason": "konsentrasi tidak boleh negatif",
+      "validation": "schema",
+      "payload": {
+        "edge_id": 10,
+        "pm25_ugm3": -1,
+        "no2_ugm3": null,
+        "exposure_index": 0.0,
+        "confidence_score": 0.0,
+        "background_source": null,
+        "estimation_source": "idw",
+        "model_metadata": {},
+        "trace_run_id": null,
+        "graph_version": "g1",
+        "model_version": "idw-v1"
+      }
+    },
+    {
+      "type": "RoadGraph",
+      "reason": "referensi simpul harus ada",
+      "validation": "semantic",
+      "payload": {
+        "graph_version": "g1",
+        "mode": "walk",
+        "bbox": [
+          106.7,
+          -6.3,
+          106.9,
+          -6.1
+        ],
+        "node_count": 2,
+        "edge_count": 1,
+        "rejected": {},
+        "nodes": [
+          {
+            "node_id": 1,
+            "lon": 106.8,
+            "lat": -6.2,
+            "tags": {}
+          },
+          {
+            "node_id": 2,
+            "lon": 106.801,
+            "lat": -6.2,
+            "tags": {}
+          }
+        ],
+        "edges": [
+          {
+            "edge_id": 10,
+            "u": 1,
+            "v": 99,
+            "length_m": 110.0,
+            "highway": null,
+            "name": null,
+            "oneway": false,
+            "walk_allowed": true,
+            "bike_allowed": true,
+            "osm_way_id": null,
+            "coordinates": [
+              [
+                106.8,
+                -6.2
+              ],
+              [
+                106.801,
+                -6.2
+              ]
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": "RoadGraph",
+      "reason": "panjang harus positif",
+      "validation": "schema",
+      "payload": {
+        "graph_version": "g1",
+        "mode": "walk",
+        "bbox": [
+          106.7,
+          -6.3,
+          106.9,
+          -6.1
+        ],
+        "node_count": 2,
+        "edge_count": 1,
+        "rejected": {},
+        "nodes": [
+          {
+            "node_id": 1,
+            "lon": 106.8,
+            "lat": -6.2,
+            "tags": {}
+          },
+          {
+            "node_id": 2,
+            "lon": 106.801,
+            "lat": -6.2,
+            "tags": {}
+          }
+        ],
+        "edges": [
+          {
+            "edge_id": 10,
+            "u": 1,
+            "v": 2,
+            "length_m": 0,
+            "highway": null,
+            "name": null,
+            "oneway": false,
+            "walk_allowed": true,
+            "bike_allowed": true,
+            "osm_way_id": null,
+            "coordinates": [
+              [
+                106.8,
+                -6.2
+              ],
+              [
+                106.801,
+                -6.2
+              ]
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": "RoadGraph",
+      "reason": "semua vertex harus valid WGS 84",
+      "validation": "schema",
+      "payload": {
+        "graph_version": "g1",
+        "mode": "walk",
+        "bbox": [
+          106.7,
+          -6.3,
+          106.9,
+          -6.1
+        ],
+        "node_count": 2,
+        "edge_count": 1,
+        "rejected": {},
+        "nodes": [
+          {
+            "node_id": 1,
+            "lon": 106.8,
+            "lat": -6.2,
+            "tags": {}
+          },
+          {
+            "node_id": 2,
+            "lon": 106.801,
+            "lat": -6.2,
+            "tags": {}
+          }
+        ],
+        "edges": [
+          {
+            "edge_id": 10,
+            "u": 1,
+            "v": 2,
+            "length_m": 110.0,
+            "highway": null,
+            "name": null,
+            "oneway": false,
+            "walk_allowed": true,
+            "bike_allowed": true,
+            "osm_way_id": null,
+            "coordinates": [
+              [
+                106.8,
+                91
+              ],
+              [
+                106.801,
+                -6.2
+              ]
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": "RouteOutput",
+      "reason": "jarak tidak boleh negatif",
+      "validation": "schema",
+      "payload": {
+        "type": "FeatureCollection",
+        "features": [
+          {
+            "type": "Feature",
+            "geometry": {
+              "type": "LineString",
+              "coordinates": [
+                [
+                  106.8,
+                  -6.2
+                ],
+                [
+                  106.801,
+                  -6.2
+                ],
+                [
+                  106.802,
+                  -6.2
+                ],
+                [
+                  106.803,
+                  -6.2
+                ],
+                [
+                  106.803,
+                  -6.199
+                ],
+                [
+                  106.803,
+                  -6.198
+                ],
+                [
+                  106.803,
+                  -6.197
+                ]
+              ]
+            },
+            "properties": {
+              "role": "recommended",
+              "route_source": "policy",
+              "preference_applied": true,
+              "travel_time_min": 8.462,
+              "distance_m": -1,
+              "exposure_index_min": 18.7563,
+              "exposure_ug_min_m3": 359.614,
+              "concentration_coverage": 1.0,
+              "confidence_score": 0.2421,
+              "imputed_edge_count": 0,
+              "edge_ids": [
+                1,
+                3,
+                5,
+                7,
+                14,
+                21
+              ]
+            }
+          },
+          {
+            "type": "Feature",
+            "geometry": {
+              "type": "LineString",
+              "coordinates": [
+                [
+                  106.8,
+                  -6.2
+                ],
+                [
+                  106.801,
+                  -6.2
+                ],
+                [
+                  106.802,
+                  -6.2
+                ],
+                [
+                  106.803,
+                  -6.2
+                ],
+                [
+                  106.803,
+                  -6.199
+                ],
+                [
+                  106.803,
+                  -6.198
+                ],
+                [
+                  106.803,
+                  -6.197
+                ]
+              ]
+            },
+            "properties": {
+              "role": "comparison",
+              "route_source": "baseline",
+              "preference_applied": false,
+              "travel_time_min": 8.462,
+              "distance_m": 660.0,
+              "exposure_index_min": 18.7563,
+              "exposure_ug_min_m3": 359.614,
+              "concentration_coverage": 1.0,
+              "confidence_score": 0.2421,
+              "imputed_edge_count": 0,
+              "edge_ids": [
+                1,
+                3,
+                5,
+                7,
+                14,
+                21
+              ]
+            }
+          }
+        ],
+        "metadata": {
+          "request_id": "contoh-route-policy",
+          "mode": "walk",
+          "pollutant": "pm25",
+          "preference": {
+            "alpha": 0.5,
+            "beta": 0.5
+          },
+          "route_source": "policy",
+          "preference_applied": true,
+          "fallback_reason": null,
+          "time_window_start": "2026-10-26T12:00:00Z",
+          "data_stale": false,
+          "missing_edge_count": 0,
+          "graph_version": "v1",
+          "model_version": {
+            "downscaling": "idw-p2-k8",
+            "route_policy": "mock-1"
+          },
+          "solver": "mock",
+          "comparison": {
+            "delta_travel_time_min": 0.0,
+            "delta_exposure_pct": 0.0
+          },
+          "notes": [],
+          "crs": "urn:ogc:def:crs:OGC::CRS84",
+          "coordinate_order": [
+            "lon",
+            "lat"
+          ],
+          "units": {
+            "travel_time_min": "min",
+            "distance_m": "m",
+            "exposure_index_min": "index·min",
+            "exposure_ug_min_m3": "µg·min/m³",
+            "concentration_coverage": "fraction 0–1",
+            "confidence_score": "fraction 0–1",
+            "imputed_edge_count": "count",
+            "delta_travel_time_min": "min",
+            "delta_exposure_pct": "%"
+          },
+          "exposure_index_definition": "I = ½ · (PM2.5 / 15 + NO2 / 25), konsentrasi dalam µg/m³ dibagi pedoman WHO 2021 (rata-rata 24 jam); bila hanya satu polutan tersedia, I = PM2.5 / 15 atau NO2 / 25. Tanpa satuan; 1,0 = tepat pada pedoman.",
+          "disclaimer": "Estimasi konsentrasi polutan merupakan keluaran model, bukan hasil pengukuran langsung, dan dapat berbeda dari kondisi udara sebenarnya. Gunakan rute ini sebagai alat bantu keputusan."
+        }
+      }
+    },
+    {
+      "type": "RouteOutput",
+      "reason": "vertex wajib dua komponen",
+      "validation": "schema",
+      "payload": {
+        "type": "FeatureCollection",
+        "features": [
+          {
+            "type": "Feature",
+            "geometry": {
+              "type": "LineString",
+              "coordinates": [
+                [
+                  106.8
+                ],
+                [
+                  106.801,
+                  -6.2
+                ],
+                [
+                  106.802,
+                  -6.2
+                ],
+                [
+                  106.803,
+                  -6.2
+                ],
+                [
+                  106.803,
+                  -6.199
+                ],
+                [
+                  106.803,
+                  -6.198
+                ],
+                [
+                  106.803,
+                  -6.197
+                ]
+              ]
+            },
+            "properties": {
+              "role": "recommended",
+              "route_source": "policy",
+              "preference_applied": true,
+              "travel_time_min": 8.462,
+              "distance_m": 660.0,
+              "exposure_index_min": 18.7563,
+              "exposure_ug_min_m3": 359.614,
+              "concentration_coverage": 1.0,
+              "confidence_score": 0.2421,
+              "imputed_edge_count": 0,
+              "edge_ids": [
+                1,
+                3,
+                5,
+                7,
+                14,
+                21
+              ]
+            }
+          },
+          {
+            "type": "Feature",
+            "geometry": {
+              "type": "LineString",
+              "coordinates": [
+                [
+                  106.8,
+                  -6.2
+                ],
+                [
+                  106.801,
+                  -6.2
+                ],
+                [
+                  106.802,
+                  -6.2
+                ],
+                [
+                  106.803,
+                  -6.2
+                ],
+                [
+                  106.803,
+                  -6.199
+                ],
+                [
+                  106.803,
+                  -6.198
+                ],
+                [
+                  106.803,
+                  -6.197
+                ]
+              ]
+            },
+            "properties": {
+              "role": "comparison",
+              "route_source": "baseline",
+              "preference_applied": false,
+              "travel_time_min": 8.462,
+              "distance_m": 660.0,
+              "exposure_index_min": 18.7563,
+              "exposure_ug_min_m3": 359.614,
+              "concentration_coverage": 1.0,
+              "confidence_score": 0.2421,
+              "imputed_edge_count": 0,
+              "edge_ids": [
+                1,
+                3,
+                5,
+                7,
+                14,
+                21
+              ]
+            }
+          }
+        ],
+        "metadata": {
+          "request_id": "contoh-route-policy",
+          "mode": "walk",
+          "pollutant": "pm25",
+          "preference": {
+            "alpha": 0.5,
+            "beta": 0.5
+          },
+          "route_source": "policy",
+          "preference_applied": true,
+          "fallback_reason": null,
+          "time_window_start": "2026-10-26T12:00:00Z",
+          "data_stale": false,
+          "missing_edge_count": 0,
+          "graph_version": "v1",
+          "model_version": {
+            "downscaling": "idw-p2-k8",
+            "route_policy": "mock-1"
+          },
+          "solver": "mock",
+          "comparison": {
+            "delta_travel_time_min": 0.0,
+            "delta_exposure_pct": 0.0
+          },
+          "notes": [],
+          "crs": "urn:ogc:def:crs:OGC::CRS84",
+          "coordinate_order": [
+            "lon",
+            "lat"
+          ],
+          "units": {
+            "travel_time_min": "min",
+            "distance_m": "m",
+            "exposure_index_min": "index·min",
+            "exposure_ug_min_m3": "µg·min/m³",
+            "concentration_coverage": "fraction 0–1",
+            "confidence_score": "fraction 0–1",
+            "imputed_edge_count": "count",
+            "delta_travel_time_min": "min",
+            "delta_exposure_pct": "%"
+          },
+          "exposure_index_definition": "I = ½ · (PM2.5 / 15 + NO2 / 25), konsentrasi dalam µg/m³ dibagi pedoman WHO 2021 (rata-rata 24 jam); bila hanya satu polutan tersedia, I = PM2.5 / 15 atau NO2 / 25. Tanpa satuan; 1,0 = tepat pada pedoman.",
+          "disclaimer": "Estimasi konsentrasi polutan merupakan keluaran model, bukan hasil pengukuran langsung, dan dapat berbeda dari kondisi udara sebenarnya. Gunakan rute ini sebagai alat bantu keputusan."
+        }
+      }
+    },
+    {
+      "type": "TimeWindow",
+      "reason": "format compact bukan RFC 3339",
+      "validation": "schema",
+      "payload": {
+        "time_window_start": "20261027T05+00:00",
+        "time_window_end": "20261027T06+00:00"
+      }
+    },
+    {
+      "type": "TimeWindow",
+      "reason": "menit offset zona waktu di luar batas",
+      "validation": "schema",
+      "payload": {
+        "time_window_start": "2026-10-27T05:00:00+00:60",
+        "time_window_end": "2026-10-27T06:00:00+00:60"
+      }
+    }
+  ]
+}

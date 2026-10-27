@@ -1566,10 +1566,22 @@
           },
           "coordinates": {
             "items": {
-              "items": {
-                "type": "number"
-              },
-              "type": "array"
+              "prefixItems": [
+                {
+                  "type": "number",
+                  "maximum": 180.0,
+                  "minimum": -180.0
+                },
+                {
+                  "type": "number",
+                  "maximum": 90.0,
+                  "minimum": -90.0
+                }
+              ],
+              "items": false,
+              "type": "array",
+              "maxItems": 2,
+              "minItems": 2
             },
             "type": "array",
             "minItems": 2,
@@ -1635,13 +1647,15 @@
             "type": "number",
             "maximum": 90.0,
             "minimum": -90.0,
-            "title": "Lat"
+            "title": "Lat",
+            "description": "Latitude WGS 84, degrees"
           },
           "lon": {
             "type": "number",
             "maximum": 180.0,
             "minimum": -180.0,
-            "title": "Lon"
+            "title": "Lon",
+            "description": "Longitude WGS 84, degrees"
           }
         },
         "type": "object",
@@ -1661,10 +1675,22 @@
           "coordinates": {
             "items": {
               "items": {
-                "items": {
-                  "type": "number"
-                },
-                "type": "array"
+                "prefixItems": [
+                  {
+                    "type": "number",
+                    "maximum": 180.0,
+                    "minimum": -180.0
+                  },
+                  {
+                    "type": "number",
+                    "maximum": 90.0,
+                    "minimum": -90.0
+                  }
+                ],
+                "items": false,
+                "type": "array",
+                "maxItems": 2,
+                "minItems": 2
               },
               "type": "array"
             },
@@ -1688,14 +1714,14 @@
             "maximum": 1.0,
             "minimum": 0.0,
             "title": "Alpha",
-            "description": "Bobot waktu tempuh α, 0–1"
+            "description": "Bobot waktu tempuh α, tanpa satuan, 0–1"
           },
           "beta": {
             "type": "number",
             "maximum": 1.0,
             "minimum": 0.0,
             "title": "Beta",
-            "description": "Bobot paparan β, 0–1; α + β = 1"
+            "description": "Bobot paparan β, tanpa satuan, 0–1; α + β = 1 (toleransi 1e-6)"
           }
         },
         "type": "object",
@@ -1823,6 +1849,8 @@
           },
           "time_window_start": {
             "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}[Tt]\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?(?:[Zz]|[+-](?:[01]\\d|2[0-3]):[0-5]\\d)$",
+            "format": "date-time",
             "title": "Time Window Start",
             "description": "Awal time window polusi (ISO 8601, UTC)"
           },
@@ -1948,23 +1976,27 @@
           },
           "travel_time_min": {
             "type": "number",
+            "minimum": 0.0,
             "title": "Travel Time Min",
             "description": "T(R), menit"
           },
           "distance_m": {
             "type": "number",
+            "minimum": 0.0,
             "title": "Distance M",
             "description": "Panjang rute, meter"
           },
           "exposure_index_min": {
             "type": "number",
+            "minimum": 0.0,
             "title": "Exposure Index Min",
             "description": "E(R) = Σ Iₑ·τₑ, indeks·menit"
           },
           "exposure_ug_min_m3": {
             "anyOf": [
               {
-                "type": "number"
+                "type": "number",
+                "minimum": 0.0
               },
               {
                 "type": "null"
@@ -1975,16 +2007,21 @@
           },
           "concentration_coverage": {
             "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
             "title": "Concentration Coverage",
             "description": "Bagian ruas yang memiliki konsentrasi, 0–1"
           },
           "confidence_score": {
             "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
             "title": "Confidence Score",
             "description": "Rata-rata confidence ruas berbobot paparan, 0–1"
           },
           "imputed_edge_count": {
             "type": "integer",
+            "minimum": 0.0,
             "title": "Imputed Edge Count",
             "description": "Jumlah ruas yang indeksnya diisi median wilayah"
           },

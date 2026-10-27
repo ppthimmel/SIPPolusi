@@ -6,9 +6,9 @@ Points use {lat, lon} like Point in Tabel 3.3; geometries are GeoJSON with
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any
+from typing import Annotated, Any
 
-from pydantic import BaseModel, Field
+from pydantic import AfterValidator, BaseModel, Field, model_validator
 
 from .models import (
     BBox,
@@ -27,8 +27,32 @@ from .models import (
 
 
 class PointModel(BaseModel):
-    lat: float = Field(ge=-90, le=90)
-    lon: float = Field(ge=-180, le=180)
+    lat: float = Field(ge=-90, le=90, strict=True, description="Latitude WGS 84, degrees")
+    lon: float = Field(ge=-180, le=180, strict=True, description="Longitude WGS 84, degrees")
+
+
+def _lonlat(value: list[float]) -> list[float]:
+    PointModel(lon=value[0], lat=value[1])
+    return value
+
+
+LonLat = Annotated[
+    list[Annotated[float, Field(strict=True)]],
+    Field(min_length=2, max_length=2, json_schema_extra={
+        "prefixItems": [{"type": "number", "minimum": -180, "maximum": 180},
+                        {"type": "number", "minimum": -90, "maximum": 90}],
+        "items": False,
+    }),
+    AfterValidator(_lonlat),
+]
+
+
+def _bbox(value: list[float]) -> list[float]:
+    BBox(*value)
+    return value
+
+
+BBoxCoordinates = Annotated[list[float], Field(min_length=4, max_length=4), AfterValidator(_bbox)]
 
 
 class GraphVersionOut(BaseModel):
@@ -159,8 +183,8 @@ class StreetsOut(BaseModel):
 
 class GraphNodeOut(BaseModel):
     node_id: int
-    lon: float
-    lat: float
+    lon: float = Field(ge=-180, le=180)
+    lat: float = Field(ge=-90, le=90)
     tags: dict[str, str]
 
     @classmethod
@@ -172,14 +196,14 @@ class GraphEdgeOut(BaseModel):
     edge_id: int
     u: int
     v: int
-    length_m: float | None
+    length_m: float = Field(gt=0, allow_inf_nan=False, description="Length, metres")
     highway: str | None
     name: str | None
     oneway: bool
     walk_allowed: bool
     bike_allowed: bool
     osm_way_id: int | None
-    coordinates: list[list[float]] | None = Field(description="[[lon, lat], ...] from u to v")
+    coordinates: list[LonLat] | None = Field(min_length=2, description="[[lon, lat], ...] from u to v; null if not requested")
 
     @classmethod
     def of(cls, e: RoadEdge) -> GraphEdgeOut:
@@ -187,14 +211,28 @@ class GraphEdgeOut(BaseModel):
 
 
 class RoadGraphOut(BaseModel):
-    graph_version: str
+    graph_version: str = Field(min_length=1)
     mode: Mode
-    bbox: list[float]
-    node_count: int
-    edge_count: int
+    bbox: BBoxCoordinates
+    node_count: int = Field(ge=0)
+    edge_count: int = Field(ge=0)
     rejected: dict[str, int] = Field(description="Rows left out by validation, per reason")
     nodes: list[GraphNodeOut]
     edges: list[GraphEdgeOut]
+
+    @model_validator(mode="after")
+    def validate_topology(self) -> RoadGraphOut:
+        nodes = {n.node_id for n in self.nodes}
+        if len(nodes) != len(self.nodes) or len({e.edge_id for e in self.edges}) != len(self.edges):
+            raise ValueError("RoadGraph node_id and edge_id must be unique")
+        if self.node_count != len(self.nodes) or self.edge_count != len(self.edges):
+            raise ValueError("RoadGraph counts must match nodes and edges")
+        for edge in self.edges:
+            if edge.u not in nodes or edge.v not in nodes:
+                raise ValueError("RoadGraph edge endpoints must refer to nodes")
+            if not (edge.walk_allowed if self.mode is Mode.WALK else edge.bike_allowed):
+                raise ValueError("RoadGraph edges must allow the requested mode")
+        return self
 
     @classmethod
     def build(cls, graph_version: str, mode: Mode, bbox: BBox, nodes: dict[int, RoadNode],

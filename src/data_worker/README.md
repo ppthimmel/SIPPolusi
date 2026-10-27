@@ -1,5 +1,8 @@
 # Data Worker
 
+Kontrak pertukaran tipe, versi, satuan dan aturan cache (TI-SE-01):
+[`data-contracts-TI-SE-01.md`](../../docs/software/data-contracts-TI-SE-01.md).
+
 Komponen fase background SIPPolusi (Dokumen Desain Tugas 3, Tabel 3.9 dan
 Gambar 3.7). Setiap jam pada menit ke-15, `schedule_acquisition()` menjalankan
 satu siklus akuisisi untuk time window satu jam yang baru berakhir.
