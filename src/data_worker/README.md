@@ -26,6 +26,7 @@ Yang sudah berjalan:
 | `main.py` | Titik masuk: `cycle` (untuk cron), `serve` (proses menetap), `status` (pemeriksaan jadwal), `check`, `spku ...` |
 | `acquisition.py` | `schedule_acquisition(time_window)`: langkah berurutan, status per langkah |
 | `worker_runs.py` | Catatan eksekusi siklus (`worker.cycle_run`), kunci siklus, status jadwal; lihat [`docs/devops/data-worker-schedule.md`](../../docs/devops/data-worker-schedule.md) |
+| `db_session.py` | Keepalive TCP sisi server untuk setiap koneksi (`PGOPTIONS`), agar sesi dari kontainer yang dihentikan paksa tidak menahan kunci tabel |
 | `connectors/` | Konektor sumber sekunder (Open-Meteo, GEOS-CF, Landsat, VIIRS, Sentinel-5P): HTTP dengan timeout dan coba ulang, parser, QA |
 | `feature_store/` | Skema `features`, pembaca FeatureMatrix PostgreSQL, langkah siklus TI-SE-02, `python main.py features ...`; lihat [README-nya](feature_store/README.md) |
 | `ground_truth.py` | `fetch_ground_truth(provider, bbox, time_window)` |

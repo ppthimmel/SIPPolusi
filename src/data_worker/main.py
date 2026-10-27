@@ -50,6 +50,7 @@ import time
 
 from acquisition import schedule_acquisition
 from contracts import TimeWindow
+from db_session import apply_session_defaults
 from log_config import configure_logging, correlation, log_event
 from preflight import config_problems, database_problems, import_problems
 import worker_runs
@@ -265,6 +266,7 @@ def serve(run_now: bool) -> int:
 def main(argv: list[str] | None = None) -> int:
     argv = sys.argv[1:] if argv is None else argv
     configure_logging(service=SERVICE)
+    apply_session_defaults()
     if argv and argv[0] == "spku":
         from spku.cli import main as spku_main
 

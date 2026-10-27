@@ -79,6 +79,22 @@ kegagalan tersebut sehingga siklus tidak pernah diklaim sukses.
   Penulisan SPKU berada dalam satu transaksi sehingga tidak ada data separuh jadi.
 - **Proses mati tanpa sinyal** (mis. kehabisan memori): baris `running` yang tertinggal ditutup sebagai `failed`
   oleh siklus berikutnya, dan `main.py status` melaporkannya `stuck` setelah 60 menit.
+- **Sesi basis data yatim:** kontainer yang dihentikan paksa tidak menutup koneksinya, sehingga transaksi yang
+  sedang menulis (mis. `COPY` ke `pollution.edge_cell`) tetap memegang kuncinya. Tanpa pengaturan, PostgreSQL baru
+  menyadarinya setelah keepalive TCP bawaan (2 jam), dan siklus berikutnya tertahan di `init_db`. Karena itu:
+  - setiap koneksi Data Worker memasang keepalive sisi server lewat `PGOPTIONS` (`db_session.py`): 60 detik tanpa
+    lalu lintas, lalu 6 probe berjeda 10 detik. Sesi yatim ditutup dan transaksinya dibatalkan ±2 menit setelah
+    kontainer hilang. Nilai `tcp_keepalives_*` yang sudah ada di `PGOPTIONS` tidak ditimpa;
+  - `init_db` menunggu kunci tabel paling lama 30 detik per transaksi. Bila habis, kegagalannya dicatat dan siklus
+    tetap berjalan dengan tabel yang sudah ada. Batas ini juga mencegah `ALTER TABLE` migrasi yang mengantre
+    menahan baca Cache API.
+
+  Memeriksa sesi yang menunggu kunci (hanya membaca):
+
+  ```sql
+  SELECT pid, state, wait_event_type, wait_event, now() - query_start AS age, left(query, 80)
+  FROM pg_stat_activity WHERE datname = current_database() AND state <> 'idle' ORDER BY query_start;
+  ```
 
 Batas waktu SPKU di kode bawaannya 45 detik per permintaan (`SPKU_TIMEOUT_SECONDS`), sedangkan Tabel 3.19
 menyebut 30 detik; nilai 45 detik dipertahankan karena halaman rinci portal kadang lambat.
