@@ -49,6 +49,8 @@ LOCAL_TZ = "Asia/Jakarta"
 S5P_LEFT, S5P_TOP, S5P_RES = 675000.0, 9340000.0, 5000.0
 VIIRS_CELL_DEG = 1 / 240          # 15 detik busur
 VIIRS_RULES = ("tile", "nearest_listed")
+GEOSCF_LAT_CENTERS = [-6.5, -6.25, -6.0]
+GEOSCF_LON_CENTERS = [106.5, 106.75, 107.0]
 WEATHER_RUN_INTERVAL_HOURS = 6
 WEATHER_DELAY_HOURS = 8.0
 
@@ -77,6 +79,21 @@ def _nearest(points, targets, chunk: int = 4_000) -> np.ndarray:
         d = ((points[i:i + chunk, None, :] - targets[None, :, :]) ** 2).sum(axis=2)
         out[i:i + chunk] = d.argmin(axis=1)
     return out
+
+
+def geoscf_lookup(root: Path | str = DATASET_PROCESSED) -> pd.Series:
+    """``grid_id`` 100 m → ``geoscf_cell_id`` (lookup TI-AI-01; ``gy`` dihitung dari sisi selatan)."""
+    lookup = pd.read_parquet(Path(root) / "geos-cf/grid100m_geoscf_lookup.parquet",
+                             columns=["gx", "gy", "geoscf_cell_id"])
+    lookup["grid_id"] = [f"r{444 - y:04d}_c{x:04d}" for x, y in zip(lookup.gx, lookup.gy)]
+    return lookup.set_index("grid_id").geoscf_cell_id
+
+
+def geoscf_cell_ids(lon, lat) -> np.ndarray:
+    """Sel GEOS-CF 0,25° terdekat (``iy × 3 + ix``); sama dengan lookup TI-AI-01 pada seluruh sel aktif."""
+    iy = np.abs(np.asarray(lat, dtype=float)[:, None] - np.asarray(GEOSCF_LAT_CENTERS)[None, :]).argmin(axis=1)
+    ix = np.abs(np.asarray(lon, dtype=float)[:, None] - np.asarray(GEOSCF_LON_CENTERS)[None, :]).argmin(axis=1)
+    return iy * len(GEOSCF_LON_CENTERS) + ix
 
 
 class SourceReader:
@@ -132,35 +149,29 @@ class SourceReader:
         mapping["landsat_cell_id"] = cells.grid_id
         mapping["sentinel5p_cell_id"] = s5p_cell_ids(cells.easting, cells.northing)
 
-        viirs = pd.read_parquet(self.root / "viirs/daily.parquet", columns=[
-            "viirs_cell_id", "observation_date_utc", "longitude", "latitude", "ntl", "ntl_available",
-            "observed_end_at", "produced_at"])
+        viirs = self._load_viirs()
         if self.viirs_cell_rule == "tile":
             mapping["viirs_cell_id"] = viirs_tile_cell_ids(cells.longitude, cells.latitude)
         else:
             listed = viirs.drop_duplicates("viirs_cell_id")
             i = _nearest(cells[["longitude", "latitude"]].to_numpy(), listed[["longitude", "latitude"]].to_numpy())
             mapping["viirs_cell_id"] = listed.viirs_cell_id.to_numpy()[i]
-        manifest = json.loads((self.root / "viirs/manifest.json").read_text(encoding="utf-8"))
-        names = {pd.Timestamp(x["observation_date"], tz="UTC"): x["scene_id"] for x in manifest["inputs"]}
         viirs = viirs[viirs.viirs_cell_id.isin(set(mapping.viirs_cell_id))]
         viirs = viirs.rename(columns={"viirs_cell_id": "source_cell_id", "observed_end_at": "observed_at"})
-        viirs["scene_id"] = viirs.observation_date_utc.map(names)
+        if "scene_id" not in viirs:
+            names = self._viirs_scene_names()
+            viirs["scene_id"] = viirs.observation_date_utc.map(names)
         if viirs.scene_id.isna().any():
             raise ValueError("Tanggal VIIRS tanpa nama berkas di manifest")
 
-        s5p = pd.read_parquet(self.root / "sentinel5p/observations.parquet")
+        s5p = self._load_sentinel5p()
         s5p = s5p.rename(columns={"grid_id": "source_cell_id", "available": "no2_mol_m2_available"})
 
-        landsat = pd.concat([pd.read_parquet(p, filters=[("grid_id", "in", list(grid_ids))])
-                             for p in sorted((self.root / "landsat/scenes").glob("*.parquet"))], ignore_index=True)
+        landsat = self._load_landsat(grid_ids)
         landsat = landsat.rename(columns={"grid_id": "source_cell_id"})
 
-        lookup = pd.read_parquet(self.root / "geos-cf/grid100m_geoscf_lookup.parquet",
-                                 columns=["gx", "gy", "geoscf_cell_id"])
-        lookup["grid_id"] = [f"r{444 - y:04d}_c{x:04d}" for x, y in zip(lookup.gx, lookup.gy)]
-        mapping["geoscf_cell_id"] = mapping.grid_id.map(lookup.set_index("grid_id").geoscf_cell_id).astype("int64")
-        geos = pd.read_parquet(self.root / "geos-cf/geoscf_cell_hourly.parquet")
+        mapping["geoscf_cell_id"] = self._geoscf_cell_ids(cells).astype("int64")
+        geos = self._load_geoscf_ana()
         geos["cell_id"] = geos.cell_id.astype("int64")
         for col in ("time_window_start", "available_at_utc"):
             geos[col] = geos[col].astype("datetime64[ns, UTC]")
@@ -175,7 +186,7 @@ class SourceReader:
             geos_events[var] = e[["cell_id", "available_at_utc", "time_window_start", "time_window_end",
                                   f"{var}_ugm3", "latency_hours"]].reset_index(drop=True)
 
-        fcst = pd.read_parquet(self.root / "geos-cf/geoscf_fcst_cell_hourly.parquet")
+        fcst = self._load_geoscf_fcst()
         fcst["cell_id"] = fcst.cell_id.astype("int64")
         for col in ("init_utc", "time_window_start", "available_at_utc"):
             fcst[col] = fcst[col].astype("datetime64[ns, UTC]")
@@ -185,7 +196,7 @@ class SourceReader:
             fcst_events[var] = e[["cell_id", "time_window_start", "available_at_utc", "init_utc", "lead_hours",
                                   f"{var}_ugm3"]].reset_index(drop=True)
 
-        weather = pd.read_parquet(self.root / "open_meteo/hourly.parquet")
+        weather = self._load_weather()
         for name in WEATHER:
             weather.loc[~weather[f"{name}_available"], name] = np.nan
         weather = weather[weather[WEATHER].notna().any(axis=1)][["time_utc", *WEATHER]]
@@ -201,6 +212,35 @@ class SourceReader:
                     "no2_mol_m2": ("sentinel5p", satellite_events(s5p, "no2_mol_m2")),
                     "ntl": ("viirs", satellite_events(viirs, "ntl"))})
         return self._cache
+
+    # Pemuat per sumber; ``feature_store.reader.StoreSourceReader`` menggantinya dengan PostgreSQL.
+    def _load_viirs(self) -> pd.DataFrame:
+        return pd.read_parquet(self.root / "viirs/daily.parquet", columns=[
+            "viirs_cell_id", "observation_date_utc", "longitude", "latitude", "ntl", "ntl_available",
+            "observed_end_at", "produced_at"])
+
+    def _viirs_scene_names(self) -> dict:
+        manifest = json.loads((self.root / "viirs/manifest.json").read_text(encoding="utf-8"))
+        return {pd.Timestamp(x["observation_date"], tz="UTC"): x["scene_id"] for x in manifest["inputs"]}
+
+    def _load_sentinel5p(self) -> pd.DataFrame:
+        return pd.read_parquet(self.root / "sentinel5p/observations.parquet")
+
+    def _load_landsat(self, grid_ids) -> pd.DataFrame:
+        return pd.concat([pd.read_parquet(p, filters=[("grid_id", "in", list(grid_ids))])
+                          for p in sorted((self.root / "landsat/scenes").glob("*.parquet"))], ignore_index=True)
+
+    def _geoscf_cell_ids(self, cells: pd.DataFrame) -> pd.Series:
+        return cells.grid_id.map(geoscf_lookup(self.root))
+
+    def _load_geoscf_ana(self) -> pd.DataFrame:
+        return pd.read_parquet(self.root / "geos-cf/geoscf_cell_hourly.parquet")
+
+    def _load_geoscf_fcst(self) -> pd.DataFrame:
+        return pd.read_parquet(self.root / "geos-cf/geoscf_fcst_cell_hourly.parquet")
+
+    def _load_weather(self) -> pd.DataFrame:
+        return pd.read_parquet(self.root / "open_meteo/hourly.parquet")
 
     def weather_available_at(self, valid_time: pd.Series) -> pd.Series:
         """Waktu tersedia yang diasumsikan untuk nilai Open-Meteo pada ``valid_time``."""
@@ -232,8 +272,9 @@ class SourceReader:
                                 direction="backward").set_index("tau").reindex(batch.time_utc)
         for name in WEATHER:
             batch[name] = weather[name].to_numpy()
-        batch["weather_time_utc"] = weather.time_utc.to_numpy()
-        batch["weather_available_at_utc"] = weather.available_at_utc.to_numpy()
+        # ``.array`` mempertahankan zona waktu, juga bila seluruhnya NaT (tanpa data cuaca).
+        batch["weather_time_utc"] = weather.time_utc.astype("datetime64[ns, UTC]").array
+        batch["weather_available_at_utc"] = weather.available_at_utc.astype("datetime64[ns, UTC]").array
         batch["weather_age_hours"] = (batch.time_utc - batch.weather_time_utc).dt.total_seconds() / 3600
 
         batch["geoscf_cell_id"] = batch.grid_id.map(mapping.set_index("grid_id").geoscf_cell_id)
