@@ -42,7 +42,7 @@ async def build_solver_input(
     active = await osm.get_active_version()
     graph, read = await asyncio.gather(                                       # R6 to R9, in parallel
         osm.read_road_graph(bbox, mode, include_geometry=False),
-        pollution.read_pollution_weight(bbox, "latest", mode=mode, graph_version=active.version),
+        pollution.read_pollution_weight(bbox, "latest", mode=mode, graph_version=active.version, lineage=False),
         return_exceptions=True,
     )
     if isinstance(graph, BaseException):
@@ -52,8 +52,10 @@ async def build_solver_input(
     if isinstance(read, BaseException):
         raise read
     edges, status = attach_edge_weights(subgraph, read, request.profile, request.pollutant)  # R11
-    by_edge = read.weights_by_edge_id()
-    estimation, background = count_sources(edges, by_edge)
+    estimation, background = count_sources(edges, read.weights_by_edge_id())
+    # Weights are read without lineage (one row per edge stays small), so the run's
+    # per-pollutant provenance comes from one row of the window instead.
+    provenance = await pollution.window_model_metadata(read.window)
 
     return SolverInput(
         request_id=request_id,
@@ -73,7 +75,7 @@ async def build_solver_input(
             estimation_sources=estimation,
             background_sources=background,
             rejected_graph_rows=dict(subgraph.rejected),
-            downscaling_fallback=downscaling_fallbacks(edges, by_edge),
+            downscaling_fallback=downscaling_fallbacks(edges, provenance),
         ),
         nodes={node_id: node.point for node_id, node in subgraph.nodes.items()},
         edges=edges,

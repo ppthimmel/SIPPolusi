@@ -24,20 +24,26 @@ def pollution_read(weights, stale=False, age_s=1800.0, excluded=None):
 
 
 class FakePollutionRepository:
-    def __init__(self, weights=None, fail: Exception | None = None, stale=False):
+    def __init__(self, weights=None, fail: Exception | None = None, stale=False, model_metadata=None):
         self.weights = list(weights) if weights is not None else [weight(i) for i in range(1, 41)]
         self.fail = fail
         self.stale = stale
+        self.model_metadata = dict(model_metadata or {})
         self.calls: list[dict] = []
 
-    async def read_pollution_weight(self, bbox, time_window="latest", *, mode=None, graph_version="active"):
-        self.calls.append({"bbox": bbox, "time_window": time_window, "mode": mode, "graph_version": graph_version})
+    async def read_pollution_weight(self, bbox, time_window="latest", *, mode=None, graph_version="active",
+                                    lineage=True):
+        self.calls.append({"bbox": bbox, "time_window": time_window, "mode": mode, "graph_version": graph_version,
+                           "lineage": lineage})
         if self.fail is not None:
             raise self.fail
         return pollution_read(self.weights, stale=self.stale)
 
     async def latest_complete_window(self):
         return WINDOW
+
+    async def window_model_metadata(self, window):
+        return self.model_metadata
 
     def staleness(self, window):
         return self.stale, 1800.0

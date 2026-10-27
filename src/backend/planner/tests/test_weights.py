@@ -105,14 +105,12 @@ def test_travel_time_and_direction_follow_the_mode():
 
 
 def test_downscaling_fallbacks_lists_pollutants_estimated_without_the_registered_model():
-    """D-07 (TI-SE-10): only estimates on the subgraph count, and only a recorded fallback."""
-    import dataclasses
+    """D-07 (TI-SE-10): from the window's provenance, and only when the subgraph has estimates."""
     sub = ten_edge_subgraph()
     meta = {"pm25": {"source": "idw_stgnn_residual", "model_version": "3"},
             "no2": {"source": "idw", "model_version": "idw-p2-k8", "fallback_reason": "load_bundle:FileNotFoundError"}}
-    rows = [dataclasses.replace(weight(i), model_metadata=meta) for i in range(1, 11)]
-    edges, _ = attach_edge_weights(sub, pollution_read(rows), WALK)
-    assert downscaling_fallbacks(edges, {w.edge_id: w for w in rows}) == ("no2",)
-    plain = [weight(i) for i in range(1, 11)]  # legacy rows: no per-pollutant metadata
-    edges, _ = attach_edge_weights(sub, pollution_read(plain), WALK)
-    assert downscaling_fallbacks(edges, {w.edge_id: w for w in plain}) == ()
+    edges, _ = attach_edge_weights(sub, pollution_read([weight(i) for i in range(1, 11)]), WALK)
+    assert downscaling_fallbacks(edges, meta) == ("no2",)
+    assert downscaling_fallbacks(edges, {}) == ()  # legacy rows: no per-pollutant metadata
+    imputed, _ = attach_edge_weights(sub, pollution_read([weight(99)]), WALK)  # no estimate on the subgraph
+    assert downscaling_fallbacks(imputed, meta) == ()

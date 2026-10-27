@@ -20,6 +20,9 @@ class PollutionSettings(BaseSettings):
     # data_stale = true when the latest complete time window ended more than this
     # long ago (Tabel 3.4 and 3.15: "time window terakhir lebih lama dari 3 jam").
     stale_after_s: float = Field(3 * 3600, gt=0)
+    # work_mem for the EdgeWeight read only (SET LOCAL), so the join and sort of a
+    # long trip stay in memory. Empty keeps the server default.
+    weights_work_mem: str = Field("32MB", pattern=r"^(\d+(kB|MB|GB))?$")
 
 
 @lru_cache

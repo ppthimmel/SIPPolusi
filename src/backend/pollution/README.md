@@ -72,8 +72,30 @@ time window pertama.
 | Variabel | Default | Keterangan |
 |---|---|---|
 | `POLLUTION_STALE_AFTER_S` | `10800` | Batas umur time window sebelum `data_stale = true` |
+| `POLLUTION_WEIGHTS_WORK_MEM` | `32MB` | `work_mem` khusus kueri EdgeWeight (`SET LOCAL` di transaksi read-only kueri itu); kosong = bawaan server |
 
 Variabel koneksi (`DATABASE_URL`, `OSM_STATEMENT_TIMEOUT_MS`, dll.) sama dengan modul `osm`.
+
+### Rute jarak jauh
+
+Kueri EdgeWeight ikut dihitung dalam `statement_timeout` 1,5 detik, termasuk waktu mengirim baris ke Cache API.
+Untuk perjalanan 9 km diagonal (±64 ribu ruas), kueri lama melewati batas itu (503 `query_timeout`).
+Penyebabnya dua:
+
+- **Lineage per ruas:** `model_metadata`, `trace_run_id`, dan `written_at` bernilai sama untuk setiap baris
+  satu run, tetapi `model_metadata` saja ±0,3 kB per baris. Planner rute tidak memakainya, jadi
+  `read_pollution_weight(..., lineage=False)` tidak membacanya; ketiga kolom itu bernilai bawaan
+  (`None`, `{}`, `None`). `/edge-weights` tetap membaca lineage lengkap.
+- **`work_mem` 4 MB:** join ke `osm.road_edge` dan pengurutan tumpah ke disk. Kueri ini kini memakai
+  `POLLUTION_WEIGHTS_WORK_MEM` lewat `SET LOCAL`, sehingga koneksi lain di pool tetap memakai bawaan server.
+
+Diukur 27 Oktober 2026 di PostgreSQL Railway (`EXPLAIN (ANALYZE, SERIALIZE BINARY)`, bbox 106,8315–106,9196 BT,
+6,2238–6,3310 LS):
+
+| Kueri | Waktu server termasuk serialisasi | Data dikirim | Join dan sort |
+|---|---|---|---|
+| Sebelumnya (`_SQL_WEIGHTS`, `work_mem` 4 MB) | 718–2.662 ms | 40,8 MB | Tumpah ke disk |
+| Planner rute (`lineage=False`, `work_mem` 32 MB) | 519 ms | 12,4 MB | Di memori |
 
 ## Menjalankan
 

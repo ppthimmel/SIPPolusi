@@ -54,14 +54,14 @@ LIMIT $1
 # overlap): a stricter ST_Intersects here would drop weights of subgraph edges
 # whose bounding box touches the bbox but whose line does not, and the planner
 # would then count them as edges without an estimate (TI-SE-10, D-01).
-_SQL_WEIGHTS = """
+_SQL_WEIGHTS_TEMPLATE = """
 SELECT p.edge_id, p.time_window_start,
        round(p.pm25_ugm3::numeric, 4)::float8 AS pm25_ugm3,
        round(p.no2_ugm3::numeric, 4)::float8 AS no2_ugm3,
        round(p.exposure_index::numeric, 4)::float8 AS exposure_index,
        round(p.confidence_score::numeric, 4)::float8 AS confidence_score,
        p.background_source, p.estimation_source,
-       p.graph_version, p.model_version, p.written_at, p.model_metadata, p.trace_run_id,
+       p.graph_version, p.model_version{lineage},
        e.walk_allowed, e.bike_allowed
 FROM pollution.edge_pollution p
 LEFT JOIN osm.road_edge e ON e.edge_id = p.edge_id AND e.graph_version = p.graph_version
@@ -70,7 +70,25 @@ WHERE p.time_window_start = $1
 ORDER BY p.edge_id
 """
 
+# Per-edge lineage. One inference run writes the same values on every row of its
+# window, and model_metadata alone is ~0.3 kB per row: for a 9 km trip (64k edges)
+# these columns double the rows sent to the route planner (40.8 vs 20.1 MB), which
+# never reads them. lineage=False leaves them out.
+_LINEAGE_COLUMNS = ("written_at", "model_metadata", "trace_run_id")
+_SQL_WEIGHTS = _SQL_WEIGHTS_TEMPLATE.format(lineage="".join(f", p.{c}" for c in _LINEAGE_COLUMNS))
+_SQL_WEIGHTS_WITHOUT_LINEAGE = _SQL_WEIGHTS_TEMPLATE.format(lineage="")
+
 _WEIGHT_FIELDS = tuple(EdgeWeight.__dataclass_fields__)
+
+# The run's per-pollutant provenance (source, model version, fallback reason) from
+# one row of the window, for routes read without lineage: one run writes a whole
+# window at once, so every row carries the same model_metadata.
+_SQL_WINDOW_MODEL_METADATA = """
+SELECT model_metadata
+FROM pollution.edge_pollution
+WHERE time_window_start = $1
+LIMIT 1
+"""
 
 # Exposure surface, zoom >= 14 (get_exposure_surface, TI-SE-08): one row per edge of
 # graph_version with its stored geometry, [[lon, lat], ...] rounded to 6 decimals.
@@ -135,11 +153,13 @@ class PollutionRepository:
         osm: OsmRepository,
         stale_after_s: float = 3 * 3600,
         clock: Callable[[], datetime] = _utcnow,
+        weights_work_mem: str | None = None,
     ):
         self._db = db
         self._osm = osm
         self._stale_after_s = stale_after_s
         self._clock = clock
+        self._weights_work_mem = weights_work_mem
 
     @staticmethod
     def _window(row) -> WindowInfo:
@@ -227,6 +247,16 @@ class PollutionRepository:
                                     *envelope.as_list(), *cell_deg, *index_range)
         return [dict(r) for r in rows]
 
+    async def window_model_metadata(self, window: WindowInfo) -> dict:
+        """model_metadata of the run that wrote window ({} for legacy rows): which
+        pollutants came from the registered model and which fell back to IDW."""
+        async with self._db.connection() as conn:
+            value = await conn.fetchval(_SQL_WINDOW_MODEL_METADATA, window.time_window_start)
+        if isinstance(value, str):
+            import json
+            value = json.loads(value)
+        return value if isinstance(value, dict) else {}
+
     async def read_pollution_weight(
         self,
         bbox: BBox,
@@ -234,17 +264,29 @@ class PollutionRepository:
         *,
         mode: Mode | None = None,
         graph_version: str | None = ACTIVE,
+        lineage: bool = True,
     ) -> PollutionRead:
         """read_pollution_weight(bbox, time_window="latest") from Tabel 3.11 (R6 and R25).
 
         graph_version: "active" (default) keeps only rows estimated on the active
         road graph; a version name keeps that version; None keeps every row.
         mode: when given, keeps only edges that mode may use.
+        lineage: False leaves written_at, model_metadata and trace_run_id at their
+        defaults (None, {}, None); every other field is read as usual.
         """
         window = await self.resolve_window(time_window)
         version = (await self._osm.get_active_version()).version if graph_version == ACTIVE else graph_version
+        sql = _SQL_WEIGHTS if lineage else _SQL_WEIGHTS_WITHOUT_LINEAGE
         async with self._db.connection() as conn:
-            rows = await conn.fetch(_SQL_WEIGHTS, window.time_window_start, *bbox.as_list())
+            if self._weights_work_mem:
+                # A long trip joins and sorts tens of thousands of rows; with the
+                # server default (4 MB) both spill to disk. SET LOCAL ends with the
+                # transaction, so pooled connections keep the server default.
+                async with conn.transaction(readonly=True):
+                    await conn.execute("SELECT set_config('work_mem', $1, true)", self._weights_work_mem)
+                    rows = await conn.fetch(sql, window.time_window_start, *bbox.as_list())
+            else:
+                rows = await conn.fetch(sql, window.time_window_start, *bbox.as_list())
 
         excluded: Counter[str] = Counter()
         weights: list[EdgeWeight] = []
