@@ -156,6 +156,34 @@ def test_tidak_ada_eksekusi_dibedakan_dari_gagal_dan_terlambat():
     assert summary["exit_code"] == worker_runs.STATUS_MISSING
 
 
+def test_hanya_eksekusi_manual_bukan_bukti_jadwal_berjalan():
+    """Cron tidak pernah berjalan; satu eksekusi manual tidak boleh membuat jadwal tampak aktif."""
+    summary = worker_runs.classify_windows([_run(10, "ok", delay_min=3, trigger="manual")], NOW, hours=6)
+    manual = summary["windows"][1]                  # 10:00; window 11:00 masih dalam toleransi
+    assert manual["state"] == "ok" and manual["schedule_missed"] and manual["scheduled_attempts"] == 0
+    assert not summary["windows"][0]["schedule_missed"]
+    assert summary["schedule_state"] == "no_runs"
+    assert summary["verdict"] == "schedule_missing" and summary["exit_code"] == worker_runs.STATUS_MISSING
+    assert "hanya manual" in worker_runs.format_status(summary)
+
+
+def test_eksekusi_ulang_manual_tidak_menyamarkan_cron_yang_berhenti():
+    runs = [_run(h) for h in range(3, 9)]                           # cron berhenti setelah window 08:00
+    runs += [_run(9, "ok", delay_min=90, trigger="manual"), _run(10, "ok", delay_min=30, trigger="manual")]
+    summary = worker_runs.classify_windows(runs, NOW, hours=9)
+    states = _states(summary)
+    assert [states[h] for h in ("09:00", "10:00", "11:00")] == ["ok", "ok", "pending"]
+    assert summary["schedule_state"] == "stopped" and summary["verdict"] == "schedule_missing"
+    assert summary["windows"][1]["schedule_missed"] and summary["windows"][1]["manual_rerun"]
+
+
+def test_eksekusi_manual_di_samping_cron_yang_berjalan_tetap_sehat():
+    runs = [_run(h) for h in range(5, 12)] + [_run(9, "ok", delay_min=120, trigger="manual")]
+    summary = worker_runs.classify_windows(runs, NOW, hours=7)
+    assert summary["schedule_state"] == "active" and summary["verdict"] == "healthy"
+    assert not any(w["schedule_missed"] for w in summary["windows"])
+
+
 def test_belum_pernah_berjalan():
     summary = worker_runs.classify_windows([], NOW, hours=6)
     assert summary["schedule_state"] == "no_runs" and summary["exit_code"] == worker_runs.STATUS_MISSING

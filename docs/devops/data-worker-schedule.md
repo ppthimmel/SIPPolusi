@@ -120,7 +120,12 @@ Di Railway: `railway run python main.py status` pada service Data Worker. Perint
 |---|---|---|
 | `healthy` | Time window terakhir yang jatuh tempo `ok`, `degraded`, `running`, atau `pending` | 0 |
 | `failing` | Time window terakhir `failed`, `skipped`, atau `stuck` | 1 |
-| `schedule_missing` | Tidak ada eksekusi tercatat pada rentang (`no_runs`), atau dua time window terakhir tanpa eksekusi (`stopped`) | 3 |
+| `schedule_missing` | Tidak ada eksekusi terjadwal pada rentang (`no_runs`), dua time window terakhir tanpa eksekusi terjadwal (`stopped`), atau time window terakhir yang jatuh tempo tanpa eksekusi terjadwal setelah toleransi | 3 |
+
+Keadaan time window adalah hasil eksekusi terakhirnya, termasuk eksekusi ulang manual, tetapi keadaan jadwal dan
+putusan hanya memakai eksekusi terjadwal (`schedule`/`serve`). Time window yang hanya dieksekusi manual setelah
+toleransi ditandai `schedule_missed` ("tanpa eksekusi terjadwal (hanya manual)"), sehingga eksekusi manual tidak
+menyamarkan cron yang tidak berjalan.
 
 `scheduled_success_rate` adalah proporsi time window jatuh tempo yang eksekusi terjadwal pertamanya berhasil, tanpa
 eksekusi ulang manual. Ini ukuran EDO-04 (target ≥ 98%).
