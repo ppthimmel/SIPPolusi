@@ -63,6 +63,12 @@ def write_weights(conn, start, edge_ids, graph_version, pm25=20.0, model="idw-p2
     weights = [EdgeWeight(edge_id=e, time_window_start=start, pm25_ugm3=pm25, no2_ugm3=40.0,
                           exposure_index=0.5 * (pm25 / 15 + 40 / 25), confidence_score=0.3,
                           background_source=None, estimation_source="idw") for e in edge_ids]
+    return write_pollution_weight(conn, weights, WorkerWindow.starting_at(start), graph_version, model,
+                                  coverage_ratio=1.0, trace=trace_for_weights(weights, start, graph_version))
+
+
+def trace_for_weights(weights, start, graph_version):
+    """One source cell per synthetic edge, shared by cache and public API fixtures."""
     import dataclasses, hashlib
     import numpy as np
     import pandas as pd
@@ -74,12 +80,10 @@ def write_weights(conn, start, edge_ids, graph_version, pm25=20.0, model="idw-p2
     grid["cell_id"] = np.arange(len(weights))
     grid["x"], grid["y"] = spec.cell_centers()
     grid["pm25_source"] = grid["no2_source"] = "idw"
-    pieces = pd.DataFrame(dict(edge_id=edge_ids, cell_id=np.arange(len(weights)), length_m=100.))
+    pieces = pd.DataFrame(dict(edge_id=frame.edge_id.to_numpy(), cell_id=np.arange(len(weights)), length_m=100.))
     fingerprint = hashlib.sha256(frame.to_json().encode()).hexdigest()
-    trace = InferenceTrace(f"fixture-{start.isoformat()}-{graph_version}-{fingerprint}", grid, pieces,
+    return InferenceTrace(f"fixture-{start.isoformat()}-{graph_version}-{fingerprint}", grid, pieces,
                            spec.as_dict(), fingerprint, {}, {})
-    return write_pollution_weight(conn, weights, WorkerWindow.starting_at(start), graph_version, model,
-                                  coverage_ratio=1.0, trace=trace)
 
 
 def test_additive_provenance_migration_preserves_historical_rows(writer):

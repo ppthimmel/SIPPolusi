@@ -2673,6 +2673,92 @@
           }
         }
       }
+    },
+    "/v1/pollution/edge-weights/{edge_id}/trace": {
+      "get": {
+        "tags": [
+          "pollution"
+        ],
+        "summary": "Source grid cells and aggregation lengths for a cached road",
+        "operationId": "read_edge_trace_v1_pollution_edge_weights__edge_id__trace_get",
+        "parameters": [
+          {
+            "name": "edge_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "maximum": 9223372036854775807,
+              "minimum": 0,
+              "title": "Edge Id"
+            }
+          },
+          {
+            "name": "time_window_start",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "`latest` (time window complete terakhir) atau awal time window UTC ISO 8601 tepat di awal jam",
+              "default": "latest",
+              "title": "Time Window Start"
+            },
+            "description": "`latest` (time window complete terakhir) atau awal time window UTC ISO 8601 tepat di awal jam",
+            "examples": {
+              "latest": {
+                "summary": "Time window complete terakhir",
+                "value": "latest"
+              },
+              "tertentu": {
+                "summary": "Time window tertentu",
+                "value": "2026-10-13T05:00:00Z"
+              },
+              "bukan_awal_jam": {
+                "summary": "Bukan awal jam → 400 invalid_request",
+                "value": "2026-10-13T05:30:00Z"
+              },
+              "tanpa_zona": {
+                "summary": "Tanpa zona waktu → 400 invalid_request",
+                "value": "2026-10-13T05:00:00"
+              },
+              "bukan_tanggal": {
+                "summary": "Bukan tanggal → 400 invalid_request",
+                "value": "kemarin"
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_request: parameter atau body tidak valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Galat lain dengan skema seragam (Tabel 3.16)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -3101,6 +3187,22 @@
               }
             ],
             "title": "Estimation Source"
+          },
+          "model_metadata": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Model Metadata"
+          },
+          "trace_run_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trace Run Id"
           },
           "graph_version": {
             "anyOf": [
