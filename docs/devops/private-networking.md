@@ -36,8 +36,7 @@ flowchart LR
     edge --> frontend
     edge --> gateway
     frontend -- "/v1/*" --> gateway
-    gateway -- "/v1/*" --> backend
-    gateway -- "/v1/osm, /v1/pollution" --> cache
+    gateway -- "POST /v1/routes, GET /v1/exposure-surface" --> cache
     backend --> db
     cache --> db
     worker --> db
@@ -60,8 +59,8 @@ internet selain lewat Railway edge ke `frontend` dan `gateway`.
 |---|---|---|---|
 | gateway | **ya** (titik masuk API) | frontend | MVP |
 | frontend | **ya** (aplikasi web) | — | MVP |
-| backend | tidak | gateway | MVP |
-| cache-api | tidak | gateway | MVP |
+| backend | tidak | — (tidak ada jalur gateway sejak TI-DO-05) | MVP |
+| cache-api | tidak | gateway (hanya `POST /v1/routes`, `GET /v1/exposure-surface`) | MVP |
 | database (PostGIS) | tidak (TCP proxy dimatikan) | backend, cache-api, data_worker, model_registry | MVP |
 | data_worker | tidak (cron, tanpa port) | — | MVP |
 | model_registry | tidak | backend, data_worker | MVP |
@@ -111,7 +110,6 @@ sini; kredensial hanya lewat referensi.
 
 | Service | Variabel | Nilai |
 |---|---|---|
-| gateway | `BACKEND_UPSTREAM` | `http://${{backend.RAILWAY_PRIVATE_DOMAIN}}:${{backend.PORT}}` |
 | gateway | `CACHE_API_UPSTREAM` | `http://${{cache-api.RAILWAY_PRIVATE_DOMAIN}}:${{cache-api.PORT}}` |
 | frontend | `GATEWAY_UPSTREAM` | `http://${{gateway.RAILWAY_PRIVATE_DOMAIN}}:${{gateway.PORT}}` |
 | backend, cache-api, data_worker | `DATABASE_URL` | `${{database.DATABASE_URL}}` |
@@ -165,8 +163,8 @@ Untuk setiap service selain `gateway` dan `frontend`:
    4. Redeploy backend, cache-api, model_registry; Data Worker mengambil
       nilai baru pada eksekusi cron berikutnya.
    5. Periksa: log start-up backend (`configuration ok ... database=...`),
-      `GET https://<gateway>/v1/osm/version` tidak menjawab
-      `"reason": "database_unavailable"`, dan log cron Data Worker berikutnya
+      `GET https://<gateway>/v1/exposure-surface?bbox=106.822,-6.180,106.832,-6.170&zoom=15`
+      tidak menjawab `"reason": "database_unavailable"`, dan log cron Data Worker berikutnya
       `cek basis data: ok`.
 4. Periksa tidak ada variabel yang merujuk alamat publik:
    `railway variables --service <nama> --environment <env> --kv | grep -i public`
@@ -236,7 +234,7 @@ docker compose run --rm --no-deps -T data_worker python - \
     --open tcp://postgres:5432 --open http://model_registry:5000/health \
     < scripts/network_test.py
 
-# 4. Gateway sampai backend lewat nama internal.
+# 4. Gateway sampai cache-api lewat nama internal.
 python scripts/smoke_test.py --gateway http://localhost:8081
 ```
 
@@ -258,7 +256,7 @@ python scripts/network_test.py \
     --closed tcp://backend.railway.internal:8000 \
     --closed tcp://postgres.railway.internal:5432
 
-# 2. Gateway sampai backend dan cache-api lewat jaringan privat.
+# 2. Gateway sampai cache-api lewat jaringan privat.
 python scripts/smoke_test.py --gateway https://<gateway>.up.railway.app
 
 # 3. Dari dalam backend (MVP), lewat SSH ke container yang berjalan.
@@ -287,8 +285,8 @@ lalu jalankan `python /tmp/nt.py ...`.
 
 | Skenario | Cara | Harapan |
 |---|---|---|
-| Backend mati | hentikan/redeploy backend | gateway menjawab 502 dalam ±4 s (`proxy_connect_timeout 5s`), log akses `"level":"error"`, `/healthz` tetap 200 |
-| Backend kembali dengan IP baru | redeploy backend | gateway pulih tanpa restart (DNS diurai ulang tiap 10 s) |
+| cache-api mati | hentikan/redeploy cache-api | gateway menjawab 502 dalam ±4 s (`proxy_connect_timeout 5s`), log akses `"level":"error"`, `/healthz` tetap 200 |
+| cache-api kembali dengan IP baru | redeploy cache-api | gateway pulih tanpa restart (DNS diurai ulang tiap 10 s) |
 | Basis data mati | hentikan database | backend `/health` 200, `/health/ready` 503 `{"database":"unavailable"}`; Worker `check` gagal dengan nama host |
 | Layanan inferensi mati (final) | hentikan layanan inferensi | backend memakai baseline dengan status fallback eksplisit (`route_source: fallback`), bukan 5xx |
 
