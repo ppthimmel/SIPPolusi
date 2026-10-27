@@ -74,9 +74,9 @@ commit yang dapat di-deploy:
    cache, seperti environment baru sebelum siklus Data Worker pertama: Cache
    API harus tetap sehat (`degraded`) dan menjawab 503 `cache_empty`. Lalu
    [`scripts/smoke_test.py`](../../scripts/smoke_test.py) memeriksa
-   `/healthz`, `POST /v1/routes` sampai Backend, `/v1/osm/version` sampai
-   Cache API, jalur tak dikenal tidak diteruskan, serta liveness dan
-   readiness Backend.
+   `/healthz`, `POST /v1/routes` dan heatmap `/v1/exposure-surface` sampai
+   layanannya, jalur internal Cache API (`/v1/osm/*`, `/v1/routes/solve`) dan
+   `/health` tertutup di gateway (404), serta liveness dan readiness Backend.
 
 Tidak ada bypass:
 
