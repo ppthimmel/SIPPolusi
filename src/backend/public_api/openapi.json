@@ -1,0 +1,4930 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "SIPPolusi Public API",
+    "description": "Kontrak publik SIPPolusi, diakses lewat API Gateway (`https://<gateway>/v1/...`).\n\n- **Koordinat** selalu [lon, lat] WGS 84 (`urn:ogc:def:crs:OGC::CRS84`, RFC 7946). Respons GeoJSON\n  menyatakannya di `metadata.crs` dan `metadata.coordinate_order`.\n- **Satuan** setiap metrik numerik ada di `metadata.units` (menit, meter, indeks·menit, µg·min/m³, µg/m³).\n- **Galat** memakai skema seragam `{\"error\": {\"code\", \"message\", \"request_id\", \"reason\"?}}` dengan kode\n  pada Tabel 3.16. 429, 502, dan 504 dihasilkan API Gateway.\n- **Batas ukuran body** 16 KiB (413 `payload_too_large`).\n- Setiap respons membawa header `X-Request-ID` untuk penelusuran log.\n\nData jalan © OpenStreetMap contributors, ODbL (https://www.openstreetmap.org/copyright).\n",
+    "version": "1.2.0",
+    "x-generator": "fastapi 0.162.0"
+  },
+  "paths": {
+    "/v1/routes": {
+      "post": {
+        "tags": [
+          "public"
+        ],
+        "summary": "Rute rekomendasi dan pembanding (IRouteQuery, Kode 3.1 → Kode 3.2)",
+        "description": "Menentukan rute rekomendasi sesuai preferensi α/β dan rute tercepat sebagai pembanding.\n\nWaktu tempuh dalam menit, jarak dalam meter, paparan kumulatif dalam indeks·menit dan\nµg·min/m³ (lihat `metadata.units`). Koordinat [lon, lat] WGS 84 (`metadata.crs`).\nBila Route Model gagal, rute rekomendasi adalah rute tercepat dengan\n`route_source: \"baseline\"`, `preference_applied: false`, dan `metadata.fallback_reason`.",
+        "operationId": "planRoute",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RouteRequestIn"
+              },
+              "examples": {
+                "walk": {
+                  "summary": "Jalan kaki Monas → Bundaran HI, preferensi seimbang",
+                  "value": {
+                    "origin": {
+                      "lat": -6.1754,
+                      "lon": 106.8272
+                    },
+                    "destination": {
+                      "lat": -6.195,
+                      "lon": 106.823
+                    },
+                    "mode": "walk",
+                    "pollutant": "pm25",
+                    "preference": {
+                      "alpha": 0.5,
+                      "beta": 0.5
+                    }
+                  }
+                },
+                "bike_no2": {
+                  "summary": "Sepeda, polutan acuan NO₂, utamakan paparan",
+                  "value": {
+                    "origin": {
+                      "lat": -6.1754,
+                      "lon": 106.8272
+                    },
+                    "destination": {
+                      "lat": -6.195,
+                      "lon": 106.823
+                    },
+                    "mode": "bike",
+                    "pollutant": "no2",
+                    "preference": {
+                      "alpha": 0.2,
+                      "beta": 0.8
+                    }
+                  }
+                },
+                "preferensi_salah": {
+                  "summary": "α + β ≠ 1 → 400 invalid_request",
+                  "value": {
+                    "origin": {
+                      "lat": -6.1754,
+                      "lon": 106.8272
+                    },
+                    "destination": {
+                      "lat": -6.195,
+                      "lon": 106.823
+                    },
+                    "mode": "walk",
+                    "preference": {
+                      "alpha": 0.6,
+                      "beta": 0.5
+                    }
+                  }
+                },
+                "moda_salah": {
+                  "summary": "mode \"car\" → 400 invalid_request",
+                  "value": {
+                    "origin": {
+                      "lat": -6.1754,
+                      "lon": 106.8272
+                    },
+                    "destination": {
+                      "lat": -6.195,
+                      "lon": 106.823
+                    },
+                    "mode": "car",
+                    "preference": {
+                      "alpha": 0.5,
+                      "beta": 0.5
+                    }
+                  }
+                },
+                "luar_wilayah": {
+                  "summary": "Tujuan Kepulauan Seribu → 422 outside_study_area",
+                  "value": {
+                    "origin": {
+                      "lat": -6.1754,
+                      "lon": 106.8272
+                    },
+                    "destination": {
+                      "lat": -5.75,
+                      "lon": 106.55
+                    },
+                    "mode": "walk",
+                    "preference": {
+                      "alpha": 0.5,
+                      "beta": 0.5
+                    }
+                  }
+                },
+                "tidak_dapat_snap": {
+                  "summary": "Pantai Ancol → laut → 422 point_not_on_network (titik tujuan)",
+                  "value": {
+                    "origin": {
+                      "lat": -6.1225,
+                      "lon": 106.842
+                    },
+                    "destination": {
+                      "lat": -6.1,
+                      "lon": 106.842
+                    },
+                    "mode": "walk",
+                    "preference": {
+                      "alpha": 0.5,
+                      "beta": 0.5
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Rute rekomendasi dan pembanding, termasuk saat rute rekomendasi berasal dari fallback (route_source baseline, preference_applied false, metadata.fallback_reason terisi).",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Penanda request untuk penelusuran log",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Cache-Control": {
+                "description": "no-store: berisi koordinat perjalanan (PNF-06)",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/geo+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RouteFeatureCollection"
+                },
+                "examples": {
+                  "policy": {
+                    "summary": "Rute dari model",
+                    "value": {
+                      "type": "FeatureCollection",
+                      "features": [
+                        {
+                          "type": "Feature",
+                          "geometry": {
+                            "type": "LineString",
+                            "coordinates": [
+                              [
+                                106.8272,
+                                -6.1754
+                              ],
+                              [
+                                106.8269,
+                                -6.1801
+                              ],
+                              [
+                                106.8251,
+                                -6.1873
+                              ],
+                              [
+                                106.823,
+                                -6.195
+                              ]
+                            ]
+                          },
+                          "properties": {
+                            "role": "recommended",
+                            "route_source": "policy",
+                            "preference_applied": true,
+                            "travel_time_min": 28.4,
+                            "distance_m": 2215.0,
+                            "exposure_index_min": 51.36,
+                            "exposure_ug_min_m3": 1392.6,
+                            "concentration_coverage": 1.0,
+                            "confidence_score": 0.71,
+                            "imputed_edge_count": 0,
+                            "edge_ids": [
+                              87108,
+                              87112,
+                              90215
+                            ]
+                          }
+                        },
+                        {
+                          "type": "Feature",
+                          "geometry": {
+                            "type": "LineString",
+                            "coordinates": [
+                              [
+                                106.8272,
+                                -6.1754
+                              ],
+                              [
+                                106.8262,
+                                -6.183
+                              ],
+                              [
+                                106.823,
+                                -6.195
+                              ]
+                            ]
+                          },
+                          "properties": {
+                            "role": "comparison",
+                            "route_source": "baseline",
+                            "preference_applied": false,
+                            "travel_time_min": 24.1,
+                            "distance_m": 1930.0,
+                            "exposure_index_min": 75.42,
+                            "exposure_ug_min_m3": 2046.3,
+                            "concentration_coverage": 1.0,
+                            "confidence_score": 0.68,
+                            "imputed_edge_count": 0,
+                            "edge_ids": [
+                              87108,
+                              88990
+                            ]
+                          }
+                        }
+                      ],
+                      "metadata": {
+                        "request_id": "7f3c2a9e-51d4-4b8e-9a0f-2c1e5d6b8a13",
+                        "mode": "walk",
+                        "pollutant": "pm25",
+                        "preference": {
+                          "alpha": 0.5,
+                          "beta": 0.5
+                        },
+                        "route_source": "policy",
+                        "preference_applied": true,
+                        "fallback_reason": null,
+                        "time_window_start": "2026-10-26T05:00:00Z",
+                        "data_stale": false,
+                        "missing_edge_count": 3,
+                        "graph_version": "jakarta-20261005",
+                        "model_version": {
+                          "downscaling": "idw-p2-k8",
+                          "route_policy": "4"
+                        },
+                        "solver": "http",
+                        "comparison": {
+                          "delta_travel_time_min": 4.3,
+                          "delta_exposure_pct": -31.9
+                        },
+                        "notes": [],
+                        "crs": "urn:ogc:def:crs:OGC::CRS84",
+                        "coordinate_order": [
+                          "lon",
+                          "lat"
+                        ],
+                        "units": {
+                          "travel_time_min": "min",
+                          "distance_m": "m",
+                          "exposure_index_min": "index·min",
+                          "exposure_ug_min_m3": "µg·min/m³",
+                          "concentration_coverage": "fraction 0–1",
+                          "confidence_score": "fraction 0–1",
+                          "imputed_edge_count": "count",
+                          "delta_travel_time_min": "min",
+                          "delta_exposure_pct": "%"
+                        },
+                        "exposure_index_definition": "I = ½ · (PM2.5 / 15 + NO2 / 25), konsentrasi dalam µg/m³ dibagi pedoman WHO 2021 (rata-rata 24 jam); bila hanya satu polutan tersedia, I = PM2.5 / 15 atau NO2 / 25. Tanpa satuan; 1,0 = tepat pada pedoman.",
+                        "disclaimer": "Estimasi konsentrasi polutan merupakan keluaran model, bukan hasil pengukuran langsung, dan dapat berbeda dari kondisi udara sebenarnya. Gunakan rute ini sebagai alat bantu keputusan."
+                      }
+                    }
+                  },
+                  "fallback": {
+                    "summary": "Fallback karena model lambat",
+                    "value": {
+                      "type": "FeatureCollection",
+                      "features": [
+                        {
+                          "type": "Feature",
+                          "geometry": {
+                            "type": "LineString",
+                            "coordinates": [
+                              [
+                                106.8272,
+                                -6.1754
+                              ],
+                              [
+                                106.8262,
+                                -6.183
+                              ],
+                              [
+                                106.823,
+                                -6.195
+                              ]
+                            ]
+                          },
+                          "properties": {
+                            "role": "recommended",
+                            "route_source": "baseline",
+                            "preference_applied": false,
+                            "travel_time_min": 24.1,
+                            "distance_m": 1930.0,
+                            "exposure_index_min": 75.42,
+                            "exposure_ug_min_m3": 2046.3,
+                            "concentration_coverage": 1.0,
+                            "confidence_score": 0.68,
+                            "imputed_edge_count": 0,
+                            "edge_ids": [
+                              87108,
+                              88990
+                            ]
+                          }
+                        },
+                        {
+                          "type": "Feature",
+                          "geometry": {
+                            "type": "LineString",
+                            "coordinates": [
+                              [
+                                106.8272,
+                                -6.1754
+                              ],
+                              [
+                                106.8262,
+                                -6.183
+                              ],
+                              [
+                                106.823,
+                                -6.195
+                              ]
+                            ]
+                          },
+                          "properties": {
+                            "role": "comparison",
+                            "route_source": "baseline",
+                            "preference_applied": false,
+                            "travel_time_min": 24.1,
+                            "distance_m": 1930.0,
+                            "exposure_index_min": 75.42,
+                            "exposure_ug_min_m3": 2046.3,
+                            "concentration_coverage": 1.0,
+                            "confidence_score": 0.68,
+                            "imputed_edge_count": 0,
+                            "edge_ids": [
+                              87108,
+                              88990
+                            ]
+                          }
+                        }
+                      ],
+                      "metadata": {
+                        "request_id": "7f3c2a9e-51d4-4b8e-9a0f-2c1e5d6b8a13",
+                        "mode": "walk",
+                        "pollutant": "pm25",
+                        "preference": {
+                          "alpha": 0.5,
+                          "beta": 0.5
+                        },
+                        "route_source": "baseline",
+                        "preference_applied": false,
+                        "fallback_reason": "model_timeout",
+                        "time_window_start": "2026-10-26T05:00:00Z",
+                        "data_stale": false,
+                        "missing_edge_count": 3,
+                        "graph_version": "jakarta-20261005",
+                        "model_version": {
+                          "downscaling": "idw-p2-k8",
+                          "route_policy": "astar-baseline"
+                        },
+                        "solver": "baseline",
+                        "comparison": {
+                          "delta_travel_time_min": 0.0,
+                          "delta_exposure_pct": 0.0
+                        },
+                        "notes": [
+                          "Layanan model rute tidak dapat dipakai untuk permintaan ini; rute rekomendasi adalah rute tercepat (baseline) dan preferensi waktu-paparan tidak diterapkan."
+                        ],
+                        "crs": "urn:ogc:def:crs:OGC::CRS84",
+                        "coordinate_order": [
+                          "lon",
+                          "lat"
+                        ],
+                        "units": {
+                          "travel_time_min": "min",
+                          "distance_m": "m",
+                          "exposure_index_min": "index·min",
+                          "exposure_ug_min_m3": "µg·min/m³",
+                          "concentration_coverage": "fraction 0–1",
+                          "confidence_score": "fraction 0–1",
+                          "imputed_edge_count": "count",
+                          "delta_travel_time_min": "min",
+                          "delta_exposure_pct": "%"
+                        },
+                        "exposure_index_definition": "I = ½ · (PM2.5 / 15 + NO2 / 25), konsentrasi dalam µg/m³ dibagi pedoman WHO 2021 (rata-rata 24 jam); bila hanya satu polutan tersedia, I = PM2.5 / 15 atau NO2 / 25. Tanpa satuan; 1,0 = tepat pada pedoman.",
+                        "disclaimer": "Estimasi konsentrasi polutan merupakan keluaran model, bukan hasil pengukuran langsung, dan dapat berbeda dari kondisi udara sebenarnya. Gunakan rute ini sebagai alat bantu keputusan."
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Skema tidak sesuai, α atau β di luar [0, 1], α + β ≠ 1, moda tidak dikenal, atau JSON rusak",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Penanda request untuk penelusuran log",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "examples": {
+                  "preferensi": {
+                    "value": {
+                      "error": {
+                        "code": "invalid_request",
+                        "message": "preference.alpha + preference.beta harus 1 (sekarang 1.1).",
+                        "request_id": "7f3c2a9e-51d4-4b8e-9a0f-2c1e5d6b8a13"
+                      }
+                    }
+                  },
+                  "moda": {
+                    "value": {
+                      "error": {
+                        "code": "invalid_request",
+                        "message": "mode: Input should be 'walk' or 'bike'",
+                        "request_id": "7f3c2a9e-51d4-4b8e-9a0f-2c1e5d6b8a13"
+                      }
+                    }
+                  },
+                  "json_rusak": {
+                    "value": {
+                      "error": {
+                        "code": "invalid_request",
+                        "message": "5: JSON decode error",
+                        "request_id": "7f3c2a9e-51d4-4b8e-9a0f-2c1e5d6b8a13"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body melebihi API_MAX_BODY_BYTES (bawaan 16 KiB)",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Penanda request untuk penelusuran log",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "examples": {
+                  "payload_too_large": {
+                    "value": {
+                      "error": {
+                        "code": "payload_too_large",
+                        "message": "Body permintaan melebihi batas 16384 byte.",
+                        "request_id": "7f3c2a9e-51d4-4b8e-9a0f-2c1e5d6b8a13"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Titik di luar wilayah studi, tidak dekat ruas yang dapat dilalui, atau asal dan tujuan pada simpul yang sama",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Penanda request untuk penelusuran log",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "examples": {
+                  "outside_study_area": {
+                    "value": {
+                      "error": {
+                        "code": "outside_study_area",
+                        "message": "Titik tujuan berada di luar wilayah studi (DKI Jakarta).",
+                        "request_id": "7f3c2a9e-51d4-4b8e-9a0f-2c1e5d6b8a13"
+                      }
+                    }
+                  },
+                  "point_not_on_network": {
+                    "value": {
+                      "error": {
+                        "code": "point_not_on_network",
+                        "message": "Titik tujuan: tidak ada simpul yang dapat dilalui moda walk dalam radius 200 m.",
+                        "request_id": "7f3c2a9e-51d4-4b8e-9a0f-2c1e5d6b8a13"
+                      }
+                    }
+                  },
+                  "no_route_found": {
+                    "value": {
+                      "error": {
+                        "code": "no_route_found",
+                        "message": "Titik asal dan tujuan ter-snap ke simpul yang sama; tidak ada perjalanan.",
+                        "request_id": "7f3c2a9e-51d4-4b8e-9a0f-2c1e5d6b8a13",
+                        "reason": "same_node"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Cache tidak dapat dibaca atau kosong, atau Route Model gagal dan fallback tidak tersedia",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Penanda request untuk penelusuran log",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "examples": {
+                  "cache_empty": {
+                    "value": {
+                      "error": {
+                        "code": "cache_unavailable",
+                        "message": "Spatial Pollution Cache DB belum memiliki time window berstatus complete.",
+                        "request_id": "7f3c2a9e-51d4-4b8e-9a0f-2c1e5d6b8a13",
+                        "reason": "cache_empty"
+                      }
+                    }
+                  },
+                  "database_unavailable": {
+                    "value": {
+                      "error": {
+                        "code": "cache_unavailable",
+                        "message": "Basis data cache tidak dapat dihubungi.",
+                        "request_id": "7f3c2a9e-51d4-4b8e-9a0f-2c1e5d6b8a13",
+                        "reason": "database_unavailable"
+                      }
+                    }
+                  },
+                  "query_timeout": {
+                    "value": {
+                      "error": {
+                        "code": "cache_unavailable",
+                        "message": "Query ke cache melewati batas waktu.",
+                        "request_id": "7f3c2a9e-51d4-4b8e-9a0f-2c1e5d6b8a13",
+                        "reason": "query_timeout"
+                      }
+                    }
+                  },
+                  "route_service_unavailable": {
+                    "value": {
+                      "error": {
+                        "code": "route_service_unavailable",
+                        "message": "Layanan penentuan rute tidak merespons tepat waktu. Silakan coba lagi.",
+                        "request_id": "7f3c2a9e-51d4-4b8e-9a0f-2c1e5d6b8a13",
+                        "reason": "solver_timeout"
+                      }
+                    }
+                  },
+                  "solver_no_route": {
+                    "value": {
+                      "error": {
+                        "code": "route_service_unavailable",
+                        "message": "Layanan penentuan rute tidak dapat menghasilkan rute. Silakan coba lagi.",
+                        "request_id": "7f3c2a9e-51d4-4b8e-9a0f-2c1e5d6b8a13",
+                        "reason": "solver_no_route"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Dari API Gateway: rate limit terlampaui; header Retry-After menyatakan detik tunggu (Tabel 3.15). Belum diaktifkan di gateway.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Penanda request untuk penelusuran log",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "examples": {
+                  "rate_limited": {
+                    "value": {
+                      "error": {
+                        "code": "rate_limited",
+                        "message": "Terlalu banyak permintaan. Coba lagi dalam 3 detik.",
+                        "request_id": "7f3c2a9e-51d4-4b8e-9a0f-2c1e5d6b8a13"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Galat internal yang tidak terduga",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Penanda request untuk penelusuran log",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "examples": {
+                  "internal_error": {
+                    "value": {
+                      "error": {
+                        "code": "internal_error",
+                        "message": "Terjadi galat internal pada server.",
+                        "request_id": "7f3c2a9e-51d4-4b8e-9a0f-2c1e5d6b8a13"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Dari API Gateway: Cache API tidak dapat dihubungi",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Penanda request untuk penelusuran log",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "examples": {
+                  "upstream_unavailable": {
+                    "value": {
+                      "error": {
+                        "code": "upstream_unavailable",
+                        "message": "Layanan sedang tidak dapat dihubungi. Silakan coba lagi.",
+                        "request_id": "7f3c2a9e-51d4-4b8e-9a0f-2c1e5d6b8a13"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Dari API Gateway: Cache API tidak merespons dalam 10 detik",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Penanda request untuk penelusuran log",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "examples": {
+                  "upstream_timeout": {
+                    "value": {
+                      "error": {
+                        "code": "upstream_timeout",
+                        "message": "Layanan tidak merespons tepat waktu. Silakan coba lagi.",
+                        "request_id": "7f3c2a9e-51d4-4b8e-9a0f-2c1e5d6b8a13"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Galat lain dengan skema seragam (Tabel 3.16)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/exposure-surface": {
+      "get": {
+        "tags": [
+          "public"
+        ],
+        "summary": "Permukaan paparan untuk heatmap (IExposureSurface)",
+        "description": "Indeks paparan gabungan, PM2.5, NO2 dan confidence score dari time window complete terakhir.\n\nZoom ≥ 14 mengembalikan setiap ruas (LineString); zoom < 14 mengagregasi ruas ke sel grid\n(Polygon) 250 m, 500 m, atau 1 km. Satuan di `metadata.units`, koordinat [lon, lat]\nWGS 84 (`metadata.crs`), batas kelas warna di `metadata.exposure_index_classes`.\n\nBody tidak memuat request_id, sehingga dapat disimpan cache (ID ada di header\nX-Request-ID). Kirim If-None-Match dengan ETag sebelumnya: 304 bila data dan parameter\nbelum berubah.",
+        "operationId": "getExposureSurface",
+        "parameters": [
+          {
+            "name": "bbox",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "min_lon,min_lat,max_lon,max_lat (WGS 84). Zoom ≥ 14: maks. 25 km²; zoom < 14: maks. API_SURFACE_MAX_CELLS sel (bawaan 10 000)",
+              "title": "Bbox"
+            },
+            "description": "min_lon,min_lat,max_lon,max_lat (WGS 84). Zoom ≥ 14: maks. 25 km²; zoom < 14: maks. API_SURFACE_MAX_CELLS sel (bawaan 10 000)",
+            "examples": {
+              "monas_z15": {
+                "summary": "Sekitar Monas (±1,2 km²), pakai zoom 15",
+                "value": "106.822,-6.180,106.832,-6.170"
+              },
+              "jakarta_pusat_z12": {
+                "summary": "Jakarta Pusat (±60 km²), pakai zoom 12",
+                "value": "106.79,-6.22,106.87,-6.15"
+              },
+              "jakarta_z11": {
+                "summary": "Seluruh DKI Jakarta, pakai zoom 11",
+                "value": "106.68,-6.38,106.98,-6.08"
+              },
+              "terlalu_luas_z15": {
+                "summary": "Seluruh Jakarta dengan zoom 15 → 400 invalid_request",
+                "value": "106.68,-6.38,106.98,-6.08"
+              },
+              "format_salah": {
+                "summary": "Hanya 3 angka → 400 invalid_request",
+                "value": "106.82,-6.18,106.83"
+              }
+            }
+          },
+          {
+            "name": "zoom",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "maximum": 22,
+              "minimum": 0,
+              "description": "Zoom peta (web mercator). ≥ 14: per ruas; 13: sel 250 m; 12: sel 500 m; ≤ 11: sel 1 km",
+              "title": "Zoom"
+            },
+            "description": "Zoom peta (web mercator). ≥ 14: per ruas; 13: sel 250 m; 12: sel 500 m; ≤ 11: sel 1 km",
+            "examples": {
+              "ruas": {
+                "summary": "15 → per ruas",
+                "value": 15
+              },
+              "grid_500": {
+                "summary": "12 → sel 500 m",
+                "value": 12
+              },
+              "grid_1km": {
+                "summary": "11 → sel 1 km",
+                "value": 11
+              },
+              "di_luar_rentang": {
+                "summary": "23 → 400 invalid_request",
+                "value": 23
+              }
+            }
+          },
+          {
+            "name": "pollutant",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "combined",
+                "pm25",
+                "no2"
+              ],
+              "type": "string",
+              "description": "Lapisan yang ditampilkan Frontend (set_heatmap_layer). Hanya dicatat di metadata.layer: ketiga nilai selalu dikirim, sehingga ganti lapisan tidak perlu request baru",
+              "default": "combined",
+              "title": "Pollutant"
+            },
+            "description": "Lapisan yang ditampilkan Frontend (set_heatmap_layer). Hanya dicatat di metadata.layer: ketiga nilai selalu dikirim, sehingga ganti lapisan tidak perlu request baru"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ruas (zoom ≥ 14) atau sel grid (zoom < 14) dengan exposure_index, pm25_ugm3, no2_ugm3 dan confidence_score. Kosong bila tidak ada ruas di bbox.",
+            "content": {
+              "application/geo+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SurfaceFeatureCollection"
+                },
+                "examples": {
+                  "ruas": {
+                    "summary": "zoom 15, per ruas",
+                    "value": {
+                      "type": "FeatureCollection",
+                      "features": [
+                        {
+                          "type": "Feature",
+                          "geometry": {
+                            "type": "LineString",
+                            "coordinates": [
+                              [
+                                106.8268,
+                                -6.1745
+                              ],
+                              [
+                                106.8271,
+                                -6.1762
+                              ]
+                            ]
+                          },
+                          "properties": {
+                            "edge_id": 87108,
+                            "exposure_index": 1.8467,
+                            "pm25_ugm3": 31.2,
+                            "no2_ugm3": 45.1,
+                            "confidence_score": 0.74,
+                            "estimation_source": "idw"
+                          }
+                        }
+                      ],
+                      "metadata": {
+                        "layer": "combined",
+                        "time_window_start": "2026-10-26T05:00:00Z",
+                        "time_window_end": "2026-10-26T06:00:00Z",
+                        "data_stale": false,
+                        "graph_version": "jakarta-20261005",
+                        "model_version": {
+                          "downscaling": "idw-p2-k8"
+                        },
+                        "crs": "urn:ogc:def:crs:OGC::CRS84",
+                        "coordinate_order": [
+                          "lon",
+                          "lat"
+                        ],
+                        "exposure_index_definition": "I = ½ · (PM2.5 / 15 + NO2 / 25), konsentrasi dalam µg/m³ dibagi pedoman WHO 2021 (rata-rata 24 jam); bila hanya satu polutan tersedia, I = PM2.5 / 15 atau NO2 / 25. Tanpa satuan; 1,0 = tepat pada pedoman.",
+                        "exposure_index_classes": [
+                          0.5,
+                          1.0,
+                          2.0,
+                          3.0
+                        ],
+                        "disclaimer": "Estimasi konsentrasi polutan merupakan keluaran model, bukan hasil pengukuran langsung, dan dapat berbeda dari kondisi udara sebenarnya. Gunakan rute ini sebagai alat bantu keputusan.",
+                        "kind": "edge",
+                        "zoom": 15,
+                        "bbox": [
+                          106.822,
+                          -6.18,
+                          106.832,
+                          -6.17
+                        ],
+                        "cell_size_m": null,
+                        "aggregation": null,
+                        "feature_count": 1,
+                        "units": {
+                          "exposure_index": "index",
+                          "pm25_ugm3": "µg/m³",
+                          "no2_ugm3": "µg/m³",
+                          "confidence_score": "fraction 0–1"
+                        }
+                      }
+                    }
+                  },
+                  "grid": {
+                    "summary": "zoom 12, sel 500 m",
+                    "value": {
+                      "type": "FeatureCollection",
+                      "features": [
+                        {
+                          "type": "Feature",
+                          "geometry": {
+                            "type": "Polygon",
+                            "coordinates": [
+                              [
+                                [
+                                  106.823596,
+                                  -6.177513
+                                ],
+                                [
+                                  106.828113,
+                                  -6.177513
+                                ],
+                                [
+                                  106.828113,
+                                  -6.172992
+                                ],
+                                [
+                                  106.823596,
+                                  -6.172992
+                                ],
+                                [
+                                  106.823596,
+                                  -6.177513
+                                ]
+                              ]
+                            ]
+                          },
+                          "properties": {
+                            "cell_id": "500m:23636:-1366",
+                            "edge_count": 41,
+                            "exposure_index": 1.6213,
+                            "exposure_index_max": 2.4102,
+                            "pm25_ugm3": 27.9,
+                            "no2_ugm3": 41.3,
+                            "confidence_score": 0.7
+                          }
+                        }
+                      ],
+                      "metadata": {
+                        "layer": "combined",
+                        "time_window_start": "2026-10-26T05:00:00Z",
+                        "time_window_end": "2026-10-26T06:00:00Z",
+                        "data_stale": false,
+                        "graph_version": "jakarta-20261005",
+                        "model_version": {
+                          "downscaling": "idw-p2-k8"
+                        },
+                        "crs": "urn:ogc:def:crs:OGC::CRS84",
+                        "coordinate_order": [
+                          "lon",
+                          "lat"
+                        ],
+                        "exposure_index_definition": "I = ½ · (PM2.5 / 15 + NO2 / 25), konsentrasi dalam µg/m³ dibagi pedoman WHO 2021 (rata-rata 24 jam); bila hanya satu polutan tersedia, I = PM2.5 / 15 atau NO2 / 25. Tanpa satuan; 1,0 = tepat pada pedoman.",
+                        "exposure_index_classes": [
+                          0.5,
+                          1.0,
+                          2.0,
+                          3.0
+                        ],
+                        "disclaimer": "Estimasi konsentrasi polutan merupakan keluaran model, bukan hasil pengukuran langsung, dan dapat berbeda dari kondisi udara sebenarnya. Gunakan rute ini sebagai alat bantu keputusan.",
+                        "kind": "grid",
+                        "zoom": 12,
+                        "bbox": [
+                          106.79,
+                          -6.22,
+                          106.87,
+                          -6.15
+                        ],
+                        "cell_size_m": 500,
+                        "aggregation": "Rata-rata berbobot panjang ruas atas ruas yang memiliki nilai; ruas masuk ke sel yang memuat titik tengah kotak pembatasnya. exposure_index_max = nilai ruas tertinggi di sel.",
+                        "feature_count": 1,
+                        "units": {
+                          "exposure_index": "index",
+                          "pm25_ugm3": "µg/m³",
+                          "no2_ugm3": "µg/m³",
+                          "confidence_score": "fraction 0–1",
+                          "exposure_index_max": "index",
+                          "edge_count": "count",
+                          "cell_size_m": "m"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "headers": {
+              "X-Request-ID": {
+                "description": "Penanda request untuk penelusuran log",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Cache-Control": {
+                "description": "public, no-cache: boleh disimpan, tetapi wajib divalidasi ulang (If-None-Match) sebelum dipakai lagi",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "ETag": {
+                "description": "ETag lemah atas versi graf, time window (awal, waktu selesai, model), data_stale, dan parameter permintaan",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "If-None-Match cocok dengan ETag: data dan parameter tidak berubah; pakai respons yang tersimpan. Time window complete yang lebih baru mengubah ETag",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Penanda request untuk penelusuran log",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "bbox tidak valid, terlalu luas untuk zoom yang diminta, zoom di luar 0–22, atau pollutant tidak dikenal",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Penanda request untuk penelusuran log",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "examples": {
+                  "bbox_terlalu_luas": {
+                    "value": {
+                      "error": {
+                        "code": "invalid_request",
+                        "message": "bbox terlalu luas untuk zoom 15 (30.1 km²); per ruas (zoom ≥ 14) batasnya 25 km². Perkecil bbox atau gunakan zoom lebih kecil.",
+                        "request_id": "7f3c2a9e-51d4-4b8e-9a0f-2c1e5d6b8a13"
+                      }
+                    }
+                  },
+                  "bbox_format": {
+                    "value": {
+                      "error": {
+                        "code": "invalid_request",
+                        "message": "bbox tidak valid; gunakan min_lon,min_lat,max_lon,max_lat (WGS 84) dengan min < max.",
+                        "request_id": "7f3c2a9e-51d4-4b8e-9a0f-2c1e5d6b8a13"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Cache tidak dapat dibaca atau belum memiliki time window complete",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Penanda request untuk penelusuran log",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "examples": {
+                  "cache_empty": {
+                    "value": {
+                      "error": {
+                        "code": "cache_unavailable",
+                        "message": "Spatial Pollution Cache DB belum memiliki time window berstatus complete.",
+                        "request_id": "7f3c2a9e-51d4-4b8e-9a0f-2c1e5d6b8a13",
+                        "reason": "cache_empty"
+                      }
+                    }
+                  },
+                  "database_unavailable": {
+                    "value": {
+                      "error": {
+                        "code": "cache_unavailable",
+                        "message": "Basis data cache tidak dapat dihubungi.",
+                        "request_id": "7f3c2a9e-51d4-4b8e-9a0f-2c1e5d6b8a13",
+                        "reason": "database_unavailable"
+                      }
+                    }
+                  },
+                  "query_timeout": {
+                    "value": {
+                      "error": {
+                        "code": "cache_unavailable",
+                        "message": "Query ke cache melewati batas waktu.",
+                        "request_id": "7f3c2a9e-51d4-4b8e-9a0f-2c1e5d6b8a13",
+                        "reason": "query_timeout"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Dari API Gateway: rate limit terlampaui; header Retry-After menyatakan detik tunggu (Tabel 3.15). Belum diaktifkan di gateway.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Penanda request untuk penelusuran log",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "examples": {
+                  "rate_limited": {
+                    "value": {
+                      "error": {
+                        "code": "rate_limited",
+                        "message": "Terlalu banyak permintaan. Coba lagi dalam 3 detik.",
+                        "request_id": "7f3c2a9e-51d4-4b8e-9a0f-2c1e5d6b8a13"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Galat internal yang tidak terduga",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Penanda request untuk penelusuran log",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "examples": {
+                  "internal_error": {
+                    "value": {
+                      "error": {
+                        "code": "internal_error",
+                        "message": "Terjadi galat internal pada server.",
+                        "request_id": "7f3c2a9e-51d4-4b8e-9a0f-2c1e5d6b8a13"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Dari API Gateway: Cache API tidak dapat dihubungi",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Penanda request untuk penelusuran log",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "examples": {
+                  "upstream_unavailable": {
+                    "value": {
+                      "error": {
+                        "code": "upstream_unavailable",
+                        "message": "Layanan sedang tidak dapat dihubungi. Silakan coba lagi.",
+                        "request_id": "7f3c2a9e-51d4-4b8e-9a0f-2c1e5d6b8a13"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Dari API Gateway: Cache API tidak merespons dalam 10 detik",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Penanda request untuk penelusuran log",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "examples": {
+                  "upstream_timeout": {
+                    "value": {
+                      "error": {
+                        "code": "upstream_timeout",
+                        "message": "Layanan tidak merespons tepat waktu. Silakan coba lagi.",
+                        "request_id": "7f3c2a9e-51d4-4b8e-9a0f-2c1e5d6b8a13"
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Galat lain dengan skema seragam (Tabel 3.16)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/osm/version": {
+      "get": {
+        "tags": [
+          "osm"
+        ],
+        "summary": "Active graph_version",
+        "operationId": "get_version_v1_osm_version_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GraphVersionOut"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Galat lain dengan skema seragam (Tabel 3.16)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/osm/graph": {
+      "get": {
+        "tags": [
+          "osm"
+        ],
+        "summary": "read_road_graph(bbox, mode)",
+        "description": "RoadGraph of the active version inside bbox, only edges the mode may use.",
+        "operationId": "read_graph_v1_osm_graph_get",
+        "parameters": [
+          {
+            "name": "bbox",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "min_lon,min_lat,max_lon,max_lat (WGS 84), maks. OSM_MAX_BBOX_KM2 (25 km²)",
+              "title": "Bbox"
+            },
+            "description": "min_lon,min_lat,max_lon,max_lat (WGS 84), maks. OSM_MAX_BBOX_KM2 (25 km²)",
+            "examples": {
+              "monas_kecil": {
+                "summary": "Sekitar Monas, ±0,2 km²",
+                "value": "106.825,-6.177,106.829,-6.173"
+              },
+              "monas_1km": {
+                "summary": "Sekitar Monas, ±1,2 km²",
+                "value": "106.822,-6.180,106.832,-6.170"
+              },
+              "laut_kosong": {
+                "summary": "Di laut, tanpa jalan → 200 kosong",
+                "value": "106.85,-6.09,106.86,-6.08"
+              },
+              "terlalu_luas": {
+                "summary": "Seluruh Jakarta → 400 invalid_request",
+                "value": "106.68,-6.38,106.98,-6.08"
+              },
+              "format_salah": {
+                "summary": "Hanya 3 angka → 400 invalid_request",
+                "value": "106.82,-6.18,106.83"
+              },
+              "terbalik": {
+                "summary": "min > max → 400 invalid_request",
+                "value": "106.83,-6.17,106.82,-6.18"
+              },
+              "bukan_angka": {
+                "summary": "Bukan angka → 400 invalid_request",
+                "value": "a,b,c,d"
+              }
+            }
+          },
+          {
+            "name": "mode",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Mode",
+              "description": "walk = jalan kaki, bike = sepeda"
+            },
+            "description": "walk = jalan kaki, bike = sepeda",
+            "examples": {
+              "walk": {
+                "summary": "Jalan kaki",
+                "value": "walk"
+              },
+              "bike": {
+                "summary": "Sepeda",
+                "value": "bike"
+              }
+            }
+          },
+          {
+            "name": "include_geometry",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": true,
+              "title": "Include Geometry"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoadGraphOut"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_request: parameter atau body tidak valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Galat lain dengan skema seragam (Tabel 3.16)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/osm/roads": {
+      "get": {
+        "tags": [
+          "osm"
+        ],
+        "summary": "Roads in a map viewport as GeoJSON",
+        "operationId": "get_roads_v1_osm_roads_get",
+        "parameters": [
+          {
+            "name": "bbox",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "min_lon,min_lat,max_lon,max_lat (WGS 84), maks. OSM_MAX_BBOX_KM2 (25 km²)",
+              "title": "Bbox"
+            },
+            "description": "min_lon,min_lat,max_lon,max_lat (WGS 84), maks. OSM_MAX_BBOX_KM2 (25 km²)",
+            "examples": {
+              "monas_kecil": {
+                "summary": "Sekitar Monas, ±0,2 km²",
+                "value": "106.825,-6.177,106.829,-6.173"
+              },
+              "monas_1km": {
+                "summary": "Sekitar Monas, ±1,2 km²",
+                "value": "106.822,-6.180,106.832,-6.170"
+              },
+              "laut_kosong": {
+                "summary": "Di laut, tanpa jalan → 200 kosong",
+                "value": "106.85,-6.09,106.86,-6.08"
+              },
+              "terlalu_luas": {
+                "summary": "Seluruh Jakarta → 400 invalid_request",
+                "value": "106.68,-6.38,106.98,-6.08"
+              },
+              "format_salah": {
+                "summary": "Hanya 3 angka → 400 invalid_request",
+                "value": "106.82,-6.18,106.83"
+              },
+              "terbalik": {
+                "summary": "min > max → 400 invalid_request",
+                "value": "106.83,-6.17,106.82,-6.18"
+              },
+              "bukan_angka": {
+                "summary": "Bukan angka → 400 invalid_request",
+                "value": "a,b,c,d"
+              }
+            }
+          },
+          {
+            "name": "mode",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/Mode"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Kosong = semua ruas",
+              "title": "Mode"
+            },
+            "description": "Kosong = semua ruas"
+          },
+          {
+            "name": "highway",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter tipe jalan; ulangi untuk beberapa nilai, mis. highway=primary&highway=secondary",
+              "title": "Highway"
+            },
+            "description": "Filter tipe jalan; ulangi untuk beberapa nilai, mis. highway=primary&highway=secondary",
+            "examples": {
+              "pejalan": {
+                "summary": "Jalur pejalan kaki",
+                "value": [
+                  "footway",
+                  "pedestrian"
+                ]
+              },
+              "utama": {
+                "summary": "Jalan utama (pakai bbox ±1,2 km²)",
+                "value": [
+                  "primary",
+                  "secondary"
+                ]
+              },
+              "tidak_dikenal": {
+                "summary": "Nilai tidak dikenal → 400 invalid_request",
+                "value": [
+                  "rocket"
+                ]
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/geo+json": {}
+            }
+          },
+          "400": {
+            "description": "invalid_request: parameter atau body tidak valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Galat lain dengan skema seragam (Tabel 3.16)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/osm/nearest-node": {
+      "get": {
+        "tags": [
+          "osm"
+        ],
+        "summary": "Nearest node usable by mode",
+        "operationId": "nearest_node_v1_osm_nearest_node_get",
+        "parameters": [
+          {
+            "name": "lon",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "number",
+              "maximum": 180,
+              "minimum": -180,
+              "description": "Longitude WGS 84",
+              "title": "Lon"
+            },
+            "description": "Longitude WGS 84",
+            "examples": {
+              "monas": {
+                "summary": "Monas",
+                "value": 106.8272
+              }
+            }
+          },
+          {
+            "name": "lat",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "number",
+              "maximum": 90,
+              "minimum": -90,
+              "description": "Latitude WGS 84 (negative in Jakarta)",
+              "title": "Lat"
+            },
+            "description": "Latitude WGS 84 (negative in Jakarta)",
+            "examples": {
+              "monas": {
+                "summary": "Monas",
+                "value": -6.1754
+              }
+            }
+          },
+          {
+            "name": "mode",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Mode",
+              "description": "walk = jalan kaki, bike = sepeda"
+            },
+            "description": "walk = jalan kaki, bike = sepeda",
+            "examples": {
+              "walk": {
+                "summary": "Jalan kaki",
+                "value": "walk"
+              },
+              "bike": {
+                "summary": "Sepeda",
+                "value": "bike"
+              }
+            }
+          },
+          {
+            "name": "max_distance_m",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "maximum": 1000,
+                  "exclusiveMinimum": 0
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Radius pencarian (m), 0 < nilai ≤ 1000; default OSM_SNAP_MAX_DISTANCE_M (200 m)",
+              "title": "Max Distance M"
+            },
+            "description": "Radius pencarian (m), 0 < nilai ≤ 1000; default OSM_SNAP_MAX_DISTANCE_M (200 m)",
+            "examples": {
+              "default": {
+                "summary": "200 m (default)",
+                "value": 200
+              },
+              "terlalu_kecil": {
+                "summary": "5 m, simpul terdekat Monas 11,7 m → 422 point_not_on_network",
+                "value": 5
+              },
+              "maksimum": {
+                "summary": "1000 m (batas atas)",
+                "value": 1000
+              },
+              "melebihi": {
+                "summary": "1001 m → 400 invalid_request",
+                "value": 1001
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NearestNodeOut"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_request: parameter atau body tidak valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Galat lain dengan skema seragam (Tabel 3.16)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/osm/nearest-edge": {
+      "get": {
+        "tags": [
+          "osm"
+        ],
+        "summary": "Snap a position to the nearest usable edge",
+        "operationId": "nearest_edge_v1_osm_nearest_edge_get",
+        "parameters": [
+          {
+            "name": "lon",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "number",
+              "maximum": 180,
+              "minimum": -180,
+              "description": "Longitude WGS 84",
+              "title": "Lon"
+            },
+            "description": "Longitude WGS 84",
+            "examples": {
+              "monas": {
+                "summary": "Monas",
+                "value": 106.8272
+              }
+            }
+          },
+          {
+            "name": "lat",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "number",
+              "maximum": 90,
+              "minimum": -90,
+              "description": "Latitude WGS 84 (negative in Jakarta)",
+              "title": "Lat"
+            },
+            "description": "Latitude WGS 84 (negative in Jakarta)",
+            "examples": {
+              "monas": {
+                "summary": "Monas",
+                "value": -6.1754
+              }
+            }
+          },
+          {
+            "name": "mode",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Mode",
+              "description": "walk = jalan kaki, bike = sepeda"
+            },
+            "description": "walk = jalan kaki, bike = sepeda",
+            "examples": {
+              "walk": {
+                "summary": "Jalan kaki",
+                "value": "walk"
+              },
+              "bike": {
+                "summary": "Sepeda",
+                "value": "bike"
+              }
+            }
+          },
+          {
+            "name": "max_distance_m",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "maximum": 1000,
+                  "exclusiveMinimum": 0
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Radius pencarian (m), 0 < nilai ≤ 1000; default OSM_SNAP_MAX_DISTANCE_M (200 m)",
+              "title": "Max Distance M"
+            },
+            "description": "Radius pencarian (m), 0 < nilai ≤ 1000; default OSM_SNAP_MAX_DISTANCE_M (200 m)",
+            "examples": {
+              "default": {
+                "summary": "200 m (default)",
+                "value": 200
+              },
+              "terlalu_kecil": {
+                "summary": "5 m, simpul terdekat Monas 11,7 m → 422 point_not_on_network",
+                "value": 5
+              },
+              "maksimum": {
+                "summary": "1000 m (batas atas)",
+                "value": 1000
+              },
+              "melebihi": {
+                "summary": "1001 m → 400 invalid_request",
+                "value": 1001
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NearestEdgeOut"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_request: parameter atau body tidak valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Galat lain dengan skema seragam (Tabel 3.16)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/osm/nodes/{node_id}": {
+      "get": {
+        "tags": [
+          "osm"
+        ],
+        "summary": "Node of the active version",
+        "operationId": "get_node_v1_osm_nodes__node_id__get",
+        "parameters": [
+          {
+            "name": "node_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "maximum": 9223372036854775807,
+              "minimum": 1,
+              "description": "node_id OSM pada versi aktif",
+              "title": "Node Id"
+            },
+            "description": "node_id OSM pada versi aktif",
+            "examples": {
+              "lampu": {
+                "summary": "Lampu lalu lintas dekat Monas",
+                "value": 7114808048
+              },
+              "monas": {
+                "summary": "Simpul terdekat Monas",
+                "value": 10792891204
+              },
+              "terisolasi": {
+                "summary": "Simpul di komponen terisolasi (18 simpul)",
+                "value": 3776134358
+              },
+              "tidak_ada": {
+                "summary": "Tidak ada → 404 not_found",
+                "value": 42
+              },
+              "nol": {
+                "summary": "0 → 400 invalid_request",
+                "value": 0
+              },
+              "melebihi_bigint": {
+                "summary": "> batas bigint → 400 invalid_request",
+                "value": 9223372036854775808
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NodeOut"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_request: parameter atau body tidak valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Galat lain dengan skema seragam (Tabel 3.16)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/osm/nodes/{node_id}/neighbors": {
+      "get": {
+        "tags": [
+          "osm"
+        ],
+        "summary": "Edges the mode may take out of a node",
+        "operationId": "get_neighbors_v1_osm_nodes__node_id__neighbors_get",
+        "parameters": [
+          {
+            "name": "node_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "maximum": 9223372036854775807,
+              "minimum": 1,
+              "description": "node_id OSM pada versi aktif",
+              "title": "Node Id"
+            },
+            "description": "node_id OSM pada versi aktif",
+            "examples": {
+              "lampu": {
+                "summary": "Lampu lalu lintas dekat Monas",
+                "value": 7114808048
+              },
+              "monas": {
+                "summary": "Simpul terdekat Monas",
+                "value": 10792891204
+              },
+              "terisolasi": {
+                "summary": "Simpul di komponen terisolasi (18 simpul)",
+                "value": 3776134358
+              },
+              "tidak_ada": {
+                "summary": "Tidak ada → 404 not_found",
+                "value": 42
+              },
+              "nol": {
+                "summary": "0 → 400 invalid_request",
+                "value": 0
+              },
+              "melebihi_bigint": {
+                "summary": "> batas bigint → 400 invalid_request",
+                "value": 9223372036854775808
+              }
+            }
+          },
+          {
+            "name": "mode",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Mode",
+              "description": "walk = jalan kaki, bike = sepeda"
+            },
+            "description": "walk = jalan kaki, bike = sepeda",
+            "examples": {
+              "walk": {
+                "summary": "Jalan kaki",
+                "value": "walk"
+              },
+              "bike": {
+                "summary": "Sepeda",
+                "value": "bike"
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NeighborsOut"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_request: parameter atau body tidak valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Galat lain dengan skema seragam (Tabel 3.16)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/osm/edges/{edge_id}": {
+      "get": {
+        "tags": [
+          "osm"
+        ],
+        "summary": "Edge detail with OSM tags and geometry",
+        "operationId": "get_edge_v1_osm_edges__edge_id__get",
+        "parameters": [
+          {
+            "name": "edge_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "maximum": 9223372036854775807,
+              "minimum": 1,
+              "description": "edge_id (unik global)",
+              "title": "Edge Id"
+            },
+            "description": "edge_id (unik global)",
+            "examples": {
+              "merdeka_barat": {
+                "summary": "Jalan Medan Merdeka Barat",
+                "value": 87108
+              },
+              "tidak_ada": {
+                "summary": "Tidak ada → 404 not_found",
+                "value": 999999999
+              },
+              "negatif": {
+                "summary": "Negatif → 400 invalid_request",
+                "value": -1
+              },
+              "melebihi_bigint": {
+                "summary": "> batas bigint → 400 invalid_request",
+                "value": 9223372036854775808
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EdgeOut"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_request: parameter atau body tidak valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Galat lain dengan skema seragam (Tabel 3.16)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/osm/streets": {
+      "get": {
+        "tags": [
+          "osm"
+        ],
+        "summary": "Search named streets",
+        "operationId": "search_streets_v1_osm_streets_get",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 3,
+              "maxLength": 100,
+              "description": "Bagian nama jalan, minimal 3 huruf/angka berurutan",
+              "title": "Q"
+            },
+            "description": "Bagian nama jalan, minimal 3 huruf/angka berurutan",
+            "examples": {
+              "sudirman": {
+                "summary": "Sudirman",
+                "value": "sudirman"
+              },
+              "thamrin": {
+                "summary": "Husni Thamrin",
+                "value": "Husni Thamrin"
+              },
+              "huruf_besar": {
+                "summary": "Huruf besar, tidak peka besar-kecil",
+                "value": "SUDIRMAN"
+              },
+              "spasi_tepi": {
+                "summary": "Spasi di tepi dipangkas",
+                "value": "   sudirman   "
+              },
+              "wildcard": {
+                "summary": "% diperlakukan sebagai teks → 200 kosong",
+                "value": "sudirman%"
+              },
+              "tidak_ditemukan": {
+                "summary": "Tidak ada jalan bernama ini → 200 kosong",
+                "value": "zzzqqq"
+              },
+              "terlalu_pendek": {
+                "summary": "2 karakter → 400 invalid_request",
+                "value": "ab"
+              },
+              "tanpa_huruf": {
+                "summary": "Tanpa huruf → 400 invalid_request",
+                "value": "%%%"
+              },
+              "spasi_saja": {
+                "summary": "Hanya spasi → 400 invalid_request",
+                "value": "     "
+              }
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 20,
+              "minimum": 1,
+              "description": "Jumlah hasil, 1–20",
+              "default": 10,
+              "title": "Limit"
+            },
+            "description": "Jumlah hasil, 1–20",
+            "examples": {
+              "default": {
+                "summary": "10 (default)",
+                "value": 10
+              },
+              "satu": {
+                "summary": "1",
+                "value": 1
+              },
+              "nol": {
+                "summary": "0 → 400 invalid_request",
+                "value": 0
+              },
+              "melebihi": {
+                "summary": "21 → 400 invalid_request",
+                "value": 21
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StreetsOut"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_request: parameter atau body tidak valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Galat lain dengan skema seragam (Tabel 3.16)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/osm/subgraph": {
+      "post": {
+        "tags": [
+          "osm"
+        ],
+        "summary": "Request subgraph for an origin-destination pair",
+        "description": "OSM part of R8 to R10: compute_request_bbox, read_road_graph, snap_to_graph\nand assemble_request_subgraph. Pollution weights are not attached here.",
+        "operationId": "build_subgraph_v1_osm_subgraph_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubgraphRequest"
+              },
+              "examples": {
+                "walk_monas_bundaran_hi": {
+                  "summary": "Jalan kaki Monas → Bundaran HI (±2,2 km)",
+                  "value": {
+                    "origin": {
+                      "lat": -6.1754,
+                      "lon": 106.8272
+                    },
+                    "destination": {
+                      "lat": -6.195,
+                      "lon": 106.823
+                    },
+                    "mode": "walk"
+                  }
+                },
+                "bike_monas_bundaran_hi": {
+                  "summary": "Sepeda Monas → Bundaran HI",
+                  "value": {
+                    "origin": {
+                      "lat": -6.1754,
+                      "lon": 106.8272
+                    },
+                    "destination": {
+                      "lat": -6.195,
+                      "lon": 106.823
+                    },
+                    "mode": "bike"
+                  }
+                },
+                "walk_pendek_dengan_graf": {
+                  "summary": "Jalan kaki Monas → Jl. Medan Merdeka Utara (±440 m), sertakan node dan ruas",
+                  "value": {
+                    "origin": {
+                      "lat": -6.1754,
+                      "lon": 106.8272
+                    },
+                    "destination": {
+                      "lat": -6.17148,
+                      "lon": 106.8277989
+                    },
+                    "mode": "walk",
+                    "buffer_m": 200,
+                    "include_graph": true
+                  }
+                },
+                "tujuan_di_laut": {
+                  "summary": "Pantai Ancol → laut → 422 point_not_on_network (titik tujuan)",
+                  "value": {
+                    "origin": {
+                      "lat": -6.1225,
+                      "lon": 106.842
+                    },
+                    "destination": {
+                      "lat": -6.1,
+                      "lon": 106.842
+                    },
+                    "mode": "walk"
+                  }
+                },
+                "tujuan_kepulauan_seribu": {
+                  "summary": "Tujuan Kepulauan Seribu → 422 outside_study_area",
+                  "value": {
+                    "origin": {
+                      "lat": -6.1754,
+                      "lon": 106.8272
+                    },
+                    "destination": {
+                      "lat": -5.75,
+                      "lon": 106.55
+                    },
+                    "mode": "walk"
+                  }
+                },
+                "asal_kepulauan_seribu": {
+                  "summary": "Asal Kepulauan Seribu → 422 outside_study_area (titik asal)",
+                  "value": {
+                    "origin": {
+                      "lat": -5.75,
+                      "lon": 106.55
+                    },
+                    "destination": {
+                      "lat": -6.1754,
+                      "lon": 106.8272
+                    },
+                    "mode": "walk"
+                  }
+                },
+                "asal_sama_dengan_tujuan": {
+                  "summary": "Asal = tujuan → 200, simpul asal = simpul tujuan",
+                  "value": {
+                    "origin": {
+                      "lat": -6.1754,
+                      "lon": 106.8272
+                    },
+                    "destination": {
+                      "lat": -6.1754,
+                      "lon": 106.8272
+                    },
+                    "mode": "walk"
+                  }
+                },
+                "dekat_komponen_terisolasi": {
+                  "summary": "Tujuan di komponen terisolasi → 200, di-snap ke simpul terdekat yang terhubung",
+                  "value": {
+                    "origin": {
+                      "lat": -6.1754,
+                      "lon": 106.8272
+                    },
+                    "destination": {
+                      "lat": -6.1819823,
+                      "lon": 106.8198083
+                    },
+                    "mode": "walk"
+                  }
+                },
+                "buffer_nol": {
+                  "summary": "buffer_m 0 memotong jalur → 422 no_route_found (tanpa buffer_m: terhubung)",
+                  "value": {
+                    "origin": {
+                      "lat": -6.15502,
+                      "lon": 106.74869
+                    },
+                    "destination": {
+                      "lat": -6.15502,
+                      "lon": 106.75269
+                    },
+                    "mode": "walk",
+                    "buffer_m": 0
+                  }
+                },
+                "luar_dki_dalam_kotak": {
+                  "summary": "Tangerang, di dalam kotak wilayah studi → 422 point_not_on_network",
+                  "value": {
+                    "origin": {
+                      "lat": -6.1754,
+                      "lon": 106.8272
+                    },
+                    "destination": {
+                      "lat": -6.2,
+                      "lon": 106.69
+                    },
+                    "mode": "walk"
+                  }
+                },
+                "buffer_melebihi": {
+                  "summary": "buffer_m > 10000 → 400 invalid_request",
+                  "value": {
+                    "origin": {
+                      "lat": -6.1754,
+                      "lon": 106.8272
+                    },
+                    "destination": {
+                      "lat": -6.195,
+                      "lon": 106.823
+                    },
+                    "mode": "walk",
+                    "buffer_m": 20000
+                  }
+                },
+                "mode_tidak_dikenal": {
+                  "summary": "mode \"car\" → 400 invalid_request",
+                  "value": {
+                    "origin": {
+                      "lat": -6.1754,
+                      "lon": 106.8272
+                    },
+                    "destination": {
+                      "lat": -6.195,
+                      "lon": 106.823
+                    },
+                    "mode": "car"
+                  }
+                },
+                "koordinat_tidak_valid": {
+                  "summary": "lat 106 (lon/lat tertukar) → 400 invalid_request",
+                  "value": {
+                    "origin": {
+                      "lat": 106.8272,
+                      "lon": -6.1754
+                    },
+                    "destination": {
+                      "lat": -6.195,
+                      "lon": 106.823
+                    },
+                    "mode": "walk"
+                  }
+                },
+                "field_hilang": {
+                  "summary": "Tanpa destination → 400 invalid_request",
+                  "value": {
+                    "origin": {
+                      "lat": -6.1754,
+                      "lon": 106.8272
+                    },
+                    "mode": "walk"
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubgraphOut"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_request: parameter atau body tidak valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Galat lain dengan skema seragam (Tabel 3.16)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/pollution/windows": {
+      "get": {
+        "tags": [
+          "pollution"
+        ],
+        "summary": "Time windows in the cache, newest first",
+        "operationId": "list_windows_v1_pollution_windows_get",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 168,
+              "minimum": 1,
+              "default": 24,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WindowsOut"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_request: parameter atau body tidak valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Galat lain dengan skema seragam (Tabel 3.16)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/pollution/edge-weights": {
+      "get": {
+        "tags": [
+          "pollution"
+        ],
+        "summary": "read_pollution_weight(bbox, time_window)",
+        "description": "EdgeWeight of one complete time window inside bbox. 503 cache_unavailable with\nreason cache_empty when no complete window exists; data_stale = true when the\nwindow ended more than POLLUTION_STALE_AFTER_S ago.",
+        "operationId": "read_edge_weights_v1_pollution_edge_weights_get",
+        "parameters": [
+          {
+            "name": "bbox",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "min_lon,min_lat,max_lon,max_lat (WGS 84), maks. OSM_MAX_BBOX_KM2 (25 km²)",
+              "title": "Bbox"
+            },
+            "description": "min_lon,min_lat,max_lon,max_lat (WGS 84), maks. OSM_MAX_BBOX_KM2 (25 km²)",
+            "examples": {
+              "monas_kecil": {
+                "summary": "Sekitar Monas, ±0,2 km²",
+                "value": "106.825,-6.177,106.829,-6.173"
+              },
+              "monas_1km": {
+                "summary": "Sekitar Monas, ±1,2 km²",
+                "value": "106.822,-6.180,106.832,-6.170"
+              },
+              "laut_kosong": {
+                "summary": "Di laut, tanpa jalan → 200 kosong",
+                "value": "106.85,-6.09,106.86,-6.08"
+              },
+              "terlalu_luas": {
+                "summary": "Seluruh Jakarta → 400 invalid_request",
+                "value": "106.68,-6.38,106.98,-6.08"
+              },
+              "format_salah": {
+                "summary": "Hanya 3 angka → 400 invalid_request",
+                "value": "106.82,-6.18,106.83"
+              },
+              "terbalik": {
+                "summary": "min > max → 400 invalid_request",
+                "value": "106.83,-6.17,106.82,-6.18"
+              },
+              "bukan_angka": {
+                "summary": "Bukan angka → 400 invalid_request",
+                "value": "a,b,c,d"
+              }
+            }
+          },
+          {
+            "name": "time_window_start",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "`latest` (time window complete terakhir) atau awal time window UTC ISO 8601 tepat di awal jam",
+              "default": "latest",
+              "title": "Time Window Start"
+            },
+            "description": "`latest` (time window complete terakhir) atau awal time window UTC ISO 8601 tepat di awal jam",
+            "examples": {
+              "latest": {
+                "summary": "Time window complete terakhir",
+                "value": "latest"
+              },
+              "tertentu": {
+                "summary": "Time window tertentu",
+                "value": "2026-10-13T05:00:00Z"
+              },
+              "bukan_awal_jam": {
+                "summary": "Bukan awal jam → 400 invalid_request",
+                "value": "2026-10-13T05:30:00Z"
+              },
+              "tanpa_zona": {
+                "summary": "Tanpa zona waktu → 400 invalid_request",
+                "value": "2026-10-13T05:00:00"
+              },
+              "bukan_tanggal": {
+                "summary": "Bukan tanggal → 400 invalid_request",
+                "value": "kemarin"
+              }
+            }
+          },
+          {
+            "name": "mode",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/Mode"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Kosong = semua ruas; walk/bike = hanya ruas yang boleh dilalui",
+              "title": "Mode"
+            },
+            "description": "Kosong = semua ruas; walk/bike = hanya ruas yang boleh dilalui"
+          },
+          {
+            "name": "graph_version",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "`active` = hanya baris untuk graf aktif; `all` = tanpa filter; atau nama versi graf",
+              "default": "active",
+              "title": "Graph Version"
+            },
+            "description": "`active` = hanya baris untuk graf aktif; `all` = tanpa filter; atau nama versi graf",
+            "examples": {
+              "active": {
+                "summary": "Graf aktif",
+                "value": "active"
+              },
+              "all": {
+                "summary": "Semua versi",
+                "value": "all"
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EdgeWeightsOut"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_request: parameter atau body tidak valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Galat lain dengan skema seragam (Tabel 3.16)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/pollution/edge-weights/{edge_id}/trace": {
+      "get": {
+        "tags": [
+          "pollution"
+        ],
+        "summary": "Source grid cells and aggregation lengths for a cached road",
+        "operationId": "read_edge_trace_v1_pollution_edge_weights__edge_id__trace_get",
+        "parameters": [
+          {
+            "name": "edge_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "maximum": 9223372036854775807,
+              "minimum": 0,
+              "title": "Edge Id"
+            }
+          },
+          {
+            "name": "time_window_start",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "`latest` (time window complete terakhir) atau awal time window UTC ISO 8601 tepat di awal jam",
+              "default": "latest",
+              "title": "Time Window Start"
+            },
+            "description": "`latest` (time window complete terakhir) atau awal time window UTC ISO 8601 tepat di awal jam",
+            "examples": {
+              "latest": {
+                "summary": "Time window complete terakhir",
+                "value": "latest"
+              },
+              "tertentu": {
+                "summary": "Time window tertentu",
+                "value": "2026-10-13T05:00:00Z"
+              },
+              "bukan_awal_jam": {
+                "summary": "Bukan awal jam → 400 invalid_request",
+                "value": "2026-10-13T05:30:00Z"
+              },
+              "tanpa_zona": {
+                "summary": "Tanpa zona waktu → 400 invalid_request",
+                "value": "2026-10-13T05:00:00"
+              },
+              "bukan_tanggal": {
+                "summary": "Bukan tanggal → 400 invalid_request",
+                "value": "kemarin"
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_request: parameter atau body tidak valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Galat lain dengan skema seragam (Tabel 3.16)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "CellSurfaceFeature": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "Feature",
+            "title": "Type"
+          },
+          "geometry": {
+            "$ref": "#/components/schemas/Polygon"
+          },
+          "properties": {
+            "$ref": "#/components/schemas/CellSurfaceProperties"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "type",
+          "geometry",
+          "properties"
+        ],
+        "title": "CellSurfaceFeature"
+      },
+      "CellSurfaceProperties": {
+        "properties": {
+          "cell_id": {
+            "type": "string",
+            "title": "Cell Id",
+            "description": "<ukuran>m:<ix>:<iy>, tetap saat peta digeser"
+          },
+          "edge_count": {
+            "type": "integer",
+            "title": "Edge Count",
+            "description": "Jumlah ruas dalam sel"
+          },
+          "exposure_index": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exposure Index",
+            "description": "Rata-rata berbobot panjang ruas, tanpa satuan"
+          },
+          "exposure_index_max": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exposure Index Max",
+            "description": "Indeks ruas tertinggi dalam sel"
+          },
+          "pm25_ugm3": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pm25 Ugm3",
+            "description": "Rata-rata berbobot panjang, µg/m³"
+          },
+          "no2_ugm3": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "No2 Ugm3",
+            "description": "Rata-rata berbobot panjang, µg/m³"
+          },
+          "confidence_score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confidence Score",
+            "description": "Rata-rata berbobot panjang, 0–1"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "cell_id",
+          "edge_count",
+          "exposure_index",
+          "exposure_index_max",
+          "pm25_ugm3",
+          "no2_ugm3",
+          "confidence_score"
+        ],
+        "title": "CellSurfaceProperties",
+        "description": "zoom < 14: agregat ruas dalam satu sel grid."
+      },
+      "ComparisonSummary": {
+        "properties": {
+          "delta_travel_time_min": {
+            "type": "number",
+            "title": "Delta Travel Time Min",
+            "description": "T(rekomendasi) − T(pembanding), menit"
+          },
+          "delta_exposure_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Delta Exposure Pct",
+            "description": "Perubahan E(R) rekomendasi terhadap pembanding, %"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "delta_travel_time_min",
+          "delta_exposure_pct"
+        ],
+        "title": "ComparisonSummary"
+      },
+      "EdgeOut": {
+        "properties": {
+          "edge_id": {
+            "type": "integer",
+            "title": "Edge Id"
+          },
+          "graph_version": {
+            "type": "string",
+            "title": "Graph Version"
+          },
+          "u": {
+            "type": "integer",
+            "title": "U"
+          },
+          "v": {
+            "type": "integer",
+            "title": "V"
+          },
+          "length_m": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Length M"
+          },
+          "highway": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Highway"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "oneway": {
+            "type": "boolean",
+            "title": "Oneway"
+          },
+          "walk_allowed": {
+            "type": "boolean",
+            "title": "Walk Allowed"
+          },
+          "bike_allowed": {
+            "type": "boolean",
+            "title": "Bike Allowed"
+          },
+          "osm_way_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Osm Way Id"
+          },
+          "tags": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Tags"
+          },
+          "geometry": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Geometry"
+          }
+        },
+        "type": "object",
+        "required": [
+          "edge_id",
+          "graph_version",
+          "u",
+          "v",
+          "length_m",
+          "highway",
+          "name",
+          "oneway",
+          "walk_allowed",
+          "bike_allowed",
+          "osm_way_id",
+          "tags",
+          "geometry"
+        ],
+        "title": "EdgeOut"
+      },
+      "EdgeSurfaceFeature": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "Feature",
+            "title": "Type"
+          },
+          "geometry": {
+            "$ref": "#/components/schemas/LineString"
+          },
+          "properties": {
+            "$ref": "#/components/schemas/EdgeSurfaceProperties"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "type",
+          "geometry",
+          "properties"
+        ],
+        "title": "EdgeSurfaceFeature"
+      },
+      "EdgeSurfaceProperties": {
+        "properties": {
+          "edge_id": {
+            "type": "integer",
+            "title": "Edge Id"
+          },
+          "exposure_index": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exposure Index",
+            "description": "Indeks paparan gabungan Iₑ,ₜ, tanpa satuan"
+          },
+          "pm25_ugm3": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pm25 Ugm3",
+            "description": "PM2.5, µg/m³; null bila tidak tersedia"
+          },
+          "no2_ugm3": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "No2 Ugm3",
+            "description": "NO2, µg/m³; null bila tidak tersedia"
+          },
+          "confidence_score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confidence Score",
+            "description": "0–1"
+          },
+          "estimation_source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Estimation Source",
+            "description": "stgnn atau idw"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "edge_id",
+          "exposure_index",
+          "pm25_ugm3",
+          "no2_ugm3",
+          "confidence_score",
+          "estimation_source"
+        ],
+        "title": "EdgeSurfaceProperties",
+        "description": "zoom ≥ 14: nilai satu ruas."
+      },
+      "EdgeWeightOut": {
+        "properties": {
+          "edge_id": {
+            "type": "integer",
+            "title": "Edge Id"
+          },
+          "pm25_ugm3": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pm25 Ugm3"
+          },
+          "no2_ugm3": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "No2 Ugm3"
+          },
+          "exposure_index": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exposure Index"
+          },
+          "confidence_score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confidence Score"
+          },
+          "background_source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Background Source"
+          },
+          "estimation_source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Estimation Source"
+          },
+          "model_metadata": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Model Metadata"
+          },
+          "trace_run_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trace Run Id"
+          },
+          "graph_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Graph Version"
+          },
+          "model_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Version"
+          }
+        },
+        "type": "object",
+        "required": [
+          "edge_id",
+          "pm25_ugm3",
+          "no2_ugm3",
+          "exposure_index",
+          "confidence_score",
+          "background_source",
+          "estimation_source",
+          "graph_version",
+          "model_version"
+        ],
+        "title": "EdgeWeightOut"
+      },
+      "EdgeWeightsOut": {
+        "properties": {
+          "time_window_start": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Time Window Start"
+          },
+          "time_window_end": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Time Window End"
+          },
+          "model_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Version"
+          },
+          "coverage_ratio": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Coverage Ratio"
+          },
+          "graph_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Graph Version",
+            "description": "Versi graf yang dipakai menyaring baris; null = tanpa filter"
+          },
+          "mode": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Mode"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "bbox": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "title": "Bbox"
+          },
+          "data_stale": {
+            "type": "boolean",
+            "title": "Data Stale"
+          },
+          "age_minutes": {
+            "type": "number",
+            "title": "Age Minutes"
+          },
+          "count": {
+            "type": "integer",
+            "title": "Count"
+          },
+          "excluded": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Excluded",
+            "description": "Baris di dalam bbox yang tidak dikembalikan, per alasan"
+          },
+          "weights": {
+            "items": {
+              "$ref": "#/components/schemas/EdgeWeightOut"
+            },
+            "type": "array",
+            "title": "Weights"
+          }
+        },
+        "type": "object",
+        "required": [
+          "time_window_start",
+          "time_window_end",
+          "model_version",
+          "coverage_ratio",
+          "graph_version",
+          "mode",
+          "bbox",
+          "data_stale",
+          "age_minutes",
+          "count",
+          "excluded",
+          "weights"
+        ],
+        "title": "EdgeWeightsOut"
+      },
+      "ErrorDetail": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code",
+            "description": "Kode galat Tabel 3.16, mis. invalid_request, no_route_found, cache_unavailable"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "description": "Penjelasan singkat yang dapat ditampilkan ke pengguna"
+          },
+          "request_id": {
+            "type": "string",
+            "title": "Request Id",
+            "description": "Sama dengan header X-Request-ID, untuk menelusuri log"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason",
+            "description": "Penyebab lebih rinci bila ada, mis. cache_empty, solver_timeout"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "code",
+          "message",
+          "request_id"
+        ],
+        "title": "ErrorDetail"
+      },
+      "ErrorResponse": {
+        "properties": {
+          "error": {
+            "$ref": "#/components/schemas/ErrorDetail"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "error"
+        ],
+        "title": "ErrorResponse"
+      },
+      "GraphEdgeOut": {
+        "properties": {
+          "edge_id": {
+            "type": "integer",
+            "title": "Edge Id"
+          },
+          "u": {
+            "type": "integer",
+            "title": "U"
+          },
+          "v": {
+            "type": "integer",
+            "title": "V"
+          },
+          "length_m": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Length M"
+          },
+          "highway": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Highway"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "oneway": {
+            "type": "boolean",
+            "title": "Oneway"
+          },
+          "walk_allowed": {
+            "type": "boolean",
+            "title": "Walk Allowed"
+          },
+          "bike_allowed": {
+            "type": "boolean",
+            "title": "Bike Allowed"
+          },
+          "osm_way_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Osm Way Id"
+          },
+          "coordinates": {
+            "anyOf": [
+              {
+                "items": {
+                  "items": {
+                    "type": "number"
+                  },
+                  "type": "array"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Coordinates",
+            "description": "[[lon, lat], ...] from u to v"
+          }
+        },
+        "type": "object",
+        "required": [
+          "edge_id",
+          "u",
+          "v",
+          "length_m",
+          "highway",
+          "name",
+          "oneway",
+          "walk_allowed",
+          "bike_allowed",
+          "osm_way_id",
+          "coordinates"
+        ],
+        "title": "GraphEdgeOut"
+      },
+      "GraphNodeOut": {
+        "properties": {
+          "node_id": {
+            "type": "integer",
+            "title": "Node Id"
+          },
+          "lon": {
+            "type": "number",
+            "title": "Lon"
+          },
+          "lat": {
+            "type": "number",
+            "title": "Lat"
+          },
+          "tags": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Tags"
+          }
+        },
+        "type": "object",
+        "required": [
+          "node_id",
+          "lon",
+          "lat",
+          "tags"
+        ],
+        "title": "GraphNodeOut"
+      },
+      "GraphVersionOut": {
+        "properties": {
+          "version": {
+            "type": "string",
+            "title": "Version"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "osm_timestamp": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Osm Timestamp"
+          },
+          "built_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Built At"
+          },
+          "node_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Node Count"
+          },
+          "edge_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Edge Count"
+          }
+        },
+        "type": "object",
+        "required": [
+          "version",
+          "status",
+          "osm_timestamp",
+          "built_at",
+          "node_count",
+          "edge_count"
+        ],
+        "title": "GraphVersionOut"
+      },
+      "LineString": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "LineString",
+            "title": "Type"
+          },
+          "coordinates": {
+            "items": {
+              "items": {
+                "type": "number"
+              },
+              "type": "array"
+            },
+            "type": "array",
+            "minItems": 2,
+            "title": "Coordinates",
+            "description": "[lon, lat] WGS 84 (CRS84), searah perjalanan"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "type",
+          "coordinates"
+        ],
+        "title": "LineString"
+      },
+      "Mode": {
+        "type": "string",
+        "enum": [
+          "walk",
+          "bike"
+        ],
+        "title": "Mode",
+        "description": "Travel mode and its access rules (handoff_database.md, bagian 3 butir 7)."
+      },
+      "ModelVersion": {
+        "properties": {
+          "downscaling": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Downscaling",
+            "description": "Versi Spatial Downscaling Model untuk time window yang dipakai"
+          },
+          "route_policy": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Route Policy",
+            "description": "Versi Route Model, atau astar-baseline saat fallback"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "downscaling",
+          "route_policy"
+        ],
+        "title": "ModelVersion"
+      },
+      "NearestEdgeOut": {
+        "properties": {
+          "graph_version": {
+            "type": "string",
+            "title": "Graph Version"
+          },
+          "mode": {
+            "$ref": "#/components/schemas/Mode"
+          },
+          "edge_id": {
+            "type": "integer",
+            "title": "Edge Id"
+          },
+          "u": {
+            "type": "integer",
+            "title": "U"
+          },
+          "v": {
+            "type": "integer",
+            "title": "V"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "highway": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Highway"
+          },
+          "length_m": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Length M"
+          },
+          "oneway": {
+            "type": "boolean",
+            "title": "Oneway"
+          },
+          "distance_m": {
+            "type": "number",
+            "title": "Distance M"
+          },
+          "fraction_along": {
+            "type": "number",
+            "title": "Fraction Along",
+            "description": "Position on the edge: 0 at u, 1 at v"
+          },
+          "snapped_point": {
+            "$ref": "#/components/schemas/PointModel"
+          }
+        },
+        "type": "object",
+        "required": [
+          "graph_version",
+          "mode",
+          "edge_id",
+          "u",
+          "v",
+          "name",
+          "highway",
+          "length_m",
+          "oneway",
+          "distance_m",
+          "fraction_along",
+          "snapped_point"
+        ],
+        "title": "NearestEdgeOut"
+      },
+      "NearestNodeOut": {
+        "properties": {
+          "graph_version": {
+            "type": "string",
+            "title": "Graph Version"
+          },
+          "mode": {
+            "$ref": "#/components/schemas/Mode"
+          },
+          "node_id": {
+            "type": "integer",
+            "title": "Node Id"
+          },
+          "lon": {
+            "type": "number",
+            "title": "Lon"
+          },
+          "lat": {
+            "type": "number",
+            "title": "Lat"
+          },
+          "distance_m": {
+            "type": "number",
+            "title": "Distance M"
+          }
+        },
+        "type": "object",
+        "required": [
+          "graph_version",
+          "mode",
+          "node_id",
+          "lon",
+          "lat",
+          "distance_m"
+        ],
+        "title": "NearestNodeOut"
+      },
+      "NeighborOut": {
+        "properties": {
+          "edge_id": {
+            "type": "integer",
+            "title": "Edge Id"
+          },
+          "next_node": {
+            "type": "integer",
+            "title": "Next Node"
+          },
+          "length_m": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Length M"
+          },
+          "highway": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Highway"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "oneway": {
+            "type": "boolean",
+            "title": "Oneway"
+          }
+        },
+        "type": "object",
+        "required": [
+          "edge_id",
+          "next_node",
+          "length_m",
+          "highway",
+          "name",
+          "oneway"
+        ],
+        "title": "NeighborOut"
+      },
+      "NeighborsOut": {
+        "properties": {
+          "graph_version": {
+            "type": "string",
+            "title": "Graph Version"
+          },
+          "mode": {
+            "$ref": "#/components/schemas/Mode"
+          },
+          "node_id": {
+            "type": "integer",
+            "title": "Node Id"
+          },
+          "neighbors": {
+            "items": {
+              "$ref": "#/components/schemas/NeighborOut"
+            },
+            "type": "array",
+            "title": "Neighbors"
+          }
+        },
+        "type": "object",
+        "required": [
+          "graph_version",
+          "mode",
+          "node_id",
+          "neighbors"
+        ],
+        "title": "NeighborsOut"
+      },
+      "NodeOut": {
+        "properties": {
+          "node_id": {
+            "type": "integer",
+            "title": "Node Id"
+          },
+          "graph_version": {
+            "type": "string",
+            "title": "Graph Version"
+          },
+          "lon": {
+            "type": "number",
+            "title": "Lon"
+          },
+          "lat": {
+            "type": "number",
+            "title": "Lat"
+          },
+          "tags": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Tags"
+          }
+        },
+        "type": "object",
+        "required": [
+          "node_id",
+          "graph_version",
+          "lon",
+          "lat",
+          "tags"
+        ],
+        "title": "NodeOut"
+      },
+      "PointModel": {
+        "properties": {
+          "lat": {
+            "type": "number",
+            "maximum": 90.0,
+            "minimum": -90.0,
+            "title": "Lat"
+          },
+          "lon": {
+            "type": "number",
+            "maximum": 180.0,
+            "minimum": -180.0,
+            "title": "Lon"
+          }
+        },
+        "type": "object",
+        "required": [
+          "lat",
+          "lon"
+        ],
+        "title": "PointModel"
+      },
+      "Polygon": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "Polygon",
+            "title": "Type"
+          },
+          "coordinates": {
+            "items": {
+              "items": {
+                "items": {
+                  "type": "number"
+                },
+                "type": "array"
+              },
+              "type": "array"
+            },
+            "type": "array",
+            "title": "Coordinates",
+            "description": "Satu ring tertutup [lon, lat] WGS 84 (CRS84)"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "type",
+          "coordinates"
+        ],
+        "title": "Polygon"
+      },
+      "PreferenceIn": {
+        "properties": {
+          "alpha": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Alpha",
+            "description": "Bobot waktu tempuh α, 0–1"
+          },
+          "beta": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Beta",
+            "description": "Bobot paparan β, 0–1; α + β = 1"
+          }
+        },
+        "type": "object",
+        "required": [
+          "alpha",
+          "beta"
+        ],
+        "title": "PreferenceIn"
+      },
+      "PreferenceOut": {
+        "properties": {
+          "alpha": {
+            "type": "number",
+            "title": "Alpha"
+          },
+          "beta": {
+            "type": "number",
+            "title": "Beta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "alpha",
+          "beta"
+        ],
+        "title": "PreferenceOut"
+      },
+      "RoadGraphOut": {
+        "properties": {
+          "graph_version": {
+            "type": "string",
+            "title": "Graph Version"
+          },
+          "mode": {
+            "$ref": "#/components/schemas/Mode"
+          },
+          "bbox": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "title": "Bbox"
+          },
+          "node_count": {
+            "type": "integer",
+            "title": "Node Count"
+          },
+          "edge_count": {
+            "type": "integer",
+            "title": "Edge Count"
+          },
+          "rejected": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Rejected",
+            "description": "Rows left out by validation, per reason"
+          },
+          "nodes": {
+            "items": {
+              "$ref": "#/components/schemas/GraphNodeOut"
+            },
+            "type": "array",
+            "title": "Nodes"
+          },
+          "edges": {
+            "items": {
+              "$ref": "#/components/schemas/GraphEdgeOut"
+            },
+            "type": "array",
+            "title": "Edges"
+          }
+        },
+        "type": "object",
+        "required": [
+          "graph_version",
+          "mode",
+          "bbox",
+          "node_count",
+          "edge_count",
+          "rejected",
+          "nodes",
+          "edges"
+        ],
+        "title": "RoadGraphOut"
+      },
+      "RouteFeature": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "Feature",
+            "title": "Type"
+          },
+          "geometry": {
+            "$ref": "#/components/schemas/LineString"
+          },
+          "properties": {
+            "$ref": "#/components/schemas/RouteProperties"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "type",
+          "geometry",
+          "properties"
+        ],
+        "title": "RouteFeature"
+      },
+      "RouteFeatureCollection": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "FeatureCollection",
+            "title": "Type"
+          },
+          "features": {
+            "items": {
+              "$ref": "#/components/schemas/RouteFeature"
+            },
+            "type": "array",
+            "maxItems": 2,
+            "minItems": 2,
+            "title": "Features"
+          },
+          "metadata": {
+            "$ref": "#/components/schemas/RouteMetadata"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "type",
+          "features",
+          "metadata"
+        ],
+        "title": "RouteFeatureCollection",
+        "description": "GeoJSON FeatureCollection (RFC 7946, Kode 3.2): Feature recommended lalu comparison."
+      },
+      "RouteMetadata": {
+        "properties": {
+          "request_id": {
+            "type": "string",
+            "title": "Request Id"
+          },
+          "mode": {
+            "$ref": "#/components/schemas/Mode"
+          },
+          "pollutant": {
+            "type": "string",
+            "enum": [
+              "pm25",
+              "no2"
+            ],
+            "title": "Pollutant",
+            "description": "Polutan acuan untuk exposure_ug_min_m3"
+          },
+          "preference": {
+            "$ref": "#/components/schemas/PreferenceOut"
+          },
+          "route_source": {
+            "type": "string",
+            "enum": [
+              "policy",
+              "baseline"
+            ],
+            "title": "Route Source"
+          },
+          "preference_applied": {
+            "type": "boolean",
+            "title": "Preference Applied"
+          },
+          "fallback_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fallback Reason",
+            "description": "null bila rute rekomendasi dari model. Saat fallback: model_timeout, model_unavailable, model_error, model_invalid_response, model_no_route; policy_unavailable bila penyedianya baseline"
+          },
+          "time_window_start": {
+            "type": "string",
+            "title": "Time Window Start",
+            "description": "Awal time window polusi (ISO 8601, UTC)"
+          },
+          "data_stale": {
+            "type": "boolean",
+            "title": "Data Stale",
+            "description": "true bila time window terakhir berakhir lebih dari 3 jam lalu"
+          },
+          "missing_edge_count": {
+            "type": "integer",
+            "title": "Missing Edge Count",
+            "description": "Ruas subgraf tanpa estimasi polusi"
+          },
+          "graph_version": {
+            "type": "string",
+            "title": "Graph Version",
+            "description": "Versi road graph OSM Cache DB"
+          },
+          "model_version": {
+            "$ref": "#/components/schemas/ModelVersion"
+          },
+          "solver": {
+            "type": "string",
+            "title": "Solver",
+            "description": "Penyedia yang menghasilkan rute: mock, baseline, atau http"
+          },
+          "comparison": {
+            "$ref": "#/components/schemas/ComparisonSummary"
+          },
+          "notes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Notes",
+            "description": "Keterangan untuk pengguna: fallback, data kedaluwarsa, ruas tanpa estimasi"
+          },
+          "crs": {
+            "type": "string",
+            "const": "urn:ogc:def:crs:OGC::CRS84",
+            "title": "Crs",
+            "description": "Sistem acuan koordinat (RFC 7946: WGS 84)"
+          },
+          "coordinate_order": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "lon",
+                "lat"
+              ]
+            },
+            "type": "array",
+            "title": "Coordinate Order",
+            "description": "Urutan sumbu koordinat: [lon, lat]"
+          },
+          "units": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Units",
+            "description": "Satuan setiap metrik numerik pada properties dan metadata.comparison"
+          },
+          "exposure_index_definition": {
+            "type": "string",
+            "title": "Exposure Index Definition"
+          },
+          "disclaimer": {
+            "type": "string",
+            "title": "Disclaimer"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "request_id",
+          "mode",
+          "pollutant",
+          "preference",
+          "route_source",
+          "preference_applied",
+          "fallback_reason",
+          "time_window_start",
+          "data_stale",
+          "missing_edge_count",
+          "graph_version",
+          "model_version",
+          "solver",
+          "comparison",
+          "notes",
+          "crs",
+          "coordinate_order",
+          "units",
+          "exposure_index_definition",
+          "disclaimer"
+        ],
+        "title": "RouteMetadata"
+      },
+      "RouteProperties": {
+        "properties": {
+          "role": {
+            "type": "string",
+            "enum": [
+              "recommended",
+              "comparison"
+            ],
+            "title": "Role",
+            "description": "recommended = rute rekomendasi; comparison = rute tercepat sebagai pembanding"
+          },
+          "route_source": {
+            "type": "string",
+            "enum": [
+              "policy",
+              "baseline"
+            ],
+            "title": "Route Source",
+            "description": "policy = hasil Multi-Objective Route Model; baseline = rute tercepat (A*)"
+          },
+          "preference_applied": {
+            "type": "boolean",
+            "title": "Preference Applied",
+            "description": "Apakah preferensi α/β diterapkan; selalu false untuk baseline"
+          },
+          "travel_time_min": {
+            "type": "number",
+            "title": "Travel Time Min",
+            "description": "T(R), menit"
+          },
+          "distance_m": {
+            "type": "number",
+            "title": "Distance M",
+            "description": "Panjang rute, meter"
+          },
+          "exposure_index_min": {
+            "type": "number",
+            "title": "Exposure Index Min",
+            "description": "E(R) = Σ Iₑ·τₑ, indeks·menit"
+          },
+          "exposure_ug_min_m3": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exposure Ug Min M3",
+            "description": "Σ konsentrasi polutan acuan · τₑ, µg·min/m³; null bila ada ruas tanpa konsentrasi"
+          },
+          "concentration_coverage": {
+            "type": "number",
+            "title": "Concentration Coverage",
+            "description": "Bagian ruas yang memiliki konsentrasi, 0–1"
+          },
+          "confidence_score": {
+            "type": "number",
+            "title": "Confidence Score",
+            "description": "Rata-rata confidence ruas berbobot paparan, 0–1"
+          },
+          "imputed_edge_count": {
+            "type": "integer",
+            "title": "Imputed Edge Count",
+            "description": "Jumlah ruas yang indeksnya diisi median wilayah"
+          },
+          "edge_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Edge Ids",
+            "description": "Urutan edge_id OSM Cache DB dari asal ke tujuan"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "role",
+          "route_source",
+          "preference_applied",
+          "travel_time_min",
+          "distance_m",
+          "exposure_index_min",
+          "exposure_ug_min_m3",
+          "concentration_coverage",
+          "confidence_score",
+          "imputed_edge_count",
+          "edge_ids"
+        ],
+        "title": "RouteProperties"
+      },
+      "RouteRequestIn": {
+        "properties": {
+          "origin": {
+            "$ref": "#/components/schemas/PointModel"
+          },
+          "destination": {
+            "$ref": "#/components/schemas/PointModel"
+          },
+          "mode": {
+            "$ref": "#/components/schemas/Mode"
+          },
+          "pollutant": {
+            "type": "string",
+            "enum": [
+              "pm25",
+              "no2"
+            ],
+            "title": "Pollutant",
+            "description": "Polutan untuk concentration_ugm3 per ruas",
+            "default": "pm25"
+          },
+          "preference": {
+            "$ref": "#/components/schemas/PreferenceIn"
+          }
+        },
+        "type": "object",
+        "required": [
+          "origin",
+          "destination",
+          "mode",
+          "preference"
+        ],
+        "title": "RouteRequestIn",
+        "description": "RouteRequest (Tabel 3.3, Kode 3.1)."
+      },
+      "StreetOut": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "segments": {
+            "type": "integer",
+            "title": "Segments"
+          },
+          "total_m": {
+            "type": "number",
+            "title": "Total M"
+          },
+          "center": {
+            "$ref": "#/components/schemas/PointModel"
+          },
+          "bbox": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "number"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bbox",
+            "description": "[min_lon, min_lat, max_lon, max_lat]"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "segments",
+          "total_m",
+          "center",
+          "bbox"
+        ],
+        "title": "StreetOut"
+      },
+      "StreetsOut": {
+        "properties": {
+          "graph_version": {
+            "type": "string",
+            "title": "Graph Version"
+          },
+          "query": {
+            "type": "string",
+            "title": "Query"
+          },
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/StreetOut"
+            },
+            "type": "array",
+            "title": "Results"
+          }
+        },
+        "type": "object",
+        "required": [
+          "graph_version",
+          "query",
+          "results"
+        ],
+        "title": "StreetsOut"
+      },
+      "SubgraphOut": {
+        "properties": {
+          "graph_version": {
+            "type": "string",
+            "title": "Graph Version"
+          },
+          "mode": {
+            "$ref": "#/components/schemas/Mode"
+          },
+          "bbox": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "title": "Bbox"
+          },
+          "origin_node": {
+            "type": "integer",
+            "title": "Origin Node"
+          },
+          "destination_node": {
+            "type": "integer",
+            "title": "Destination Node"
+          },
+          "origin_snap_distance_m": {
+            "type": "number",
+            "title": "Origin Snap Distance M"
+          },
+          "destination_snap_distance_m": {
+            "type": "number",
+            "title": "Destination Snap Distance M"
+          },
+          "node_count": {
+            "type": "integer",
+            "title": "Node Count"
+          },
+          "edge_count": {
+            "type": "integer",
+            "title": "Edge Count"
+          },
+          "rejected": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Rejected",
+            "description": "Rows left out by validation while reading the bbox, per reason"
+          },
+          "graph": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RoadGraphOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "graph_version",
+          "mode",
+          "bbox",
+          "origin_node",
+          "destination_node",
+          "origin_snap_distance_m",
+          "destination_snap_distance_m",
+          "node_count",
+          "edge_count",
+          "rejected"
+        ],
+        "title": "SubgraphOut"
+      },
+      "SubgraphRequest": {
+        "properties": {
+          "origin": {
+            "$ref": "#/components/schemas/PointModel"
+          },
+          "destination": {
+            "$ref": "#/components/schemas/PointModel"
+          },
+          "mode": {
+            "$ref": "#/components/schemas/Mode"
+          },
+          "buffer_m": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 10000.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Buffer M",
+            "description": "Default max(500 m, 25% of distance)"
+          },
+          "include_graph": {
+            "type": "boolean",
+            "title": "Include Graph",
+            "description": "Also return the subgraph nodes and edges",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "origin",
+          "destination",
+          "mode"
+        ],
+        "title": "SubgraphRequest"
+      },
+      "SurfaceFeatureCollection": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "FeatureCollection",
+            "title": "Type"
+          },
+          "features": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/EdgeSurfaceFeature"
+                },
+                "type": "array"
+              },
+              {
+                "items": {
+                  "$ref": "#/components/schemas/CellSurfaceFeature"
+                },
+                "type": "array"
+              }
+            ],
+            "title": "Features"
+          },
+          "metadata": {
+            "$ref": "#/components/schemas/SurfaceMetadata"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "type",
+          "features",
+          "metadata"
+        ],
+        "title": "SurfaceFeatureCollection",
+        "description": "GeoJSON FeatureCollection (RFC 7946): ruas (LineString) atau sel grid (Polygon)."
+      },
+      "SurfaceMetadata": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "edge",
+              "grid"
+            ],
+            "title": "Kind",
+            "description": "edge untuk zoom ≥ 14, grid untuk zoom < 14"
+          },
+          "zoom": {
+            "type": "integer",
+            "title": "Zoom"
+          },
+          "layer": {
+            "type": "string",
+            "enum": [
+              "combined",
+              "pm25",
+              "no2"
+            ],
+            "title": "Layer",
+            "description": "Lapisan yang diminta; semua nilai tetap dikirim sehingga lapisan dapat diganti tanpa request baru"
+          },
+          "bbox": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "title": "Bbox",
+            "description": "bbox yang diminta: min_lon, min_lat, max_lon, max_lat"
+          },
+          "cell_size_m": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cell Size M",
+            "description": "Ukuran sel grid, meter (250, 500, atau 1000); null untuk kind edge"
+          },
+          "aggregation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Aggregation",
+            "description": "Cara agregasi sel; null untuk kind edge"
+          },
+          "feature_count": {
+            "type": "integer",
+            "title": "Feature Count"
+          },
+          "time_window_start": {
+            "type": "string",
+            "title": "Time Window Start",
+            "description": "ISO 8601, UTC"
+          },
+          "time_window_end": {
+            "type": "string",
+            "title": "Time Window End",
+            "description": "ISO 8601, UTC"
+          },
+          "data_stale": {
+            "type": "boolean",
+            "title": "Data Stale"
+          },
+          "graph_version": {
+            "type": "string",
+            "title": "Graph Version"
+          },
+          "model_version": {
+            "$ref": "#/components/schemas/SurfaceModelVersion"
+          },
+          "crs": {
+            "type": "string",
+            "const": "urn:ogc:def:crs:OGC::CRS84",
+            "title": "Crs"
+          },
+          "coordinate_order": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "lon",
+                "lat"
+              ]
+            },
+            "type": "array",
+            "title": "Coordinate Order"
+          },
+          "units": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Units",
+            "description": "Satuan setiap properti numerik"
+          },
+          "exposure_index_definition": {
+            "type": "string",
+            "title": "Exposure Index Definition"
+          },
+          "exposure_index_classes": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "title": "Exposure Index Classes",
+            "description": "Batas kelas skala warna heatmap (Subbab 3.1)"
+          },
+          "disclaimer": {
+            "type": "string",
+            "title": "Disclaimer"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "kind",
+          "zoom",
+          "layer",
+          "bbox",
+          "cell_size_m",
+          "aggregation",
+          "feature_count",
+          "time_window_start",
+          "time_window_end",
+          "data_stale",
+          "graph_version",
+          "model_version",
+          "crs",
+          "coordinate_order",
+          "units",
+          "exposure_index_definition",
+          "exposure_index_classes",
+          "disclaimer"
+        ],
+        "title": "SurfaceMetadata",
+        "description": "Tanpa request_id: body yang sama dapat dipakai ulang dari cache untuk permintaan lain\n(ID permintaan ada di header X-Request-ID)."
+      },
+      "SurfaceModelVersion": {
+        "properties": {
+          "downscaling": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Downscaling"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "downscaling"
+        ],
+        "title": "SurfaceModelVersion"
+      },
+      "WindowOut": {
+        "properties": {
+          "time_window_start": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Time Window Start"
+          },
+          "time_window_end": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Time Window End"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "description": "writing atau complete; hanya complete yang dibaca"
+          },
+          "pollutant": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pollutant"
+          },
+          "coverage_ratio": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Coverage Ratio"
+          },
+          "model_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Version"
+          },
+          "completed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "time_window_start",
+          "time_window_end",
+          "status",
+          "pollutant",
+          "coverage_ratio",
+          "model_version",
+          "completed_at"
+        ],
+        "title": "WindowOut"
+      },
+      "WindowsOut": {
+        "properties": {
+          "latest_complete": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WindowOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "data_stale": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data Stale",
+            "description": "null bila belum ada time window complete"
+          },
+          "age_minutes": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Age Minutes",
+            "description": "Menit sejak akhir time window complete terakhir"
+          },
+          "windows": {
+            "items": {
+              "$ref": "#/components/schemas/WindowOut"
+            },
+            "type": "array",
+            "title": "Windows"
+          }
+        },
+        "type": "object",
+        "required": [
+          "latest_complete",
+          "data_stale",
+          "age_minutes",
+          "windows"
+        ],
+        "title": "WindowsOut"
+      }
+    }
+  }
+}

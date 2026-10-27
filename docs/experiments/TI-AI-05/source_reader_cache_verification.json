@@ -1,0 +1,96 @@
+{
+  "verified_on": "2026-10-27",
+  "dataset": "ds-v0.3.0",
+  "baseline_revision": "f3e0b78",
+  "source_sha256": "c7362e421cc4c837752bb12a8b24070a49e3e85f00887e65de56465609d7b3c3",
+  "platform": "Windows-10-10.0.26200-SP0",
+  "python": "3.11.14",
+  "scope": "Eight 24-hour feature requests over four real-data tiles (halo and interior), with 76 shared grid cells emulating sensor locations. No model execution or full-city runtime measurement.",
+  "source_parquet_files": 46,
+  "feature_frames_exactly_equal": true,
+  "frame_hashes": [
+    "63efb7028e955215c876d50f53511010bf38247581f7e61e22dd6168961508e6",
+    "de9d9873dde496d41832482d29ac80d587927f7b02d4237877c8d9c3c2b661cd",
+    "afde5ed80ad4a9f9c59aa40e2aacc6545635944a10a3339c01b987005046dd56",
+    "d3d3de87245f582255ee827004c578a6dd6f9d03b097f60511b1c1a6d50ef42d",
+    "fc208db481385deaa11b721aadcfa0140901119f752a9cf6cbab50219c801814",
+    "f0638949cc8c547c3a8412faeda09f7fd52082e50c1f5f0111b9ddfa27bbcce7",
+    "47b92bbc152cbd8ea9ceab37f7bd5f25324976631eae26fa3f463423523ec2fe",
+    "b53ef13eb5854fa62b6f1f622a18c8ee8435c425f6c3cdef56cf10fb2871b4dd"
+  ],
+  "before": {
+    "requests": 8,
+    "parquet_reads": 368,
+    "seconds": [
+      2.3726827000009507,
+      1.6419783999990614,
+      1.5709391000000323,
+      1.632694400001128,
+      1.485084399999323,
+      1.5686255000000529,
+      1.4501166000009107,
+      1.5084157999990566
+    ],
+    "total_seconds": 13.230536900000516,
+    "rss_mb": 839.63671875
+  },
+  "after": {
+    "requests": 8,
+    "parquet_reads": 46,
+    "seconds": [
+      11.96125260000008,
+      0.19638149999991583,
+      0.2707332999998471,
+      0.163276199999018,
+      0.1989341999997123,
+      0.2924704999986716,
+      0.25502720000076806,
+      0.20279889999983425
+    ],
+    "total_seconds": 13.540874399997847,
+    "rss_mb": 1192.88671875,
+    "peak_rss_mb": 1480.22265625,
+    "source_tables_mb": 364.19741439819336
+  },
+  "warm_mean_speedup": 6.873704959006589,
+  "reads_per_source_before": [
+    8
+  ],
+  "reads_per_source_after": [
+    1
+  ],
+  "tests": {
+    "worker_with_local_postgis": {
+      "passed": 236,
+      "skipped": 0,
+      "seconds": 143.65
+    },
+    "final_source_cache_regressions": {
+      "passed": 8,
+      "seconds": 7.94
+    }
+  },
+  "limitations": [
+    "Single local run; OS filesystem caches were not reset.",
+    "First request loads the full projected source snapshot and is slower.",
+    "RSS measures the entire process; table memory is a pandas deep estimate, not an independent process budget.",
+    "Measurements exclude model computation, registry downloads, road aggregation and cache writes."
+  ],
+  "post_merge": {
+    "dev_revision": "eeb99c3",
+    "source_sha256": "283c110b30bf0e0dea66872b03f2e1bb59dbe726b7a15c6ed8073e2b1f10347b",
+    "feature_frames_exactly_equal": true,
+    "parquet_reads": 46,
+    "worker_tests": {
+      "passed": 331,
+      "skipped": 0,
+      "seconds": 256.83
+    },
+    "additional_regression": "StoreSourceReader reuses a snapshot across tiles within a window and reloads on window change.",
+    "test_environment_updates": [
+      "Installed dev-required h5py 3.16.0 and rasterio 1.4.4 locally.",
+      "Aligned the existing catalog test clock after reproducing its failure on unchanged dev.",
+      "Used signal.raise_signal in the existing SIGTERM handler test for Windows portability."
+    ]
+  }
+}

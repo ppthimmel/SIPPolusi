@@ -18,11 +18,17 @@ def compute_deadline(received_at: datetime, now: datetime, budget_ms: int = 8000
 
 
 def parse_received_at(value: str | None) -> datetime | None:
-    """X-Request-Received-At from the API Gateway (ISO 8601); None when absent or invalid."""
+    """X-Request-Received-At from the API Gateway: epoch seconds (NGINX $msec, e.g.
+    "1793017500.729") or ISO 8601; None when absent or invalid."""
     if not value:
         return None
+    value = value.strip()
     try:
-        parsed = datetime.fromisoformat(value.strip().replace("Z", "+00:00"))
+        return datetime.fromtimestamp(float(value), tz=timezone.utc)
+    except (ValueError, OverflowError, OSError):
+        pass
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
     except ValueError:
         return None
     return parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)

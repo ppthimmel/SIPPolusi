@@ -1,0 +1,197 @@
+{
+  "status": "passed",
+  "dataset": "ds-v0.3.0",
+  "registered_versions": {
+    "pm25": {
+      "name": "spatial-downscaling-pm25",
+      "version": "7",
+      "run_id": "f98ffe3fa9de460dab45f225ade22c6e"
+    },
+    "no2": {
+      "name": "spatial-downscaling-no2",
+      "version": "7",
+      "run_id": "4f148235c37e4856b6638387c7609b94"
+    }
+  },
+  "window_start": "2026-09-29T11:00:00+00:00",
+  "grid_cells": 2,
+  "run": {
+    "run_id": "20260929T1100Z-spatial-94a6d4803feb4b5818b69a2b7a41e9dab5a7f6c732b35c00af506f754e061a9e-ddb3045bdedb-50e298cf",
+    "status": "complete",
+    "time_window_start": "2026-09-29 11:00:00+00:00",
+    "model_version": "spatial-94a6d4803feb4b5818b69a2b7a41e9dab5a7f6c732b35c00af506f754e061a9e-ddb3045bdedb",
+    "estimation_source": "hybrid",
+    "coverage_ratio": 1.0,
+    "confidence_distribution": {
+      "n": 1,
+      "min": 0.3815585088742094,
+      "p25": 0.3815585088742094,
+      "median": 0.3815585088742094,
+      "p75": 0.3815585088742094,
+      "max": 0.3815585088742094,
+      "mean": 0.3815585088742094,
+      "low_lt_0_4": 1,
+      "medium_0_4_to_0_7": 0,
+      "high_ge_0_7": 0
+    },
+    "duration_s": 0.971,
+    "graph_version": "registered-model-verification",
+    "rows_written": 1,
+    "fallback_reason": null,
+    "artifacts": {},
+    "model_metadata": {
+      "pm25": {
+        "source": "idw_stgnn_residual",
+        "model_version": "spatial-downscaling-pm25:7",
+        "fallback_cells": 0
+      },
+      "no2": {
+        "source": "lightgbm",
+        "model_version": "spatial-downscaling-no2:7",
+        "fallback_cells": 0
+      }
+    },
+    "input_fingerprint": "0a2b6360ef9fd7be625248641eb1a40f08f07ce2e59d0af096a6b04e85084c5c"
+  },
+  "repeat_status": "skipped",
+  "backend_readback": {
+    "edge_id": 987654321,
+    "time_window_start": "2026-09-29 11:00:00+00:00",
+    "pm25_ugm3": 22.1675,
+    "no2_ugm3": 88.5067,
+    "exposure_index": 2.5091,
+    "confidence_score": 0.3816,
+    "background_source": null,
+    "estimation_source": "hybrid",
+    "graph_version": "registered-model-verification",
+    "model_version": "spatial-94a6d4803feb4b5818b69a2b7a41e9dab5a7f6c732b35c00af506f754e061a9e-ddb3045bdedb",
+    "written_at": "2026-10-27 04:50:40.836206+00:00",
+    "model_metadata": {
+      "no2": {
+        "source": "lightgbm",
+        "cell_sources": [
+          "lightgbm"
+        ],
+        "model_version": "spatial-downscaling-no2:7",
+        "fallback_cells": 0
+      },
+      "pm25": {
+        "source": "idw_stgnn_residual",
+        "cell_sources": [
+          "idw_stgnn_residual"
+        ],
+        "model_version": "spatial-downscaling-pm25:7",
+        "fallback_cells": 0
+      }
+    },
+    "trace_run_id": "20260929T1100Z-spatial-94a6d4803feb4b5818b69a2b7a41e9dab5a7f6c732b35c00af506f754e061a9e-ddb3045bdedb-50e298cf"
+  },
+  "durable_trace": {
+    "status": "available",
+    "edge_id": 987654321,
+    "time_window_start": "2026-09-29 11:00:00+00:00",
+    "run_id": "20260929T1100Z-spatial-94a6d4803feb4b5818b69a2b7a41e9dab5a7f6c732b35c00af506f754e061a9e-ddb3045bdedb-50e298cf",
+    "manifest": {
+      "unit": "ug/m3",
+      "settings": {
+        "qc": {
+          "exclude": [
+            {
+              "kode": "DKI_PM25_40",
+              "reason": "PM2.5 macet pada 32,00 sepanjang periode",
+              "pollutant": "pm25"
+            },
+            {
+              "kode": "DKI_PM25_33",
+              "reason": "PM2.5 macet pada 14,00 sejak 2026-09-19T10:00Z",
+              "pollutant": "pm25",
+              "since_utc": "2026-09-19T10:00:00Z"
+            }
+          ],
+          "sentinel_min": 999.99,
+          "max_value_ugm3": 2000.0,
+          "drop_nonpositive": true,
+          "require_clean_flag": true
+        },
+        "power": 2.0,
+        "cell_m": 100.0,
+        "neighbors": 8,
+        "config_sha256": "021c00fc375d7fa87dd87ce848c6db7c319308a0b4fced99bbd89fceb1130723"
+      },
+      "grid_spec": {
+        "nx": 2,
+        "ny": 1,
+        "x0": 711100,
+        "y0": 9319300,
+        "crs": "EPSG:32748",
+        "cell_m": 100.0
+      },
+      "confidence": {
+        "cap": 0.39,
+        "status": "provisional",
+        "length_scale_m": 3000.0
+      },
+      "aggregation": "sum(length_m * concentration) / sum(length_m) over finite values",
+      "grid_sha256": "8cb3e430c93ec6ea93b2419a48e5065b6d3b6700621ca759f7eb59adf8a9fc5c",
+      "graph_version": "registered-model-verification",
+      "model_version": "spatial-94a6d4803feb4b5818b69a2b7a41e9dab5a7f6c732b35c00af506f754e061a9e-ddb3045bdedb",
+      "pieces_sha256": "4c14d1d3229e40aac669a7ab1f19b4a6239b7de55b7c96bd6f6f0af00f2638d7",
+      "format_version": 1,
+      "model_metadata": {
+        "no2": {
+          "source": "lightgbm",
+          "model_version": "spatial-downscaling-no2:7",
+          "fallback_cells": 0
+        },
+        "pm25": {
+          "source": "idw_stgnn_residual",
+          "model_version": "spatial-downscaling-pm25:7",
+          "fallback_cells": 0
+        }
+      },
+      "time_window_end": "2026-09-29T12:00:00+00:00",
+      "input_fingerprint": "0a2b6360ef9fd7be625248641eb1a40f08f07ce2e59d0af096a6b04e85084c5c",
+      "time_window_start": "2026-09-29T11:00:00+00:00"
+    },
+    "trace_sha256": "cd5e119919a421f97216300d11891582e02a3baae151b2a5f50b30ecef7c2559",
+    "cells": [
+      {
+        "edge_id": 987654321,
+        "length_m": 90.00000000046565,
+        "run_id": "20260929T1100Z-spatial-94a6d4803feb4b5818b69a2b7a41e9dab5a7f6c732b35c00af506f754e061a9e-ddb3045bdedb-50e298cf",
+        "cell_id": 0,
+        "x": 711150.0,
+        "y": 9319350.0,
+        "pm25_ugm3": 22.191055297851562,
+        "no2_ugm3": 91.06612820309623,
+        "confidence_score": 0.38511777302320993,
+        "pm25_source": "idw_stgnn_residual",
+        "no2_source": "lightgbm"
+      },
+      {
+        "edge_id": 987654321,
+        "length_m": 90.00000000023284,
+        "run_id": "20260929T1100Z-spatial-94a6d4803feb4b5818b69a2b7a41e9dab5a7f6c732b35c00af506f754e061a9e-ddb3045bdedb-50e298cf",
+        "cell_id": 1,
+        "x": 711250.0,
+        "y": 9319350.0,
+        "pm25_ugm3": 22.14391326904297,
+        "no2_ugm3": 85.94718602180754,
+        "confidence_score": 0.37799924472519963,
+        "pm25_source": "idw_stgnn_residual",
+        "no2_source": "lightgbm"
+      }
+    ]
+  },
+  "reconstructed_concentrations": {
+    "pm25": 22.167484283447298,
+    "no2": 88.5066571124552
+  },
+  "optional_artifacts_enabled": false,
+  "limits": "Historical local replay on a small grid; not citywide accuracy or Railway deployment.",
+  "regression_checks": {
+    "worker_tests_passed": 228,
+    "backend_pollution_and_planner_tests_passed": 69,
+    "snapshot_files_verified": 26
+  }
+}

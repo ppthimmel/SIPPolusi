@@ -222,6 +222,23 @@ def check_availability_flags(batch):
             raise ValueError(f'{flag} inconsistent with missing {value}')
 
 
+def finalize_feature_batch(batch,static):
+    """Batch reader yang lolos pemeriksaan → baris ``features.parquet``.
+
+    ``static`` memuat ``node_index``, ``grid_id``, dan ``dist_nearest_sensor_m``.
+    Dipakai ekspor data latih dan FeatureMatrix Data Worker per time window.
+    """
+    batch=batch.drop(columns=['geoscf_no2_ppb',*ROAD_FEATURES],errors='ignore').merge(static,
+        on='grid_id',how='left',validate='many_to_one')
+    batch=add_availability_flags(batch)
+    check_availability_flags(batch)
+    batch=as_nullable_text(batch)
+    for column in [*TEMPORAL_VALUES,*TEMPORAL_AGES,*LAND_VALUES,*LAND_AGES,'lst_c','lst_c_age_hours',
+                   *SENSOR_FEATURES]:
+        batch[column]=batch[column].astype('float32')
+    return batch.sort_values(['time_utc','node_index']).reset_index(drop=True)
+
+
 def export_stgnn_inputs(nodes,edges,labels,reader,output_dir,
                         window=24,horizon_hours=0,chunk_hours=24,provenance=None,sensors=None):
     """Stream feature histories from the direct individual-dataset reader.
@@ -274,15 +291,7 @@ def export_stgnn_inputs(nodes,edges,labels,reader,output_dir,
             last=min(first+pd.Timedelta(hours=chunk_hours),end)
             batch=reader(nodes.grid_id.tolist(),first,last)
             check_grid_feature_batch(batch,nodes,first,last)
-            batch=batch.drop(columns=['geoscf_no2_ppb',*ROAD_FEATURES],errors='ignore').merge(static,
-                on='grid_id',how='left',validate='many_to_one')
-            batch=add_availability_flags(batch)
-            check_availability_flags(batch)
-            batch=as_nullable_text(batch)
-            for column in [*TEMPORAL_VALUES,*TEMPORAL_AGES,*LAND_VALUES,*LAND_AGES,'lst_c','lst_c_age_hours',
-                           *SENSOR_FEATURES]:
-                batch[column]=batch[column].astype('float32')
-            batch=batch.sort_values(['time_utc','node_index']).reset_index(drop=True)
+            batch=finalize_feature_batch(batch,static)
             table=pa.Table.from_pandas(batch,preserve_index=False)
             # Preserve nullable text dtypes without carrying arbitrary frame attrs.
             table=table.replace_schema_metadata({b'pandas':table.schema.metadata[b'pandas']})

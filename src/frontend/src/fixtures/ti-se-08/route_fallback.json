@@ -1,0 +1,163 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            106.8,
+            -6.2
+          ],
+          [
+            106.8,
+            -6.199
+          ],
+          [
+            106.801,
+            -6.199
+          ],
+          [
+            106.801,
+            -6.198
+          ],
+          [
+            106.802,
+            -6.198
+          ],
+          [
+            106.802,
+            -6.197
+          ],
+          [
+            106.803,
+            -6.197
+          ]
+        ]
+      },
+      "properties": {
+        "role": "recommended",
+        "route_source": "baseline",
+        "preference_applied": false,
+        "travel_time_min": 8.462,
+        "distance_m": 660.0,
+        "exposure_index_min": 30.5552,
+        "exposure_ug_min_m3": 578.202,
+        "concentration_coverage": 1.0,
+        "confidence_score": 0.3551,
+        "imputed_edge_count": 0,
+        "edge_ids": [
+          2,
+          8,
+          11,
+          17,
+          20,
+          24
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            106.8,
+            -6.2
+          ],
+          [
+            106.8,
+            -6.199
+          ],
+          [
+            106.801,
+            -6.199
+          ],
+          [
+            106.801,
+            -6.198
+          ],
+          [
+            106.802,
+            -6.198
+          ],
+          [
+            106.802,
+            -6.197
+          ],
+          [
+            106.803,
+            -6.197
+          ]
+        ]
+      },
+      "properties": {
+        "role": "comparison",
+        "route_source": "baseline",
+        "preference_applied": false,
+        "travel_time_min": 8.462,
+        "distance_m": 660.0,
+        "exposure_index_min": 30.5552,
+        "exposure_ug_min_m3": 578.202,
+        "concentration_coverage": 1.0,
+        "confidence_score": 0.3551,
+        "imputed_edge_count": 0,
+        "edge_ids": [
+          2,
+          8,
+          11,
+          17,
+          20,
+          24
+        ]
+      }
+    }
+  ],
+  "metadata": {
+    "request_id": "contoh-route-fallback",
+    "mode": "walk",
+    "pollutant": "pm25",
+    "preference": {
+      "alpha": 0.5,
+      "beta": 0.5
+    },
+    "route_source": "baseline",
+    "preference_applied": false,
+    "fallback_reason": "model_error",
+    "time_window_start": "2026-10-26T12:00:00Z",
+    "data_stale": false,
+    "missing_edge_count": 0,
+    "graph_version": "v1",
+    "model_version": {
+      "downscaling": "idw-p2-k8",
+      "route_policy": "astar-baseline"
+    },
+    "solver": "baseline",
+    "comparison": {
+      "delta_travel_time_min": 0.0,
+      "delta_exposure_pct": 0.0
+    },
+    "notes": [
+      "Layanan model rute tidak dapat dipakai untuk permintaan ini; rute rekomendasi adalah rute tercepat (baseline) dan preferensi waktu-paparan tidak diterapkan."
+    ],
+    "crs": "urn:ogc:def:crs:OGC::CRS84",
+    "coordinate_order": [
+      "lon",
+      "lat"
+    ],
+    "units": {
+      "travel_time_min": "min",
+      "distance_m": "m",
+      "exposure_index_min": "index·min",
+      "exposure_ug_min_m3": "µg·min/m³",
+      "concentration_coverage": "fraction 0–1",
+      "confidence_score": "fraction 0–1",
+      "imputed_edge_count": "count",
+      "delta_travel_time_min": "min",
+      "delta_exposure_pct": "%"
+    },
+    "exposure_index_definition": "I = ½ · (PM2.5 / 15 + NO2 / 25), konsentrasi dalam µg/m³ dibagi pedoman WHO 2021 (rata-rata 24 jam); bila hanya satu polutan tersedia, I = PM2.5 / 15 atau NO2 / 25. Tanpa satuan; 1,0 = tepat pada pedoman.",
+    "disclaimer": "Estimasi konsentrasi polutan merupakan keluaran model, bukan hasil pengukuran langsung, dan dapat berbeda dari kondisi udara sebenarnya. Gunakan rute ini sebagai alat bantu keputusan."
+  }
+}
