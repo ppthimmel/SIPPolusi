@@ -1,7 +1,7 @@
 """POST /v1/routes/solver-input: the solver input built for a RouteRequest.
 
-Inspection endpoint for TI-SE-05. POST /v1/routes (TI-SE-08) will run the same
-planning and then call the Multi-Objective Route Model (TI-SE-06).
+Inspection endpoint for TI-SE-05. The public POST /v1/routes (public_api, TI-SE-08)
+runs the same planning and then the solver (TI-SE-06).
 """
 from __future__ import annotations
 

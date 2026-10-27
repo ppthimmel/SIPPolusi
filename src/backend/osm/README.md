@@ -15,8 +15,9 @@ Aplikasi `osm.app` adalah **Cache API** yang juga menyajikan `/v1/pollution` (Sp
 Pollution Cache DB) dari modul [`../pollution`](../pollution/README.md),
 `/v1/routes/solver-input` (TI-SE-05) dari modul [`../planner`](../planner/README.md), dan
 `/v1/routes/solve` (TI-SE-06) serta `/v1/routes/plan` (GeoJSON, TI-SE-07) dari modul
-[`../solver`](../solver/README.md). Kedua modul memakai
-pool koneksi dan skema galat yang sama. Bukti TI-SE-04 ada di
+[`../solver`](../solver/README.md), serta API publik `POST /v1/routes` dan
+`GET /v1/exposure-surface` (TI-SE-08) dari modul [`../public_api`](../public_api/README.md).
+Semua modul memakai pool koneksi dan skema galat yang sama. Bukti TI-SE-04 ada di
 [`../pollution/VERIFICATION.md`](../pollution/VERIFICATION.md).
 
 ## Menjalankan dan menguji
@@ -122,15 +123,15 @@ Semua perintah Docker di bawah memakai path dari **root repo**. Kalau terminal m
    docker run --rm sippolusi-backend-osm-test   # tanpa DB
    ```
 
-   Container menjalankan tes `osm`, `pollution`, `planner`, lalu `solver`, jadi ada empat baris
-   hasil:
+   Container menjalankan tes `osm`, `pollution`, `planner`, `solver`, lalu `public_api`, jadi ada
+   lima baris hasil:
 
-   | Perintah | `osm` | `pollution` | `planner` | `solver` |
-   |---|---|---|---|---|
-   | dengan `--env-file` | 115 passed | 20 passed, 10 skipped | 35 passed, 2 skipped | 65 passed, 6 skipped |
-   | tanpa DB | 100 passed, 15 skipped | 20 passed, 10 skipped | 35 passed, 2 skipped | 65 passed, 6 skipped |
+   | Perintah | `osm` | `pollution` | `planner` | `solver` | `public_api` |
+   |---|---|---|---|---|---|
+   | dengan `--env-file` | 115 passed | 20 passed, 10 skipped | 35 passed, 2 skipped | 93 passed, 6 skipped | 119 passed, 7 skipped |
+   | tanpa DB | 100 passed, 15 skipped | 20 passed, 10 skipped | 35 passed, 2 skipped | 93 passed, 6 skipped | 119 passed, 7 skipped |
 
-   Tes `pollution`, `planner`, dan `solver` yang dilewati adalah uji alur tulis → baca; uji ini butuh
+   Tes `pollution`, `planner`, `solver`, dan `public_api` yang dilewati adalah uji alur tulis → baca; uji ini butuh
    database uji lokal dan kode Data Worker, jadi dijalankan di luar container (lihat
    [`../pollution/README.md`](../pollution/README.md)).
 
@@ -410,7 +411,8 @@ Konfigurasi dibaca dari environment, lalu dari `src/backend/.env`.
 | `OSM_WALK_SPEED_MPS` / `OSM_BIKE_SPEED_MPS` | `1.3` / `4.2` | Kecepatan `ModeProfile`. |
 
 Pengaturan penyedia solver dan batas latensi (`ROUTE_SOLVER_*`) ada di
-[`../solver/README.md`](../solver/README.md#konfigurasi).
+[`../solver/README.md`](../solver/README.md#konfigurasi); batas ukuran body, batas bbox heatmap,
+dan CORS (`API_*`) ada di [`../public_api/README.md`](../public_api/README.md#konfigurasi).
 
 Setiap sesi database dibuka dengan `default_transaction_read_only = on`. Ini mencegah kode
 Backend menulis secara tidak sengaja, tetapi **bukan batas keamanan**: nilai itu hanya bawaan

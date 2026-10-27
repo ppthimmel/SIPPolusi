@@ -107,7 +107,10 @@ expect_route() {
     status=$(curl -s -X "$1" -o /tmp/body -D /tmp/headers -w '%{http_code}' "http://127.0.0.1:$PORT$2")
     body=$(cat /tmp/body)
     request_id=$(grep -i '^x-request-id:' /tmp/headers | tr -d '\r' | cut -d' ' -f2)
-    if [ "$status" != "$3" ]; then
+    id_headers=$(grep -ci '^x-request-id:' /tmp/headers)
+    if [ "$id_headers" != 1 ]; then
+        fail "$1 $2: $id_headers X-Request-ID headers, want exactly 1"
+    elif [ "$status" != "$3" ]; then
         fail "$1 $2: HTTP $status, want $3 ($body)"
     elif [ "${body#"$4"}" = "$body" ]; then
         fail "$1 $2: body '$body', want prefix '$4'"
@@ -124,13 +127,56 @@ expect_route() {
 }
 
 expect_route GET  /healthz                       200 '{"status":"ok","service":"gateway"}'
-expect_route POST /v1/routes                     200 'backend /v1/routes '
+expect_route POST /v1/routes                     200 'cache_api /v1/routes '
+expect_route GET  '/v1/exposure-surface?bbox=106.8,-6.2,106.81,-6.19&zoom=15' 200 'cache_api /v1/exposure-surface?bbox=106.8,-6.2,106.81,-6.19&zoom=15 '
+expect_route POST /v1/routes/solve               200 'backend /v1/routes/solve '
 expect_route GET  /v1/osm/version                200 'cache_api /v1/osm/version '
 expect_route GET  '/v1/osm/roads?mode=walk'      200 'cache_api /v1/osm/roads?mode=walk '
 expect_route GET  /v1/pollution/windows          200 'cache_api /v1/pollution/windows '
 expect_route GET  /v1/other                      200 'backend /v1/other '
 expect_route GET  /health                        404 '{"error":{"code":"not_found"'
 expect_route GET  /                              404 '{"error":{"code":"not_found"'
+
+# The upstream receives when the gateway got the request (epoch seconds with ms).
+received_at=$(curl -s -X POST -o /dev/null -D - "http://127.0.0.1:$PORT/v1/routes" | grep -i '^x-seen-received-at:' | tr -d '\r' | cut -d' ' -f2)
+case "$received_at" in
+    [0-9]*.[0-9][0-9][0-9]) pass "X-Request-Received-At forwarded ($received_at)" ;;
+    *) fail "X-Request-Received-At not forwarded: '$received_at'" ;;
+esac
+
+# expect_json_error METHOD PATH STATUS CODE [curl args...]: NGINX's own errors use the uniform schema.
+expect_json_error() {
+    method=$1 path=$2 want_status=$3 want_code=$4
+    shift 4
+    status=$(curl -s -X "$method" -o /tmp/body -D /tmp/headers -w '%{http_code}' "$@" "http://127.0.0.1:$PORT$path")
+    body=$(cat /tmp/body)
+    request_id=$(grep -i '^x-request-id:' /tmp/headers | tr -d '\r' | cut -d' ' -f2)
+    content_type=$(grep -i '^content-type:' /tmp/headers | tr -d '\r' | cut -d' ' -f2)
+    case "$body" in
+        "{\"error\":{\"code\":\"$want_code\","*"\"request_id\":\"$request_id\"}}") ok=1 ;;
+        *) ok=0 ;;
+    esac
+    if [ "$status" != "$want_status" ] || [ "$ok" != 1 ] || [ "$content_type" != "application/json" ] || [ -z "$request_id" ]; then
+        fail "$method $path: HTTP $status $content_type '$body', want $want_status $want_code"
+    else
+        pass "$method $path -> HTTP $status $want_code (JSON)"
+    fi
+}
+
+head -c 20000 /dev/zero | tr '\0' 'x' > /tmp/big_body
+head -c 16000 /dev/zero | tr '\0' 'x' > /tmp/ok_body
+expect_json_error POST /v1/routes 413 payload_too_large --data-binary @/tmp/big_body -H 'Content-Type: application/json'
+status=$(curl -s -o /dev/null -w '%{http_code}' --data-binary @/tmp/ok_body "http://127.0.0.1:$PORT/v1/routes")
+[ "$status" = 200 ] && pass "POST /v1/routes with 16 000 bytes reaches the Cache API" || fail "16 000-byte body: HTTP $status"
+status=$(curl -s -o /dev/null -w '%{http_code}' --data-binary @/tmp/big_body "http://127.0.0.1:$PORT/v1/osm/subgraph")
+[ "$status" = 200 ] && pass "16 KiB limit applies to /v1/routes only" || fail "20 000 bytes to /v1/osm/subgraph: HTTP $status"
+
+# Without the stub upstreams, proxied paths get NGINX's 502 in the uniform schema.
+rm -f /etc/nginx/conf.d/zz-test-stubs.conf
+nginx -s reload
+sleep 0.5
+expect_json_error POST /v1/routes 502 upstream_unavailable
+expect_json_error GET /v1/osm/version 502 upstream_unavailable
 
 nginx -s quit
 rm -f /etc/nginx/conf.d/zz-test-stubs.conf /etc/nginx/conf.d/default.conf
