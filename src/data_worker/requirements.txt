@@ -17,3 +17,5 @@ pyproj>=3.6
 matplotlib>=3.8
 # FeatureMatrix ST-GNN (TI-AI-02): sel aktif grid 100 m
 shapely>=2.0
+# Konektor sumber sekunder (TI-SE-02): granule HDF5/NetCDF4 Sentinel-5P dan VIIRS
+h5py>=3.10

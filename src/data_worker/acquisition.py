@@ -7,9 +7,12 @@ import logging
 import os
 import pathlib
 import time
+import traceback
 from typing import Callable
 
+from connectors.http import scrub
 from contracts import JAKARTA_BBOX, TimeWindow
+from feature_store import steps as feature_steps
 from ground_truth import fetch_ground_truth
 from spku.config import Config
 
@@ -96,14 +99,16 @@ def _step_downscale_inference(time_window: TimeWindow, config: Config) -> dict:
 
 #: Langkah B2-B15 berurutan. ``None`` berarti belum diimplementasikan dan
 #: dicatat sebagai not_implemented, bukan galat, agar siklus tetap berjalan.
+#: Langkah bertanda ``uses_context`` menerima kamus konteks siklus sebagai
+#: argumen ketiga untuk meneruskan keluaran ke langkah berikutnya (Tabel 3.9).
 DEFAULT_STEPS: list[tuple[str, Step | None]] = [
-    ("fetch_satellite_archive", None),
-    ("fetch_tropospheric_column", None),
-    ("fetch_meteo", None),
+    ("fetch_satellite_archive", feature_steps.fetch_satellite_archive),
+    ("fetch_tropospheric_column", feature_steps.fetch_tropospheric_column),
+    ("fetch_meteo", feature_steps.fetch_meteo),
     ("fetch_ground_truth", _step_ground_truth),
-    ("run_quality_control", None),
-    ("align_spatiotemporal", None),
-    ("write_features", None),
+    ("run_quality_control", feature_steps.run_quality_control),
+    ("align_spatiotemporal", feature_steps.align_spatiotemporal),
+    ("write_features", feature_steps.write_features),
     ("trigger_downscale_inference", _step_downscale_inference),
 ]
 
@@ -114,6 +119,7 @@ def schedule_acquisition(
     config: Config | None = None,
     steps: list[tuple[str, Step | None]] | None = None,
     progress: Callable[[list[dict]], None] | None = None,
+    context: dict | None = None,
 ) -> dict:
     """Jalankan satu siklus akuisisi untuk ``time_window``.
 
@@ -121,19 +127,35 @@ def schedule_acquisition(
     satu langkah tidak menghentikan langkah berikutnya (UT-DW-01b, PF-14).
     ``progress`` (opsional) menerima daftar status langkah setelah setiap langkah,
     agar siklus yang dihentikan di tengah tetap meninggalkan catatan.
+    ``context`` (opsional) adalah kamus konteks siklus, mis. ``run_id``.
     """
     config = config or Config.load()
+    context = {} if context is None else context
     report: dict = {"time_window": str(time_window), "steps": []}
+    try:
+        _run_steps(time_window, config, steps, progress, context, report)
+    finally:
+        store = context.pop("feature_store", None)
+        if store is not None:
+            store.close()
+    report["failed"] = [s["step"] for s in report["steps"] if s["status"] == "failed"]
+    return report
+
+
+def _run_steps(time_window, config, steps, progress, context, report) -> None:
     for name, step in steps if steps is not None else DEFAULT_STEPS:
         started = time.monotonic()
         if step is None:
             entry = {"step": name, "status": "not_implemented"}
         else:
             try:
-                entry = {"step": name, **step(time_window, config)}
+                result = step(time_window, config, context) if getattr(step, "uses_context", False) \
+                    else step(time_window, config)
+                entry = {"step": name, **result}
             except Exception as exc:  # noqa: BLE001 - siklus tidak boleh berhenti
-                log.exception("langkah %s gagal", name)
-                entry = {"step": name, "status": "failed", "error": f"{type(exc).__name__}: {exc}"}
+                # Galat pustaka dapat memuat URL bertanda tangan; query dibuang dari log dan catatan siklus.
+                log.error("langkah %s gagal:\n%s", name, scrub("".join(traceback.format_exception(exc))))
+                entry = {"step": name, "status": "failed", "error": scrub(f"{type(exc).__name__}: {exc}")}
         entry["duration_s"] = round(time.monotonic() - started, 2)
         report["steps"].append(entry)
         level = logging.WARNING if entry["status"] in ("failed", "degraded", "unavailable") else logging.INFO
@@ -142,5 +164,3 @@ def schedule_acquisition(
                 if entry["status"] not in ("ok", "not_implemented") and (entry.get("note") or entry.get("error")) else "")
         if progress is not None:
             progress(report["steps"])
-    report["failed"] = [s["step"] for s in report["steps"] if s["status"] == "failed"]
-    return report

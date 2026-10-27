@@ -8,6 +8,7 @@ Perintah:
     python main.py check [--skip-db]     # pemeriksaan konfigurasi, impor modul, dan basis data
     python main.py status [--hours 24] [--json]   # eksekusi terjadwal: berhasil, terlambat, gagal, tidak ada
     python main.py spku collect|snapshot|health|export ...   # perintah kolektor SPKU
+    python main.py features status|fetch|seed|rebuild ...    # data sumber sekunder dan FeatureMatrix (TI-SE-02)
 
 Kode keluar ``cycle``/``serve``/``check``: 0 berhasil (siklus ``ok`` atau
 ``degraded``), 1 siklus atau pemeriksaan gagal (termasuk siklus yang dilewati
@@ -16,7 +17,9 @@ karena siklus lain masih berjalan, atau dihentikan sebelum selesai),
 Kode keluar ``status``: 0 sehat, 1 eksekusi terakhir gagal, 3 jadwal tidak
 berjalan (tidak ada eksekusi untuk time window yang sudah jatuh tempo).
 
-Setiap siklus dicatat pada tabel ``worker.cycle_run`` (lihat ``worker_runs.py``).
+Setiap siklus dicatat pada tabel ``worker.cycle_run`` (lihat ``worker_runs.py``);
+data sumber sekunder dan manifest FeatureMatrix pada skema ``features``
+(lihat ``feature_store/``).
 
 Di Railway, service ini dijalankan sebagai cron job ``15 * * * *`` dengan
 perintah ``python main.py cycle`` (lihat railway.json), sesuai Tabel 3.9:
@@ -152,7 +155,8 @@ def run_cycle(window: TimeWindow | None = None, *, trigger: str = "schedule",
         previous = signal.getsignal(signal.SIGTERM)
         signal.signal(signal.SIGTERM, _raise_interrupted)
         try:
-            report = schedule_acquisition(window, config=config, steps=steps, progress=progress)
+            report = schedule_acquisition(window, config=config, steps=steps, progress=progress,
+                                          context={"run_id": run_id})
         except BaseException as exc:
             note = str(exc) if isinstance(exc, CycleInterrupted) else f"{type(exc).__name__}: {exc}"
             recorder.finish(run_id, "failed", steps_so_far, note=note)
@@ -210,6 +214,10 @@ def main(argv: list[str] | None = None) -> int:
         from spku.cli import main as spku_main
 
         return spku_main(argv[1:])
+    if argv and argv[0] == "features":
+        from feature_store.cli import main as features_main
+
+        return features_main(argv[1:])
 
     parser = argparse.ArgumentParser(prog="data_worker", description="Data Worker SIPPolusi")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -227,6 +235,7 @@ def main(argv: list[str] | None = None) -> int:
     p_status.add_argument("--stuck-minutes", type=float, default=60,
                           help="siklus running lebih lama dari ini dianggap macet; bawaan 60")
     sub.add_parser("spku", help="perintah kolektor SPKU (collect, snapshot, health, export)")
+    sub.add_parser("features", help="data sumber sekunder dan FeatureMatrix (status, fetch, seed, rebuild)")
     args = parser.parse_args(argv)
 
     if args.command == "check":
