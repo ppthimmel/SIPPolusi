@@ -11,7 +11,7 @@
     "grid_crs": "EPSG:32748",
     "cell_m": 100,
     "grid": "445 x 445, kiri atas (676900, 9336600), ID rRRRR_cCCCC baris 0 di utara",
-    "study_area": "station.in_jakarta_bbox (106,68–106,98 BT; 6,38–6,08 LS)",
+    "study_area": "station.in_jakarta_bbox (106,68Ã¢â‚¬â€œ106,98 BT; 6,38Ã¢â‚¬â€œ6,08 LS)",
     "nodes": 936,
     "edges": 4174,
     "label_cells": 104
@@ -19,7 +19,7 @@
   "targets": {
     "pm25": {
       "column": "pm25_ugm3",
-      "unit": "µg/m³ (portal tidak menyatakan satuan; terverifikasi terhadap ISPU portal, scripts/check_ispu_units.py)",
+      "unit": "Ã‚Âµg/mÃ‚Â³ (portal tidak menyatakan satuan; terverifikasi terhadap ISPU portal, scripts/check_ispu_units.py)",
       "evaluation": [
         "fixed_split",
         "loso"
@@ -27,7 +27,7 @@
     },
     "no2": {
       "column": "no2_ugm3",
-      "unit": "µg/m³ (portal tidak menyatakan satuan; terverifikasi terhadap ISPU portal, scripts/check_ispu_units.py)",
+      "unit": "Ã‚Âµg/mÃ‚Â³ (portal tidak menyatakan satuan; terverifikasi terhadap ISPU portal, scripts/check_ispu_units.py)",
       "evaluation": [
         "loso"
       ]
@@ -127,7 +127,7 @@
   "split_rules": [
     "Grup stasiun: sel 100 m sama, jarak < 300 m (transitif), atau duplikat penyedia.",
     "Split stasiun per grup: urut strata (tipe stasiun, kota), acak dalam strata dengan seed, label posisi sistematis (systematic_labels).",
-    "PM2.5: split s = stasiun split s × blok s (blind ganda); baris lain tidak masuk split.",
+    "PM2.5: split s = stasiun split s Ãƒâ€” blok s (blind ganda); baris lain tidak masuk split.",
     "NO2: blok temporal untuk seluruh stasiun NO2; evaluasi spasial memakai fold LOSO per grup.",
     "Fitur berbasis sensor (dist_nearest_sensor_m) dari stasiun train; per fold LOSO tanpa grup yang ditahan."
   ],
@@ -306,28 +306,28 @@
   "separation": "Snapshot eksperimen immutable dan terversi; bukan cache operasional (pollution.* / ground_truth.* di PostgreSQL yang terus berubah).",
   "files": {
     "config.toml": {
-      "sha256": "00385aed9a66212ee19f1ba36dda51d147981cf37423c04200d91683139ec61f",
-      "bytes": 3080
+      "sha256": "0290531143f3a2230e16e1e5dd2ce4127a1ba747c1e55d9b45bf19a6ee541c33",
+      "bytes": 2658
     },
     "exclusion_rules.md": {
-      "sha256": "0a9d32ad54b8a8e6e80cc7d3b1d73b868c27aa814a03a78e2d7192d60d7c5e13",
-      "bytes": 3438
+      "sha256": "30f22859bc3ce1921c5e4638a2616ea8c97994856fbea8e34fee060a6a3545d3",
+      "bytes": 3469
     },
     "labels.parquet": {
       "sha256": "4d30c81321886029b6d1a17d710aeffae13fd917027e276f8371cd434569e351",
       "bytes": 257750
     },
     "leakage_report.json": {
-      "sha256": "e7479c863675ffb35467ba87d257e3351a11bce6d9340d862dcd5c2ea8086af4",
-      "bytes": 2907
+      "sha256": "e540e42b81e582b0bd75340b8fb2a5a6701c7993cccaeea6cdc686a3a7e80e5a",
+      "bytes": 2969
     },
     "leakage_report.md": {
-      "sha256": "e81e15693dfd67ca68946681fa73cda6d1f0b80de998706a3bcadd6c34b66c5b",
-      "bytes": 2149
+      "sha256": "8c08a63e618f4b01d78d9f4938c650823516cd84cc0ddf1b202c8d2a43b4d7aa",
+      "bytes": 2163
     },
     "normalization.json": {
-      "sha256": "15c020a190148a049018fcc66112005ffd159379373147f2390a1f1ff0eb7ddf",
-      "bytes": 9463
+      "sha256": "830eb4a21595fcefaa2bf91c6e92937e78b24ce7e33343d8adec9aa600c15fb4",
+      "bytes": 9797
     },
     "source/observation.parquet": {
       "sha256": "5916c436a389e6756aca745a1538663b335b57fd0f185201f2dc99c55ac127f2",
@@ -338,12 +338,12 @@
       "bytes": 16268
     },
     "split_spec.json": {
-      "sha256": "d00e772c611c74a7c1e6fb9365e291a1e59c65104f6cbcb3c474b377dd15b708",
-      "bytes": 22288
+      "sha256": "6e1703067471d38cb2ac7e5a99a84963b9b930a1889ac5451c39abb4ef52a500",
+      "bytes": 23174
     },
     "split_stats.md": {
-      "sha256": "4da219da09d509ee496c55743f992208a920ee5d477e0ea50a037660598ae469",
-      "bytes": 2043
+      "sha256": "84c91e0d61cbaa49a1d14c6f6a5a7ddd4c334e7c7d220c209413617baf1dc2b1",
+      "bytes": 2094
     },
     "splits/loso_folds.parquet": {
       "sha256": "a03f5fcc076e1eb4be66115cceedda2189626f4f939667e2174f2f83c2bbf964",
@@ -386,12 +386,13 @@
       "bytes": 26726
     },
     "stgnn/quality_report.json": {
-      "sha256": "cb76deaf3d388d6ac3dfe401fb9812aedc7b65c0643d6dbffff5819235e84f7f",
-      "bytes": 5659
+      "sha256": "88ea4c44530f234f39c47db79579cda1a0c9aa7e3ace24fe9708f533beb8366e",
+      "bytes": 5874
     },
     "stgnn/quality_report.md": {
-      "sha256": "bcc4f0df34803398c97664640ddc343bedc69cebc4f117c66b0c3de68ddd1cd7",
-      "bytes": 2842
+      "sha256": "9b48ba7e0cd8d1ddd149d2cc7371f88aa2fc7d8d55bf934fe5fa5ffb5bf7952c",
+      "bytes": 2905
     }
-  }
+  },
+  "documentation_cleanup": "Textual labels and documentation consolidated; Parquet observations, features, split keys and exclusion rules unchanged."
 }

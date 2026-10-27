@@ -148,8 +148,8 @@
     "weather_delay_hours": 8.0,
     "weather_run_interval_hours": 6,
     "snapshot": "ds-v0.3.0",
-    "sensor_set": "stasiun split train ds-v0.1.0",
-    "split_policy": "split = PM2.5 blind ganda ds-v0.1.0 (stasiun x blok); none = di luar split"
+    "sensor_set": "stasiun split train",
+    "split_policy": "split = PM2.5 blind ganda (stasiun x blok); none = di luar split"
   },
   "feature_rows": 424944,
   "feature_columns": [

@@ -54,8 +54,10 @@ log_format gateway_json escape=json
     '"upstream_status":"$upstream_status","upstream_duration_s":"$upstream_response_time"}';
 
 server {
-    # IPv4 is enough: only Railway's public edge connects to the gateway.
+    # IPv4 for Railway's public edge, IPv6 for the frontend, which reaches
+    # the gateway over private networking (gateway.railway.internal).
     listen ${PORT};
+    listen [::]:${PORT};
 
     access_log /dev/stdout gateway_json;
 

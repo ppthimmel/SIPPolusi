@@ -62,6 +62,7 @@ ENV_OVERRIDES = {
     "SPKU_DELAY_SECONDS": ("delay_seconds", float),
     "SPKU_TIMEOUT_SECONDS": ("timeout_seconds", int),
     "SPKU_RETRIES": ("retries", int),
+    "SPKU_BASE_URL": ("base_url", str),
 }
 
 
@@ -80,6 +81,8 @@ class Config:
     delay_seconds: float = 1.0
     timeout_seconds: int = 45
     retries: int = 3
+    #: Alamat portal. Diganti hanya untuk uji jalur gagal terhadap peladen tiruan.
+    base_url: str = "https://udara.jakarta.go.id"
     #: Lintasan dibatalkan bila stasiun yang berhasil diurai kurang dari
     #: proporsi ini terhadap daftar terakhir yang diketahui. Penjaga muatan
     #: kosong: pada 8 September 2026 portal mengembalikan HTTP 200 dengan nol

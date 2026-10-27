@@ -208,19 +208,31 @@ Railway membangun image dari GitHub, jadi kodenya harus sudah di-push ke branch 
    SIPPolusi*. Lalu atur:
    - **Branch:** branch yang berisi modul ini.
    - **Root Directory:** `src/backend`, karena image memuat `osm/`, `pollution/`, `planner/`, `solver/`, dan `route_model/`.
-   - **Dockerfile:** tambahkan variabel `RAILWAY_DOCKERFILE_PATH=osm/Dockerfile`. Tahap terakhir
-     Dockerfile adalah image runtime.
+   - **Dockerfile:** Settings → Build → *Dockerfile Path* `/src/backend/osm/Dockerfile` (atau
+     variabel `RAILWAY_DOCKERFILE_PATH` dengan nilai yang sama). Tahap terakhir Dockerfile adalah
+     image runtime.
+   - **Deploy:** *Healthcheck Path* `/health`, *Restart Policy* `On Failure` dengan 5 percobaan.
+     Isi di dashboard, bukan lewat berkas config: Railway menghentikan Config as Code (berkas
+     `railway.json` yang sudah dipakai masih berlaku sampai **1 Desember 2026**; sejak 28 Agustus
+     2026 service baru tidak bisa mengaktifkannya).
+   - **Catatan:** Railway otomatis membaca `src/backend/railway.json` (milik Backend) untuk
+     service ini karena Root Directory-nya sama. Berkas itu sengaja tidak memuat
+     `dockerfilePath`: bila ada, nilainya mengalahkan Dockerfile Path di atas dan service ini
+     menjalankan Backend, bukan Cache API (terlihat dari log `logger="backend"` dan 404
+     `{"detail": "Not Found"}` untuk `/v1/osm/*`).
 2. **Variables:** isi `DATABASE_URL` dengan referensi ke service database, misalnya
    `${{database.DATABASE_URL}}` (sesuaikan nama service). Referensi ini memakai URL privat
    `postgres.railway.internal`. Variabel `PORT` diisi otomatis oleh Railway.
-3. **Settings:** set *Healthcheck Path* ke `/health`. Untuk menguji dari luar, buat domain lewat
-   *Networking → Generate Domain*.
-4. Uji dari terminal laptop dengan perintah seperti A-5, tetapi alamatnya diganti domain Railway.
+3. **Networking:** jangan buat domain publik: Cache API hanya
+   dijangkau gateway lewat jaringan privat (TI-DO-04, `docs/devops/private-networking.md`).
+   Uji dari luar lewat gateway, `https://<gateway>/v1/osm/...`.
+4. Uji dari terminal laptop dengan perintah seperti A-5, tetapi alamatnya diganti domain publik
+   gateway (`<domain-railway>` di bawah).
    Coba juga perjalanan ±10 km, yang dari laptop kena 503 karena jaringan lambat. Di Railway
    hasilnya seharusnya 200:
 
    ```bash
-   curl -s https://<domain-railway>/health
+   curl -s https://<domain-railway>/v1/osm/version
    curl -s -X POST https://<domain-railway>/v1/osm/subgraph -H "Content-Type: application/json" \
         -d '{"origin":{"lat":-6.1754,"lon":106.8272},"destination":{"lat":-6.2654,"lon":106.8272},"mode":"walk"}'
    ```

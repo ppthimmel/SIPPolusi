@@ -76,7 +76,7 @@ def main():
 - Configuration is fixed across folds; no per-fold hyperparameter search.
 - GPU input caching is checked against original preprocessing before training each fold.
 - Complete artifacts/checkpoints: `{root.as_posix()}` (local; not committed).
-- Reproduce: `python run_stgnn_loso.py --all`; resume an interrupted batch with `--resume <run directory>`.
+- Training: `python -m spatial_model.training train pm25 --fold N`; source hashes describe the historical run.
 
 ## Pooled test metrics
 

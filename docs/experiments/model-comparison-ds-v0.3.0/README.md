@@ -252,48 +252,13 @@ IDW p = 2, k = 8 pada kunci yang sama (689 stasiun-jam test):
 
 ## Menjalankan ulang
 
-### Run ST-GNN lokal dengan GPU
+### Training model sistem
 
-`train_stgnn_ds_v0.3.0.ipynb` memuat kode mandiri IDW-residual ST-GNN, disesuaikan
-dengan seluruh fitur temporal ds-v0.3.0 (termasuk prakiraan GEOS-CF dan kalender).
-Sel pertama memuat jalur dataset/output dan pengaturan training. Run default adalah
-PM2.5 fixed split, seed 42, maksimum 100 epoch, early stopping patience 12,
-dan pemilihan checkpoint hanya berdasarkan RMSE validation; epoch nol adalah IDW.
-Fitur sensor mengecualikan seluruh grup target dari baseline dan receptive field GAT.
-
-```powershell
-D:/conda_envs/deep/python.exe docs/experiments/model-comparison-ds-v0.3.0/run_stgnn.py
-```
-
-Pada mesin ini environment `deep` memiliki PyTorch CUDA dan dipakai untuk RTX 3050.
-`run_stgnn.py` menyimpan versi runtime, hash notebook/runner/dataset, konfigurasi,
-progres tiap epoch, log, checkpoint terbaik, prediksi dan metrik kedua metode.
-Artefak lengkap berada di folder output yang dicetak oleh runner; default-nya
-`graphify-out/stgnn-ds-v0.3.0/`. `progress.pt` adalah checkpoint sementara jika training
-terhenti, sedangkan `best.pt` dibuat setelah training selesai. Checkpoint ini memakai
-format `idw_residual_v1` dan harus diinterpretasikan oleh notebook ini.
-Evaluasi test dijalankan sekali setelah pemilihan checkpoint. Dataset ini sudah pernah
-diperiksa dalam pengembangan, sehingga hasilnya tetap perbandingan eksploratif.
-
-Untuk LOSO PM2.5 lengkap di GPU:
-
-```powershell
-D:/conda_envs/deep/python.exe docs/experiments/model-comparison-ds-v0.3.0/run_stgnn_loso.py --all
-# Melanjutkan batch yang terhenti tanpa mengulang fold yang sudah selesai:
-D:/conda_envs/deep/python.exe docs/experiments/model-comparison-ds-v0.3.0/run_stgnn_loso.py --resume <folder-output-batch>
-# Ringkasan setelah seluruh fold selesai:
-D:/conda_envs/deep/python.exe docs/experiments/model-comparison-ds-v0.3.0/summarize_stgnn_loso.py <folder-output-batch>
-```
-
-Dataset mencantumkan 103 grup PM2.5, tetapi hanya **95 grup / 97 stasiun** mempunyai
-label pada blok test (4.358 observasi). Runner mengevaluasi seluruh 95 grup tersebut.
-Pada setiap fold, grup yang ditahan dikeluarkan dari label train **dan validation**,
-normalisasi dan seluruh sumber sensor. Checkpoint dipilih dari blok validation grup
-lain; hyperparameter model tidak dicari ulang per fold. Input tertransformasi disimpan
-di GPU dan dibandingkan persis dengan preprocessing jendela asli sebelum training.
-Agregasi membandingkan IDW p=2/k=8, IDW p=1/all dan IDW-ST-GNN pada kunci yang sama.
-`batch_manifest.json` mencatat cakupan dan status; hasil parsial tidak dianggap sebagai
-hasil LOSO lengkap. Sumber kode disimpan dan hash-nya diperiksa saat resume.
+Implementasi bersama berada di `src/data_worker/spatial_model`.
+Jalankan `python -m spatial_model.training train pm25 --snapshot <ds-v0.3.0> --out <run-baru> --device cuda` dari `src/data_worker`.
+Untuk NO₂, ganti `pm25` dengan `no2`. Notebook interaktif ada di `notebooks/spatial_model/`.
+Lihat [panduan model](../../../src/data_worker/spatial_model/README.md).
+Artefak dan konfigurasi eksperimen pada laporan di bawah merupakan bukti historis; training baru menghasilkan identitas run baru.
 
 ### Model pembanding
 

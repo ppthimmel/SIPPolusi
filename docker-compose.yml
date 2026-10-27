@@ -4,6 +4,8 @@
 # services (backend, cache_api). The frontend container hands its /v1/* to the
 # gateway unchanged (src/frontend/default.conf.template).
 # Build/start guide and smoke test: docs/devops/build-runtime.md.
+# Add -f docker-compose.private.yml to publish only the public entry points,
+# as on Railway (docs/devops/private-networking.md).
 services:
   postgres:
     image: postgis/postgis:16-3.4
@@ -96,6 +98,9 @@ services:
 
   data_worker:
     build: ./src/data_worker
+    volumes:
+      # Training inputs are excluded from the image; expose processed features read-only locally.
+      - ./src/data_worker/dataset_processed:/app/dataset_processed:ro
     restart: unless-stopped
     depends_on:
       postgres:

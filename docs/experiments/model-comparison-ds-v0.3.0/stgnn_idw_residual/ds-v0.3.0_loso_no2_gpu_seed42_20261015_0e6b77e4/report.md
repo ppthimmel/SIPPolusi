@@ -4,7 +4,7 @@
 - Seed 42; Colab GPU (CUDA); forecast and calendar inputs included; same notebook as the PM2.5 LOSO run (identical SHA-256).
 - Each held-out group is excluded from train labels, validation labels, feature fitting and every sensor input; checkpoint selection uses validation from the other groups.
 - Configuration fixed across folds; no hyperparameter search.
-- Runner: `runner/run_stgnn_loso.py` and `runner/run_stgnn.py` are the PM2.5 runners with `--target`, `--data`, `--out` and `--device` options and a git-free commit fallback; the training notebook is unchanged.
+- Historical run configuration and source hashes are recorded in the adjacent manifest. Maintained training entry points: `python -m spatial_model.training` and `notebooks/spatial_model/`.
 - Checkpoints and per-fold predictions are not committed (Colab Drive run folder).
 
 ## Pooled test metrics
