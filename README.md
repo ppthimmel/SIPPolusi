@@ -92,3 +92,41 @@ npm run dev
 ```
 
 `vite.config.ts` proxies `/v1/*` requests to `http://localhost:8000`.
+
+### Frontend against the real API
+
+`POST /v1/routes` and `GET /v1/exposure-surface` are served by the Cache API
+behind the API Gateway (TI-SE-08). Point the dev proxy at the gateway of the
+Compose stack:
+
+```bash
+cd src/frontend
+BACKEND_URL=http://localhost:8081 npm run dev
+```
+
+`src/frontend/src/contract.test.ts` checks the UI's parser against real
+responses of that API (`src/frontend/src/fixtures/ti-se-08/`).
+
+### Frontend with the mock API
+
+Every state (fallback, stale data, partial data, every error code, timeouts)
+can be reproduced on demand with a mock of the same contract (subbab 3.5.2:
+`POST /v1/routes`, `GET /v1/exposure-surface`, error codes of Tabel 3.16):
+
+```bash
+cd src/frontend
+npm run mock     # mock API on :8000 (stop the Compose backend first)
+npm run dev      # http://localhost:5173, proxies /v1 to the mock
+npm test         # unit tests (Vitest)
+```
+
+The mock serves one scenario at a time (fallback, stale data, partial data,
+every error code, timeouts, ...). List them and switch with
+`GET /__mock/scenario` and `GET /__mock/scenario?name=<scenario>`; the dev
+server proxies `/__mock`, so `http://localhost:5173/__mock/scenario?name=fallback`
+works too. See [docs/ti-se-09-verifikasi-frontend.md](docs/ti-se-09-verifikasi-frontend.md)
+for the states that were exercised.
+
+The map background is OpenStreetMap raster tiles by default (development use
+only); set `VITE_BASEMAP_TILES` in `src/frontend/.env` (or as a Docker build
+arg) to use another tile service.
