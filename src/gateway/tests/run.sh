@@ -6,9 +6,11 @@
 # 1. 10-validate-env.sh accepts valid upstreams and rejects malformed ones
 #    without printing the rejected value.
 # 2. The real entrypoint renders the template and `nginx -t` accepts it.
-# 3. With a stub upstream, only the public API reaches the Cache API; every
-#    other path is answered 404 by the gateway.
-# 4. Rate limiting per client address answers 429 rate_limited with Retry-After.
+# 3. With a stub upstream, only the public API reaches the Cache API, and only
+#    with its own method; every other path is answered 404, every other method
+#    405, by the gateway.
+# 4. Rate limiting per client address (IPv6 per /64) answers 429 rate_limited
+#    with Retry-After.
 # 5. An upstream that is down or does not answer gives 502 or 504 in the
 #    uniform error schema (the 504 case waits out the 10 s read timeout).
 set -u
@@ -211,6 +213,30 @@ else
     pass "accepted /v1/routes bodies stay in memory (no temp-file warning with the client address)"
 fi
 
+# Each public path takes only its own method (and OPTIONS, for a CORS
+# preflight); anything else gets the gateway's 405 with Allow.
+# expect_allow METHODS: the last response (expect_json_error's) carries it.
+expect_allow() {
+    allow=$(grep -i '^allow:' /tmp/headers | tr -d '\r' | cut -d' ' -f2-)
+    [ "$allow" = "$1" ] && pass "405 carries Allow: $1" || fail "405 Allow '$allow', want '$1'"
+}
+expect_json_error GET /v1/routes 405 method_not_allowed
+expect_allow "POST, OPTIONS"
+expect_json_error DELETE /v1/routes 405 method_not_allowed
+expect_json_error POST /v1/exposure-surface 405 method_not_allowed
+expect_allow "GET, OPTIONS"
+expect_json_error PUT '/v1/exposure-surface?zoom=1' 405 method_not_allowed
+expect_route OPTIONS /v1/routes 200 'cache_api /v1/routes '
+expect_route OPTIONS /v1/exposure-surface 200 'cache_api /v1/exposure-surface '
+# A wrong method is refused before the rate limit, so it uses up no bucket.
+i=0
+while [ "$i" -lt 10 ]; do
+    curl -s -o /dev/null -H "X-Real-IP: 198.51.100.30" "http://127.0.0.1:$PORT/v1/routes"
+    i=$((i + 1))
+done
+status=$(curl -s -o /dev/null -w '%{http_code}' -X POST -H "X-Real-IP: 198.51.100.30" "http://127.0.0.1:$PORT/v1/routes")
+[ "$status" = 200 ] && pass "10 refused GET /v1/routes use up none of the POST bucket" || fail "POST after 10 GETs: HTTP $status"
+
 echo "== 4. rate limiting (per client address)"
 # status_of PATH CLIENT_IP [curl args...]: HTTP status of one request.
 status_of() {
@@ -273,6 +299,45 @@ expect_retry_after 1
 [ "$(status_of /v1/routes 198.51.100.9 -X POST)" = 200 ] \
     && pass "limits are per path: /v1/routes unaffected by the heatmap limit" \
     || fail "/v1/routes refused after the heatmap limit was hit"
+
+# IPv6 clients are keyed by their /64. expect_shared_bucket LABEL ADDR...:
+# six quick POST /v1/routes, cycling through the addresses, all pass; a seventh
+# from the last address is refused. Addresses are written in different forms
+# (case, leading zeros, "::" in different places) to check that NGINX's
+# canonical text and the key map agree on one /64.
+expect_shared_bucket() {
+    label=$1
+    shift
+    got=""
+    i=0
+    while [ "$i" -lt 6 ]; do
+        n=$((i % $# + 1))
+        eval "ip=\${$n}"
+        got="$got $(status_of /v1/routes "$ip" -X POST)"
+        i=$((i + 1))
+    done
+    eval "last=\${$#}"
+    seventh=$(status_of /v1/routes "$last" -X POST)
+    if [ "$got" = " 200 200 200 200 200 200" ] && [ "$seventh" = 429 ]; then
+        pass "IPv6 $label: one bucket for $*"
+    else
+        fail "IPv6 $label: got$got then $seventh, want six 200 then 429"
+    fi
+}
+# expect_own_bucket ADDR: an address outside the /64 above still passes.
+expect_own_bucket() {
+    [ "$(status_of /v1/routes "$1" -X POST)" = 200 ] \
+        && pass "IPv6 $1: its own bucket (another /64)" || fail "IPv6 $1 shares a bucket it should not"
+}
+expect_shared_bucket "/64 2001:db8:1:2" 2001:db8:1:2::a 2001:db8:1:2:ffff:ffff:ffff:1 \
+    2001:DB8:1:2:0:0:0:B 2001:0db8:0001:0002::c
+expect_own_bucket 2001:db8:1:3::a
+expect_shared_bucket "/64 2001:db8:0:0" 2001:db8::1 2001:db8::1:2:3:4 2001:db8:0:0:1:: 2001:db8:0:0:1:0:1:0
+expect_own_bucket 2001:db8:0:1::1
+expect_shared_bucket "/64 2001:0:0:5" 2001::5:1:2:3:4 2001:0:0:5::1
+expect_own_bucket 2001::6:1:2:3:4
+# IPv4-mapped IPv6 shares the plain IPv4 address's bucket.
+expect_shared_bucket "IPv4-mapped" 198.51.100.20 ::ffff:198.51.100.20
 
 # The gateway's health check is never limited.
 got=$(i=0; while [ "$i" -lt 30 ]; do status_of /healthz 198.51.100.10; echo; i=$((i + 1)); done | sort -u | tr '\n' ' ')

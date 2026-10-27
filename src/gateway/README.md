@@ -8,8 +8,8 @@ the Cache API over Railway's private network. Nothing else is exposed.
 | Path | Behaviour |
 |---|---|
 | `GET /healthz` | Gateway liveness, answered by NGINX itself (Railway health check). Never touches an upstream; not rate limited. |
-| `POST /v1/routes` (exact path) | Rate limited, then proxied to `CACHE_API_UPSTREAM` (IRouteQuery, TI-SE-08). Body at most 16 KiB. |
-| `GET /v1/exposure-surface` (exact path) | Rate limited, then proxied to `CACHE_API_UPSTREAM` (IExposureSurface, TI-SE-08). |
+| `POST /v1/routes` (exact path; `OPTIONS` also passes, any other method gets `405`) | Rate limited, then proxied to `CACHE_API_UPSTREAM` (IRouteQuery, TI-SE-08). Body at most 16 KiB. |
+| `GET /v1/exposure-surface` (exact path; `OPTIONS` also passes, any other method gets `405`) | Rate limited, then proxied to `CACHE_API_UPSTREAM` (IExposureSurface, TI-SE-08). |
 | anything else | `404 not_found`, answered by the gateway. This includes the Cache API's `/v1/osm/*` and `/v1/pollution/*` reads, its `/v1/routes/*` inspection endpoints (`/solve`, `/plan`, `/solver-input`), `/docs`, every `/health*`, and the backend. |
 
 Those two paths are the whole public contract (`src/backend/public_api`,
@@ -60,6 +60,27 @@ Locally anyone can set the header (the tests use this). Without the header the
 TCP peer's address is used. **Do not put a CDN in front of the gateway without
 revisiting this**: every user would share the CDN's address and one bucket.
 
+**What one bucket covers.**
+
+- **IPv6 clients are keyed by their /64**, not the full address: one user
+  usually holds a whole /64 and could otherwise rotate addresses for a fresh
+  bucket. The `$rate_limit_key` map spells the /64 out from NGINX's canonical
+  text, so every written form of an address in that /64 lands in one bucket
+  (tested). IPv4-mapped addresses (`::ffff:a.b.c.d`) count as the IPv4 address.
+- **Users behind one NAT share a bucket.** A campus or office network that
+  leaves through one public address gets 20 route requests per minute in total,
+  as Table 3.15 specifies per address. For a demo with many people on one
+  network, expect 429s after the burst; the Frontend shows the wait from
+  `Retry-After`.
+- **Locally, all browser traffic shares one bucket.** In compose nothing sets
+  `X-Real-IP`, so the gateway sees the frontend container's address for every
+  browser request (and the host's bridge address for `curl` from the host).
+  Set `X-Real-IP` yourself to test per-client limits (`curl -H 'X-Real-IP:
+  198.51.100.7' ...`), as `tests/run.sh` does. On Railway the edge sets it.
+
+Wrong methods are refused (`405`) before the rate limit, so they use up no
+bucket and never reach the Cache API.
+
 ## Errors
 
 Errors produced by the gateway itself use the uniform schema
@@ -68,6 +89,7 @@ Errors produced by the gateway itself use the uniform schema
 | Status | `code` | When |
 |---|---|---|
 | 404 | `not_found` | Path not exposed |
+| 405 | `method_not_allowed` | Method other than the path's own (`POST` or `GET`) or `OPTIONS`; `Allow` lists them |
 | 413 | `payload_too_large` | Body over 16 KiB on `POST /v1/routes` |
 | 429 | `rate_limited` | Rate limit above exceeded; `Retry-After` in seconds |
 | 502 | `upstream_unavailable` | The Cache API cannot be reached (refused, or its name does not resolve, e.g. while it redeploys) |
@@ -122,14 +144,16 @@ fails the build. It needs no network and takes about 15 seconds, most of it the
    upstream and in the response; raw paths with `..` or `%2E%2E` reach it only
    as the public path; every other path (the Cache API's internal and
    inspection endpoints, `/v1/*` near misses, health endpoints, `/docs`, `/`)
-   gets the gateway's `404`; bodies over 16 KiB get `413`, and an accepted
+   gets the gateway's `404`; other methods get `405` with `Allow`, use up no
+   rate-limit bucket, and `OPTIONS` still passes; bodies over 16 KiB get `413`, and an accepted
    16 000-byte body stays in memory (no temp-file warning in the error log);
 4. rate limiting: 6 quick `POST /v1/routes` from one address pass and the 7th
    gets `429 rate_limited` with `Retry-After: 3`; another address is not
    affected; the refused address passes again after 3 s; 11 quick heatmap
    requests pass and the 12th gets `429` with `Retry-After: 1`; the two limits
-   are separate; 30 quick `/healthz` all get 200; no rejection reaches the
-   error log;
+   are separate; IPv6 addresses written in different forms share their /64's
+   bucket and another /64 does not; IPv4-mapped shares the IPv4 bucket; 30
+   quick `/healthz` all get 200; no rejection reaches the error log;
 5. upstream failures: a refused connection gives `502 upstream_unavailable`; an
    upstream that accepts but never answers gives `504 upstream_timeout` after
    10 s; `/healthz` still answers 200.
