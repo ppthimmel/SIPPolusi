@@ -96,6 +96,39 @@ describe("parseRouteResponse (UT-FE-04)", () => {
     expect(parseRouteResponse(body).exposureUnit).toBe("ug_min_m3");
   });
 
+  it("uses one unit for both routes when only one route carries the index", () => {
+    const body = sample();
+    // Partial response: the comparison route has only the µg·min/m³ value, the
+    // recommended one has both. Both cards must show the µg value, not mix units.
+    (body.features[0].properties as Record<string, unknown>).exposure_ug_min_m3 = 610;
+    const cmp = body.features[1].properties as Record<string, unknown>;
+    cmp.exposure_ug_min_m3 = 880;
+    delete cmp.exposure_index_min;
+    const r = parseRouteResponse(body);
+    expect(r.exposureUnit).toBe("ug_min_m3");
+    expect(r.recommended.exposure).toBe(610);
+    expect(r.comparison?.exposure).toBe(880);
+  });
+
+  it("prefers the index when every route carries both values", () => {
+    const body = sample();
+    for (const f of body.features) (f.properties as Record<string, unknown>).exposure_ug_min_m3 = 999;
+    const r = parseRouteResponse(body);
+    expect(r.exposureUnit).toBe("index_min");
+    expect(r.recommended.exposure).toBe(34.8);
+    expect(r.comparison?.exposure).toBe(51.2);
+  });
+
+  it("rejects routes that share no exposure unit instead of mislabelling one", () => {
+    const body = sample();
+    const cmp = body.features[1].properties as Record<string, unknown>;
+    cmp.exposure_ug_min_m3 = 880;
+    delete cmp.exposure_index_min;
+    expect(() => parseRouteResponse(body)).toThrowError(
+      expect.objectContaining({ kind: "invalid_response", message: expect.stringContaining("satuan paparan") }),
+    );
+  });
+
   it("accepts a single model_version string and a missing comparison route", () => {
     const body = sample();
     body.features.pop();

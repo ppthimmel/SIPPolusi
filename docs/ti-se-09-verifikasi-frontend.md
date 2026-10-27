@@ -25,7 +25,7 @@ di Cache API, diteruskan API Gateway) dan antarmuka sudah diuji terhadapnya (lih
 
 ## Keadaan yang diuji
 
-"Unit" = `npm test` (Vitest, 94 kasus, termasuk `src/contract.test.ts` yang membaca
+"Unit" = `npm test` (Vitest, 102 kasus, termasuk `src/contract.test.ts` yang membaca
 respons asli Backend di `src/fixtures/ti-se-08/`). "Browser" = dijalankan di peramban
 terhadap mock; hasil dibaca dari DOM/peta dan, untuk tata letak, dari tangkapan layar.
 
@@ -39,7 +39,8 @@ terhadap mock; hasil dibaca dari DOM/peta dan, untuk tata letak, dari tangkapan 
 | Permintaan baru setelah hasil | Rute, legenda rute, dan panel hasil lama dihapus sebelum permintaan dikirim | Browser |
 | Heatmap gagal diperbarui | Heatmap lama tetap tampil tetapi diredupkan dan diberi label "data lama (HH.MM WIB), bukan kondisi terbaru" + "Coba lagi"; rute tidak terpengaruh | Browser (`heat_error`) |
 | Heatmap > 5 detik | Permintaan dibatalkan setelah 5 detik; selama menunggu tampil "Memperbarui heatmap… menampilkan data HH.MM WIB", lalu perlakuan sama dengan heatmap gagal | Browser (`heat_slow`) |
-| Geser/zoom beruntun | Satu permintaan, 500 ms setelah gerakan terakhir; permintaan sebelumnya dibatalkan | Browser (lima geseran dalam 300 ms → 1 request); belum ada uji otomatis |
+| Geser/zoom beruntun | Satu permintaan, 500 ms setelah gerakan terakhir | Browser (lima geseran dalam 300 ms → 1 request), Unit (`surface-refresher.test.ts`) |
+| Peta digeser saat heatmap sedang dimuat atau sudah siap | Seketika (sebelum jeda 500 ms): status menjadi "Memperbarui heatmap…" dan permintaan area lama dibatalkan; respons area lama yang tiba terlambat diabaikan, jadi tidak pernah ditandai siap | Unit (`surface-refresher.test.ts`) |
 | Ganti lapisan Gabungan/PM2.5/NO2 | Warna dihitung ulang dari data di memori; tanpa permintaan baru | Browser (jumlah request tetap) |
 
 ### Galat dan data parsial
@@ -57,6 +58,7 @@ terhadap mock; hasil dibaca dari DOM/peta dan, untuk tata letak, dari tangkapan 
 | `200` dengan badan placeholder Backend saat ini, bukan JSON, atau koordinat tertukar `[lat, lon]` | "Respons server tidak dapat dibaca"; tidak ada rute digambar | Browser (`bad_shape`, `bad_json`), Unit |
 | `data_stale = true` | Peringatan kuning dengan jam estimasi terakhir | Browser (`stale`) |
 | `missing_edge_count > 0` | Catatan bahwa sebagian ruas tanpa estimasi | Browser (`partial`) |
+| Rute memakai satuan paparan berbeda (mis. satu hanya `exposure_ug_min_m3`) | Satuan dipilih yang dimiliki semua rute (indeks bila semua punya, selain itu µg/m³·menit); bila tidak ada satuan bersama, respons ditolak sebagai "tidak sesuai kontrak", bukan dilabeli keliru | Unit |
 | `route_source = baseline` (fallback) | Kartu berjudul "Rute rekomendasi" + lencana "Metode cadangan", penjelasan prioritas tidak diterapkan; legenda "Rute rekomendasi (cadangan)" | Browser (`fallback`) |
 | Rute rekomendasi identik dengan rute tercepat | Satu kartu, banner "Sama", tanpa klaim penurunan | Browser (`fallback`), Unit |
 | Paparan rute rekomendasi lebih tinggi | Banner netral "+X%", bukan "penurunan" | Unit (`higher`) |

@@ -145,7 +145,10 @@ function parseCoordinates(geometry: unknown): [number, number][] | null {
   return out.length >= 2 ? out : null;
 }
 
-function parseRouteFeature(feature: unknown): { result: RouteResult; unit: ExposureUnit } | null {
+/** Exposure values a route feature carries, keyed by unit. */
+type RouteExposure = Partial<Record<ExposureUnit, number>>;
+
+function parseRouteFeature(feature: unknown): { result: Omit<RouteResult, "exposure">; exposure: RouteExposure } | null {
   if (!isObj(feature) || !isObj(feature.properties)) return null;
   const p = feature.properties;
   const role = p.role === "recommended" || p.role === "comparison" ? p.role : null;
@@ -154,25 +157,34 @@ function parseRouteFeature(feature: unknown): { result: RouteResult; unit: Expos
   const distanceM = num(p.distance_m);
   if (!role || !coordinates || travelTimeMin === null || distanceM === null) return null;
 
+  const exposure: RouteExposure = {};
   const index = num(p.exposure_index_min);
   const legacy = num(p.exposure_ug_min_m3);
-  const exposure = index ?? legacy;
-  if (exposure === null) return null;
+  if (index !== null) exposure.index_min = index;
+  if (legacy !== null) exposure.ug_min_m3 = legacy;
+  if (index === null && legacy === null) return null;
 
   const routeSource: RouteSource = p.route_source === "baseline" ? "baseline" : "policy";
   return {
-    unit: index !== null ? "index_min" : "ug_min_m3",
+    exposure,
     result: {
       role,
       routeSource,
       preferenceApplied: typeof p.preference_applied === "boolean" ? p.preference_applied : null,
       travelTimeMin,
       distanceM,
-      exposure,
       confidence: num(p.confidence_score),
       coordinates,
     },
   };
+}
+
+/** Both cards and the comparison percentage share one unit, so it has to be one
+ *  every route carries: the index when all have it, else µg/m³·menit when all have
+ *  that. Routes with no unit in common cannot be compared and are rejected. */
+function commonExposureUnit(routes: RouteExposure[]): ExposureUnit | null {
+  const units: ExposureUnit[] = ["index_min", "ug_min_m3"];
+  return units.find((u) => routes.every((r) => r[u] !== undefined)) ?? null;
 }
 
 const FALLBACK_REASONS: readonly FallbackReason[] = [
@@ -204,15 +216,18 @@ export function parseRouteResponse(body: unknown): RouteResponse {
   }
   const meta = isObj(body.metadata) ? body.metadata : {};
 
+  const parsed = body.features.map((f) => parseRouteFeature(f));
+  if (parsed.some((r) => r === null)) throw invalid("fitur rute tidak lengkap");
+  const routes = parsed as NonNullable<(typeof parsed)[number]>[];
+  const unit = commonExposureUnit(routes.map((r) => r.exposure));
+  if (!unit) throw invalid("satuan paparan berbeda antar-rute");
+
   let recommended: RouteResult | null = null;
   let comparison: RouteResult | null = null;
-  let unit: ExposureUnit = "index_min";
-  for (const f of body.features) {
-    const parsed = parseRouteFeature(f);
-    if (!parsed) throw invalid("fitur rute tidak lengkap");
-    unit = parsed.unit;
-    if (parsed.result.role === "recommended") recommended ??= parsed.result;
-    else comparison ??= parsed.result;
+  for (const r of routes) {
+    const result: RouteResult = { ...r.result, exposure: r.exposure[unit]! };
+    if (result.role === "recommended") recommended ??= result;
+    else comparison ??= result;
   }
   if (!recommended) {
     throw new ApiError("http", "Server tidak mengembalikan rute rekomendasi.", {

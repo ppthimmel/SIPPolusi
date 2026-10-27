@@ -9,9 +9,10 @@ import { describeRouteError, type ErrorField, type ErrorView } from "./errors";
 import { HEAT_LAYER_LABELS, exposureClass, layerRatio } from "./exposure";
 import { confidenceBadge, renderResult } from "./results-view";
 import { fmtCoord, fmtNumber, fmtWib } from "./format";
-import { Legend, type HeatStatus } from "./legend";
+import { Legend } from "./legend";
 import { MapView, type SegmentClick } from "./map-view";
-import type { ExposureSurface, HeatLayer, Mode, Point } from "./types";
+import { SurfaceRefresher } from "./surface-refresher";
+import type { HeatLayer, Mode, Point } from "./types";
 import { buildRouteRequest, parseCoordinateText, preferenceFromSlider, validateTrip } from "./validation";
 
 // Presentation layer (PF-01, PF-02, PF-09 – PF-12, PNF-07, PNF-08): trip form,
@@ -69,10 +70,6 @@ const state = {
     on: false,
     userTurnedOff: false,
     layer: "combined" as HeatLayer,
-    status: "idle" as HeatStatus,
-    surface: null as ExposureSurface | null,
-    controller: null as AbortController | null,
-    timer: 0 as number,
   },
 };
 
@@ -389,15 +386,35 @@ tripForm.addEventListener("submit", (e) => {
 cancelBtn.addEventListener("click", () => state.controller?.abort());
 
 // ------------------------------------------------------------------- heatmap
+const heatSurface = new SurfaceRefresher(
+  (signal) => {
+    const { bbox, zoom } = mapView.getView();
+    return requestExposureSurface(bbox, surfaceZoom(zoom, bbox), signal);
+  },
+  (status, surface) => {
+    if (status === "ready" && surface) {
+      void mapView.setSurface(surface);
+      void mapView.setHeatDimmed(false);
+    } else if (status === "error") {
+      // The previous heatmap stays (route is unaffected, Tabel 3.15) but is dimmed
+      // and labelled as old so it cannot pass for current data.
+      void mapView.setHeatDimmed(true);
+    }
+    legendState();
+  },
+  SURFACE_DEBOUNCE_MS,
+);
+
 function legendState(): void {
   const hs = state.heat;
+  const surface = heatSurface.surface;
   legend.setHeat({
     visible: hs.on,
     layer: hs.layer,
-    status: hs.status,
-    timeLabel: fmtWib(hs.surface?.timeWindowStart),
-    stale: hs.surface?.dataStale ?? false,
-    showingOldData: !!hs.surface && hs.surface.features.length > 0,
+    status: heatSurface.status,
+    timeLabel: fmtWib(surface?.timeWindowStart),
+    stale: surface?.dataStale ?? false,
+    showingOldData: !!surface && surface.features.length > 0,
   });
 }
 
@@ -407,48 +424,13 @@ function setHeat(on: boolean, immediate = true): void {
   heatToggle.setAttribute("aria-pressed", String(on));
   heatToggle.setAttribute("aria-label", on ? "Sembunyikan heatmap paparan" : "Tampilkan heatmap paparan");
   void mapView.showHeat(on);
-  if (on) {
-    scheduleSurface(immediate);
-  } else {
-    window.clearTimeout(hs.timer);
-    hs.controller?.abort();
-    hs.controller = null;
-  }
+  if (on) heatSurface.schedule(immediate);
+  else heatSurface.stop();
   legendState();
 }
 
 function scheduleSurface(immediate = false): void {
-  const hs = state.heat;
-  window.clearTimeout(hs.timer);
-  if (!hs.on) return;
-  hs.timer = window.setTimeout(() => void loadSurface(), immediate ? 0 : SURFACE_DEBOUNCE_MS);
-}
-
-async function loadSurface(): Promise<void> {
-  const hs = state.heat;
-  hs.controller?.abort();
-  const controller = new AbortController();
-  hs.controller = controller;
-  hs.status = "loading";
-  legendState();
-
-  const { bbox, zoom } = mapView.getView();
-  try {
-    const surface = await requestExposureSurface(bbox, surfaceZoom(zoom, bbox), controller.signal);
-    if (hs.controller !== controller) return;
-    hs.surface = surface;
-    hs.status = "ready";
-    void mapView.setSurface(surface);
-    void mapView.setHeatDimmed(false);
-  } catch (err) {
-    if (hs.controller !== controller) return;
-    if (err instanceof ApiError && err.kind === "aborted") return;
-    // The previous heatmap stays (route is unaffected, Tabel 3.15) but is dimmed
-    // and labelled as old so it cannot pass for current data.
-    hs.status = "error";
-    void mapView.setHeatDimmed(true);
-  }
-  legendState();
+  if (state.heat.on) heatSurface.schedule(immediate);
 }
 
 heatToggle.addEventListener("click", () => {
