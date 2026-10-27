@@ -31,8 +31,6 @@ export function exposureClass(ratio: number): string {
   return (EXPOSURE_CLASSES.find((c) => ratio < c.max) ?? EXPOSURE_CLASSES[EXPOSURE_CLASSES.length - 1]).label;
 }
 
-/** Colour ratio for a layer: always relative to the WHO guideline, so the three
- *  layers share one colour scale (render_heatmap, Tabel 3.4). */
 /** Hatching marks low-confidence areas apart from the rest. When every feature
  *  drawn is low (the IDW fallback is capped below 0,4 by design, Tabel 3.8), the
  *  stripes would cover the whole map without telling anything apart, so the
@@ -42,6 +40,8 @@ export function allLowConfidence(features: ReadonlyArray<Pick<SurfaceFeature, "c
   return features.length > 0 && features.every((f) => (f.confidence ?? 0) < CONFIDENCE_LOW);
 }
 
+/** Colour ratio for a layer: always relative to the WHO guideline, so the three
+ *  layers share one colour scale (render_heatmap, Tabel 3.4). */
 export function layerRatio(layer: HeatLayer, f: Pick<SurfaceFeature, "exposureIndex" | "pm25" | "no2">): number | null {
   switch (layer) {
     case "combined":

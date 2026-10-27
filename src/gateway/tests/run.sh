@@ -11,8 +11,9 @@
 #    405, by the gateway.
 # 4. Rate limiting per client address (IPv6 per /64) answers 429 rate_limited
 #    with Retry-After.
-# 5. An upstream that is down or does not answer gives 502 or 504 in the
-#    uniform error schema (the 504 case waits out the 10 s read timeout).
+# 5. An upstream that is down or whose connection never opens gives 502, one
+#    that accepts but does not answer gives 504 after the 10 s read timeout,
+#    both in the uniform error schema.
 # GATEWAY_UPSTREAM_TIMEOUT_S is validated in 1 and rendered in 2; sections 3-5
 # run with the image default (10).
 set -u
@@ -410,6 +411,28 @@ else
 fi
 kill "$hang_pid" 2>/dev/null
 pkill -f "nc -l -p 9002" 2>/dev/null
+
+# An upstream whose connection never opens (a stopped service whose old address
+# the resolver still caches): 502 upstream_unavailable within the 2 s connect
+# timeout, not 504 (TI-SE-10, D-02). 192.0.2.1 is TEST-NET-1, never routed, so
+# its packets are dropped. Some build networks (Docker Desktop) accept every TCP
+# connection themselves; there the case cannot be staged and is skipped.
+if nc -w 3 192.0.2.1 9002 < /dev/null > /dev/null 2>&1; then
+    echo "SKIP  never-opened connection: this network accepts every TCP connection"
+else
+    CACHE_API_UPSTREAM=http://192.0.2.1:9002 /docker-entrypoint.sh nginx -t > /dev/null 2>&1 \
+        || fail "re-render with an unreachable upstream"
+    nginx -s reload
+    sleep 0.5
+    started=$(date +%s)
+    expect_json_error POST /v1/routes 502 upstream_unavailable
+    elapsed=$(($(date +%s) - started))
+    if [ "$elapsed" -le 3 ]; then
+        pass "never-opened connection: 502 after ${elapsed} s (proxy_connect_timeout 2s)"
+    else
+        fail "never-opened connection: answered after ${elapsed} s, want at most 3"
+    fi
+fi
 
 # The gateway itself stays up while its upstream is down.
 expect_route GET /healthz 200 '{"status":"ok","service":"gateway"}'
