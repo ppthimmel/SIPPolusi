@@ -6,7 +6,7 @@ import { ApiError, requestExposureSurface, submitRouteRequest, surfaceZoom } fro
 import { DISCLAIMER, STUDY_AREA, SURFACE_DEBOUNCE_MS } from "./config";
 import { clear, h, icon } from "./dom";
 import { describeRouteError, type ErrorField, type ErrorView } from "./errors";
-import { HEAT_LAYER_LABELS, exposureClass, layerRatio } from "./exposure";
+import { HEAT_LAYER_LABELS, allLowConfidence, exposureClass, layerRatio } from "./exposure";
 import { confidenceBadge, renderResult } from "./results-view";
 import { fmtCoord, fmtNumber, fmtWib } from "./format";
 import { Legend } from "./legend";
@@ -415,6 +415,7 @@ function legendState(): void {
     timeLabel: fmtWib(surface?.timeWindowStart),
     stale: surface?.dataStale ?? false,
     showingOldData: !!surface && surface.features.length > 0,
+    allLowConfidence: !!surface && allLowConfidence(surface.features),
   });
 }
 

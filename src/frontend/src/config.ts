@@ -44,7 +44,10 @@ export const BASEMAP_ATTRIBUTION = "© OpenStreetMap contributors";
 /** Always-visible disclaimer (PNF-07). The Backend sends its own text in
  *  metadata.disclaimer; this one is shown regardless of the response. */
 export const DISCLAIMER =
-  "Nilai paparan adalah estimasi model dari data satelit dan sensor darat, bukan pengukuran langsung. " +
+  // Holds whichever source produced the estimate: ground sensors always, satellite and
+  // meteorological data only when the downscaling model took part (TI-SE-10, D-07).
+  "Nilai paparan adalah estimasi dari sensor darat, ditambah data satelit dan meteorologi bila model " +
+  "downscaling tersedia; bukan pengukuran langsung. Sumber estimasi tiap rute ada di rincian hasil. " +
   "Indeks paparan menggabungkan PM2.5 dan NO2 terhadap pedoman WHO. " +
   "Hasil ini alat bantu keputusan perjalanan, bukan rekomendasi medis atau diagnosis kesehatan; " +
   "tetap perhatikan kondisi jalan.";
