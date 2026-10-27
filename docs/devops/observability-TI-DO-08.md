@@ -76,7 +76,7 @@ dicatat selama request/siklus (repository, solver, inferensi) ikut membawanya.
 
 | Layanan | Hidup (liveness) | Siap (readiness) | Dipakai oleh |
 |---|---|---|---|
-| Backend API | `GET /health` → 200 selama proses melayani | `GET /health/ready` → 200/503, `checks.database` (`ok`/`not_configured`/`unavailable`), `checks.route_graph` (`ok`/`unavailable`: berkas graf `OSM_GRAPH_DIR` tidak ada) | Railway deploy health check: `/health` |
+| Backend API | `GET /health` → 200 selama proses melayani | `GET /health/ready` → 200/503, `checks.database` (`ok`/`not_configured`/`unavailable`), hanya `database` yang menentukan 200/503; `checks.route_graph` (`ok`/`unavailable`: berkas graf `OSM_GRAPH_DIR` tidak ada) hanya dilaporkan, karena `POST /v1/routes` publik dilayani Cache API dan image Backend tidak membawa berkas graf | Railway deploy health check: `/health` |
 | Cache API | `GET /health/live` → 200 tanpa menyentuh basis data | `GET /health/ready` → 503 bila `database` ≠ `ok` atau `graph` ≠ `ok` (`empty`: belum ada graph_version aktif); `pollution` (`ok`/`stale`/`empty`) dilaporkan tetapi **tidak** membuat API unready | Docker `HEALTHCHECK`: `/health/live`. `GET /health` (status rinci, selalu 200) tetap ada |
 | Data Worker (cron) | `python main.py check --skip-db` (konfigurasi, impor) | `python main.py check` (+ koneksi dan skema basis data) | build dan pra-deploy |
 | Data Worker, jadwal | — | `python main.py status` (TI-DO-07) → exit 0 sehat, 1 eksekusi terakhir gagal, 3 tidak ada eksekusi untuk window yang jatuh tempo | **alert utama** |
@@ -160,7 +160,7 @@ ikut tercetak oleh galat koneksi tersamarkan. `correlation_id` adalah `run_id` p
 |---|---|---|
 | Backend tanpa `DATABASE_URL` | `/health` 200, `/health/ready` 503 `database: not_configured` | `tests/test_health.py::test_liveness_and_readiness_without_database` |
 | Backend, basis data tidak terjangkau (DSN berisi kata sandi) | `/health/ready` 503 `database: unavailable`, kata sandi tidak ada di respons | `test_readiness_reports_unreachable_database_without_details` |
-| Backend, berkas graf tidak ada | `/health` 200, `/health/ready` 503 `route_graph: unavailable` | `test_readiness_fails_without_the_route_graph` |
+| Backend, berkas graf tidak ada | `/health/ready` tetap 200 bila database ok, `route_graph: unavailable` dilaporkan | `test_missing_route_graph_is_reported_but_does_not_gate_readiness` |
 | Backend, policy tidak tersedia / melempar exception | 200 dengan `route_source: fallback`, log `warn` `route_inference outcome=fallback`, exception `error` dengan correlation ID, metrik fallback/failure naik | `tests/test_observability.py` |
 | Backend, data rute tidak tersedia | 503, `route_inference outcome=failed`, `http_request` level `error` | `test_route_failure_is_logged_as_failed` |
 | Cache API, basis data mati | `/health/live` 200 tanpa query, `/health/ready` 503 | `osm/tests/test_observability.py::test_not_ready_when_database_is_down` |

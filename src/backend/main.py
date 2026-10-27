@@ -50,7 +50,7 @@ def _check_route_graph() -> str:
     folder = Path(os.environ.get("OSM_GRAPH_DIR") or DEFAULT_GRAPH)
     if all((folder / name).is_file() for name in GRAPH_FILES):
         return "ok"
-    logger.error("Route graph unavailable: missing files in %s (set OSM_GRAPH_DIR)", folder)
+    logger.warning("Route graph unavailable: missing files in %s (set OSM_GRAPH_DIR)", folder)
     return "unavailable"
 
 
@@ -83,9 +83,14 @@ async def health_check():
 
 @app.get("/health/ready")
 async def readiness_check():
-    """Readiness: dependencies needed to serve requests are reachable (503 if not)."""
+    """Readiness: dependencies needed to serve requests are reachable (503 if not).
+
+    Only the database gates readiness. route_graph is reported but does not: public
+    POST /v1/routes is served by the Cache API (whose readiness checks the active graph),
+    and this image does not ship the graph files used by the local /v1/routes baseline.
+    """
     checks = {"database": await _check_database(), "route_graph": _check_route_graph()}
-    ready = all(result == "ok" for result in checks.values())
+    ready = checks["database"] == "ok"
     return JSONResponse(
         status_code=200 if ready else 503,
         content={"status": "ready" if ready else "not_ready", "service": "backend", "checks": checks},
