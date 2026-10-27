@@ -16,7 +16,7 @@ Cache API dari `src/backend/osm/Dockerfile`, PostgreSQL/PostGIS dari compose.
 | Permintaan yang diizinkan diteruskan ke backend privat dan responsnya utuh | Terpenuhi (lokal) | Uji gateway bagian 3; [uji end-to-end](#uji-end-to-end-dengan-cache-api-asli): status, body, dan `Content-Type` sama dengan Cache API langsung; satu `X-Request-ID` |
 | Rate limiting mengembalikan 429 pada endpoint/skenario uji yang disepakati | Terpenuhi (lokal) | Uji gateway bagian 4; end-to-end: request ke-7 `POST /v1/routes` → 429, `Retry-After: 3` |
 | Timeout dan upstream tidak tersedia menghasilkan respons gateway yang terkontrol | Terpenuhi (lokal) | Uji gateway bagian 5; end-to-end: Cache API di-*pause* → 504 setelah 10 s, dihentikan → 502 setelah ±4 s; `/healthz` tetap 200 |
-| Konfigurasi final tidak membuka endpoint internal selain yang diperlukan | Terpenuhi (lokal) | Hanya `/healthz`, `POST /v1/routes`, `GET /v1/exposure-surface`; 22 jalur internal dan *near miss* → 404 dari gateway |
+| Konfigurasi final tidak membuka endpoint internal selain yang diperlukan | Terpenuhi (lokal) | Hanya `/healthz`, `POST /v1/routes`, `GET /v1/exposure-surface`; 22 jalur internal dan *near miss* → 404 dari gateway; metode lain → 405 sebelum rate limit |
 
 ## Jalur publik ke backend
 
@@ -146,7 +146,7 @@ server {
 docker build --target test src/gateway
 ```
 
-82 pemeriksaan, 82 lulus, ±15 s. Bagian 1 (validasi variabel, 34 kasus) dan
+98 pemeriksaan, 98 lulus, ±15 s. Bagian 1 (validasi variabel, 34 kasus) dan
 2 (render template + `nginx -t`) tidak ditampilkan. Bagian 3–5 (badan respons
 dipotong):
 
@@ -306,7 +306,12 @@ gateway.
 
 ## Langkah di Railway
 
-Belum dijalankan. Setelah PR digabung dan gateway di-deploy ulang:
+Belum dijalankan. Butuh gateway development yang menjalankan branch ini
+(`railway up --service gateway --environment development --ci` dari akar
+repositori, seperti cache-api pada TI-DO-04) atau `dev` setelah PR digabung.
+Hasil dasar sebelum deploy (gateway development 27 Okt 2026, kode `dev` lama):
+8 kali `POST /v1/routes` cepat → `400` semua, tidak ada 429;
+`GET /v1/osm/version` → `200`.
 
 1. Service `gateway`, Variables: pastikan `CACHE_API_UPSTREAM` =
    `http://${{cache-api.RAILWAY_PRIVATE_DOMAIN}}:${{cache-api.PORT}}`; hapus
@@ -323,23 +328,40 @@ Belum dijalankan. Setelah PR digabung dan gateway di-deploy ulang:
    for i in 1 2 3 4 5 6 7 8; do curl -s -o /dev/null -w '%{http_code} ' -X POST -H 'Content-Type: application/json' -d '{}' https://<gateway>.up.railway.app/v1/routes; done
    ```
 
-4. Pastikan alamat klien dipakai sebagai kunci, bukan alamat edge: dari dua
-   jaringan berbeda (misalnya laptop dan ponsel lewat data seluler), jalankan
-   langkah 3 bersamaan; masing-masing harus mendapat 6 kali 400 sebelum 429.
-   Bila salah satu mendapat 429 lebih awal, `X-Real-IP` tidak sampai dan
-   semua klien berbagi satu kunci.
-5. Tambahkan hasilnya ke dokumen ini.
+4. **Uji spoof `X-Real-IP`** (review #59): dari satu mesin, 8 permintaan
+   cepat dengan `X-Real-IP` berbeda tiap kali. Permintaan ke-7 **harus tetap
+   429**. Bila semuanya 400, edge Railway tidak menimpa header kiriman klien:
+   klien dapat memutar header untuk bucket baru atau menghabiskan bucket
+   pengguna lain, dan `set_real_ip_from 0.0.0.0/0` harus diganti sebelum live.
+
+   ```bash
+   for i in 1 2 3 4 5 6 7 8; do curl -s -o /dev/null -w '%{http_code} ' -X POST -H "X-Real-IP: 203.0.113.$i" -H 'Content-Type: application/json' -d '{}' https://<gateway>.up.railway.app/v1/routes; done
+   ```
+
+5. Pastikan alamat klien dipakai sebagai kunci, bukan alamat edge: setelah
+   langkah 3 mendapat 429, satu permintaan dari jaringan lain harus tetap
+   400, bukan 429. Jaringan lain: ponsel lewat data seluler, atau dari dalam
+   Railway (`railway ssh --service <service lain> --environment development`
+   lalu `curl` ke domain publik gateway, yang keluar lewat alamat egress
+   Railway). Bila mendapat 429, `X-Real-IP` tidak sampai dan semua klien
+   berbagi satu kunci.
+6. Tambahkan hasil langkah 2–5 ke dokumen ini.
 
 ## Catatan
 
-- **Bergantung pada TI-SE-08 ([#55](https://github.com/ppthimmel/SIPPolusi/pull/55))**:
-  rute final dan galat 413/502/504 berasal dari sana, dan branch ini sudah
-  memuatnya. Gabungkan #55 lebih dulu.
-- **TI-DO-04 ([#58](https://github.com/ppthimmel/SIPPolusi/pull/58))** menambah
-  `listen [::]:${PORT}` pada template yang sama (tidak bertabrakan), tetapi
-  diagram dan tabel variabelnya di `docs/devops/private-networking.md` masih
-  menyebut `/v1/*` ke Backend dan `BACKEND_UPSTREAM`; perlu diselaraskan
-  setelah keduanya digabung.
+- **TI-SE-08 ([#55](https://github.com/ppthimmel/SIPPolusi/pull/55)) dan TI-DO-04
+  ([#58](https://github.com/ppthimmel/SIPPolusi/pull/58)) sudah digabung ke `dev`**
+  dan `dev` sudah digabung ke branch ini. Gateway kini mendengarkan IPv4 dan IPv6
+  (`listen [::]:${PORT}`, dari #58), sehingga frontend dapat memanggilnya lewat
+  `gateway.railway.internal`. `docs/devops/private-networking.md` sudah
+  diselaraskan dengan routing final.
+- **cache-api development** menjalankan image osm sejak redeploy #58 (dicek
+  reviewer 27 Okt 2026): `POST /v1/routes` dan `GET /v1/exposure-surface` sampai
+  ke Cache API dan menjawab 503 `cache_empty` sampai cache polusi memiliki time
+  window complete. cache-api masih di-deploy dari branch TI-DO-04; arahkan ke
+  `dev`.
+- **Satu bucket** mencakup satu alamat IPv4 atau satu /64 IPv6; pengguna di
+  belakang satu NAT berbagi bucket (lihat README gateway).
 - **`error_log` NGINX** (hanya untuk kegagalan, mis. 502/504) memuat alamat
   klien dan baris request; dengan `X-Real-IP` alamat itu kini alamat pengguna,
   bukan alamat edge. Formatnya tetap dari NGINX; log akses tidak memuat alamat
