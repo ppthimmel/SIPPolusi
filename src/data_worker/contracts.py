@@ -106,10 +106,10 @@ class EdgeWeight:
     """Estimasi polutan satu ruas pada satu time window (Tabel 3.3, Tabel 3.17).
 
     ``pm25_ugm3`` dan ``no2_ugm3`` boleh kosong bila polutan tidak tersedia;
-    kosong berbeda dengan nol (PF-06). ``background_source`` bernilai "aod"
-    atau "reanalysis" untuk ST-GNN dan kosong untuk IDW, yang tidak memakai
-    suku latar. ``estimation_source`` ("stgnn" atau "idw") membedakan hasil
-    fallback dari estimasi berbasis data lengkap.
+    kosong berbeda dengan nol (PF-06). ``background_source`` mencatat suku latar
+    eksplisit bila ada. ``estimation_source`` bernilai "hybrid" untuk hasil
+    model per-polutan atau "idw" untuk fallback penuh; ``model_metadata``
+    merekam sumber, versi dan fallback setiap polutan.
     """
 
     edge_id: int
@@ -120,6 +120,8 @@ class EdgeWeight:
     confidence_score: float | None
     background_source: str | None
     estimation_source: str
+    model_metadata: dict = dataclasses.field(default_factory=dict)
+    trace_run_id: str | None = None
 
 
 @dataclasses.dataclass(slots=True)
@@ -138,3 +140,5 @@ class RunSummary:
     rows_written: int = 0
     fallback_reason: str | None = None
     artifacts: dict = dataclasses.field(default_factory=dict)
+    model_metadata: dict = dataclasses.field(default_factory=dict)
+    input_fingerprint: str | None = None

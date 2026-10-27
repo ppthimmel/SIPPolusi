@@ -1,0 +1,20 @@
+# CI override for the regression job (.github/workflows/ci.yml, via COMPOSE_FILE).
+#
+# - postgres: PostGIS 18, the same major versions as Railway and the CI test
+#   jobs (docker-compose.yml keeps 16 so existing local volumes still start).
+#   Data lives in tmpfs, like src/backend/testdb.
+# - backend, cache_api, gateway: images loaded from the build job's cache
+#   (`docker compose up --no-build`), so they are not built a second time.
+# `!reset` needs Docker Compose 2.24 or newer.
+services:
+  postgres:
+    image: postgis/postgis:18-3.6
+    volumes: !reset []
+    tmpfs:
+      - /var/lib/postgresql
+  backend:
+    image: sippolusi-backend:ci
+  cache_api:
+    image: sippolusi-cache-api:ci
+  gateway:
+    image: sippolusi-gateway:ci

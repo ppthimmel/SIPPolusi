@@ -6,13 +6,13 @@ COPY docker-entrypoint.d/10-validate-env.sh /docker-entrypoint.d/10-validate-env
 RUN chmod +x /docker-entrypoint.d/10-validate-env.sh && rm -f /etc/nginx/conf.d/default.conf
 
 # PORT: Railway injects its own; 8080 is the local default.
-# BACKEND_UPSTREAM and CACHE_API_UPSTREAM have no default on purpose: the
-# start fails with a message naming the variable instead of proxying to a
-# guessed host (see .env.example).
+# CACHE_API_UPSTREAM has no default on purpose: the start fails with a
+# message naming the variable instead of proxying to a guessed host (see
+# .env.example).
 # Only these variables are substituted, so nginx's own $variables are safe.
 ENV PORT=8080 \
     NGINX_ENTRYPOINT_LOCAL_RESOLVERS=1 \
-    NGINX_ENVSUBST_FILTER="^(PORT|BACKEND_UPSTREAM|CACHE_API_UPSTREAM|NGINX_LOCAL_RESOLVERS)$"
+    NGINX_ENVSUBST_FILTER="^(PORT|CACHE_API_UPSTREAM|NGINX_LOCAL_RESOLVERS)$"
 
 EXPOSE 8080
 

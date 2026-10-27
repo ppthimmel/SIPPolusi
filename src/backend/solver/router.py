@@ -3,7 +3,8 @@
     POST /v1/routes/solve   RouteRequest -> SolveResult (TI-SE-06, internal shape)
     POST /v1/routes/plan    RouteRequest -> GeoJSON FeatureCollection (TI-SE-07, Kode 3.2)
 
-POST /v1/routes (TI-SE-08) will serve the /plan response under its final path.
+The public POST /v1/routes (public_api, TI-SE-08) gives the /plan response; these
+two stay as inspection endpoints and are not routed by the API Gateway.
 """
 from __future__ import annotations
 
@@ -50,7 +51,7 @@ async def solve(request: Request, osm: OsmRepo, pollution: PollutionRepo, osm_se
     503 route_service_unavailable (reason solver_timeout, solver_unreachable, solver_error,
     invalid_solver_response, deadline_exceeded) and 422 no_route_found (reason same_node,
     solver_no_route) are structured errors."""
-    result = await _solve(request, osm, pollution, osm_settings, solver, solver_settings, body)
+    result = await solve_from_request(request, osm, pollution, osm_settings, solver, solver_settings, body)
     return SolveResultOut.of(result)
 
 
@@ -71,11 +72,12 @@ async def plan(request: Request, osm: OsmRepo, pollution: PollutionRepo, osm_set
     route_source "baseline", preference_applied false and metadata.fallback_reason
     "model_timeout", "model_unavailable", "model_error", "model_invalid_response" or
     "model_no_route"."""
-    result = await _solve(request, osm, pollution, osm_settings, solver, solver_settings, body)
+    result = await solve_from_request(request, osm, pollution, osm_settings, solver, solver_settings, body)
     return JSONResponse(build_geojson_response(result), media_type=GEOJSON)
 
 
-async def _solve(request, osm, pollution, osm_settings, solver, solver_settings, body):
+async def solve_from_request(request, osm, pollution, osm_settings, solver, solver_settings, body):
+    """Plan and solve body; the latency budget starts at X-Request-Received-At from the gateway."""
     received_at = parse_received_at(request.headers.get(RECEIVED_AT_HEADER)) or datetime.now(timezone.utc)
     return await solve_route_request(
         body, osm=osm, pollution=pollution, osm_settings=osm_settings, solver=solver,

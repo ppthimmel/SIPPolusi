@@ -1,5 +1,6 @@
 """Standalone FastAPI app for the cache endpoints (/v1/osm, /v1/pollution), the
-request planner (/v1/routes/solver-input) and route solving (/v1/routes/solve).
+request planner (/v1/routes/solver-input), route solving (/v1/routes/solve, /plan)
+and the public API (POST /v1/routes, GET /v1/exposure-surface, TI-SE-08).
 
 Run from src/backend:
     uvicorn osm.app:app --reload
@@ -22,8 +23,14 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.gzip import GZipMiddleware
 
 from planner.router import router as planner_router
+from public_api.config import ApiSettings, get_api_settings
+from public_api.limits import BodySizeLimit
+from public_api.openapi import install_openapi
+from public_api.router import router as public_router
 from solver.config import SolverSettings, get_solver_settings
 from solver.contract import RouteSolver
 from solver.factory import make_solver
@@ -70,8 +77,10 @@ def create_app(
     pollution_repository: PollutionRepository | None = None,
     solver: RouteSolver | None = None,
     solver_settings: SolverSettings | None = None,
+    api_settings: ApiSettings | None = None,
 ) -> FastAPI:
     """Build the app. Passing repositories (and settings, solver) skips the database, for tests."""
+    api_settings = api_settings or get_api_settings()
     if repository is None:
         lifespan = osm_lifespan
     else:
@@ -90,10 +99,20 @@ def create_app(
                     "Spatial Pollution Cache DB (schema pollution, EdgeWeight per time window). "
                     "Road data © OpenStreetMap contributors, ODbL "
                     "(https://www.openstreetmap.org/copyright).",
-        version="1.1.0",
+        version="1.2.0",
         lifespan=lifespan,
     )
+    app.state.api_settings = api_settings
     install_error_handling(app)
+    # Added last = outermost: oversized bodies are refused before anything reads them.
+    app.add_middleware(GZipMiddleware, minimum_size=1024)
+    if api_settings.cors_origin_list():
+        app.add_middleware(CORSMiddleware, allow_origins=api_settings.cors_origin_list(),
+                           allow_methods=["GET", "POST"], allow_headers=["Content-Type", "X-Request-ID"],
+                           expose_headers=["X-Request-ID"])
+    app.add_middleware(BodySizeLimit, max_bytes=api_settings.max_body_bytes)
+    install_openapi(app)
+    app.include_router(public_router)
     app.include_router(router)
     app.include_router(pollution_router)
     app.include_router(planner_router)

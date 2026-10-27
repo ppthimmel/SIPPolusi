@@ -94,12 +94,14 @@ def _lead_url(init: pd.Timestamp, valid: pd.Timestamp) -> str:
     return f"{PORTAL}/Y{init:%Y}/M{init:%m}/D{init:%d}/{name}"
 
 
-def fetch_run(init: pd.Timestamp) -> dict:
+def fetch_run(init: pd.Timestamp, get=None) -> dict:
+    """Subset satu run; ``get(url, method)`` → (isi, header) dapat diganti (bawaan ``_get``)."""
+    get = get or _get
     (a, b), (c, d) = LAT_INDEX, LON_INDEX
     sub = f"[0:{LEADS - 1}][0][{a}:{b}][{c}:{d}]".replace("[", "%5B").replace("]", "%5D")
     url = (f"{OPENDAP}/{COLLECTION}.{init:%Y%m%d_%H}z.ascii?pm25_rh35{sub},no2{sub},"
            f"time%5B0:{LEADS - 1}%5D,lat%5B{a}:{b}%5D,lon%5B{c}:{d}%5D")
-    body, _ = _get(url)
+    body, _ = get(url)
     text = body.decode()
     lat, lon = _parse_ascii(text, "lat"), _parse_ascii(text, "lon")
     if not (np.allclose(lat, LAT_CENTERS) and np.allclose(lon, LON_CENTERS)):
@@ -110,8 +112,8 @@ def fetch_run(init: pd.Timestamp) -> dict:
     decoded = _grads_time(_parse_ascii(text, "time"))
     if decoded[0] != times[0] or (decoded != times).sum() > 2:
         raise ValueError(f"{init}: waktu run tidak sesuai ({decoded[0]}, {(decoded != times).sum()} beda)")
-    first = _get(_lead_url(init, times[0]), "HEAD")[1].get("Last-Modified")
-    last = _get(_lead_url(init, times[-1]), "HEAD")[1].get("Last-Modified")
+    first = get(_lead_url(init, times[0]), "HEAD")[1].get("Last-Modified")
+    last = get(_lead_url(init, times[-1]), "HEAD")[1].get("Last-Modified")
     if not first or not last:
         raise ValueError(f"{init}: Last-Modified tidak tersedia")
     as_iso = lambda h: email.utils.parsedate_to_datetime(h).astimezone(dt.timezone.utc).isoformat()  # noqa: E731

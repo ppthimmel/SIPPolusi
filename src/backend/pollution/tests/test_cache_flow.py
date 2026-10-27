@@ -1,7 +1,7 @@
 """TI-SE-04: write with the Data Worker, read with the Backend, on a local PostGIS.
 
 Writers are the real Data Worker functions: osm_cache.write_road_graph and
-spatial_model.cache.write_pollution_weight (TI-AI-05). Readers are the Backend
+spatial_model.inference.cache.write_pollution_weight (TI-AI-05). Readers are the Backend
 repositories (osm.repository, pollution.repository) and the HTTP API.
 Run with TEST_DATABASE_URL pointing at src/backend/testdb.
 """
@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 
+import asyncpg
 import pytest
 
 from osm.config import OsmSettings, get_settings
@@ -58,13 +59,47 @@ def write_graph(conn, version, **kw):
 
 def write_weights(conn, start, edge_ids, graph_version, pm25=20.0, model="idw-p2-k8"):
     from contracts import EdgeWeight, TimeWindow as WorkerWindow
-    from spatial_model.cache import write_pollution_weight
+    from spatial_model.inference.cache import write_pollution_weight
 
     weights = [EdgeWeight(edge_id=e, time_window_start=start, pm25_ugm3=pm25, no2_ugm3=40.0,
                           exposure_index=0.5 * (pm25 / 15 + 40 / 25), confidence_score=0.3,
                           background_source=None, estimation_source="idw") for e in edge_ids]
     return write_pollution_weight(conn, weights, WorkerWindow.starting_at(start), graph_version, model,
-                                  coverage_ratio=1.0)
+                                  coverage_ratio=1.0, trace=trace_for_weights(weights, start, graph_version))
+
+
+def trace_for_weights(weights, start, graph_version):
+    """One source cell per synthetic edge, shared by cache and public API fixtures."""
+    import dataclasses, hashlib
+    import numpy as np
+    import pandas as pd
+    from spatial_model.data.grid import GridSpec
+    from spatial_model.inference.provenance import InferenceTrace
+    spec = GridSpec(x0=700000., y0=9310000., nx=len(weights), ny=1)
+    frame = pd.DataFrame([dataclasses.asdict(w) for w in weights])
+    grid = frame[["pm25_ugm3", "no2_ugm3", "confidence_score"]].copy()
+    grid["cell_id"] = np.arange(len(weights))
+    grid["x"], grid["y"] = spec.cell_centers()
+    grid["pm25_source"] = grid["no2_source"] = "idw"
+    pieces = pd.DataFrame(dict(edge_id=frame.edge_id.to_numpy(), cell_id=np.arange(len(weights)), length_m=100.))
+    fingerprint = hashlib.sha256(frame.to_json().encode()).hexdigest()
+    return InferenceTrace(f"fixture-{start.isoformat()}-{graph_version}-{fingerprint}", grid, pieces,
+                           spec.as_dict(), fingerprint, {}, {})
+
+
+def test_additive_provenance_migration_preserves_historical_rows(writer):
+    """Upgrade a cache without metadata, twice, preserving existing concentrations."""
+    from pathlib import Path
+    write_graph(writer, "migration-fixture")
+    write_weights(writer, W1, [1], "migration-fixture", pm25=27.0)
+    writer.execute("ALTER TABLE pollution.edge_pollution DROP COLUMN model_metadata")
+    migration = (Path(__file__).resolve().parents[3] / "data_worker/database/spatial_migration.sql").read_text(encoding="utf-8")
+    for _ in range(2):
+        with writer.transaction():
+            writer.execute(migration)
+    row = writer.execute("SELECT pm25_ugm3, model_metadata FROM pollution.edge_pollution WHERE edge_id=1").fetchone()
+    assert row == (27.0, {})
+    writer.execute("UPDATE pollution.edge_pollution SET estimation_source='hybrid' WHERE edge_id=1")
 
 
 # ---------------------------------------------------------------- Backend side
@@ -238,6 +273,15 @@ def test_http_api_reads_what_the_worker_wrote(writer, cache_dsn, monkeypatch):
             body = client.get("/v1/pollution/edge-weights",
                               params={"bbox": "106.79,-6.21,106.81,-6.19", "mode": "walk"}).json()
             assert body["count"] == 24 and body["graph_version"] == "v1"
+            run_id = body["weights"][0]["trace_run_id"]
+            assert run_id
+            trace_response = client.get("/v1/pollution/edge-weights/1/trace")
+            assert trace_response.status_code == 200
+            trace = trace_response.json()
+            assert trace["status"] == "available" and trace["run_id"] == run_id
+            assert trace["manifest"]["graph_version"] == "v1"
+            assert trace["cells"][0]["pm25_ugm3"] == 20.
+            assert trace["cells"][0]["length_m"] == 100.
             assert body["time_window_start"] == "2026-10-13T08:00:00Z"
             windows = client.get("/v1/pollution/windows").json()
             assert windows["latest_complete"]["status"] == "complete"
@@ -275,3 +319,27 @@ def test_http_api_before_the_worker_created_the_schemas(bare_dsn, monkeypatch):
     finally:
         get_settings.cache_clear()
         get_pollution_settings.cache_clear()
+
+
+async def test_missing_table_in_existing_schemas_is_not_cache_empty(writer, backend):
+    """The schemas exist but a table is gone (renamed table, partial migration): a deployment
+    bug that must stay an error, not look like a cache the Data Worker has not filled yet."""
+    osm, pollution, _ = backend
+    writer.execute("DROP TABLE pollution.pollution_window CASCADE")
+    with pytest.raises(asyncpg.UndefinedTableError):
+        await pollution.latest_complete_window()
+    # The other schema is untouched, so its reads still work (an empty cache answers cache_empty).
+    with pytest.raises(CacheUnavailable) as err:
+        await osm.get_active_version()
+    assert err.value.reason == CacheUnavailable.CACHE_EMPTY
+
+
+async def test_legacy_cache_readable_without_claiming_cell_trace(writer, backend):
+    _, pollution, _ = backend
+    write_graph(writer, "legacy")
+    write_weights(writer, W2, [1], "legacy")
+    writer.execute("UPDATE pollution.edge_pollution SET trace_run_id = NULL")
+    result = await pollution.read_pollution_weight(BBOX_ALL)
+    assert len(result.weights) == 1 and result.weights[0].trace_run_id is None
+    trace = await pollution.read_edge_trace(1)
+    assert trace["status"] == "legacy_unavailable" and trace["cells"] == []

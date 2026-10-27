@@ -1,0 +1,60 @@
+Dataset {
+  Grid {
+    ARRAY:
+      Float32 co[time = 10752][lev = 1][lat = 721][lon = 1440];
+    MAPS:
+      Float64 time[time = 10752];
+      Float64 lev[lev = 1];
+      Float64 lat[lat = 721];
+      Float64 lon[lon = 1440];
+  } co;
+  Grid {
+    ARRAY:
+      Float32 no2[time = 10752][lev = 1][lat = 721][lon = 1440];
+    MAPS:
+      Float64 time[time = 10752];
+      Float64 lev[lev = 1];
+      Float64 lat[lat = 721];
+      Float64 lon[lon = 1440];
+  } no2;
+  Grid {
+    ARRAY:
+      Float32 o3[time = 10752][lev = 1][lat = 721][lon = 1440];
+    MAPS:
+      Float64 time[time = 10752];
+      Float64 lev[lev = 1];
+      Float64 lat[lat = 721];
+      Float64 lon[lon = 1440];
+  } o3;
+  Grid {
+    ARRAY:
+      Float32 pm10_rh35[time = 10752][lev = 1][lat = 721][lon = 1440];
+    MAPS:
+      Float64 time[time = 10752];
+      Float64 lev[lev = 1];
+      Float64 lat[lat = 721];
+      Float64 lon[lon = 1440];
+  } pm10_rh35;
+  Grid {
+    ARRAY:
+      Float32 pm25_rh35[time = 10752][lev = 1][lat = 721][lon = 1440];
+    MAPS:
+      Float64 time[time = 10752];
+      Float64 lev[lev = 1];
+      Float64 lat[lat = 721];
+      Float64 lon[lon = 1440];
+  } pm25_rh35;
+  Grid {
+    ARRAY:
+      Float32 so2[time = 10752][lev = 1][lat = 721][lon = 1440];
+    MAPS:
+      Float64 time[time = 10752];
+      Float64 lev[lev = 1];
+      Float64 lat[lat = 721];
+      Float64 lon[lon = 1440];
+  } so2;
+  Float64 time[time = 10752];
+  Float64 lev[lev = 1];
+  Float64 lat[lat = 721];
+  Float64 lon[lon = 1440];
+} /gmao/geos-cf/v2/ana/aqc_tavg_1hr_glo_L1440x721_slv;

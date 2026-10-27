@@ -210,7 +210,10 @@ Keduanya menerima `RouteRequest` yang sama dengan `/v1/routes/solver-input`; con
 | `POST /v1/routes/solve` | `SolveResult` (JSON internal, TI-SE-06) |
 | `POST /v1/routes/plan` | GeoJSON FeatureCollection (`application/geo+json`, Kode 3.2, TI-SE-07): dua Feature `recommended`/`comparison` dengan `route_source`, `preference_applied`, metrik, dan `edge_ids`; serta `metadata` berisi `route_source`, `fallback_reason`, `model_version` {`downscaling`, `route_policy`}, `data_stale`, `comparison`, `notes`, dan `disclaimer` |
 
-Endpoint publik `POST /v1/routes` (TI-SE-08) nantinya menyajikan respons `/plan` di path finalnya.
+Endpoint publik `POST /v1/routes` (TI-SE-08, [`../public_api`](../public_api/README.md)) memberikan
+respons yang sama dengan `/plan`. `/solve` dan `/plan` tetap sebagai endpoint inspeksi dan tidak
+diteruskan oleh API Gateway. Metadata GeoJSON kini juga memuat `crs`, `coordinate_order`, `units`,
+dan `exposure_index_definition`.
 
 **Keadaan saat ini.** Selama cache polusi Railway masih kosong, permintaan valid menjawab 503
 `cache_empty`. Hasil 200 dibuktikan di basis data lokal: [VERIFICATION.md](VERIFICATION.md) (TI-SE-06) dan
@@ -221,8 +224,8 @@ Endpoint publik `POST /v1/routes` (TI-SE-08) nantinya menyajikan respons `/plan`
 Dari `src/backend/solver`, dengan venv dan dependensi dari [`../pollution`](../pollution/README.md#menguji):
 
 ```bash
-pytest -m "not cacheflow"                                                    # tanpa DB → 92 passed
-TEST_DATABASE_URL=postgresql://test:test@localhost:55432/test pytest         # semua → 98 passed
+pytest -m "not cacheflow"                                                    # tanpa DB → 93 passed
+TEST_DATABASE_URL=postgresql://test:test@localhost:55432/test pytest         # semua → 99 passed
 ```
 
 - **Uji kontrak** (`tests/test_contract.py`) menjalankan ketiga penyedia (mock, baseline, dan HTTP

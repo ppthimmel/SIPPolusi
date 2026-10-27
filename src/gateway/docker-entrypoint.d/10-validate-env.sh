@@ -22,7 +22,7 @@ esac
 # address (letters, digits, "-", "_", dot-separated) or a bracketed IPv6
 # address. The port is required: Railway services listen on $PORT, not 80.
 UPSTREAM_RE='^https?://([A-Za-z0-9_-]+(\.[A-Za-z0-9_-]+)*|\[[0-9A-Fa-f:.]+\]):[0-9]{1,5}$'
-FORMAT_HINT="expected scheme://host:port, e.g. http://backend.railway.internal:8000"
+FORMAT_HINT="expected scheme://host:port, e.g. http://cache-api.railway.internal:8000"
 
 # check_upstream NAME VALUE EXAMPLES. A rejected value is never printed: it may
 # hold a credential pasted by mistake (e.g. a URL with user:password@).
@@ -36,10 +36,10 @@ check_upstream() {
     [ "$port" -ge 1 ] && [ "$port" -le 65535 ] || fail "$name has port $port; the port must be between 1 and 65535"
 }
 
-check_upstream BACKEND_UPSTREAM "${BACKEND_UPSTREAM:-}" \
-    "Railway: http://backend.railway.internal:8000, compose: http://backend:8000"
 check_upstream CACHE_API_UPSTREAM "${CACHE_API_UPSTREAM:-}" \
     "Railway: http://cache-api.railway.internal:8000 (the service built from src/backend/osm/Dockerfile), compose: http://cache_api:8000"
 
-# Both values passed the check above, so they hold no credentials.
-echo "gateway: configuration ok (PORT=$PORT, BACKEND_UPSTREAM=$BACKEND_UPSTREAM, CACHE_API_UPSTREAM=$CACHE_API_UPSTREAM)"
+# The value passed the check above, so it holds no credentials. BACKEND_UPSTREAM
+# is no longer read: no public path goes to the backend (TI-DO-05), and a
+# leftover value in the service's variables is ignored.
+echo "gateway: configuration ok (PORT=$PORT, CACHE_API_UPSTREAM=$CACHE_API_UPSTREAM)"

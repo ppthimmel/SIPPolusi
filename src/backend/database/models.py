@@ -14,6 +14,9 @@ from sqlalchemy import (
     Boolean,
     CheckConstraint,
     DateTime,
+    Double,
+    ForeignKey,
+    ForeignKeyConstraint,
     Index,
     Integer,
     MetaData,
@@ -21,7 +24,7 @@ from sqlalchemy import (
     func,
     text,
 )
-from sqlalchemy.dialects.postgresql import REAL
+from sqlalchemy.dialects.postgresql import REAL, JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 SCHEMAS = ("pollution", "osm", "mlflow")
@@ -39,7 +42,7 @@ class EdgePollution(PollutionBase):
     __tablename__ = "edge_pollution"
     __table_args__ = (
         CheckConstraint("background_source IN ('aod', 'reanalysis')", name="ck_edge_pollution_background_source"),
-        CheckConstraint("estimation_source IN ('stgnn', 'idw')", name="ck_edge_pollution_estimation_source"),
+        CheckConstraint("estimation_source IN ('stgnn', 'idw', 'hybrid')", name="ck_edge_pollution_estimation_source"),
     )
 
     edge_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
@@ -50,6 +53,8 @@ class EdgePollution(PollutionBase):
     confidence_score: Mapped[float | None] = mapped_column(REAL)
     background_source: Mapped[str | None] = mapped_column(Text)
     estimation_source: Mapped[str | None] = mapped_column(Text)
+    model_metadata: Mapped[dict] = mapped_column(JSONB, server_default=text("'{}'::jsonb"), nullable=False)
+    trace_run_id: Mapped[str | None] = mapped_column(Text, ForeignKey("pollution.inference_run.run_id"))
     graph_version: Mapped[str | None] = mapped_column(Text)
     model_version: Mapped[str | None] = mapped_column(Text)
     geom = mapped_column(Geometry("LINESTRING", srid=4326))  # GiST index created by GeoAlchemy2
@@ -66,6 +71,42 @@ class PollutionWindow(PollutionBase):
     coverage_ratio: Mapped[float | None] = mapped_column(REAL)
     model_version: Mapped[str | None] = mapped_column(Text)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class InferenceRun(PollutionBase):
+    __tablename__ = "inference_run"
+    __table_args__ = (Index("inference_run_window_idx", "time_window_start"),)
+    run_id: Mapped[str] = mapped_column(Text, primary_key=True)
+    time_window_start: Mapped[datetime] = mapped_column(DateTime(timezone=True),
+        ForeignKey("pollution.pollution_window.time_window_start", ondelete="CASCADE"), nullable=False)
+    manifest: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    trace_sha256: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class GridPrediction(PollutionBase):
+    __tablename__ = "grid_prediction"
+    run_id: Mapped[str] = mapped_column(Text, ForeignKey("pollution.inference_run.run_id", ondelete="CASCADE"), primary_key=True)
+    cell_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    x: Mapped[float] = mapped_column(Double)
+    y: Mapped[float] = mapped_column(Double)
+    pm25_ugm3: Mapped[float | None] = mapped_column(Double)
+    no2_ugm3: Mapped[float | None] = mapped_column(Double)
+    confidence_score: Mapped[float | None] = mapped_column(Double)
+    pm25_source: Mapped[str] = mapped_column(Text)
+    no2_source: Mapped[str] = mapped_column(Text)
+
+
+class EdgeCell(PollutionBase):
+    __tablename__ = "edge_cell"
+    __table_args__ = (
+        ForeignKeyConstraint(["run_id", "cell_id"], ["pollution.grid_prediction.run_id", "pollution.grid_prediction.cell_id"], ondelete="CASCADE"),
+        CheckConstraint("length_m > 0", name="ck_edge_cell_length"),
+    )
+    run_id: Mapped[str] = mapped_column(Text, primary_key=True)
+    edge_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    cell_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    length_m: Mapped[float] = mapped_column(Double)
 
 
 class RoadNode(OsmBase):

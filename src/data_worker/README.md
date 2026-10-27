@@ -4,12 +4,15 @@ Komponen fase background SIPPolusi (Dokumen Desain Tugas 3, Tabel 3.9 dan
 Gambar 3.7). Setiap jam pada menit ke-15, `schedule_acquisition()` menjalankan
 satu siklus akuisisi untuk time window satu jam yang baru berakhir.
 
-Yang sudah berjalan: **`fetch_ground_truth("spku", ...)`**, yaitu pengambilan
-ground truth sensor darat dari portal DLH DKI Jakarta (udara.jakarta.go.id),
-yang disimpan ke PostgreSQL. Langkah `trigger_downscale_inference` (fallback
-IDW sampai EdgeWeight di cache) tersedia tetapi nonaktif kecuali
-`DOWNSCALE_WRITE_CACHE=1`. Langkah lain pada siklus (satelit, meteorologi,
-kendali mutu, penyelarasan, write_features) masih tercatat `not_implemented`.
+Yang sudah berjalan:
+
+- **`fetch_ground_truth("spku", ...)`:** ground truth sensor darat dari portal DLH DKI Jakarta
+  (udara.jakarta.go.id), disimpan ke PostgreSQL.
+- **Konektor sumber sekunder dan FeatureMatrix (TI-SE-02):** Open-Meteo, GEOS-CF `ana`/`fcst`,
+  Landsat 8/9, VIIRS VNP46A2, dan Sentinel-5P NO2, lalu kendali mutu, penyelarasan ke grid 100 m, dan
+  `write_features`. Data disimpan ke skema `features`; lihat [`feature_store/README.md`](feature_store/README.md).
+- **`trigger_downscale_inference`:** fallback IDW sampai EdgeWeight di cache; tersedia tetapi nonaktif kecuali
+  `DOWNSCALE_WRITE_CACHE=1`.
 
 > **Sebelum memakai datanya, baca [`docs/DATA.md`](docs/DATA.md).** Isinya:
 > arti setiap tabel dan bendera `qc`, stasiun yang diketahui bermasalah (dan
@@ -20,18 +23,22 @@ kendali mutu, penyelarasan, write_features) masih tercatat `not_implemented`.
 
 | Berkas | Isi |
 |---|---|
-| `main.py` | Titik masuk: `cycle` (untuk cron), `serve` (proses menetap), `spku ...` |
+| `main.py` | Titik masuk: `cycle` (untuk cron), `serve` (proses menetap), `status` (pemeriksaan jadwal), `check`, `spku ...` |
 | `acquisition.py` | `schedule_acquisition(time_window)`: langkah berurutan, status per langkah |
+| `worker_runs.py` | Catatan eksekusi siklus (`worker.cycle_run`), kunci siklus, status jadwal; lihat [`docs/devops/data-worker-schedule.md`](../../docs/devops/data-worker-schedule.md) |
+| `connectors/` | Konektor sumber sekunder (Open-Meteo, GEOS-CF, Landsat, VIIRS, Sentinel-5P): HTTP dengan timeout dan coba ulang, parser, QA |
+| `feature_store/` | Skema `features`, pembaca FeatureMatrix PostgreSQL, langkah siklus TI-SE-02, `python main.py features ...`; lihat [README-nya](feature_store/README.md) |
 | `ground_truth.py` | `fetch_ground_truth(provider, bbox, time_window)` |
 | `contracts.py` | `TimeWindow`, `BBox`, `GroundTruthMeasurement`, `GroundTruthBatch` (Tabel 3.3) |
 | `spku/` | Kolektor SPKU, porting dari `udara-collector` (SQLite) ke PostgreSQL |
 | `spku/schema.sql` | Skema `ground_truth` (PostgreSQL 16 + PostGIS) |
 | `scripts/migrate_sqlite_to_postgres.py` | Pemindahan data historis dari `udara.sqlite` |
+| `scripts/spku_stub_portal.py` | Portal SPKU tiruan (mode `ok`, `flaky`, `down`, `empty`) untuk uji jalur gagal lewat `SPKU_BASE_URL` |
 | `docs/DATA.md` | Kamus data, mutu data, dan catatan zona waktu |
 | `docs/RAILWAY.md` | Langkah deployment Railway, migrasi data historis, peralihan, catatan penggabungan `dev` |
 | `database/` | Model SQLAlchemy skema cache `pollution` dan `osm`; `init_db()` dipanggil di awal setiap siklus |
 | `spatial_model/` | Estimasi grid sampai `EdgeWeight` (langkah `trigger_downscale_inference`): fallback IDW, confidence score, agregasi ke ruas, Spatial Pollution Cache DB; lihat [README-nya](spatial_model/README.md) |
-| `spatial_model/baseline/` | Baseline IDW TI-AI-04: dataset beku, evaluasi *leave-one-station-out*, analisis galat; lihat [README-nya](spatial_model/baseline/README.md) |
+| `spatial_model/evaluation/idw/` | Baseline IDW TI-AI-04: dataset beku, evaluasi *leave-one-station-out*, analisis galat; lihat [README-nya](spatial_model/evaluation/idw/README.md) |
 
 `fetch_ground_truth("spku")` menjalankan lintasan penuh yang sama dengan
 kolektor historis (daftar stasiun, lalu 119 halaman rinci dengan riwayat 48
@@ -50,21 +57,15 @@ terbaru.
 
 Setiap langkah adalah fungsi `(time_window, config) -> dict` yang
 dikembalikan dengan kunci `status` bernilai `ok`, `unavailable`, atau
-keterangan lain. Daftarkan fungsinya pada `DEFAULT_STEPS` di
+keterangan lain. Langkah yang diberi penanda `feature_store.steps.uses_context`
+dipanggil `(time_window, config, context)`: `context` adalah kamus per siklus
+untuk meneruskan keluaran ke langkah berikutnya (mis. FeatureMatrix dari
+`align_spatiotemporal` ke `write_features`). Daftarkan fungsinya pada `DEFAULT_STEPS` di
 `acquisition.py`, menggantikan `None` pada nama langkah yang sesuai. Galat
 yang tidak tertangkap dicatat sebagai `failed` tanpa menghentikan langkah
 berikutnya (UT-DW-01b), jadi konektor baru tidak perlu menangkap semua
 galatnya sendiri. Kontrak parameter mengikuti Tabel 3.9, batas dan fallback
 mengikuti Tabel 3.19. Contoh yang sudah ada: `_step_ground_truth`.
-
-**Keterbatasan yang perlu diselesaikan:** penjadwal saat ini belum
-meneruskan keluaran satu langkah ke langkah berikutnya; nilai kembalian
-hanya dipakai untuk laporan status. Tabel 3.9 mengharapkan
-`run_quality_control(raw_datasets)` menerima seluruh keluaran konektor pada
-siklus yang sama, jadi `schedule_acquisition` perlu diperluas (misalnya
-dengan kamus konteks per siklus yang diteruskan ke setiap langkah) ketika
-langkah tersebut dibuat. Sementara itu, ground truth time window berjalan
-dapat dibaca dari basis data lewat `Store.read_measurements`.
 
 ## Perbedaan dengan Dokumen Desain
 
@@ -79,7 +80,9 @@ Untuk ditinjau pada pull request dan diselaraskan pada revisi dokumen.
 | Akses basis data | Satu lapisan akses | `database/` (SQLAlchemy + psycopg2) untuk skema cache, `spku/store.py` (psycopg 3, SQL langsung) untuk `ground_truth` | Kolektor diporting apa adanya agar semantik idempoten dan jejak revisi tetap teruji; dapat disatukan kemudian |
 | Role basis data | `worker_writer` (Tabel 3.15) | Pengguna dari `DATABASE_URL` | Role belum dibuat oleh DevOps |
 | Cuplikan beranda 30 menit | Tidak ada | Tersedia (`python main.py spku snapshot`), tidak dijadwalkan | Siklus per jam sudah cukup mendeteksi gangguan |
-| Kendali mutu | `run_quality_control` membuang dan mengisi | Konektor hanya menandai (`qc`), tidak membuang | Pembuangan tetap tugas `run_quality_control` |
+| Kendali mutu | `run_quality_control` membuang dan mengisi | Konektor SPKU hanya menandai (`qc`). Konektor sumber sekunder membuang nilai di luar rentang fisik dan duplikat saat transformasi; `run_quality_control` menandai sumber yang hilang atau basi `available=false`. Missing data SPKU tidak diinterpolasi | Data latih TI-AI-02 tidak memakai imputasi; nilai hilang tetap NaN dengan penandanya |
+| Sentinel-5P, Landsat | Copernicus Data Space Ecosystem; Earth Engine atau EarthExplorer (Tabel 3.18) | Microsoft Planetary Computer (STAC, token SAS anonim) | Data latih berasal dari sumber ini; tanpa akun |
+| Feature dan Dataset Store | Parquet + `manifest.json` di object storage setiap jam (Tabel 3.11) | Manifest dan `feature_version` di `features.feature_window`; Parquet utuh bila `FEATURE_STORE_DIR` diatur | Matriks ±196 ribu baris per jam dapat dibangun ulang persis dari tabel sumber |
 
 ## Zona waktu
 
@@ -106,6 +109,13 @@ Seluruhnya lewat variabel lingkungan:
 | `SPKU_ARCHIVE_DIR` | tidak | Arsip muatan mentah; kosong berarti tidak mengarsipkan |
 | `SPKU_CONTACT` | tidak | Alamat kontak pada User-Agent; boleh kosong |
 | `SPKU_DELAY_SECONDS`, `SPKU_TIMEOUT_SECONDS`, `SPKU_RETRIES` | tidak | Bawaan 1, 45, 3 |
+| `SPKU_BASE_URL` | tidak | Alamat portal; diganti hanya untuk uji terhadap portal tiruan |
+| `WORKER_DB_SCHEMA` | tidak | Skema catatan eksekusi siklus (`cycle_run`); bawaan `worker` |
+| `WORKER_LOCK_WAIT_SECONDS` | tidak | Lama menunggu kunci siklus bila siklus lain masih berjalan, sebelum dicatat `skipped`; bawaan 600 |
+| `EARTHDATA_TOKEN` | tidak | Token Earthdata Login untuk VIIRS VNP46A2 (LAADS DAAC); kosong berarti VIIRS `disabled` |
+| `FEATURES_SOURCES` | tidak | Sumber sekunder yang aktif: `all` (bawaan), `none`, atau daftar dipisah koma |
+| `FEATURES_DB_SCHEMA` | tidak | Skema data sumber sekunder dan manifest FeatureMatrix; bawaan `features` |
+| `FEATURE_STORE_DIR` | tidak | Bila diatur, Parquet dan `manifest.json` FeatureMatrix per time window ditulis ke sini |
 | `DOWNSCALE_WRITE_CACHE` | tidak | `1` mengaktifkan penulisan EdgeWeight ke `pollution.edge_pollution` setiap siklus; bawaan nonaktif |
 | `DOWNSCALE_KEEP_WINDOWS` | tidak | Jumlah time window complete terakhir yang dipertahankan di cache; bawaan 6 (±0,55 GB, hingga ±1,1 GB sebelum autovacuum) |
 | `SPATIAL_ARTIFACT_DIR` | tidak | Direktori artefak penelusuran per run inferensi; kosong berarti tidak disimpan |
@@ -133,11 +143,20 @@ Langkah lengkap beserta status data saat ini: [`docs/RAILWAY.md`](docs/RAILWAY.m
    berikut). Setelah itu kolektor lama di Mac boleh dihentikan.
 
 Railway tidak memaksakan batas waktu pada cron job; bila satu lintasan masih
-berjalan ketika jadwal berikutnya tiba, jadwal tersebut dilewati. Penulisan
-juga dikunci dengan advisory lock sehingga dua lintasan tidak pernah menulis
-bersamaan. Portal perlu dipastikan dapat dijangkau dari IP Railway; bila
-diblokir, lintasan berstatus `aborted` dan siklus tercatat `unavailable`.
-Periksa kesehatan kapan saja dengan `python main.py spku health`.
+berjalan ketika jadwal berikutnya tiba, jadwal tersebut dilewati. Setiap
+siklus juga memegang kunci siklus (advisory lock) sehingga siklus manual dan
+terjadwal tidak pernah tumpang tindih, dan penulisan SPKU dikunci terpisah.
+Portal perlu dipastikan dapat dijangkau dari IP Railway; bila diblokir,
+lintasan berstatus `aborted`, langkah `fetch_ground_truth` tercatat `failed`,
+dan siklus keluar dengan kode 1, walaupun time window masih berisi data dari
+lintasan sebelumnya.
+
+Setiap siklus dicatat pada tabel `worker.cycle_run` (identitas run,
+`TimeWindow`, pemicu, waktu terjadwal, status per langkah, alasan kegagalan).
+`python main.py status` membandingkan catatan itu dengan jadwal dan
+membedakan siklus yang berhasil, terlambat, gagal, macet, atau tidak pernah
+dijalankan. Kesehatan data SPKU: `python main.py spku health`. Rincian:
+[`docs/devops/data-worker-schedule.md`](../../docs/devops/data-worker-schedule.md).
 
 Sebelum mengaktifkan cron atau saat siklus gagal, jalankan `python main.py
 check`: konfigurasi, impor modul, serta koneksi dan ketersediaan PostGIS,
@@ -180,4 +199,7 @@ baru yang dihapus setelahnya. Tanpa keduanya, uji basis data dilewati dan
 sisanya tetap berjalan. `tests/test_data_worker.py` memuat UT-DW-01 dan
 UT-DW-05 dari Tabel 5.8; `tests/test_spatial_baseline.py` memuat UT-SDM-08
 dan UT-MTP-03 untuk baseline IDW; `tests/test_spatial_edgeweight.py` memuat
-UT-SDM-01, UT-SDM-06, UT-SDM-07, UT-OPS-01, dan UT-OPS-02.
+UT-SDM-01, UT-SDM-06, UT-SDM-07, UT-OPS-01, dan UT-OPS-02;
+`tests/test_connectors.py` dan `tests/test_feature_store.py` memuat uji konektor TI-SE-02 dengan respons
+rekaman (`tests/fixtures/sources`) dan uji penyimpanan `features`. Uji tidak menghubungi sumber sekunder
+sungguhan (`FEATURES_SOURCES=none` pada `conftest.py`).
