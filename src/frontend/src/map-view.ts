@@ -7,7 +7,7 @@ import {
   MAP_ZOOM,
   STUDY_AREA,
 } from "./config";
-import { EXPOSURE_STOPS, NO_DATA_COLOR, layerRatio } from "./exposure";
+import { EXPOSURE_STOPS, NO_DATA_COLOR, allLowConfidence, layerRatio } from "./exposure";
 import type { BBox, ExposureSurface, HeatLayer, Point, RouteResponse, SurfaceFeature } from "./types";
 
 const ROUTE_SOURCE = "routes";
@@ -44,11 +44,8 @@ function hatchImage(): ImageData {
   return ctx.getImageData(0, 0, size, size);
 }
 
-const lowConfidence: maplibregl.ExpressionSpecification = [
-  "<",
-  ["coalesce", ["get", "confidence"], 0],
-  CONFIDENCE_LOW,
-] as unknown as maplibregl.ExpressionSpecification;
+// Set per feature in renderHeat: low confidence, unless every feature drawn is low.
+const hatched: maplibregl.ExpressionSpecification = ["get", "hatch"] as unknown as maplibregl.ExpressionSpecification;
 
 export interface SegmentClick {
   point: Point;
@@ -137,7 +134,7 @@ export class MapView {
       id: "heat-fill-hatch",
       type: "fill",
       source: HEAT_SOURCE,
-      filter: ["all", isArea, lowConfidence] as unknown as maplibregl.FilterSpecification,
+      filter: ["all", isArea, hatched] as unknown as maplibregl.FilterSpecification,
       paint: { "fill-pattern": HATCH_IMAGE, "fill-opacity": 0.8 },
     });
     m.addLayer({
@@ -152,7 +149,7 @@ export class MapView {
       id: "heat-line-hatch",
       type: "line",
       source: HEAT_SOURCE,
-      filter: ["all", isLine, lowConfidence] as unknown as maplibregl.FilterSpecification,
+      filter: ["all", isLine, hatched] as unknown as maplibregl.FilterSpecification,
       paint: {
         "line-color": "rgba(255,255,255,0.85)",
         "line-width": ["interpolate", ["linear"], ["zoom"], 11, 1, 15, 2, 18, 4] as unknown as maplibregl.ExpressionSpecification,
@@ -272,10 +269,15 @@ export class MapView {
   private renderHeat(): void {
     // `ratio` is the WHO-guideline ratio of whichever layer is shown, so the
     // paint expressions never change; `i` indexes back into this.surface on click.
+    const stripes = !allLowConfidence(this.surface);
     const features: GeoJSON.Feature[] = this.surface.map((f, i) => ({
       type: "Feature",
       geometry: f.geometry,
-      properties: { ratio: layerRatio(this.heatLayer, f), confidence: f.confidence, i },
+      properties: {
+        ratio: layerRatio(this.heatLayer, f),
+        hatch: stripes && (f.confidence ?? 0) < CONFIDENCE_LOW,
+        i,
+      },
     }));
     (this.map.getSource(HEAT_SOURCE) as maplibregl.GeoJSONSource).setData({ type: "FeatureCollection", features });
   }

@@ -70,8 +70,13 @@ Respons 200 (`application/geo+json`, `Cache-Control: no-store` karena berisi koo
 - **`metadata`** berisi `request_id`, `mode`, `pollutant`, `preference`, `route_source`,
   `preference_applied`, `fallback_reason`, `time_window_start`, `data_stale`,
   `missing_edge_count`, `graph_version`, `model_version` {`downscaling`, `route_policy`},
-  `solver`, `comparison` {`delta_travel_time_min`, `delta_exposure_pct`}, `notes`, `crs`,
+  `estimation` {`source`, `fallback_pollutants`}, `solver`, `comparison` {`delta_travel_time_min`, `delta_exposure_pct`}, `notes`, `crs`,
   `coordinate_order`, `units`, `exposure_index_definition`, dan `disclaimer`.
+- **`estimation`** menyebut asal estimasi polusi pada ruas rute: `source` `idw` (interpolasi sensor
+  darat saja), `stgnn` atau `hybrid` (model downscaling ikut dipakai), `mixed`, atau `null` bila
+  cache tidak mencatatnya; `fallback_pollutants` berisi polutan yang memakai fallback IDW karena
+  model terdaftar tidak dapat dipakai. Nama versi `model_version.downscaling` (`spatial-<hash>`)
+  saja tidak menunjukkan hal ini (TI-SE-10, D-07).
 - **Fallback** tetap 200. Bila Route Model gagal, rute rekomendasi adalah rute tercepat dengan
   `route_source: "baseline"`, `preference_applied: false`, dan `fallback_reason` (`model_timeout`,
   `model_unavailable`, `model_error`, `model_invalid_response`, `model_no_route`). `notes`

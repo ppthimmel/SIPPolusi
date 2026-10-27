@@ -15,6 +15,8 @@ export interface HeatLegendState {
   stale: boolean;
   /** True when something is drawn although the latest request failed. */
   showingOldData: boolean;
+  /** Every area drawn has low confidence, so the map carries no stripes. */
+  allLowConfidence: boolean;
 }
 
 const TICKS = ["0", "0,5", "1,0", "2,0", "3,0"];
@@ -34,6 +36,7 @@ export class Legend {
   private status = h("p", { class: "heat-status", role: "status" });
   private retry = h("button", { type: "button", class: "link-btn", hidden: true }, "Coba lagi");
   private scale = h("div", { class: "heat-scale-wrap" });
+  private confidenceRow = h("div", { class: "legend-row" });
 
   private toggle: HTMLButtonElement;
 
@@ -59,7 +62,7 @@ export class Legend {
         { class: "legend-note" },
         `Indeks = rata-rata PM2.5 dan NO2 setelah masing-masing dibagi pedoman WHO (${WHO_GUIDELINE.pm25} dan ${WHO_GUIDELINE.no2} µg/m³). Nilai 1,0 berarti tepat pada pedoman.`,
       ),
-      h("div", { class: "legend-row" }, h("span", { class: "hatch-swatch", "aria-hidden": "true" }), "Area bergaris: keyakinan estimasi rendah."),
+      this.confidenceRow,
       h("div", { class: "legend-row" }, h("span", { class: "nodata-swatch", "aria-hidden": "true" }), "Abu-abu: tidak ada estimasi."),
     );
     // Narrow screens: the legend folds into one button so it does not cover the route.
@@ -107,6 +110,13 @@ export class Legend {
     this.status.textContent = text;
     this.status.className = `heat-status${tone ? ` is-${tone}` : ""}`;
     this.retry.hidden = s.status !== "error";
+
+    clear(this.confidenceRow);
+    this.confidenceRow.append(
+      ...(s.allLowConfidence
+        ? ["Keyakinan estimasi rendah di seluruh area yang tampil, jadi peta tidak diberi garis."]
+        : [h("span", { class: "hatch-swatch", "aria-hidden": "true" }), "Area bergaris: keyakinan estimasi rendah."]),
+    );
 
     const t = LAYER_TITLE[s.layer];
     clear(this.scale);

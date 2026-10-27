@@ -84,6 +84,7 @@ class SourceMetadata:
     estimation_sources: dict[str, int]
     background_sources: dict[str, int]
     rejected_graph_rows: dict[str, int]
+    downscaling_fallback: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)

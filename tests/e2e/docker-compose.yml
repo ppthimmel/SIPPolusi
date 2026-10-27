@@ -1,0 +1,115 @@
+# TI-SE-10 end-to-end stack: Data Worker -> model -> cache -> API -> frontend, on a
+# controlled dataset (fixture/manifest.json). From the repo root:
+#   docker compose -f tests/e2e/docker-compose.yml build
+#   python tests/e2e/run_e2e.py
+# Every service is built from this checkout. No .env files are read, so nothing here
+# can reach a shared database. The worker sits on an internal network only: it
+# cannot reach the internet. The SPKU portal is a stand-in (spku_portal) and the
+# observations of the tested windows come from the fixture.
+name: sippolusi-e2e
+
+x-db-url: &db_url postgresql://sipp:sipp@db:5432/sipp
+
+services:
+  db:
+    image: postgis/postgis:18-3.6  # same versions as the Railway database
+    platform: linux/amd64
+    environment:
+      POSTGRES_USER: sipp
+      POSTGRES_PASSWORD: sipp
+      POSTGRES_DB: sipp
+    ports: ["127.0.0.1:55433:5432"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U sipp -d sipp"]
+      interval: 2s
+      retries: 60
+    networks: [internal, edge]
+
+  # One-shot: schemas from their owners' code, then the fixture rows.
+  fixture:
+    build: ../../src/data_worker
+    profiles: [tools]
+    command: ["python", "/e2e/fixture/load_fixture.py"]
+    environment:
+      DATABASE_URL: *db_url
+      FEATURES_SOURCES: "none"
+    volumes: ["./:/e2e:ro"]
+    depends_on: { db: { condition: service_healthy } }
+    networks: [internal]
+
+  # One-shot per time window: docker compose run --rm worker python main.py cycle --window-start ...
+  worker:
+    build: ../../src/data_worker
+    profiles: [tools]
+    environment:
+      DATABASE_URL: *db_url
+      DOWNSCALE_WRITE_CACHE: "1"
+      # Secondary sources (satellite, meteo, ...) need the internet; the fixture has
+      # no features schema, so they are switched off rather than left to fail.
+      FEATURES_SOURCES: "none"
+      SPKU_BASE_URL: http://spku_portal:8765
+      SPKU_DELAY_SECONDS: "0"
+      SPATIAL_ARTIFACT_DIR: /artifacts
+    volumes: ["./out/artifacts:/artifacts"]
+    depends_on: { db: { condition: service_healthy } }
+    networks: [internal]  # no internet
+
+  # SPKU portal stand-in serving the fixture's stations and observations in the
+  # portal's own page format. E2E_SPKU_MODE=down makes every request fail (E2E-04).
+  spku_portal:
+    image: python:3.11-slim
+    command: ["python", "/e2e/spku_portal.py"]
+    environment:
+      SPKU_MODE: ${E2E_SPKU_MODE:-ok}
+    volumes: ["./:/e2e:ro"]
+    networks: [internal]
+
+  route_model:
+    build:
+      context: ../../src/backend
+      dockerfile: osm/Dockerfile
+      target: runtime
+    command: ["sh", "-c", "cd /e2e && exec uvicorn route_model_stub:app --host 0.0.0.0 --port 8100"]
+    volumes: ["./:/e2e:ro"]
+    ports: ["127.0.0.1:18100:8100"]
+    healthcheck: { disable: true }
+    networks: [internal, edge]
+
+  cache_api:
+    build:
+      context: ../../src/backend
+      dockerfile: osm/Dockerfile
+      target: runtime
+    environment:
+      DATABASE_URL: *db_url
+      PORT: "8000"
+      ROUTE_SOLVER_PROVIDER: ${E2E_SOLVER:-http}
+      ROUTE_SOLVER_URL: http://route_model:8100
+      ROUTE_SOLVER_FALLBACK: ${E2E_FALLBACK:-baseline}
+      LOG_FORMAT: json  # as on Railway (RAILWAY_ENVIRONMENT_NAME switches it on there)
+    ports: ["127.0.0.1:18001:8000"]
+    depends_on: { db: { condition: service_healthy } }
+    networks: [internal, edge]
+
+  gateway:
+    build: ../../src/gateway
+    environment:
+      PORT: "8080"
+      CACHE_API_UPSTREAM: http://cache_api:8000
+      BACKEND_UPSTREAM: http://cache_api:8000  # backend (main.py) is not part of this pipeline
+    ports: ["127.0.0.1:18080:8080"]
+    networks: [edge]
+
+  frontend:
+    build: ../../src/frontend
+    environment:
+      PORT: "80"
+      GATEWAY_UPSTREAM: http://gateway:8080
+    ports: ["127.0.0.1:18090:80"]
+    depends_on: [gateway]
+    networks: [edge]
+
+networks:
+  internal:
+    internal: true
+  edge: {}

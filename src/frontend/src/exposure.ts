@@ -1,4 +1,4 @@
-import { WHO_GUIDELINE } from "./config";
+import { CONFIDENCE_LOW, WHO_GUIDELINE } from "./config";
 import type { HeatLayer, SurfaceFeature } from "./types";
 
 /** Colour stops of the one-directional cream → dark-red ramp (subbab 3.1). The
@@ -29,6 +29,15 @@ export const HEAT_LAYER_LABELS: Record<HeatLayer, string> = {
 
 export function exposureClass(ratio: number): string {
   return (EXPOSURE_CLASSES.find((c) => ratio < c.max) ?? EXPOSURE_CLASSES[EXPOSURE_CLASSES.length - 1]).label;
+}
+
+/** Hatching marks low-confidence areas apart from the rest. When every feature
+ *  drawn is low (the IDW fallback is capped below 0,4 by design, Tabel 3.8), the
+ *  stripes would cover the whole map without telling anything apart, so the
+ *  legend says it once instead (TI-SE-10, D-06). A feature without a score
+ *  counts as low, as on the map. */
+export function allLowConfidence(features: ReadonlyArray<Pick<SurfaceFeature, "confidence">>): boolean {
+  return features.length > 0 && features.every((f) => (f.confidence ?? 0) < CONFIDENCE_LOW);
 }
 
 /** Colour ratio for a layer: always relative to the WHO guideline, so the three

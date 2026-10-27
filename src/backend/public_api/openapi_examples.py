@@ -47,6 +47,7 @@ ROUTE_EXAMPLE: dict[str, Any] = {
         "time_window_start": "2026-10-26T05:00:00Z", "data_stale": False, "missing_edge_count": 3,
         "graph_version": "jakarta-20261005",
         "model_version": {"downscaling": "idw-p2-k8", "route_policy": "4"},
+        "estimation": {"source": "idw", "fallback_pollutants": []},
         "solver": "http", "comparison": {"delta_travel_time_min": 4.3, "delta_exposure_pct": -31.9},
         "notes": [], "crs": CRS84, "coordinate_order": COORDINATE_ORDER, "units": ROUTE_UNITS,
         "exposure_index_definition": EXPOSURE_INDEX_DEFINITION, "disclaimer": DISCLAIMER,

@@ -62,6 +62,8 @@ class SolveContextOut(BaseModel):
     data_stale: bool
     missing_edge_count: int
     pollution_model_version: str | None
+    estimation_sources: dict[str, int] = Field(default_factory=dict)
+    downscaling_fallback: list[str] = Field(default_factory=list)
 
 
 class FallbackOut(BaseModel):
@@ -103,7 +105,8 @@ class SolveResultOut(BaseModel):
                 destination_snap_distance_m=c.destination_snap_distance_m,
                 graph_version=c.graph_version, time_window_start=c.time_window_start,
                 data_stale=c.data_stale, missing_edge_count=c.missing_edge_count,
-                pollution_model_version=c.pollution_model_version),
+                pollution_model_version=c.pollution_model_version,
+                estimation_sources=c.estimation_sources, downscaling_fallback=list(c.downscaling_fallback)),
             notes=s.notes,
             fallback=(FallbackOut(from_solver=s.fallback.from_solver, failure_reason=s.fallback.failure_reason,
                                   primary_elapsed_ms=round(s.fallback.primary_elapsed_ms, 1))

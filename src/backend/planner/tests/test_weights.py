@@ -11,7 +11,7 @@ from osm.models import Mode, ModeProfile
 from osm.tests.conftest import edge, grid_graph
 from osm.models import BBox, RoadGraph, RoadNode
 from planner.models import ESTIMATE, IMPUTED_MEDIAN
-from planner.weights import attach_edge_weights
+from planner.weights import attach_edge_weights, downscaling_fallbacks
 
 from .conftest import ORIGIN_LAT, ORIGIN_LON, VERSION, pollution_read, weight
 
@@ -102,3 +102,15 @@ def test_travel_time_and_direction_follow_the_mode():
     b1 = next(e for e in bike_edges if e.edge_id == 1)
     assert w1.travel_time_s == pytest.approx(110 / 1.3, abs=1e-3) and w1.bidirectional is True
     assert b1.travel_time_s == pytest.approx(110 / 4.2, abs=1e-3) and b1.bidirectional is False
+
+
+def test_downscaling_fallbacks_lists_pollutants_estimated_without_the_registered_model():
+    """D-07 (TI-SE-10): from the window's provenance, and only when the subgraph has estimates."""
+    sub = ten_edge_subgraph()
+    meta = {"pm25": {"source": "idw_stgnn_residual", "model_version": "3"},
+            "no2": {"source": "idw", "model_version": "idw-p2-k8", "fallback_reason": "load_bundle:FileNotFoundError"}}
+    edges, _ = attach_edge_weights(sub, pollution_read([weight(i) for i in range(1, 11)]), WALK)
+    assert downscaling_fallbacks(edges, meta) == ("no2",)
+    assert downscaling_fallbacks(edges, {}) == ()  # legacy rows: no per-pollutant metadata
+    imputed, _ = attach_edge_weights(sub, pollution_read([weight(99)]), WALK)  # no estimate on the subgraph
+    assert downscaling_fallbacks(imputed, meta) == ()

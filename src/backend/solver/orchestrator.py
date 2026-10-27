@@ -368,6 +368,8 @@ async def solve_route_request(
             graph_version=si.source.graph_version, time_window_start=si.weights.time_window_start,
             data_stale=si.weights.data_stale, missing_edge_count=si.weights.missing_edge_count,
             pollution_model_version=si.source.pollution_model_version,
+            estimation_sources=dict(si.source.estimation_sources),
+            downscaling_fallback=si.source.downscaling_fallback,
         ),
         notes=notes,
         fallback=fallback,

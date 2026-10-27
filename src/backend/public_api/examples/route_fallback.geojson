@@ -125,13 +125,17 @@
     "route_source": "baseline",
     "preference_applied": false,
     "fallback_reason": "model_error",
-    "time_window_start": "2026-10-26T12:00:00Z",
+    "time_window_start": "2026-10-27T11:00:00Z",
     "data_stale": false,
     "missing_edge_count": 0,
     "graph_version": "v1",
     "model_version": {
       "downscaling": "idw-p2-k8",
       "route_policy": "astar-baseline"
+    },
+    "estimation": {
+      "source": "idw",
+      "fallback_pollutants": []
     },
     "solver": "baseline",
     "comparison": {

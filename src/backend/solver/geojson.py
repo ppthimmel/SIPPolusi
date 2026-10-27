@@ -65,6 +65,20 @@ def _feature(route: RouteResult) -> dict[str, Any]:
     }
 
 
+def estimation_summary(estimation_sources: dict[str, int], fallback: tuple[str, ...]) -> dict[str, Any]:
+    """Where the route's pollution estimates came from (TI-SE-10, D-07).
+
+    source: the subgraph's single estimation_source (idw = interpolation of ground
+    sensors only; stgnn or hybrid = the downscaling model took part), "mixed" when
+    the edges disagree, null when the cache did not record it."""
+    known = set(estimation_sources) - {"unknown"}
+    if len(estimation_sources) == 1 and known:
+        source = known.pop()
+    else:
+        source = "mixed" if len(estimation_sources) > 1 else None
+    return {"source": source, "fallback_pollutants": list(fallback)}
+
+
 def build_geojson_response(result: SolveResult) -> dict[str, Any]:
     c = result.context
     return {
@@ -83,6 +97,7 @@ def build_geojson_response(result: SolveResult) -> dict[str, Any]:
             "missing_edge_count": c.missing_edge_count,
             "graph_version": c.graph_version,
             "model_version": {"downscaling": c.pollution_model_version, "route_policy": result.model_version},
+            "estimation": estimation_summary(c.estimation_sources, c.downscaling_fallback),
             "solver": result.solver,
             "comparison": {
                 "delta_travel_time_min": result.delta_travel_time_min,
