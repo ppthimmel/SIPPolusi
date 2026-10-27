@@ -50,6 +50,10 @@ LIMIT $1
 """
 
 # Access flags come from the road edge of the same graph_version as the row.
+# The bbox test is the same as the road graph's (osm.repository, bounding boxes
+# overlap): a stricter ST_Intersects here would drop weights of subgraph edges
+# whose bounding box touches the bbox but whose line does not, and the planner
+# would then count them as edges without an estimate (TI-SE-10, D-01).
 _SQL_WEIGHTS = """
 SELECT p.edge_id, p.time_window_start,
        round(p.pm25_ugm3::numeric, 4)::float8 AS pm25_ugm3,
@@ -63,7 +67,6 @@ FROM pollution.edge_pollution p
 LEFT JOIN osm.road_edge e ON e.edge_id = p.edge_id AND e.graph_version = p.graph_version
 WHERE p.time_window_start = $1
   AND p.geom && ST_MakeEnvelope($2, $3, $4, $5, 4326)
-  AND ST_Intersects(p.geom, ST_MakeEnvelope($2, $3, $4, $5, 4326))
 ORDER BY p.edge_id
 """
 

@@ -69,7 +69,7 @@ Struktur di Railway per 2026-10-13. Salinan DDL-nya:
 | `edge_pollution.graph_version`, `.model_version`, `.estimation_source`, `.background_source`, `.written_at` | Ketertelusuran setiap estimasi: graf, model, sumber, dan waktu tulis. |
 | `pollution_window.status` | `writing` selama transaksi tulis berjalan dan `complete` setelah selesai. Backend hanya membaca `complete`. |
 | `pollution_window.time_window_start` | Pemilihan `latest` dan `TimeWindow` tertentu. |
-| GiST `edge_pollution.geom` | Filter bbox bobot polusi (`&&` + `ST_Intersects`). |
+| GiST `edge_pollution.geom` | Filter bbox bobot polusi (`&&`, sama dengan subgraf jalan; lihat D-01 TI-SE-10). |
 
 Aturan kedaluwarsa dan retensi:
 - `data_stale = true` bila time window berakhir lebih dari `POLLUTION_STALE_AFTER_S` (3 jam) lalu.
