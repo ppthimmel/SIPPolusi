@@ -43,6 +43,9 @@ class StoreSourceReader(SourceReader):
         window = (pd.Timestamp(start), pd.Timestamp(end))
         if window != self._window:
             self._window, self._cache_key = window, None
+            # Source loaders bound their history to this window; reuse across
+            # tiles only while those bounds remain unchanged.
+            self._source_cache = None
         return super().__call__(grid_ids, start, end)
 
     def input_files(self):
@@ -145,4 +148,3 @@ def landsat_grid_positions() -> tuple[np.ndarray, np.ndarray]:
     """Baris/kolom grid setiap sel aktif, urutan ``active_cells()`` (urutan layer Landsat)."""
     rc = active_cells().grid_id.str.extract(r"^r(\d+)_c(\d+)$").astype(int)
     return rc[0].to_numpy(), rc[1].to_numpy()
-

@@ -277,7 +277,8 @@ def test_siklus_tumpang_tindih_dilewati_dan_tercatat(recorder, db):
 
 def test_sigterm_mencatat_siklus_gagal_beserta_langkah_yang_sudah_selesai(recorder):
     def terminated(window, config):
-        os.kill(os.getpid(), signal.SIGTERM)
+        # os.kill(SIGTERM) force-terminates Python on Windows, bypassing handlers.
+        signal.raise_signal(signal.SIGTERM)
         return {"status": "ok"}
 
     before = signal.getsignal(signal.SIGTERM)

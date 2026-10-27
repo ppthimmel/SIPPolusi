@@ -6,10 +6,24 @@ adalah pasangan dari [`../osm`](../osm/README.md): pool koneksi, skema galat, da
 Tabel 3.11 (`read_pollution_weight`), Tabel 3.15 (`IPollutionWeightRead`), Tabel 3.17 (skema).
 
 Baris ditulis oleh Spatial Downscaling Model lewat
-[`src/data_worker/spatial_model/cache.py`](../../data_worker/spatial_model/cache.py)
+[`src/data_worker/spatial_model/inference/cache.py`](../../data_worker/spatial_model/inference/cache.py)
 (`write_pollution_weight`, TI-AI-05). Graf OSM ditulis oleh
 [`src/data_worker/osm_cache`](../../data_worker/osm_cache/README.md) (`write_road_graph`).
 Bukti TI-SE-04: [VERIFICATION.md](VERIFICATION.md).
+
+## Trace sel sumber
+
+`EdgeWeight.trace_run_id` mengacu ke run yang menyimpan GridSpec, window, versi model,
+fingerprint input, prediksi sel, dan panjang potongan ruas–sel di PostgreSQL. Baca melalui
+`GET /v1/pollution/edge-weights/{edge_id}/trace?time_window_start=latest` atau window UTC tertentu.
+Endpoint mengembalikan `available` beserta manifest/checksum dan sel sumber; baris historis
+tanpa trace mengembalikan `legacy_unavailable` dan tetap dapat dibaca melalui endpoint bobot.
+Trace tidak bergantung pada direktori artefak Worker. Retensi cache menghapus trace terkait.
+
+Jalankan [migrasi aditif](../../data_worker/database/spatial_migration.sql) sebelum upgrade
+backend pada basis data lama. Trace baru dan bobot ditulis atomik oleh Worker; backend tetap
+read-only. [Spesifikasi aktif](../../../docs/SPATIAL_MODEL_SPEC.md) menjelaskan kontrak GEOS-CF
+dan batas interpretasi confidence.
 
 ## Aturan pembacaan
 

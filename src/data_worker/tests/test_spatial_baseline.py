@@ -13,19 +13,21 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from spatial_model.baseline.dataset import (
+from spatial_model.data.observations import (
     DATASET_FILE,
     MANIFEST_FILE,
     build_dataset,
     compute_split_boundaries,
     load_dataset,
 )
-from spatial_model.baseline.evaluate import compute_metrics, loso_predict
-from spatial_model.baseline.run import run_baseline
-from spatial_model.grid import GridSpec, to_grid_xy, to_lonlat
-from spatial_model.idw import NoGroundTruthError, exposure_index, idw_interpolate, run_idw_fallback
+from spatial_model.evaluation.idw.evaluate import compute_metrics, loso_predict
+from spatial_model.evaluation.idw.run import run_baseline
+from spatial_model.data.grid import GridSpec, to_grid_xy, to_lonlat
+from spatial_model.models.idw import NoGroundTruthError, idw_interpolate
+from spatial_model.inference.exposure import exposure_index
+from spatial_model.inference.fallback import run_idw_fallback
 
-CONFIG = pathlib.Path(__file__).resolve().parent.parent / "spatial_model" / "baseline" / "configs" / "idw_baseline.toml"
+CONFIG = pathlib.Path(__file__).resolve().parent.parent / "spatial_model" / "configs" / "idw_baseline.toml"
 
 # Empat stasiun sintetis di Jakarta dengan nilai yang diketahui.
 STATIONS = pd.DataFrame({
@@ -258,8 +260,8 @@ def test_run_dapat_diulang_dari_manifest_yang_sama(tmp_path):
     assert m1["config"]["sha256"] == m2["config"]["sha256"]
     for name in ("config.toml", "dataset_manifest.json", "metrics.json", "report.md", "tables/per_station.csv"):
         assert (run1 / name).exists()
-    metrics = json.loads((run1 / "metrics.json").read_text())
-    assert metrics["split"] == "test" and metrics["unit"] == "µg/m³"
+    metrics = json.loads((run1 / "metrics.json").read_text(encoding="utf-8"))
+    assert metrics["split"] == "test" and metrics["unit"] == "\u00b5g/m\u00b3"
     assert {"pm25", "no2"} <= set(metrics["overall"])
 
 
@@ -271,8 +273,8 @@ root, out = pathlib.Path(sys.argv[1]), pathlib.Path(sys.argv[2])
 sys.path[:0] = [str(root), str(root / "tests")]
 import locale
 print("ENCODING", locale.getpreferredencoding(False))
-from spatial_model.baseline.dataset import build_dataset
-from spatial_model.baseline.run import run_baseline
+from spatial_model.data.observations import build_dataset
+from spatial_model.evaluation.idw.run import run_baseline
 from test_spatial_baseline import CONFIG, _config, _raw
 from test_spatial_edgeweight import _run
 stations, obs = _raw()

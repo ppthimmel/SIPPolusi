@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query, Request
+from fastapi import APIRouter, Depends, Path, Query, Request
 
 from osm.errors import InvalidRequest
 from osm.models import Mode
@@ -80,3 +80,9 @@ async def read_edge_weights(
     version = None if graph_version.strip().lower() == "all" else graph_version.strip()
     read = await repo.read_pollution_weight(box, window, mode=mode, graph_version=version)
     return EdgeWeightsOut.of(read, mode, box.as_list())
+
+
+@router.get("/edge-weights/{edge_id}/trace", summary="Source grid cells and aggregation lengths for a cached road")
+async def read_edge_trace(repo: Repo, edge_id: Annotated[int, Path(ge=0, le=2**63-1)],
+                          time_window_start: TimeWindowParam = "latest"):
+    return await repo.read_edge_trace(edge_id, _parse_window(time_window_start))

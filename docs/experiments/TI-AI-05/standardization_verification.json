@@ -1,0 +1,51 @@
+{
+  "dataset": "ds-v0.3.0",
+  "purpose": "Confirm package standardization preserves training outputs",
+  "comparisons": {
+    "pm25": {
+      "splits": {
+        "val": {
+          "n": 1008,
+          "max_absolute_prediction_difference": 0.0
+        },
+        "test": {
+          "n": 689,
+          "max_absolute_prediction_difference": 0.0
+        }
+      },
+      "metrics_identical": true,
+      "config_hashes": {
+        "ds-v0.3.0.toml": "0290531143f3a2230e16e1e5dd2ce4127a1ba747c1e55d9b45bf19a6ee541c33",
+        "idw_baseline.toml": "021c00fc375d7fa87dd87ce848c6db7c319308a0b4fced99bbd89fceb1130723",
+        "lightgbm.json": "ad2890512573c0108e368cb5f6a9c610bc39ada8e9edd04634f543fe34b69906",
+        "stgnn.json": "b96f7ca5a53082f63d296bd24e3b9194cc564538fafb107300c3323221c60d71"
+      },
+      "checkpoint_sha256": "6bc68645f9f0c74e10944a4904bcfdc1d65d241af3fe09b6ecf69db29693148a"
+    },
+    "no2": {
+      "splits": {
+        "val": {
+          "n": 72,
+          "max_absolute_prediction_difference": 0.0
+        },
+        "test": {
+          "n": 47,
+          "max_absolute_prediction_difference": 0.0
+        }
+      },
+      "metrics_identical": true,
+      "config_hashes": {
+        "ds-v0.3.0.toml": "0290531143f3a2230e16e1e5dd2ce4127a1ba747c1e55d9b45bf19a6ee541c33",
+        "idw_baseline.toml": "021c00fc375d7fa87dd87ce848c6db7c319308a0b4fced99bbd89fceb1130723",
+        "lightgbm.json": "ad2890512573c0108e368cb5f6a9c610bc39ada8e9edd04634f543fe34b69906",
+        "stgnn.json": "b96f7ca5a53082f63d296bd24e3b9194cc564538fafb107300c3323221c60d71"
+      },
+      "checkpoint_sha256": "ab7c83f91d3e33d47cd65142f5c3bc8bbdfd1aca6bef5222ba8891ecf94ddacf"
+    }
+  },
+  "limitations": [
+    "PM2.5 fixed split, one epoch",
+    "NO2 LOSO fold 0 only",
+    "No registry aliases or deployed services changed"
+  ]
+}

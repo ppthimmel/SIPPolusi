@@ -8,7 +8,7 @@ ENV PYTHONUNBUFFERED=1 \
 WORKDIR /app
 
 # Install system dependencies for spatial libraries (gdal, etc)
-RUN apt-get update && apt-get install -y libgdal-dev && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y libgdal-dev libgomp1 && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
 # Railway has no GPU (training runs separately on the Tambora GPU server), so

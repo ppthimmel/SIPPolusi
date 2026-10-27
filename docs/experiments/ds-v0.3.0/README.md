@@ -7,7 +7,7 @@ Dibangun dengan:
 ```bash
 cd src/data_worker
 python -m spatial_model.snapshot build --ground-truth <ekspor sippolusi_ground_truth_20261006> --out <folder baru>
-python -m spatial_model.snapshot verify ../../docs/experiments/ds-v0.1.0
+python -m spatial_model.snapshot verify ../../docs/experiments/ds-v0.3.0
 ```
 
 ## Ringkasan

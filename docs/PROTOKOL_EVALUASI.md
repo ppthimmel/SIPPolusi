@@ -19,15 +19,13 @@ dibekukan.
 Snapshot ini immutable. Perubahan aturan, rentang, atau data menghasilkan versi baru. Data operasional di
 PostgreSQL (`ground_truth.*`, `pollution.*`) terus berubah dan tidak dipakai langsung untuk evaluasi.
 
-### Riwayat versi
+### Dataset aktif
 
-| Versi | Isi | Status |
-|---|---|---|
-| ds-v0.1.0 | Snapshot awal TI-AI-03 | **Digantikan.** 12 sensor DKI_PM25_* berjarak hingga 24 km melaporkan deret PM2.5 yang praktis sama (korelasi per jam 0,999, rasio 1,000); 45 dari 66 pasangannya melintasi train/val/test. IDW LOSO pada 12 stasiun ini RMSE 15,03 µg/m³, sedangkan pada stasiun lain 23,88 µg/m³, sehingga angka agregat tampak lebih baik daripada kenyataannya |
-| ds-v0.2.0 | ds-v0.1.0 + prakiraan GEOS-CF dan kalender | **Digantikan** (label dan split sama dengan ds-v0.1.0) |
-| ds-v0.3.0 | Fitur ds-v0.2.0 + aturan eksklusi `shared_signal` (kluster deret praktis sama dibuang) | **Basis** |
+Hanya ds-v0.3.0 dipakai. Aturan `shared_signal` mengecualikan kluster sensor dengan deret praktis identik lintas lokasi.
 
-Split provisional TI-AI-03 v1 pada baseline TI-AI-04 (`sh-a7e5db9bb33f`) juga digantikan.
+Revisi spesifikasi 27 Oktober 2026 menetapkan GEOS-CF analisis/prakiraan sebagai fitur atmosfer
+pada pelatihan dan operasi; AOD dan MERRA-2 tidak masuk kontrak aktif. Tidak ada suku latar
+aditif atau pergantian sumber akibat AOD kosong. Lihat [spesifikasi aktif](SPATIAL_MODEL_SPEC.md).
 
 ## Pembagian data
 
@@ -85,7 +83,7 @@ ketersediaan data pendukung, seperti pada baseline TI-AI-04.
 
 | Model | Cara memakai dataset | Status |
 |---|---|---|
-| Baseline IDW (TI-AI-04) | `python -m spatial_model.baseline run --manifest docs/experiments/ds-v0.3.0/manifest.json` | Run [`20261013T101200Z-idw-ds-v0.3.0-f6f15b8f`](experiments/TI-AI-04/runs/20261013T101200Z-idw-ds-v0.3.0-f6f15b8f/report.md) |
+| Baseline IDW (TI-AI-04) | `python -m spatial_model.evaluation.idw run --manifest docs/experiments/ds-v0.3.0/manifest.json` | Run [`20261013T101200Z-idw-ds-v0.3.0-f6f15b8f`](experiments/TI-AI-04/runs/20261013T101200Z-idw-ds-v0.3.0-f6f15b8f/report.md) |
 | ST-GNN | `read_stgnn_batch(docs/experiments/ds-v0.3.0/stgnn, t)`; split dari `splits/` atau kolom `split` pada `stgnn/labels.parquet` (PM2.5 blind ganda, `none` di luar split); fold dari `splits/loso_folds.parquet` | IDW-residual ST-GNN pada ds-v0.3.0 tidak lebih baik dari IDW ([perbandingan model](experiments/model-comparison-ds-v0.3.0/README.md)) |
 | Perbandingan interpolator dan model terlatih | [`experiments/model-comparison-ds-v0.3.0`](experiments/model-comparison-ds-v0.3.0/README.md): LOSO blok val untuk pemilihan, LOSO blok test untuk pelaporan | PM2.5: IDW p = 1 seluruh stasiun terpilih (22,18); NO2: LightGBM seluruh fitur, target langsung (27,43), bergantung pada fitur geometri sensor dan perlu pemeriksaan sensor LCS-* |
 | Algoritma pencarian rute A\* | Tidak memakai label secara langsung. Bobot polusi ruas (EdgeWeight) berasal dari Spatial Downscaling Model yang kinerjanya dilaporkan pada ds-v0.3.0, sehingga laporan rute menyebut versi dataset model tersebut | Mengikuti model yang dipakai |
@@ -103,10 +101,4 @@ IDW power = 2, neighbors = 8, jarak meter pada EPSG:32748 (Tabel 3.8).
 - **Konfigurasi terpilih pada blok val:**
   - PM2.5: power = 1 dengan seluruh stasiun (RMSE test 22,18 µg/m³, R² 0,11).
   - NO2: power = 2 dengan seluruh stasiun (RMSE test 44,66 µg/m³, R² 0,22).
-- **Dibanding ds-v0.1.0:**
-  - LOSO PM2.5 naik dari 23,06 menjadi 24,00 µg/m³, karena 12 stasiun yang "mudah" (kembarannya ada di antara
-    sumber) tidak lagi dihitung.
-  - Pada stasiun dan jam yang sama di luar kluster, RMSE praktis tidak berubah (23,88 → 24,00 µg/m³).
-  - NO2 tidak berubah, karena kluster hanya melaporkan PM2.5.
-- **Split tetap memakai 15 stasiun uji yang berbeda dari ds-v0.1.0,** sehingga angkanya tidak dapat dibandingkan
-  langsung dengan versi sebelumnya. Model berikutnya dibandingkan dengan baseline pada protokol dan versi yang sama.
+- Seluruh perbandingan memakai stasiun, jam, dan versi dataset yang sama.

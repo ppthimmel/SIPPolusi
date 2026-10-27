@@ -6,7 +6,7 @@
 - Training: 13 epochs; best epoch 1; patience 12; strict deterministic algorithms.
 - Runtime: 170.7 seconds; peak tensor allocation 378.0 MiB.
 - Checkpoint and full prediction artifacts: `D:/Github/SIPPolusi/graphify-out/stgnn-ds-v0.3.0/fcst_calendar_gpu_seed42_20261014_847559c6` (local, not committed).
-- Reproduction: `run_stgnn.py` with `train_stgnn_ds_v0.3.0.ipynb`; exact hashes/configurations in `run_manifest.json`.
+- Historical run configuration and source hashes are recorded in the adjacent manifest. Maintained training entry points: `python -m spatial_model.training` and `notebooks/spatial_model/`.
 
 | Split | Method | n | MAE | RMSE | Bias | R2 |
 |---|---|---:|---:|---:|---:|---:|

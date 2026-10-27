@@ -57,7 +57,7 @@ SELECT p.edge_id, p.time_window_start,
        round(p.exposure_index::numeric, 4)::float8 AS exposure_index,
        round(p.confidence_score::numeric, 4)::float8 AS confidence_score,
        p.background_source, p.estimation_source,
-       p.graph_version, p.model_version, p.written_at,
+       p.graph_version, p.model_version, p.written_at, p.model_metadata, p.trace_run_id,
        e.walk_allowed, e.bike_allowed
 FROM pollution.edge_pollution p
 LEFT JOIN osm.road_edge e ON e.edge_id = p.edge_id AND e.graph_version = p.graph_version
@@ -183,6 +183,30 @@ class PollutionRepository:
                                    CacheUnavailable.CACHE_EMPTY)
         return window
 
+    async def read_edge_trace(self, edge_id: int, time_window: TimeWindow | str = "latest") -> dict:
+        """Durable lineage for one completed cached edge; explicit legacy status if absent."""
+        import json
+        window = await self.resolve_window(time_window)
+        async with self._db.connection() as conn:
+            row = await conn.fetchrow("""SELECT e.trace_run_id, r.manifest, r.trace_sha256
+                FROM pollution.edge_pollution e
+                LEFT JOIN pollution.inference_run r ON r.run_id = e.trace_run_id
+                WHERE e.edge_id = $1 AND e.time_window_start = $2""", edge_id, window.time_window_start)
+            if row is None:
+                raise NotFound(f"EdgeWeight {edge_id} tidak ada pada time window tersebut.")
+            if row["trace_run_id"] is None:
+                return dict(status="legacy_unavailable", edge_id=edge_id,
+                            time_window_start=window.time_window_start, run_id=None, cells=[])
+            cells = await conn.fetch("""SELECT c.edge_id, c.length_m, g.*
+                FROM pollution.edge_cell c JOIN pollution.grid_prediction g USING (run_id, cell_id)
+                WHERE c.run_id = $1 AND c.edge_id = $2 ORDER BY c.cell_id""", row["trace_run_id"], edge_id)
+            manifest = row["manifest"]
+            if isinstance(manifest, str):
+                manifest = json.loads(manifest)
+            return dict(status="available", edge_id=edge_id, time_window_start=window.time_window_start,
+                        run_id=row["trace_run_id"], manifest=manifest, trace_sha256=row["trace_sha256"],
+                        cells=[dict(c) for c in cells])
+
     async def read_surface_edges(self, window: WindowInfo, graph_version: str, bbox: BBox) -> list[dict]:
         """Edges of graph_version intersecting bbox with their geometry (zoom >= 14)."""
         async with self._db.connection() as conn:
@@ -233,7 +257,13 @@ class PollutionRepository:
                 if not allowed:
                     excluded["not_allowed_for_mode"] += 1
                     continue
-            weights.append(EdgeWeight(**{k: r[k] for k in _WEIGHT_FIELDS}))
+            data = {k: r[k] for k in _WEIGHT_FIELDS if k in r}
+            metadata = data.get("model_metadata", {})
+            if isinstance(metadata, str):
+                import json
+                metadata = json.loads(metadata)
+            data["model_metadata"] = metadata
+            weights.append(EdgeWeight(**data))
         if excluded:
             logger.debug("pollution rows excluded in bbox: %s", dict(excluded))
 

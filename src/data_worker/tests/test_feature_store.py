@@ -121,7 +121,10 @@ def test_galat_tak_terduga_tidak_menghentikan_dan_format_berubah_dicatat(fs):
     assert result["status"] == "failed" and result["note"].startswith("format respons berubah")
 
 
-def test_jadwal_katalog_harian_dan_sumber_nonaktif(fs):
+def test_jadwal_katalog_harian_dan_sumber_nonaktif(fs, monkeypatch):
+    # Keep persisted fetch timestamps on the same clock as run_source(now=...).
+    clock = [T0]
+    monkeypatch.setattr("feature_store.store.now_utc", lambda: clock[0])
     calls = []
 
     def fn(client, fetch_id):
@@ -129,8 +132,10 @@ def test_jadwal_katalog_harian_dan_sumber_nonaktif(fs):
         return steps.SourceResult("ok", detail={"pending": 0})
 
     first = steps.run_source(fs, "landsat", WINDOW, Policy(1), fn, now=T0, environ={})
-    again = steps.run_source(fs, "landsat", WINDOW, Policy(1), fn, now=T0 + dt.timedelta(hours=1), environ={})
-    later = steps.run_source(fs, "landsat", WINDOW, Policy(1), fn, now=T0 + dt.timedelta(hours=25), environ={})
+    clock[0] = T0 + dt.timedelta(hours=1)
+    again = steps.run_source(fs, "landsat", WINDOW, Policy(1), fn, now=clock[0], environ={})
+    clock[0] = T0 + dt.timedelta(hours=25)
+    later = steps.run_source(fs, "landsat", WINDOW, Policy(1), fn, now=clock[0], environ={})
     assert (first["status"], again["status"], later["status"]) == ("ok", "not_due", "ok") and len(calls) == 2
     off = steps.run_source(fs, "viirs", WINDOW, Policy(1), fn, now=T0, environ={"FEATURES_SOURCES": "open_meteo"})
     assert off["status"] == "disabled"

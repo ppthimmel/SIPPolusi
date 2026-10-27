@@ -38,7 +38,7 @@ Yang sudah berjalan:
 | `docs/RAILWAY.md` | Langkah deployment Railway, migrasi data historis, peralihan, catatan penggabungan `dev` |
 | `database/` | Model SQLAlchemy skema cache `pollution` dan `osm`; `init_db()` dipanggil di awal setiap siklus |
 | `spatial_model/` | Estimasi grid sampai `EdgeWeight` (langkah `trigger_downscale_inference`): fallback IDW, confidence score, agregasi ke ruas, Spatial Pollution Cache DB; lihat [README-nya](spatial_model/README.md) |
-| `spatial_model/baseline/` | Baseline IDW TI-AI-04: dataset beku, evaluasi *leave-one-station-out*, analisis galat; lihat [README-nya](spatial_model/baseline/README.md) |
+| `spatial_model/evaluation/idw/` | Baseline IDW TI-AI-04: dataset beku, evaluasi *leave-one-station-out*, analisis galat; lihat [README-nya](spatial_model/evaluation/idw/README.md) |
 
 `fetch_ground_truth("spku")` menjalankan lintasan penuh yang sama dengan
 kolektor historis (daftar stasiun, lalu 119 halaman rinci dengan riwayat 48
