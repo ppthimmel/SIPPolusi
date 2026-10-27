@@ -16,7 +16,7 @@ from __future__ import annotations
 
 from route_model.astar_osm import Edge, RoadRouter
 
-from .cancel import CancelToken, run_cancellable
+from .cancel import CHECK_EVERY, CancelToken, run_cancellable
 from .contract import SOLVER_ERROR, SolveRequest, SolverError, SolverReply
 
 MODEL_VERSION = "astar-baseline"
@@ -55,8 +55,12 @@ def _wkt(a: tuple[float, float], b: tuple[float, float]) -> str:
 def _solve(token: CancelToken, request: SolveRequest) -> SolverReply:
     si = request.solver_input
     coords = {node_id: (p.lon, p.lat) for node_id, p in si.nodes.items()}
-    edges = [(Edge(e.edge_id, e.u, e.v, e.length_m, e.travel_time_s, _wkt(coords[e.u], coords[e.v])), e.bidirectional)
-             for e in si.edges]
+    edges = []
+    for i, e in enumerate(si.edges):
+        if i % CHECK_EVERY == 0:
+            token.check()
+        edges.append((Edge(e.edge_id, e.u, e.v, e.length_m, e.travel_time_s, _wkt(coords[e.u], coords[e.v])),
+                      e.bidirectional))
     token.check()
     try:
         router = RoadRouter(si.source.graph_version, si.mode.value, _CheckedCoords(coords, token), edges)

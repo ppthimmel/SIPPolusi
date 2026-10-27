@@ -1,4 +1,7 @@
 # SIPPolusi
+
+[![CI](https://github.com/ppthimmel/SIPPolusi/actions/workflows/ci.yml/badge.svg?branch=dev)](https://github.com/ppthimmel/SIPPolusi/actions/workflows/ci.yml?query=branch%3Adev)
+
 SIPPolusi: Sistem Informasi Pemandu Perjalanan dalam Polusi
 
 ## Layout
@@ -35,6 +38,9 @@ over Railway's private network (design document, Table 3.2). Build/start
 definitions, health checks, logging and the smoke test for the gateway,
 backend and data worker are in
 [docs/devops/build-runtime.md](docs/devops/build-runtime.md).
+CI/CD (build, test, regression, and the rule that Railway deploys a commit
+pushed to `dev` only after the pipeline passes) is in
+[docs/devops/ci-cd.md](docs/devops/ci-cd.md).
 
 ## Environment variables
 
