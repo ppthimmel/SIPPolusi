@@ -2,8 +2,8 @@
 
 `SourceReader._prepare()` sebelumnya membuka ulang seluruh sumber saat tuple grid
 berubah. Cache satu permintaan cocok untuk ekspor berulang pada node yang sama,
-tetapi tidak untuk serving PM2.5/NO₂ yang memakai banyak tile berbeda. Angka
-968 merujuk pada potensi permintaan untuk dua model × 484 tile; setiap cache miss
+tetapi tidak untuk serving PM2.5/NOâ‚‚ yang memakai banyak tile berbeda. Angka
+968 merujuk pada potensi permintaan untuk dua model Ã— 484 tile; setiap cache miss
 membuka **46 Parquet** pada dataset saat ini, bukan satu berkas.
 
 Reader sekarang memuat snapshot sumber sekali per instance. Landsat/VIIRS disimpan
@@ -19,6 +19,13 @@ Sumber/configuration reader harus tetap selama satu run; instance baru memuat
 pembaruan berkas. Reader mutable tidak ditujukan untuk berbagi antar-thread.
 Cache sumber baru dipublikasikan setelah seluruh pemuatan berhasil; kegagalan
 dapat dicoba kembali tanpa snapshot parsial.
+
+Integrasi `dev` pada `eeb99c3` mempertahankan hook pemuat `StoreSourceReader`:
+sumber PostgreSQL tidak dialihkan ke Parquet. Snapshot dipakai antar-tile pada
+jendela yang sama dan dibuang saat jendela berubah, sesuai batas riwayat loader.
+Regresi tambahan memeriksa pemakaian ulang dan pemuatan data baru pada jendela
+berikutnya. Benchmark setelah integrasi kembali menghasilkan 46 pembacaan dan
+seluruh frame/fingerprint identik dengan baseline.
 
 ## Verifikasi
 
@@ -41,11 +48,11 @@ biaya awal dan tambahan RAM, sehingga permintaan tunggal dapat lebih lambat.
 |---|---:|---:|
 | Pembacaan Parquet, 8 permintaan | 368 | 46 |
 | Permintaan pertama | 2,37 s | 11,96 s |
-| Rentang 7 permintaan berikutnya | 1,45–1,64 s | 0,16–0,29 s |
+| Rentang 7 permintaan berikutnya | 1,45â€“1,64 s | 0,16â€“0,29 s |
 | Total 8 permintaan | 13,23 s | 13,54 s |
 | RSS proses setelah benchmark | 840 MiB | 1.193 MiB |
 
-Rata-rata permintaan setelah pemuatan awal sekitar **6,9× lebih cepat**. Delapan
+Rata-rata permintaan setelah pemuatan awal sekitar **6,9Ã— lebih cepat**. Delapan
 permintaan masih belum mengamortisasi biaya awal; total benchmark ini sedikit lebih
 lambat. Tabel sumber diperkirakan 364 MiB, dengan puncak RSS proses 1.480 MiB saat
 pemuatan. RAM cache tidak bertumbuh mengikuti jumlah tile, tetapi kapasitas proses
@@ -64,6 +71,9 @@ hasil pemilihan `.loc` sebelumnya tanpa perbedaan.
 
 Dari root repo, aktifkan environment Worker dan set `PYTHONPATH=src/data_worker`.
 Ambil baseline pada revisi sebelum perubahan, lalu bandingkan pada revisi baru:
+salin script benchmark dari revisi baru ke checkout baseline terlebih dahulu,
+karena script tersebut belum ada pada `f3e0b78`. Gunakan lokasi keluaran baseline
+yang sama/absolut jika kedua checkout berada di direktori berbeda.
 
 ```powershell
 python scripts/benchmark_source_reader.py --output .cache/source-reader-before
@@ -74,3 +84,6 @@ python -m pytest src/data_worker/tests/test_source_reader_cache.py src/data_work
 Benchmark membutuhkan `psutil` untuk RSS. Frame Parquet dan laporan per berkas
 berada di `.cache/`, tidak di-commit. Pengujian database memakai
 `TEST_DATABASE_URL` yang menunjuk PostgreSQL/PostGIS lokal dan skema uji sementara.
+
+Setelah integrasi `dev`: **331 passed, 0 skipped** pada suite Worker lengkap,
+termasuk sembilan regresi cache. Detail dicatat pada bagian `post_merge` di JSON.

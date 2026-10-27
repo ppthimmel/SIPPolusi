@@ -75,5 +75,22 @@
     "First request loads the full projected source snapshot and is slower.",
     "RSS measures the entire process; table memory is a pandas deep estimate, not an independent process budget.",
     "Measurements exclude model computation, registry downloads, road aggregation and cache writes."
-  ]
+  ],
+  "post_merge": {
+    "dev_revision": "eeb99c3",
+    "source_sha256": "283c110b30bf0e0dea66872b03f2e1bb59dbe726b7a15c6ed8073e2b1f10347b",
+    "feature_frames_exactly_equal": true,
+    "parquet_reads": 46,
+    "worker_tests": {
+      "passed": 331,
+      "skipped": 0,
+      "seconds": 256.83
+    },
+    "additional_regression": "StoreSourceReader reuses a snapshot across tiles within a window and reloads on window change.",
+    "test_environment_updates": [
+      "Installed dev-required h5py 3.16.0 and rasterio 1.4.4 locally.",
+      "Aligned the existing catalog test clock after reproducing its failure on unchanged dev.",
+      "Used signal.raise_signal in the existing SIGTERM handler test for Windows portability."
+    ]
+  }
 }

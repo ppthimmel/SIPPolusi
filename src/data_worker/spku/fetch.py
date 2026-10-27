@@ -12,6 +12,7 @@ import datetime as dt
 import gzip
 import hashlib
 import json
+import logging
 import pathlib
 import random
 import re
@@ -19,6 +20,8 @@ import time
 from typing import Any
 
 import requests
+
+log = logging.getLogger("spku.fetch")
 
 BASE_URL = "https://udara.jakarta.go.id"
 
@@ -74,6 +77,8 @@ class FetchResult:
     fetched_utc: dt.datetime
     error: str | None = None
     archive_path: str | None = None
+    #: Jumlah percobaan sampai hasil ini diperoleh; > 1 berarti ada gagal sementara.
+    attempts: int = 1
 
     @property
     def ok(self) -> bool:
@@ -105,6 +110,10 @@ class Fetcher:
             }
         )
         self._last_request = 0.0
+        #: Permintaan yang baru berhasil setelah diulang (gagal sementara) dan
+        #: permintaan yang tetap gagal setelah seluruh percobaan (gagal permanen).
+        self.retried_requests = 0
+        self.failed_requests = 0
 
     def _throttle(self) -> None:
         wait = self.delay - (time.monotonic() - self._last_request)
@@ -137,6 +146,10 @@ class Fetcher:
                     fetched_utc=fetched,
                 )
                 if response.status_code == 200:
+                    result.attempts = attempt
+                    if attempt > 1:
+                        self.retried_requests += 1
+                        log.warning("%s berhasil pada percobaan %d setelah gagal sementara", url, attempt)
                     return result
                 last_error = f"HTTP {response.status_code}"
                 result.error = last_error
@@ -145,17 +158,26 @@ class Fetcher:
                 last_result = result
                 # 404 tidak akan membaik dengan pengulangan.
                 if response.status_code == 404:
+                    result.attempts = attempt
+                    self.failed_requests += 1
                     return result
             except requests.RequestException as exc:
                 elapsed = int((time.monotonic() - started) * 1000)
                 last_error = f"{type(exc).__name__}: {exc}"
             if attempt < self.retries:
-                time.sleep(min(60.0, (2 ** attempt) + random.uniform(0, 1.0)))
+                wait = min(60.0, (2 ** attempt) + random.uniform(0, 1.0))
+                log.warning("%s gagal pada percobaan %d/%d (%s); diulang dalam %.1f detik",
+                            url, attempt, self.retries, last_error, wait)
+                time.sleep(wait)
+        attempts = max(1, self.retries)
+        self.failed_requests += 1
+        log.error("%s tetap gagal setelah %d percobaan: %s", url, attempts, last_error)
         if last_result is not None:
+            last_result.attempts = attempts
             return last_result
         return FetchResult(
             url=url, status=None, text=None, bytes=0, sha256=None,
-            elapsed_ms=elapsed, fetched_utc=fetched, error=last_error,
+            elapsed_ms=elapsed, fetched_utc=fetched, error=last_error, attempts=attempts,
         )
 
     def close(self) -> None:

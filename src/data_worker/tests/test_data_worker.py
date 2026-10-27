@@ -111,4 +111,11 @@ def test_siklus_penuh_dengan_langkah_bawaan(monkeypatch, db):
     assert report["failed"] == []
     # Penulisan EdgeWeight ke cache hanya aktif bila DOWNSCALE_WRITE_CACHE=1.
     assert status["trigger_downscale_inference"] == "disabled"
-    assert set(status.values()) == {"ok", "not_implemented", "disabled"}
+    # Konektor sekunder dinonaktifkan pada uji (FEATURES_SOURCES=none): skema features kosong,
+    # sehingga seluruh sumber ditandai tidak tersedia, tetapi FeatureMatrix tetap terbentuk.
+    for step in ("fetch_satellite_archive", "fetch_tropospheric_column", "fetch_meteo"):
+        assert status[step] == "disabled"
+    assert status["run_quality_control"] == "unavailable"
+    assert status["align_spatiotemporal"] == "ok"
+    assert status["write_features"] == "ok"
+    assert "not_implemented" not in status.values()

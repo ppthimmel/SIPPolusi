@@ -26,6 +26,14 @@ sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "tests"))
 
 
+@pytest.fixture(autouse=True)
+def _tanpa_sumber_sekunder(monkeypatch):
+    """Uji tidak menghubungi sumber sekunder sungguhan; uji konektor memakai respons rekaman."""
+    monkeypatch.setenv("FEATURES_SOURCES", "none")
+    monkeypatch.delenv("EARTHDATA_TOKEN", raising=False)
+    monkeypatch.delenv("FEATURE_STORE_DIR", raising=False)
+
+
 @pytest.fixture(scope="session")
 def pg_dsn():
     dsn = os.environ.get("TEST_DATABASE_URL")
@@ -62,13 +70,23 @@ class Db:
 
         return Store(self.dsn, self.schema)
 
+    def features(self):
+        from feature_store.store import FeatureStore
+
+        store = FeatureStore.connect(self.dsn, f"{self.schema}_f")
+        store.ensure_schema()
+        return store
+
 
 @pytest.fixture
-def db(pg_dsn):
+def db(pg_dsn, monkeypatch):
     import psycopg
     from psycopg import sql
 
     schema = f"t_{uuid.uuid4().hex[:12]}"
+    # Skema features terpisah: ground_truth juga memiliki tabel fetch_log.
+    monkeypatch.setenv("FEATURES_DB_SCHEMA", f"{schema}_f")
     yield Db(pg_dsn, schema)
     with psycopg.connect(pg_dsn, autocommit=True) as conn:
-        conn.execute(sql.SQL("DROP SCHEMA IF EXISTS {} CASCADE").format(sql.Identifier(schema)))
+        for name in (schema, f"{schema}_f"):
+            conn.execute(sql.SQL("DROP SCHEMA IF EXISTS {} CASCADE").format(sql.Identifier(name)))

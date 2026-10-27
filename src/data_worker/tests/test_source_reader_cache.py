@@ -156,3 +156,27 @@ def test_viirs_manifest_validation_applies_only_to_requested_cells(source_tree):
     with pytest.raises(ValueError, match="Tanggal VIIRS"):
         read(reader, ids[:1])
     pd.testing.assert_frame_equal(read(reader, ids[1:]), read(sources.SourceReader(root), ids[1:]))
+
+
+def test_store_reader_reuses_snapshot_only_within_its_window(source_tree, monkeypatch):
+    from feature_store.reader import StoreSourceReader
+
+    root, ids = source_tree
+    reader = StoreSourceReader(None, root=root)
+    # Exercise the StoreSourceReader window lifecycle using real source tables;
+    # bind file loaders in place of the database so this regression stays small.
+    for name in ("_load_viirs", "_viirs_scene_names", "_load_sentinel5p", "_load_landsat",
+                 "_geoscf_cell_ids", "_load_geoscf_ana", "_load_geoscf_fcst", "_load_weather"):
+        monkeypatch.setattr(reader, name, getattr(sources.SourceReader, name).__get__(reader))
+    expected = read(reader, ids[:1])
+    snapshot = reader._source_cache
+    path = root / "open_meteo/hourly.parquet"
+    weather = pd.read_parquet(path)
+    weather["temperature_2m"] += 10
+    weather.to_parquet(path, index=False)
+    same_window = read(reader, ids[1:])
+    assert reader._source_cache is snapshot
+    assert same_window.temperature_2m.eq(expected.temperature_2m.iloc[0]).all()
+    next_window = reader(ids[:1], "2026-09-20T11:00Z", "2026-09-20T14:00Z")
+    assert reader._source_cache is not snapshot
+    np.testing.assert_array_equal(next_window.temperature_2m, expected.temperature_2m + 10)
