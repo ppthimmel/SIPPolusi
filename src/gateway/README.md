@@ -21,8 +21,9 @@ not the raw request path: NGINX matches locations on the normalised path, so a
 request for `/v1/osm/x/../../routes` reaches the Cache API as `/v1/routes`, never
 in its raw form.
 
-All proxied paths share the same timeouts: connect 5 s, read/send 10 s
-(Table 3.15). The frontend container forwards its `/v1/*` here, so this file
+All proxied paths share the same timeouts: connect 2 s, read/send 10 s
+(Table 3.15). Connecting takes milliseconds on the private network, so a
+connection that does not open within 2 s is treated as an unreachable Cache API. The frontend container forwards its `/v1/*` here, so this file
 is the only place that maps paths to services.
 
 ## Rate limiting
@@ -92,8 +93,8 @@ Errors produced by the gateway itself use the uniform schema
 | 405 | `method_not_allowed` | Method other than the path's own (`POST` or `GET`) or `OPTIONS`; `Allow` lists them |
 | 413 | `payload_too_large` | Body over 16 KiB on `POST /v1/routes` |
 | 429 | `rate_limited` | Rate limit above exceeded; `Retry-After` in seconds |
-| 502 | `upstream_unavailable` | The Cache API cannot be reached (refused, or its name does not resolve, e.g. while it redeploys) |
-| 504 | `upstream_timeout` | The Cache API did not answer within 10 s |
+| 502 | `upstream_unavailable` | The Cache API cannot be reached: refused, its name does not resolve (e.g. while it redeploys), or no connection within 2 s (e.g. it stopped and its old address is still in the 10 s resolver cache; TI-SE-10 D-02) |
+| 504 | `upstream_timeout` | The Cache API accepted the connection but did not answer within 10 s |
 
 Error responses from the Cache API itself (400, 422, 503, …) are passed through
 unchanged. `/healthz` keeps answering 200 while the Cache API is down, so an
