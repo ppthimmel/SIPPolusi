@@ -4,7 +4,8 @@ Every session is opened with default_transaction_read_only = on and the
 statement_timeout from Tabel 3.15. That stops this code from writing by accident,
 but it is only a session default, not a security boundary: write protection needs
 a database role with SELECT only (backend_reader). Connection failures and
-timeouts surface as CacheUnavailable (503 cache_unavailable).
+timeouts surface as CacheUnavailable (503 cache_unavailable), and so does a
+database where the Data Worker has not created the cache schemas yet.
 """
 from __future__ import annotations
 
@@ -32,6 +33,13 @@ _UNAVAILABLE_ERRORS = (
     asyncpg.PostgresConnectionError,
     asyncpg.InsufficientResourcesError,
     asyncpg.OperatorInterventionError,  # includes CannotConnectNow, AdminShutdown
+)
+
+# The database answers but schema osm/pollution or its tables do not exist yet:
+# a fresh environment before the Data Worker's first run (osm_cache.schema_sql).
+_SCHEMA_MISSING_ERRORS = (
+    asyncpg.InvalidSchemaNameError,
+    asyncpg.UndefinedTableError,
 )
 
 
@@ -96,6 +104,9 @@ class OsmDatabase:
         try:
             async with pool.acquire(timeout=self._settings.connect_timeout_s) as conn:
                 yield conn
+        except _SCHEMA_MISSING_ERRORS as exc:
+            raise CacheUnavailable(f"Skema cache belum dibuat ({type(exc).__name__}); Data Worker membuatnya "
+                                   "pada siklus pertama.", CacheUnavailable.CACHE_EMPTY) from exc
         except asyncpg.QueryCanceledError as exc:
             raise CacheUnavailable("Kueri basis data cache melewati statement_timeout.",
                                    CacheUnavailable.QUERY_TIMEOUT) from exc

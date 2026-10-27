@@ -246,3 +246,32 @@ def test_http_api_reads_what_the_worker_wrote(writer, cache_dsn, monkeypatch):
     finally:
         get_settings.cache_clear()
         get_pollution_settings.cache_clear()
+
+
+def test_http_api_before_the_worker_created_the_schemas(bare_dsn, monkeypatch):
+    """Fresh environment: the database answers but has no osm/pollution schema yet.
+
+    /health must report degraded (the image HEALTHCHECK depends on it) and reads
+    answer 503 cache_empty, not 500 UndefinedTableError.
+    """
+    from fastapi.testclient import TestClient
+
+    from osm.app import create_app
+
+    monkeypatch.setenv("DATABASE_URL", bare_dsn)
+    get_settings.cache_clear()
+    get_pollution_settings.cache_clear()
+    try:
+        with TestClient(create_app()) as client:
+            health = client.get("/health")
+            assert health.status_code == 200
+            assert (health.json()["status"], health.json()["database"]) == ("degraded", "ok")
+            for path, params in [("/v1/osm/version", None), ("/v1/pollution/windows", None),
+                                 ("/v1/pollution/edge-weights", {"bbox": "106.79,-6.21,106.81,-6.19"})]:
+                resp = client.get(path, params=params)
+                assert resp.status_code == 503, (path, resp.text)
+                error = resp.json()["error"]
+                assert (error["code"], error["reason"]) == ("cache_unavailable", "cache_empty"), path
+    finally:
+        get_settings.cache_clear()
+        get_pollution_settings.cache_clear()

@@ -54,7 +54,7 @@ class CacheUnavailable(OsmApiError):
     """503 cache_unavailable. `reason` tells the cases apart (TI-SE-04):
 
     cache_empty           the cache has no usable data yet (no active graph_version,
-                          no complete time window)
+                          no complete time window, or no cache schemas at all)
     database_unavailable  the database cannot be reached
     query_timeout         a query exceeded statement_timeout or the client timeout
     """
