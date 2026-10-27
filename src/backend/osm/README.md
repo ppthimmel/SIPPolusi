@@ -12,8 +12,10 @@ skema database yang sebenarnya (`handoff_database.md`) dan Dokumen Desain:
 Modul ini berdiri sendiri dan **tidak memakai** `main.py`, `database/`, atau `route_model/`.
 
 Aplikasi `osm.app` adalah **Cache API** yang juga menyajikan `/v1/pollution` (Spatial
-Pollution Cache DB) dari modul [`../pollution`](../pollution/README.md), dan
-`/v1/routes/solver-input` (TI-SE-05) dari modul [`../planner`](../planner/README.md). Kedua modul memakai
+Pollution Cache DB) dari modul [`../pollution`](../pollution/README.md),
+`/v1/routes/solver-input` (TI-SE-05) dari modul [`../planner`](../planner/README.md), dan
+`/v1/routes/solve` (TI-SE-06) serta `/v1/routes/plan` (GeoJSON, TI-SE-07) dari modul
+[`../solver`](../solver/README.md). Kedua modul memakai
 pool koneksi dan skema galat yang sama. Bukti TI-SE-04 ada di
 [`../pollution/VERIFICATION.md`](../pollution/VERIFICATION.md).
 
@@ -90,7 +92,7 @@ Semua perintah di bawah dijalankan dari **root repo**, kecuali disebutkan lain.
 ### B. Docker lokal
 
 Image ini berdiri sendiri dan tidak memakai `src/backend/Dockerfile`. Konteks build-nya adalah
-`src/backend` (agar `osm/`, `pollution/`, dan `planner/` ikut), dan `osm/Dockerfile.dockerignore` membatasi
+`src/backend` (agar `osm/`, `pollution/`, `planner/`, `solver/`, dan `route_model/` ikut), dan `osm/Dockerfile.dockerignore` membatasi
 berkas yang dikirim hanya ke kedua paket itu. Image runtime memakai `python:3.11-slim`, berjalan sebagai user non-root, punya
 `HEALTHCHECK` ke `/health`, dan mendengarkan pada `PORT` (default 8000). File `.env` tidak ikut
 masuk image; konfigurasi diberikan lewat environment. Pastikan Docker Desktop sudah menyala.
@@ -120,14 +122,15 @@ Semua perintah Docker di bawah memakai path dari **root repo**. Kalau terminal m
    docker run --rm sippolusi-backend-osm-test   # tanpa DB
    ```
 
-   Container menjalankan tes `osm`, `pollution`, lalu `planner`, jadi ada tiga baris hasil:
+   Container menjalankan tes `osm`, `pollution`, `planner`, lalu `solver`, jadi ada empat baris
+   hasil:
 
-   | Perintah | `osm` | `pollution` | `planner` |
-   |---|---|---|---|
-   | dengan `--env-file` | 115 passed | 20 passed, 10 skipped | 35 passed, 2 skipped |
-   | tanpa DB | 100 passed, 15 skipped | 20 passed, 10 skipped | 35 passed, 2 skipped |
+   | Perintah | `osm` | `pollution` | `planner` | `solver` |
+   |---|---|---|---|---|
+   | dengan `--env-file` | 115 passed | 20 passed, 10 skipped | 35 passed, 2 skipped | 65 passed, 6 skipped |
+   | tanpa DB | 100 passed, 15 skipped | 20 passed, 10 skipped | 35 passed, 2 skipped | 65 passed, 6 skipped |
 
-   Tes `pollution` dan `planner` yang dilewati adalah uji alur tulis → baca; uji ini butuh
+   Tes `pollution`, `planner`, dan `solver` yang dilewati adalah uji alur tulis → baca; uji ini butuh
    database uji lokal dan kode Data Worker, jadi dijalankan di luar container (lihat
    [`../pollution/README.md`](../pollution/README.md)).
 
@@ -203,7 +206,7 @@ Railway membangun image dari GitHub, jadi kodenya harus sudah di-push ke branch 
 1. Di project Railway yang sama dengan database, buat service baru: *New → GitHub Repo →
    SIPPolusi*. Lalu atur:
    - **Branch:** branch yang berisi modul ini.
-   - **Root Directory:** `src/backend`, karena image memuat `osm/`, `pollution/`, dan `planner/`.
+   - **Root Directory:** `src/backend`, karena image memuat `osm/`, `pollution/`, `planner/`, `solver/`, dan `route_model/`.
    - **Dockerfile:** tambahkan variabel `RAILWAY_DOCKERFILE_PATH=osm/Dockerfile`. Tahap terakhir
      Dockerfile adalah image runtime.
 2. **Variables:** isi `DATABASE_URL` dengan referensi ke service database, misalnya
@@ -405,6 +408,9 @@ Konfigurasi dibaca dari environment, lalu dari `src/backend/.env`.
 | `OSM_MAX_BBOX_KM2` | `25` | Luas bbox terbesar untuk `/graph` dan `/roads`. |
 | `OSM_STUDY_AREA_BBOX` | `106.68,-6.38,106.98,-6.08` | Wilayah studi: daratan DKI Jakarta. Kepulauan Seribu tidak termasuk. |
 | `OSM_WALK_SPEED_MPS` / `OSM_BIKE_SPEED_MPS` | `1.3` / `4.2` | Kecepatan `ModeProfile`. |
+
+Pengaturan penyedia solver dan batas latensi (`ROUTE_SOLVER_*`) ada di
+[`../solver/README.md`](../solver/README.md#konfigurasi).
 
 Setiap sesi database dibuka dengan `default_transaction_read_only = on`. Ini mencegah kode
 Backend menulis secara tidak sengaja, tetapi **bukan batas keamanan**: nilai itu hanya bawaan

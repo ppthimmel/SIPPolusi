@@ -140,6 +140,15 @@ class FakeRepository:
         return [Neighbor(1, node_id(0, 1), 110.0, "residential", None, False),
                 Neighbor(2, node_id(1, 0), 110.0, "residential", None, False)]
 
+    async def read_edge_geometries(self, edge_ids, graph_version):
+        self._check("read_edge_geometries")
+        out = {}
+        for e in self.graph.edges:
+            if e.edge_id in edge_ids:
+                a, b = self.graph.nodes[e.u], self.graph.nodes[e.v]
+                out[e.edge_id] = [[a.lon, a.lat], [b.lon, b.lat]]
+        return out
+
     async def search_streets(self, query: str, limit: int = 10):
         self._check("search_streets")
         return [StreetMatch("Jalan Jenderal Sudirman", 212, 10649.4, 106.82, -6.21,

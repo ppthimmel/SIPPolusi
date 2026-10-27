@@ -14,7 +14,8 @@ Multi-Objective Route Model. Langkahnya mengikuti Gambar 3.9 (R5–R11) dan Tabe
 4. **R11 `attach_edge_weights`:** setiap ruas mendapat waktu tempuh, indeks paparan,
    confidence score, dan sumber bobotnya.
 
-Memanggil Multi-Objective Route Model (`IRouteSolve`, batas waktu, fallback) adalah TI-SE-06.
+Memanggil Multi-Objective Route Model (`IRouteSolve`, batas waktu, klasifikasi galat) ada di
+[`../solver`](../solver/README.md) (TI-SE-06, `POST /v1/routes/solve`).
 
 ## Endpoint
 
