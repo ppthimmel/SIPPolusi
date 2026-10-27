@@ -30,8 +30,10 @@ class FakePollutionRepository:
         self.stale = stale
         self.calls: list[dict] = []
 
-    async def read_pollution_weight(self, bbox, time_window="latest", *, mode=None, graph_version="active"):
-        self.calls.append({"bbox": bbox, "time_window": time_window, "mode": mode, "graph_version": graph_version})
+    async def read_pollution_weight(self, bbox, time_window="latest", *, mode=None, graph_version="active",
+                                    lineage=True):
+        self.calls.append({"bbox": bbox, "time_window": time_window, "mode": mode, "graph_version": graph_version,
+                           "lineage": lineage})
         if self.fail is not None:
             raise self.fail
         return pollution_read(self.weights, stale=self.stale)

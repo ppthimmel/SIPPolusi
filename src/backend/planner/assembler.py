@@ -42,7 +42,7 @@ async def build_solver_input(
     active = await osm.get_active_version()
     graph, read = await asyncio.gather(                                       # R6 to R9, in parallel
         osm.read_road_graph(bbox, mode, include_geometry=False),
-        pollution.read_pollution_weight(bbox, "latest", mode=mode, graph_version=active.version),
+        pollution.read_pollution_weight(bbox, "latest", mode=mode, graph_version=active.version, lineage=False),
         return_exceptions=True,
     )
     if isinstance(graph, BaseException):

@@ -7,6 +7,7 @@ Run with TEST_DATABASE_URL pointing at src/backend/testdb.
 """
 from __future__ import annotations
 
+import dataclasses
 from datetime import datetime, timedelta, timezone
 
 import asyncpg
@@ -343,3 +344,26 @@ async def test_legacy_cache_readable_without_claiming_cell_trace(writer, backend
     assert len(result.weights) == 1 and result.weights[0].trace_run_id is None
     trace = await pollution.read_edge_trace(1)
     assert trace["status"] == "legacy_unavailable" and trace["cells"] == []
+
+
+async def test_route_read_without_lineage_matches_full_read(writer, cache_dsn):
+    write_graph(writer, "v1", footway_edge=0)
+    write_weights(writer, W2, range(1, 25), "v1")
+    db = OsmDatabase(OsmSettings(_env_file=None, DATABASE_URL=cache_dsn))
+    try:
+        pollution = PollutionRepository(db, OsmRepository(db, version_cache_ttl_s=0), clock=lambda: NOW,
+                                        weights_work_mem="32MB")
+        full = await pollution.read_pollution_weight(BBOX_ALL, mode=Mode.BIKE)
+        lean = await pollution.read_pollution_weight(BBOX_ALL, mode=Mode.BIKE, lineage=False)
+        assert full.weights[0].model_metadata and full.weights[0].trace_run_id and full.weights[0].written_at
+
+        def without_lineage(w):
+            return dataclasses.replace(w, written_at=None, model_metadata={}, trace_run_id=None)
+
+        assert [without_lineage(w) for w in full.weights] == lean.weights
+        assert lean.excluded == full.excluded == {"not_allowed_for_mode": 1}
+        # SET LOCAL work_mem ends with the read's transaction; the pooled connection keeps the default.
+        async with db.connection() as conn:
+            assert await conn.fetchval("SHOW work_mem") != "32MB"
+    finally:
+        await db.close()

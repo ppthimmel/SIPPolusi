@@ -22,6 +22,8 @@ async def test_valid_request_gives_connected_subgraph(osm_repo, pollution_repo, 
     assert si.source.estimation_sources == {"idw": 40} and si.request_id == "req-1"
     # Both caches read the same active graph version.
     assert pollution_repo.calls[0]["graph_version"] == VERSION and pollution_repo.calls[0]["mode"].value == "walk"
+    # The planner never reads per-edge lineage; leaving it out halves the rows sent for long trips.
+    assert pollution_repo.calls[0]["lineage"] is False
 
 
 async def test_mode_changes_available_edges(osm_repo, pollution_repo, settings):
