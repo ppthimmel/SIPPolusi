@@ -78,6 +78,12 @@ def _harvest(fetcher: Fetcher, run_id: str, store: Store, targets: dict[str, str
     return parsed_all, failures
 
 
+def _request_counts(fetcher) -> dict:
+    """Permintaan yang pulih setelah diulang dan yang tetap gagal (Tabel 3.19)."""
+    return {"retried_requests": getattr(fetcher, "retried_requests", 0),
+            "failed_requests": getattr(fetcher, "failed_requests", 0)}
+
+
 def run_full(config: Config, only: list[str] | None = None) -> dict:
     """Lintasan penuh: daftar stasiun, lalu seluruh halaman rinci.
 
@@ -92,6 +98,7 @@ def run_full(config: Config, only: list[str] | None = None) -> dict:
         timeout=config.timeout_seconds,
         retries=config.retries,
         archive_dir=config.archive_dir or None,
+        base_url=config.base_url,
     )
     run_id = store.start_run("full")
     log.info("lintasan %s dimulai", run_id)
@@ -166,6 +173,7 @@ def run_full(config: Config, only: list[str] | None = None) -> dict:
             "failures": failures,
             "rows_new": rows_new,
             "rows_revised": rows_revised,
+            **_request_counts(fetcher),
         }
         store.finish_run(
             run_id, summary["status"],
@@ -179,11 +187,17 @@ def run_full(config: Config, only: list[str] | None = None) -> dict:
     except AbortedRun as exc:
         store.finish_run(run_id, "aborted", note=str(exc))
         log.error("lintasan %s dibatalkan: %s", run_id, exc)
-        return {"run_id": run_id, "status": "aborted", "note": str(exc)}
+        return {"run_id": run_id, "status": "aborted", "note": str(exc), **_request_counts(fetcher)}
     except Exception as exc:  # noqa: BLE001 - lintasan tidak boleh menggantung
         store.finish_run(run_id, "failed", note=f"{type(exc).__name__}: {exc}")
         log.exception("lintasan %s gagal", run_id)
-        return {"run_id": run_id, "status": "failed", "note": f"{type(exc).__name__}: {exc}"}
+        return {"run_id": run_id, "status": "failed", "note": f"{type(exc).__name__}: {exc}",
+                **_request_counts(fetcher)}
+    except BaseException as exc:
+        # Sinyal penghentian (SIGTERM) atau interupsi: transaksi tulis sudah
+        # dibatalkan; catat lintasan sebagai gagal agar tidak tertinggal 'running'.
+        store.finish_run(run_id, "failed", note=f"dihentikan: {type(exc).__name__}: {exc}")
+        raise
     finally:
         fetcher.close()
         store.close()
@@ -203,7 +217,7 @@ def run_snapshot(config: Config) -> dict:
     """
     store = Store(config.database, config.db_schema)
     fetcher = Fetcher(config.contact, config.delay_seconds, config.timeout_seconds,
-                      config.retries, archive_dir=config.archive_dir or None)
+                      config.retries, archive_dir=config.archive_dir or None, base_url=config.base_url)
     run_id = store.start_run("snapshot")
     try:
         result = fetcher.get("/")
