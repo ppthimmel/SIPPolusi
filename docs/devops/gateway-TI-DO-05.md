@@ -7,16 +7,18 @@ publik ke backend. Panduan operasional ada di
 
 Diuji 27 Oktober 2026 (WIB) di lokal: image gateway `nginx:1.27-alpine`,
 Cache API dari `src/backend/osm/Dockerfile`, PostgreSQL/PostGIS dari compose.
-**Belum diuji di Railway** (lihat [Langkah di Railway](#langkah-di-railway)).
+Diuji juga di **Railway development** pada 27 Oktober 2026 setelah gateway dari
+branch ini di-deploy (lihat [Hasil di Railway](#hasil-di-railway)); skenario
+502/504 hanya diuji lokal.
 
 ## Status acceptance criteria
 
 | Kriteria | Status | Bukti |
 |---|---|---|
-| Permintaan yang diizinkan diteruskan ke backend privat dan responsnya utuh | Terpenuhi (lokal) | Uji gateway bagian 3; [uji end-to-end](#uji-end-to-end-dengan-cache-api-asli): status, body, dan `Content-Type` sama dengan Cache API langsung; satu `X-Request-ID` |
-| Rate limiting mengembalikan 429 pada endpoint/skenario uji yang disepakati | Terpenuhi (lokal) | Uji gateway bagian 4; end-to-end: request ke-7 `POST /v1/routes` → 429, `Retry-After: 3` |
-| Timeout dan upstream tidak tersedia menghasilkan respons gateway yang terkontrol | Terpenuhi (lokal) | Uji gateway bagian 5; end-to-end: Cache API di-*pause* → 504 setelah 10 s, dihentikan → 502 setelah ±4 s; `/healthz` tetap 200 |
-| Konfigurasi final tidak membuka endpoint internal selain yang diperlukan | Terpenuhi (lokal) | Hanya `/healthz`, `POST /v1/routes`, `GET /v1/exposure-surface`; 22 jalur internal dan *near miss* → 404 dari gateway; metode lain → 405 sebelum rate limit |
+| Permintaan yang diizinkan diteruskan ke backend privat dan responsnya utuh | Terpenuhi (lokal + Railway) | Uji gateway bagian 3; Railway: smoke test 6/6, kedua path publik sampai Cache API (503 `cache_empty`); [uji end-to-end](#uji-end-to-end-dengan-cache-api-asli): status, body, dan `Content-Type` sama dengan Cache API langsung; satu `X-Request-ID` |
+| Rate limiting mengembalikan 429 pada endpoint/skenario uji yang disepakati | Terpenuhi (lokal + Railway) | Uji gateway bagian 4; end-to-end dan Railway: request ke-7 `POST /v1/routes` → 429, `Retry-After: 3`; di Railway `X-Real-IP` palsu tidak mengubah kunci, dan kunci adalah alamat klien (juga lewat frontend) |
+| Timeout dan upstream tidak tersedia menghasilkan respons gateway yang terkontrol | Terpenuhi (lokal; tidak diuji di Railway) | Uji gateway bagian 5; end-to-end: Cache API di-*pause* → 504 setelah 10 s, dihentikan → 502 setelah ±4 s; `/healthz` tetap 200 |
+| Konfigurasi final tidak membuka endpoint internal selain yang diperlukan | Terpenuhi (lokal + Railway) | Hanya `/healthz`, `POST /v1/routes`, `GET /v1/exposure-surface`; 22 jalur internal dan *near miss* → 404 dari gateway; metode lain → 405 sebelum rate limit |
 
 ## Jalur publik ke backend
 
@@ -304,48 +306,46 @@ koleksi uji). `solver/tests/test_cancel.py` gagal 1–2 kasus karena pewaktuan;
 kegagalan yang sama terjadi pada commit sebelum perubahan ini, tidak terkait
 gateway.
 
-## Langkah di Railway
+## Hasil di Railway
 
-Belum dijalankan. Butuh gateway development yang menjalankan branch ini
-(`railway up --service gateway --environment development --ci` dari akar
-repositori, seperti cache-api pada TI-DO-04) atau `dev` setelah PR digabung.
-Hasil dasar sebelum deploy (gateway development 27 Okt 2026, kode `dev` lama):
-8 kali `POST /v1/routes` cepat → `400` semua, tidak ada 429;
-`GET /v1/osm/version` → `200`.
+Environment **development**, 27 Oktober 2026 (UTC). Gateway dari branch ini
+(commit `9885c00`) di-deploy dengan
+`railway up --service gateway --environment development --ci` dari akar
+repositori; build Railway menjalankan `tests/run.sh` (98 lulus) sebelum deploy.
+Variabel gateway: `CACHE_API_UPSTREAM=http://cache-api.railway.internal:8000`
+(`BACKEND_UPSTREAM` masih ada dan diabaikan). Alamat publik laptop penguji
+ditulis `36.72.x.x`.
 
-1. Service `gateway`, Variables: pastikan `CACHE_API_UPSTREAM` =
-   `http://${{cache-api.RAILWAY_PRIVATE_DOMAIN}}:${{cache-api.PORT}}`; hapus
-   `BACKEND_UPSTREAM` (diabaikan bila masih ada).
-2. Smoke test dari luar:
+**Sebelum deploy** (gateway development dengan kode `dev`): 8 kali
+`POST /v1/routes` cepat → `400` semua, tidak ada 429; `GET /v1/osm/version` → `200`.
 
-   ```bash
-   python scripts/smoke_test.py --gateway https://<gateway>.up.railway.app
-   ```
+| Langkah | Hasil |
+|---|---|
+| 1. Konfigurasi aktif | `GET /v1/osm/version` → `404 not_found`; `/healthz` → 200; log start-up `gateway: configuration ok (PORT=8080, CACHE_API_UPSTREAM=http://cache-api.railway.internal:8000)` |
+| 2. Smoke test (`scripts/smoke_test.py`) | **6/6 lulus**: `POST /v1/routes` dan `GET /v1/exposure-surface` → 503 `cache_unavailable` dari Cache API (cache polusi belum punya window complete); `/v1/osm/version`, `POST /v1/routes/solve`, `/health` → 404 dari gateway |
+| 3. Rate limit, 8 request cepat tanpa header | `400 400 400 400 400 400 429 400`; respons 429: `Retry-After: 3`, JSON `rate_limited` "Coba lagi dalam 3 detik.", satu `X-Request-ID` |
+| 4. Spoof: `X-Real-IP` berbeda tiap request (`203.0.113.1`–`.8`) | `400 400 400 400 400 400 429 400`, **sama dengan langkah 3**: header kiriman klien tidak membuat bucket baru. Tiga request lagi dengan `X-Real-IP` dan `X-Forwarded-For` diputar: `429 429 429` |
+| 5. Kunci = alamat klien, bukan edge | Body 20 000 byte dengan `X-Real-IP: 203.0.113.99` → 413; `error_log` gateway: `client intended to send too large body ... client: 36.72.x.x` = alamat publik laptop, bukan nilai palsu dan bukan alamat internal edge |
+| 6. Lewat frontend (jaringan privat) | Frontend: `GATEWAY_UPSTREAM=http://gateway.railway.internal:8080`. Body 20 000 byte ke `https://frontend-development-49bf.up.railway.app/v1/routes` → 413 dari gateway (request ID sama di log akses gateway); `error_log`: `client: 36.72.x.x`. Jadi frontend mencapai gateway lewat IPv6 privat dan alamat pengguna ikut sampai. `GET /v1/osm/version` lewat frontend → 404 |
+| 7. Metode salah | `GET /v1/routes` → `405 method_not_allowed`, `Allow: POST, OPTIONS` |
+| 8. Log | 500 baris terakhir log gateway: 0 baris `limiting requests` (penolakan tidak masuk error log), 0 peringatan *temporary file*, 7 entri akses `POST /v1/routes 429` berlevel `WARN` tanpa alamat klien |
 
-3. Rate limit dari satu alamat (permintaan ke-7 harus 429 dengan `Retry-After: 3`):
+Catatan pembacaan:
 
-   ```bash
-   for i in 1 2 3 4 5 6 7 8; do curl -s -o /dev/null -w '%{http_code} ' -X POST -H 'Content-Type: application/json' -d '{}' https://<gateway>.up.railway.app/v1/routes; done
-   ```
+- **Request ke-8 lolos** pada langkah 3 dan 4: tiap round trip ±0,3 s, jadi
+  saat request ke-8 tiba sudah terisi kembali cukup untuk satu request (satu
+  token per 3 s). Ini perilaku bucket yang diharapkan, bukan kebocoran.
+- **Satu request lewat frontend tepat setelah 429 bukan uji yang tegas** karena
+  alasan yang sama; karena itu kunci dibuktikan lewat `error_log` (langkah 5–6).
+- **`railway ssh` tidak dipakai** untuk menguji dari jaringan lain karena akun
+  belum mendaftarkan kunci SSH; langkah 5 membuktikan hal yang sama secara
+  langsung.
+- **502/504 tidak diuji di Railway**: perlu menghentikan cache-api bersama di
+  development. Diuji lokal (bagian end-to-end di atas).
 
-4. **Uji spoof `X-Real-IP`** (review #59): dari satu mesin, 8 permintaan
-   cepat dengan `X-Real-IP` berbeda tiap kali. Permintaan ke-7 **harus tetap
-   429**. Bila semuanya 400, edge Railway tidak menimpa header kiriman klien:
-   klien dapat memutar header untuk bucket baru atau menghabiskan bucket
-   pengguna lain, dan `set_real_ip_from 0.0.0.0/0` harus diganti sebelum live.
-
-   ```bash
-   for i in 1 2 3 4 5 6 7 8; do curl -s -o /dev/null -w '%{http_code} ' -X POST -H "X-Real-IP: 203.0.113.$i" -H 'Content-Type: application/json' -d '{}' https://<gateway>.up.railway.app/v1/routes; done
-   ```
-
-5. Pastikan alamat klien dipakai sebagai kunci, bukan alamat edge: setelah
-   langkah 3 mendapat 429, satu permintaan dari jaringan lain harus tetap
-   400, bukan 429. Jaringan lain: ponsel lewat data seluler, atau dari dalam
-   Railway (`railway ssh --service <service lain> --environment development`
-   lalu `curl` ke domain publik gateway, yang keluar lewat alamat egress
-   Railway). Bila mendapat 429, `X-Real-IP` tidak sampai dan semua klien
-   berbagi satu kunci.
-6. Tambahkan hasil langkah 2–5 ke dokumen ini.
+Gateway development kini menjalankan branch ini. Deploy berikutnya dari branch
+yang dilacak service (GitHub) akan menimpanya; setelah PR digabung ke `dev`,
+isinya sama.
 
 ## Catatan
 
