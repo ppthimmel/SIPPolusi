@@ -3,7 +3,7 @@
     python3 tests/e2e/report.py
 
 Reads tests/e2e/out/ (written by run_e2e.py) and writes docs/ti-se-10/MATRIKS.md
-plus docs/ti-se-10/hasil/ (results.json, versions.json, correlation.log, worker
+plus docs/ti-se-10/hasil/ (results.json, versions.json, correlation.txt, worker
 reports). Parquet artifacts stay in tests/e2e/out/ (not committed).
 """
 from __future__ import annotations
@@ -48,7 +48,7 @@ def main() -> None:
     (DOCS / "MATRIKS.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
     hasil = DOCS / "hasil"
     hasil.mkdir(exist_ok=True)
-    for name in ["results.json", "versions.json", "correlation.log", *sorted(p.name for p in OUT.glob("worker-*.json"))]:
+    for name in ["results.json", "versions.json", "correlation.txt", *sorted(p.name for p in OUT.glob("worker-*.json"))]:
         shutil.copy2(OUT / name, hasil / name)
     print(f"{DOCS / 'MATRIKS.md'}: {s['passed']}/{s['checks']}")
 

@@ -8,7 +8,7 @@ fresh database, loads the controlled dataset (fixture/manifest.json), runs the
 scenarios in order and writes:
 
     tests/e2e/out/results.json      every check with its evidence
-    tests/e2e/out/correlation.log   redacted log lines that tie requests and jobs together
+    tests/e2e/out/correlation.txt   redacted log lines that tie requests and jobs together
     tests/e2e/out/versions.json     application, image, model and dataset versions
 
 Exit code 0 when every check passed. A failed check is a finding for the defect
@@ -133,6 +133,11 @@ def restart_cache_api(**env) -> None:
     compose("up", "-d", "--force-recreate", "--wait", "cache_api", env=env)
 
 
+def set_spku_portal(mode: str) -> None:
+    compose("up", "-d", "--force-recreate", "spku_portal", env={"E2E_SPKU_MODE": mode})
+    time.sleep(1)
+
+
 # ------------------------------------------------------------------ scenarios
 
 def scenario_empty_cache():
@@ -148,19 +153,32 @@ def scenario_empty_cache():
     health = http("GET", CACHE_API + "/health")["json"]
     check(s, "/health: database ok, belum ada time window", health["database"] == "ok" and
           health["pollution_time_window"] is None, health)
+    ready = http("GET", CACHE_API + "/health/ready")
+    check(s, "/health/ready: siap (graf ada) dengan polusi dilaporkan kosong",
+          ready["status"] == 200 and (ready["json"] or {}).get("checks", {}).get("pollution") == "empty",
+          {"status": ready["status"], "body": ready["json"]})
 
 
 def scenario_success():
     s = "E2E-02 sukses Worker -> frontend"
     print(s)
     code, report = worker(W12)
-    inf = step(report, "trigger_downscale_inference")
+    gt, inf = step(report, "fetch_ground_truth"), step(report, "trigger_downscale_inference")
     check(s, "siklus Worker berhasil (exit 0, tanpa langkah gagal)", code == 0 and report and not report["failed"],
-          {"exit": code, "failed": (report or {}).get("failed")})
-    check(s, "inferensi menulis window complete (IDW karena ST-GNN belum terdaftar)",
-          inf.get("run_status") == "complete" and inf.get("estimation_source") == "idw" and inf.get("fallback_reason"),
-          {k: inf.get(k) for k in ("run_id", "run_status", "model_version", "rows_written", "coverage_ratio",
-                                   "fallback_reason")})
+          {"exit": code, "failed": (report or {}).get("failed"), "status": (report or {}).get("status")})
+    check(s, "fetch_ground_truth menjelajahi portal (tiruan) dengan status ok",
+          gt.get("status") == "ok" and gt.get("run_status") == "ok",
+          {k: gt.get(k) for k in ("status", "run_status", "measurements", "stations", "failed_requests")})
+    models = inf.get("model_metadata") or {}
+    check(s, "inferensi menulis window complete; tiap polutan fallback IDW bertanda (Model Registry tidak dikonfigurasi)",
+          inf.get("run_status") == "complete" and str(inf.get("model_version", "")).startswith("spatial-") and
+          inf.get("estimation_source") == "idw" and inf.get("fallback_reason") and
+          all(models.get(p, {}).get("source") == "idw" and models.get(p, {}).get("fallback_reason")
+              for p in ("pm25", "no2")),
+          {**{k: inf.get(k) for k in ("run_id", "run_status", "model_version", "rows_written", "coverage_ratio",
+                                      "fallback_reason")},
+           "model_metadata": {p: {k: v for k, v in m.items() if k in ("source", "model_version", "fallback_reason")}
+                              for p, m in models.items()}})
     edges = int(psql("SELECT count(*) FROM osm.road_edge")[0][0])
     db = psql("SELECT status, model_version, coverage_ratio FROM pollution.pollution_window "
               "WHERE time_window_start = '2026-10-26 12:00+00'")
@@ -173,6 +191,12 @@ def scenario_success():
           zeros[0] == "0" and zeros[2] == "0" and int(zeros[3]) == edges, {"zero_index": zeros[0], "null_index": zeros[1],
                                                                           "zero_conc": zeros[2], "rows": zeros[3],
                                                                           "edges": edges})
+    trace = psql("SELECT e.trace_run_id, count(*), bool_and(r.run_id IS NOT NULL) FROM pollution.edge_pollution e "
+                 "LEFT JOIN pollution.inference_run r ON r.run_id = e.trace_run_id "
+                 "WHERE e.time_window_start = '2026-10-26 12:00+00' GROUP BY 1")
+    check(s, "cache: setiap baris menyimpan run_id Worker (trace_run_id -> inference_run)",
+          len(trace) == 1 and trace[0][0] == inf.get("run_id") and trace[0][2] == "t",
+          {"trace_run_id": [t[0] for t in trace], "worker_run_id": inf.get("run_id")})
 
     r = route()
     meta = (r["json"] or {}).get("metadata", {}) if r["status"] == 200 else {}
@@ -195,7 +219,11 @@ def scenario_success():
     check(s, "korelasi: X-Request-ID = metadata.request_id = log gateway = log Cache API",
           rid and meta.get("request_id") == rid and line is not None and gw_line is not None,
           {"x_request_id": rid})
-    correlate(s, rid, line, gw_line, inf)
+    record = log_json(line)
+    check(s, "log Cache API berformat JSON dengan correlation_id = X-Request-ID",
+          record.get("correlation_id") == rid and record.get("level") == "info",
+          {k: record.get(k) for k in ("level", "logger", "correlation_id")})
+    correlate(s, rid, line, gw_line, inf, trace[0][0] if trace else None)
     check(s, "missing_edge_count di respons sesuai cakupan Worker (100 %)", meta.get("missing_edge_count") == 0,
           {"missing_edge_count": meta.get("missing_edge_count"), "worker_coverage": inf.get("coverage_ratio")})
 
@@ -237,12 +265,16 @@ def scenario_next_window():
 def scenario_source_unavailable():
     s = "E2E-04 sumber data tidak tersedia"
     print(s)
-    code, report = worker(W15)  # portal unreachable, no stored observation for 15:00
+    set_spku_portal("down")
+    code, report = worker(W15)  # portal down, no stored observation for 15:00
+    set_spku_portal("ok")
     gt, inf = step(report, "fetch_ground_truth"), step(report, "trigger_downscale_inference")
-    check(s, "Worker menandai siklus gagal (exit 1) pada inferensi", code == 1 and
-          "trigger_downscale_inference" in (report or {}).get("failed", []),
-          {"exit": code, "fetch_ground_truth": {k: gt.get(k) for k in ("status", "measurements", "run_status")},
-           "inference": inf.get("error")})
+    check(s, "portal SPKU mati: fetch_ground_truth berstatus failed, bukan ok", gt.get("status") == "failed" and
+          gt.get("run_status") in ("aborted", "failed"),
+          {k: gt.get(k) for k in ("status", "run_status", "failed_requests", "note")})
+    check(s, "Worker menandai siklus gagal (exit 1) pada pengambilan data dan inferensi", code == 1 and
+          {"fetch_ground_truth", "trigger_downscale_inference"} <= set((report or {}).get("failed", [])),
+          {"exit": code, "failed": (report or {}).get("failed"), "inference": inf.get("error")})
     check(s, "tidak ada window 15:00 yang ditulis", not psql(
         "SELECT 1 FROM pollution.pollution_window WHERE time_window_start = '2026-10-26 15:00+00'"), None)
     r = route()
@@ -262,7 +294,7 @@ def scenario_window_being_written():
     s = "E2E-05 window sedang ditulis"
     print(s)
     psql("INSERT INTO pollution.pollution_window (time_window_start, pollutant, status, model_version) "
-         "VALUES ('2026-10-26 14:00+00', 'pm25,no2', 'writing', 'idw-p2-k8')")
+         "VALUES ('2026-10-26 14:00+00', 'pm25,no2', 'writing', 'spatial-e2e-writing')")
     r = route()
     check(s, "window berstatus writing tidak terbaca; API tetap 13:00",
           r["status"] == 200 and r["json"]["metadata"]["time_window_start"] == "2026-10-26T13:00:00Z",
@@ -341,6 +373,10 @@ def scenario_api_failures():
     health = http("GET", CACHE_API + "/health")
     check(s, "/health melaporkan degraded saat basis data mati",
           health["json"] and health["json"].get("status") == "degraded", health["json"])
+    ready, live = http("GET", CACHE_API + "/health/ready"), http("GET", CACHE_API + "/health/live")
+    check(s, "/health/ready 503 saat basis data mati, /health/live tetap 200",
+          ready["status"] == 503 and (ready["json"] or {}).get("checks", {}).get("database") == "unavailable" and
+          live["status"] == 200, {"ready": [ready["status"], ready["json"]], "live": live["status"]})
     no_false_success(s, r)
     compose("start", "db")
     compose("up", "-d", "--wait", "db")
@@ -392,10 +428,20 @@ def redact(text: str) -> str:
     return text
 
 
-def correlate(s, rid, api_line, gw_line, inference):
+def log_json(line: str | None) -> dict:
+    """The JSON record of one compose log line ("service-1  | {...}"), or {}."""
+    try:
+        record = json.loads((line or "").split("|", 1)[-1].strip())
+    except ValueError:
+        return {}
+    return record if isinstance(record, dict) else {}
+
+
+def correlate(s, rid, api_line, gw_line, inference, trace_run_id):
     CORRELATION.extend([
         f"[{s}] Worker  run_id={inference.get('run_id')} model_version={inference.get('model_version')} "
         f"rows_written={inference.get('rows_written')} coverage={inference.get('coverage_ratio')}",
+        f"[{s}] cache   edge_pollution.trace_run_id={trace_run_id}",
         f"[{s}] gateway {redact((gw_line or '').split('|', 1)[-1].strip())}",
         f"[{s}] API     {redact((api_line or '').split('|', 1)[-1].strip())}",
     ])
@@ -405,8 +451,8 @@ def versions() -> dict:
     def git(*args):
         return sh("git", "-C", str(ROOT), *args).stdout.strip()
     images = {}
-    for service in ("db", "worker", "route_model", "cache_api", "gateway", "frontend"):
-        image = "postgis/postgis:18-3.6" if service == "db" else f"sippolusi-e2e-{service}"
+    for service in ("db", "worker", "spku_portal", "route_model", "cache_api", "gateway", "frontend"):
+        image = {"db": "postgis/postgis:18-3.6", "spku_portal": "python:3.11-slim"}.get(service, f"sippolusi-e2e-{service}")
         inspected = sh("docker", "image", "inspect", "--format", "{{.Id}}", image, check=False).stdout.strip()
         images[service] = {"image": image, "id": inspected[:19]}
     manifest = json.loads((HERE / "fixture" / "manifest.json").read_text())
@@ -432,7 +478,7 @@ def main() -> int:
     compose("down", "-v", "--remove-orphans", check=False)
     compose("up", "-d", "--wait", "db")
     print(compose("--profile", "tools", "run", "--rm", "fixture").stdout.strip().splitlines()[-1])
-    compose("up", "-d", "--wait", "route_model", "cache_api", "gateway", "frontend")
+    compose("up", "-d", "--wait", "spku_portal", "route_model", "cache_api", "gateway", "frontend")
     started = dt.datetime.now(dt.timezone.utc)
 
     for scenario in (scenario_empty_cache, scenario_success, scenario_next_window, scenario_source_unavailable,
@@ -449,7 +495,7 @@ def main() -> int:
                "checks": len(RESULTS), "passed": passed, "failed": len(RESULTS) - passed}
     (OUT / "versions.json").write_text(json.dumps(versions(), indent=2, default=str))
     (OUT / "results.json").write_text(json.dumps({"summary": summary, "results": RESULTS}, indent=2, default=str))
-    (OUT / "correlation.log").write_text("\n".join(CORRELATION) + "\n")
+    (OUT / "correlation.txt").write_text("\n".join(CORRELATION) + "\n")
     print(f"== {passed}/{len(RESULTS)} pemeriksaan lulus; hasil di {OUT.relative_to(ROOT)}")
     return 0 if passed == len(RESULTS) else 1
 
