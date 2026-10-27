@@ -17,6 +17,15 @@ case "${PORT:-}" in
 esac
 [ "$PORT" -ge 1 ] && [ "$PORT" -le 65535 ] || fail "PORT='$PORT' must be a number between 1 and 65535"
 
+# Whole seconds; the template appends "s". Above 300 a request would outlive
+# any client that is still waiting for it.
+case "${GATEWAY_UPSTREAM_TIMEOUT_S:-}" in
+    '' ) fail "GATEWAY_UPSTREAM_TIMEOUT_S is not set (the image default is 10, Table 3.15)" ;;
+    *[!0-9]* ) fail "GATEWAY_UPSTREAM_TIMEOUT_S='$GATEWAY_UPSTREAM_TIMEOUT_S' must be whole seconds between 1 and 300" ;;
+esac
+[ "$GATEWAY_UPSTREAM_TIMEOUT_S" -ge 1 ] && [ "$GATEWAY_UPSTREAM_TIMEOUT_S" -le 300 ] ||
+    fail "GATEWAY_UPSTREAM_TIMEOUT_S='$GATEWAY_UPSTREAM_TIMEOUT_S' must be whole seconds between 1 and 300"
+
 # The whole value must be scheme://host:port and nothing else: no user-info,
 # path, query, fragment, whitespace or nginx syntax. host is a DNS name or IPv4
 # address (letters, digits, "-", "_", dot-separated) or a bracketed IPv6
@@ -42,4 +51,4 @@ check_upstream CACHE_API_UPSTREAM "${CACHE_API_UPSTREAM:-}" \
 # The value passed the check above, so it holds no credentials. BACKEND_UPSTREAM
 # is no longer read: no public path goes to the backend (TI-DO-05), and a
 # leftover value in the service's variables is ignored.
-echo "gateway: configuration ok (PORT=$PORT, CACHE_API_UPSTREAM=$CACHE_API_UPSTREAM)"
+echo "gateway: configuration ok (PORT=$PORT, CACHE_API_UPSTREAM=$CACHE_API_UPSTREAM, GATEWAY_UPSTREAM_TIMEOUT_S=$GATEWAY_UPSTREAM_TIMEOUT_S)"
