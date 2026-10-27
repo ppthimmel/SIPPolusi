@@ -1,4 +1,5 @@
 import { ApiError } from "./api";
+import { ROUTE_TIMEOUT_MS } from "./config";
 
 export type ErrorAction = "retry" | "edit" | "wait";
 export type ErrorField = "origin" | "destination" | null;
@@ -45,7 +46,7 @@ export function describeRouteError(err: unknown): ErrorView {
     case "timeout":
       return make({
         title: "Server terlalu lama merespons",
-        message: "Pencarian rute melebihi 12 detik dan dibatalkan. Tidak ada hasil yang ditampilkan.",
+        message: `Pencarian rute melebihi ${ROUTE_TIMEOUT_MS / 1000} detik dan dibatalkan. Tidak ada hasil yang ditampilkan.`,
         action: "retry",
       });
     case "network":

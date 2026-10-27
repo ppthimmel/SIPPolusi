@@ -22,7 +22,7 @@ request for `/v1/osm/x/../../routes` reaches the Cache API as `/v1/routes`, neve
 in its raw form.
 
 All proxied paths share the same timeouts: connect 5 s, read/send 10 s
-(Table 3.15). The frontend container forwards its `/v1/*` here, so this file
+(Table 3.15; read/send set by `GATEWAY_UPSTREAM_TIMEOUT_S`, see Configuration). The frontend container forwards its `/v1/*` here, so this file
 is the only place that maps paths to services.
 
 ## Rate limiting
@@ -93,7 +93,7 @@ Errors produced by the gateway itself use the uniform schema
 | 413 | `payload_too_large` | Body over 16 KiB on `POST /v1/routes` |
 | 429 | `rate_limited` | Rate limit above exceeded; `Retry-After` in seconds |
 | 502 | `upstream_unavailable` | The Cache API cannot be reached (refused, or its name does not resolve, e.g. while it redeploys) |
-| 504 | `upstream_timeout` | The Cache API did not answer within 10 s |
+| 504 | `upstream_timeout` | The Cache API did not answer within `GATEWAY_UPSTREAM_TIMEOUT_S` (10 s) |
 
 Error responses from the Cache API itself (400, 422, 503, …) are passed through
 unchanged. `/healthz` keeps answering 200 while the Cache API is down, so an
@@ -111,6 +111,7 @@ Table 3.5).
 |---|---|---|
 | `CACHE_API_UPSTREAM` | yes | `http(s)://host:port` and nothing else: port required (1–65535); no user-info, path, trailing slash, query or fragment. Host is a DNS name, IPv4, or bracketed IPv6 (`[fd12::1]`). Railway: `http://${{cache-api.RAILWAY_PRIVATE_DOMAIN}}:${{cache-api.PORT}}` (use the Cache API service's actual name); compose: `http://cache_api:8000` |
 | `PORT` | no | Railway injects it; image default `8080` |
+| `GATEWAY_UPSTREAM_TIMEOUT_S` | no | Proxy read/send timeout in whole seconds, 1–300; image default `10` (Table 3.15). Raise it only together with the Cache API's `ROUTE_SOLVER_BUDGET_MS` and `ROUTE_SOLVER_GATEWAY_TIMEOUT_MS` (kept below it) and the frontend's `VITE_ROUTE_TIMEOUT_MS` (kept above it); otherwise the lowest of them still ends the request. The frontend container's own proxy uses the nginx default of 60 s, so keep this below 60 |
 
 `BACKEND_UPSTREAM` is no longer read: no public path goes to the backend. A
 value left in the Railway service's variables is ignored and can be deleted.
@@ -124,7 +125,7 @@ gateway: invalid configuration: CACHE_API_UPSTREAM is not a valid upstream; expe
 ```
 
 The template is rendered by the official image's entrypoint (envsubst limited
-to `PORT`, `CACHE_API_UPSTREAM`, `NGINX_LOCAL_RESOLVERS`).
+to `PORT`, `CACHE_API_UPSTREAM`, `GATEWAY_UPSTREAM_TIMEOUT_S`, `NGINX_LOCAL_RESOLVERS`).
 
 ## Tests
 
