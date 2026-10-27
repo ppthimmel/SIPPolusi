@@ -168,12 +168,38 @@ Satu baris (sebagian kolom):
              "geoscf_fcst_pm25_init_utc": ["2026-10-26T09:00:00+00:00"], "sensor_stations": [], "...": "..."}}
 ```
 
+## Image Docker
+
+`docker build --platform linux/amd64` dari `src/data_worker` (konteks build Railway) berhasil:
+
+- **Dependensi:** `h5py 3.16.0` (HDF5 2.0.0) dan `rasterio 1.4.4` (GDAL 3.10.3) dari wheel `manylinux`, Python
+  3.11; image 2,77 GB.
+- **Pemeriksaan impor build:** `preflight.import_problems()` lolos, termasuk `feature_store.steps`,
+  `feature_store.cli`, `h5py`, dan `rasterio`.
+
+Di dalam image:
+
+| Pemeriksaan | Hasil |
+|---|---|
+| `python main.py check --skip-db` | Konfigurasi dan impor modul `ok` |
+| Sentinel-5P arsip `…20260930T070407…_46448` lewat HTTP Range + h5py | 52 sel, 20 valid (sama dengan data latih); 6,3 MB dibaca |
+| VIIRS arsip `VNP46A2.A2026263…2026273184043.h5` dengan `EARTHDATA_TOKEN` | 9.216 sel, 817 valid (sama dengan data latih) |
+| Agregasi Landsat 30 m → 100 m (rasterio, raster sintetis) | Nilai rata-rata tepat |
+| `pytest` `test_connectors`, `test_feature_store`, `test_feature_matrix`, `test_data_worker`, `test_worker_schedule`, `test_preflight` (PostGIS lewat `host.docker.internal`) | 129 lulus |
+
+Seluruh `tests/` di dalam image:
+
+- 260 lulus, 11 dilewati;
+- 9 galat di `test_snapshot.py` dan 2 gagal di `test_spatial_baseline.py`, semuanya karena lingkungan, bukan
+  karena perubahan ini:
+  - image tidak memuat `git`, yang dipanggil untuk mencatat commit;
+  - satu uji sengaja memakai locale non-UTF-8, yang di kontainer Linux gagal saat menyandikan baris perintah.
+
+Folder `tests/` memang dikecualikan dari image (`.dockerignore`).
+
 ## Belum diverifikasi
 
-- **Build image Docker dan siklus di Railway:**
-  - `h5py` adalah dependensi baru;
-  - `rasterio` sudah ada;
-  - `preflight` memeriksa impor keduanya saat build.
+- **Siklus di Railway.**
 - **`seed` ke PostgreSQL Railway:** belum dijalankan; perlu persetujuan karena menulis ke basis data
   operasional.
 - **Siklus dengan portal SPKU asli** bersama konektor ini, termasuk durasi total: SPKU ±130 detik pada TI-DO-07,
