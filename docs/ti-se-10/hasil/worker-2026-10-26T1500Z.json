@@ -3,53 +3,154 @@
   "steps": [
     {
       "step": "fetch_satellite_archive",
-      "status": "not_implemented",
-      "duration_s": 0.0
+      "status": "disabled",
+      "sources": {
+        "geoscf_ana": {
+          "status": "disabled",
+          "note": "dinonaktifkan lewat FEATURES_SOURCES"
+        },
+        "geoscf_fcst": {
+          "status": "disabled",
+          "note": "dinonaktifkan lewat FEATURES_SOURCES"
+        },
+        "landsat": {
+          "status": "disabled",
+          "note": "dinonaktifkan lewat FEATURES_SOURCES"
+        },
+        "viirs": {
+          "status": "disabled",
+          "note": "EARTHDATA_TOKEN belum diatur"
+        }
+      },
+      "duration_s": 0.05
     },
     {
       "step": "fetch_tropospheric_column",
-      "status": "not_implemented",
+      "status": "disabled",
+      "sources": {
+        "sentinel5p": {
+          "status": "disabled",
+          "note": "dinonaktifkan lewat FEATURES_SOURCES"
+        }
+      },
       "duration_s": 0.0
     },
     {
       "step": "fetch_meteo",
-      "status": "not_implemented",
+      "status": "disabled",
+      "sources": {
+        "open_meteo": {
+          "status": "disabled",
+          "note": "dinonaktifkan lewat FEATURES_SOURCES"
+        }
+      },
       "duration_s": 0.0
     },
     {
       "step": "fetch_ground_truth",
-      "status": "unavailable",
+      "status": "failed",
+      "source": "spku",
+      "available": false,
       "measurements": 0,
       "stations": 0,
       "unavailable_stations": 121,
-      "run_id": "20261026T154634Z-31457d",
+      "run_id": "20261027T121738Z-e6b658",
       "run_status": "aborted",
-      "note": "tidak ada pengukuran SPKU pada 2026-10-26T15:00Z/16:00Z; lintasan aborted",
-      "duration_s": 15.74
+      "retried_requests": 0,
+      "failed_requests": 2,
+      "note": "lintasan SPKU aborted: daftar stasiun kosong; lintasan dibatalkan tanpa menulis",
+      "duration_s": 14.01
     },
     {
       "step": "run_quality_control",
-      "status": "not_implemented",
-      "duration_s": 0.0
+      "status": "unavailable",
+      "time_utc": "2026-10-26T16:00:00+00:00",
+      "sources": {
+        "open_meteo": {
+          "latest": null,
+          "age_hours": null,
+          "available": false
+        },
+        "geoscf_ana": {
+          "latest": null,
+          "age_hours": null,
+          "available": false
+        },
+        "geoscf_fcst": {
+          "latest": null,
+          "available": false,
+          "age_hours": null
+        },
+        "sentinel5p": {
+          "latest": null,
+          "age_hours": null,
+          "available": false
+        },
+        "viirs": {
+          "latest": null,
+          "age_hours": null,
+          "available": false
+        },
+        "landsat": {
+          "latest": null,
+          "age_hours": null,
+          "available": false
+        }
+      },
+      "note": "sumber ditandai available=false pada \u03c4: geoscf_ana, geoscf_fcst, landsat, open_meteo, sentinel5p, viirs",
+      "duration_s": 0.02
     },
     {
       "step": "align_spatiotemporal",
-      "status": "not_implemented",
-      "duration_s": 0.0
+      "status": "ok",
+      "cells": 195782,
+      "columns": 89,
+      "sensor_stations": 0,
+      "availability_fraction": {
+        "no2_mol_m2": 0.0,
+        "ntl": 0.0,
+        "temperature_2m": 0.0,
+        "relative_humidity_2m": 0.0,
+        "wind_speed_10m": 0.0,
+        "wind_direction_10m": 0.0,
+        "boundary_layer_height": 0.0,
+        "precipitation": 0.0,
+        "surface_pressure": 0.0,
+        "geoscf_pm25_ugm3": 0.0,
+        "geoscf_no2_ugm3": 0.0,
+        "geoscf_fcst_pm25_ugm3": 0.0,
+        "geoscf_fcst_no2_ugm3": 0.0,
+        "hour_sin": 1.0,
+        "hour_cos": 1.0,
+        "weekday_sin": 1.0,
+        "weekday_cos": 1.0,
+        "ndvi": 0.0,
+        "ndbi": 0.0,
+        "lst_c": 0.0,
+        "dist_nearest_sensor_m": 0.0
+      },
+      "duration_s": 1.75
     },
     {
       "step": "write_features",
-      "status": "not_implemented",
-      "duration_s": 0.0
+      "status": "ok",
+      "feature_version": "9ca70f83eeea795ce22bca5b5fa6a6a51fd1e049a2d503e2d6396666801bc0a8",
+      "new_version": true,
+      "cells": 195782,
+      "duration_s": 1.51
     },
     {
       "step": "trigger_downscale_inference",
       "status": "failed",
       "error": "NoGroundTruthError: tidak ada pengukuran sensor darat pada time window ini",
-      "duration_s": 0.27
+      "duration_s": 0.48
     }
   ],
   "failed": [
+    "fetch_ground_truth",
     "trigger_downscale_inference"
-  ]
+  ],
+  "run_id": "20261027T121738Z-16395e",
+  "trigger": "manual",
+  "status": "failed"
 }

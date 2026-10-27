@@ -3,62 +3,177 @@
   "steps": [
     {
       "step": "fetch_satellite_archive",
-      "status": "not_implemented",
-      "duration_s": 0.0
+      "status": "disabled",
+      "sources": {
+        "geoscf_ana": {
+          "status": "disabled",
+          "note": "dinonaktifkan lewat FEATURES_SOURCES"
+        },
+        "geoscf_fcst": {
+          "status": "disabled",
+          "note": "dinonaktifkan lewat FEATURES_SOURCES"
+        },
+        "landsat": {
+          "status": "disabled",
+          "note": "dinonaktifkan lewat FEATURES_SOURCES"
+        },
+        "viirs": {
+          "status": "disabled",
+          "note": "EARTHDATA_TOKEN belum diatur"
+        }
+      },
+      "duration_s": 0.05
     },
     {
       "step": "fetch_tropospheric_column",
-      "status": "not_implemented",
+      "status": "disabled",
+      "sources": {
+        "sentinel5p": {
+          "status": "disabled",
+          "note": "dinonaktifkan lewat FEATURES_SOURCES"
+        }
+      },
       "duration_s": 0.0
     },
     {
       "step": "fetch_meteo",
-      "status": "not_implemented",
+      "status": "disabled",
+      "sources": {
+        "open_meteo": {
+          "status": "disabled",
+          "note": "dinonaktifkan lewat FEATURES_SOURCES"
+        }
+      },
       "duration_s": 0.0
     },
     {
       "step": "fetch_ground_truth",
       "status": "ok",
+      "source": "spku",
+      "available": true,
       "measurements": 230,
       "stations": 117,
       "unavailable_stations": 4,
-      "run_id": "20261026T154617Z-3ab8bd",
-      "run_status": "aborted",
+      "run_id": "20261027T121727Z-c5ef68",
+      "run_status": "ok",
+      "retried_requests": 0,
+      "failed_requests": 0,
       "note": null,
-      "duration_s": 15.32
+      "duration_s": 0.46
     },
     {
       "step": "run_quality_control",
-      "status": "not_implemented",
-      "duration_s": 0.0
+      "status": "unavailable",
+      "time_utc": "2026-10-26T14:00:00+00:00",
+      "sources": {
+        "open_meteo": {
+          "latest": null,
+          "age_hours": null,
+          "available": false
+        },
+        "geoscf_ana": {
+          "latest": null,
+          "age_hours": null,
+          "available": false
+        },
+        "geoscf_fcst": {
+          "latest": null,
+          "available": false,
+          "age_hours": null
+        },
+        "sentinel5p": {
+          "latest": null,
+          "age_hours": null,
+          "available": false
+        },
+        "viirs": {
+          "latest": null,
+          "age_hours": null,
+          "available": false
+        },
+        "landsat": {
+          "latest": null,
+          "age_hours": null,
+          "available": false
+        }
+      },
+      "note": "sumber ditandai available=false pada \u03c4: geoscf_ana, geoscf_fcst, landsat, open_meteo, sentinel5p, viirs",
+      "duration_s": 0.03
     },
     {
       "step": "align_spatiotemporal",
-      "status": "not_implemented",
-      "duration_s": 0.0
+      "status": "ok",
+      "cells": 195782,
+      "columns": 89,
+      "sensor_stations": 0,
+      "availability_fraction": {
+        "no2_mol_m2": 0.0,
+        "ntl": 0.0,
+        "temperature_2m": 0.0,
+        "relative_humidity_2m": 0.0,
+        "wind_speed_10m": 0.0,
+        "wind_direction_10m": 0.0,
+        "boundary_layer_height": 0.0,
+        "precipitation": 0.0,
+        "surface_pressure": 0.0,
+        "geoscf_pm25_ugm3": 0.0,
+        "geoscf_no2_ugm3": 0.0,
+        "geoscf_fcst_pm25_ugm3": 0.0,
+        "geoscf_fcst_no2_ugm3": 0.0,
+        "hour_sin": 1.0,
+        "hour_cos": 1.0,
+        "weekday_sin": 1.0,
+        "weekday_cos": 1.0,
+        "ndvi": 0.0,
+        "ndbi": 0.0,
+        "lst_c": 0.0,
+        "dist_nearest_sensor_m": 0.0
+      },
+      "duration_s": 2.02
     },
     {
       "step": "write_features",
-      "status": "not_implemented",
-      "duration_s": 0.0
+      "status": "ok",
+      "feature_version": "0fe30219903e8ef5fa7a3fc55dccdbf854c80fc870ea7894b158bd02f9953759",
+      "new_version": false,
+      "cells": 195782,
+      "duration_s": 1.41
     },
     {
       "step": "trigger_downscale_inference",
-      "run_id": "20261026T1300Z-idw-p2-k8-2828752e",
+      "run_id": "20261026T1300Z-spatial-dc3a36ee2064d6b89715c6de2db7d5d23e88ac72b83c953becc9c050f64612b4-729cc3b2426d-93742272",
       "status": "ok",
       "time_window_start": "2026-10-26 13:00:00+00:00",
-      "model_version": "idw-p2-k8",
+      "model_version": "spatial-dc3a36ee2064d6b89715c6de2db7d5d23e88ac72b83c953becc9c050f64612b4-729cc3b2426d",
       "estimation_source": "idw",
       "coverage_ratio": 1.0,
       "confidence_distribution": {},
-      "duration_s": 0.29,
+      "duration_s": 0.9,
       "graph_version": "jakarta-20261005",
       "rows_written": 0,
-      "fallback_reason": "ModelUnavailableError: model spatial-downscaling production belum terdaftar di Model Registry",
+      "fallback_reason": "{\"pm25\": \"resolve_registry:ValueError\", \"no2\": \"resolve_registry:ValueError\"}",
       "artifacts": {},
+      "model_metadata": {
+        "pm25": {
+          "source": "idw",
+          "model_version": "idw-p2-k8",
+          "fallback_reason": "resolve_registry:ValueError",
+          "requested_model_version": null
+        },
+        "no2": {
+          "source": "idw",
+          "model_version": "idw-p2-k8",
+          "fallback_reason": "resolve_registry:ValueError",
+          "requested_model_version": null
+        }
+      },
+      "input_fingerprint": "752e93fb52a7a25b550b10e5b73bb3c1287e06905801ae08bd488a2c569303fe",
       "windows_pruned": 0,
       "run_status": "skipped"
     }
   ],
-  "failed": []
+  "failed": [],
+  "run_id": "20261027T121727Z-d4707a",
+  "trigger": "manual",
+  "status": "degraded"
 }

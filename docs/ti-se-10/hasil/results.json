@@ -1,9 +1,9 @@
 {
   "summary": {
-    "started_at": "2026-10-26T15:45:37+00:00",
-    "finished_at": "2026-10-26T15:48:04+00:00",
-    "checks": 56,
-    "passed": 54,
+    "started_at": "2026-10-27T12:16:57+00:00",
+    "finished_at": "2026-10-27T12:19:24+00:00",
+    "checks": 62,
+    "passed": 60,
     "failed": 2
   },
   "results": [
@@ -50,25 +50,67 @@
       }
     },
     {
+      "scenario": "E2E-01 cache kosong",
+      "check": "/health/ready: siap (graf ada) dengan polusi dilaporkan kosong",
+      "passed": true,
+      "evidence": {
+        "status": 200,
+        "body": {
+          "status": "ready",
+          "service": "cache-api",
+          "checks": {
+            "database": "ok",
+            "graph": "ok",
+            "pollution": "empty"
+          }
+        }
+      }
+    },
+    {
       "scenario": "E2E-02 sukses Worker -> frontend",
       "check": "siklus Worker berhasil (exit 0, tanpa langkah gagal)",
       "passed": true,
       "evidence": {
         "exit": 0,
-        "failed": []
+        "failed": [],
+        "status": "degraded"
       }
     },
     {
       "scenario": "E2E-02 sukses Worker -> frontend",
-      "check": "inferensi menulis window complete (IDW karena ST-GNN belum terdaftar)",
+      "check": "fetch_ground_truth menjelajahi portal (tiruan) dengan status ok",
       "passed": true,
       "evidence": {
-        "run_id": "20261026T1200Z-idw-p2-k8-c21c1a50",
+        "status": "ok",
+        "run_status": "ok",
+        "measurements": 231,
+        "stations": 116,
+        "failed_requests": 0
+      }
+    },
+    {
+      "scenario": "E2E-02 sukses Worker -> frontend",
+      "check": "inferensi menulis window complete; tiap polutan fallback IDW bertanda (Model Registry tidak dikonfigurasi)",
+      "passed": true,
+      "evidence": {
+        "run_id": "20261026T1200Z-spatial-efaaa52edeec2acd355b5c57e7e43bf48e4de68d51de963347cf740082b31ba0-729cc3b2426d-c36e8d1a",
         "run_status": "complete",
-        "model_version": "idw-p2-k8",
+        "model_version": "spatial-efaaa52edeec2acd355b5c57e7e43bf48e4de68d51de963347cf740082b31ba0-729cc3b2426d",
         "rows_written": 21987,
         "coverage_ratio": 1.0,
-        "fallback_reason": "ModelUnavailableError: model spatial-downscaling production belum terdaftar di Model Registry"
+        "fallback_reason": "{\"pm25\": \"resolve_registry:ValueError\", \"no2\": \"resolve_registry:ValueError\"}",
+        "model_metadata": {
+          "pm25": {
+            "source": "idw",
+            "model_version": "idw-p2-k8",
+            "fallback_reason": "resolve_registry:ValueError"
+          },
+          "no2": {
+            "source": "idw",
+            "model_version": "idw-p2-k8",
+            "fallback_reason": "resolve_registry:ValueError"
+          }
+        }
       }
     },
     {
@@ -78,7 +120,7 @@
       "evidence": [
         [
           "complete",
-          "idw-p2-k8",
+          "spatial-efaaa52edeec2acd355b5c57e7e43bf48e4de68d51de963347cf740082b31ba0-729cc3b2426d",
           "1"
         ]
       ]
@@ -97,11 +139,22 @@
     },
     {
       "scenario": "E2E-02 sukses Worker -> frontend",
+      "check": "cache: setiap baris menyimpan run_id Worker (trace_run_id -> inference_run)",
+      "passed": true,
+      "evidence": {
+        "trace_run_id": [
+          "20261026T1200Z-spatial-efaaa52edeec2acd355b5c57e7e43bf48e4de68d51de963347cf740082b31ba0-729cc3b2426d-c36e8d1a"
+        ],
+        "worker_run_id": "20261026T1200Z-spatial-efaaa52edeec2acd355b5c57e7e43bf48e4de68d51de963347cf740082b31ba0-729cc3b2426d-c36e8d1a"
+      }
+    },
+    {
+      "scenario": "E2E-02 sukses Worker -> frontend",
       "check": "POST /v1/routes lewat gateway -> 200 GeoJSON",
       "passed": true,
       "evidence": {
         "status": 200,
-        "elapsed_s": 0.22
+        "elapsed_s": 0.406
       }
     },
     {
@@ -111,7 +164,7 @@
       "evidence": {
         "time_window_start": "2026-10-26T12:00:00Z",
         "model_version": {
-          "downscaling": "idw-p2-k8",
+          "downscaling": "spatial-efaaa52edeec2acd355b5c57e7e43bf48e4de68d51de963347cf740082b31ba0-729cc3b2426d",
           "route_policy": "stub-e2e-1"
         },
         "graph_version": "jakarta-20261005",
@@ -147,7 +200,17 @@
       "check": "korelasi: X-Request-ID = metadata.request_id = log gateway = log Cache API",
       "passed": true,
       "evidence": {
-        "x_request_id": "efb44c3b4009a94c2321f82bb4d5d351"
+        "x_request_id": "fddf7cf5b735acd3c5c8857a3524b17a"
+      }
+    },
+    {
+      "scenario": "E2E-02 sukses Worker -> frontend",
+      "check": "log Cache API berformat JSON dengan correlation_id = X-Request-ID",
+      "passed": true,
+      "evidence": {
+        "level": "info",
+        "logger": "solver",
+        "correlation_id": "fddf7cf5b735acd3c5c8857a3524b17a"
       }
     },
     {
@@ -181,7 +244,7 @@
       "scenario": "E2E-03 window baru dan idempotensi",
       "check": "Worker menulis window 13:00",
       "passed": true,
-      "evidence": "20261026T1300Z-idw-p2-k8-2828752e"
+      "evidence": "20261026T1300Z-spatial-dc3a36ee2064d6b89715c6de2db7d5d23e88ac72b83c953becc9c050f64612b4-729cc3b2426d-93742272"
     },
     {
       "scenario": "E2E-03 window baru dan idempotensi",
@@ -213,15 +276,25 @@
     },
     {
       "scenario": "E2E-04 sumber data tidak tersedia",
-      "check": "Worker menandai siklus gagal (exit 1) pada inferensi",
+      "check": "portal SPKU mati: fetch_ground_truth berstatus failed, bukan ok",
+      "passed": true,
+      "evidence": {
+        "status": "failed",
+        "run_status": "aborted",
+        "failed_requests": 2,
+        "note": "lintasan SPKU aborted: daftar stasiun kosong; lintasan dibatalkan tanpa menulis"
+      }
+    },
+    {
+      "scenario": "E2E-04 sumber data tidak tersedia",
+      "check": "Worker menandai siklus gagal (exit 1) pada pengambilan data dan inferensi",
       "passed": true,
       "evidence": {
         "exit": 1,
-        "fetch_ground_truth": {
-          "status": "unavailable",
-          "measurements": 0,
-          "run_status": "aborted"
-        },
+        "failed": [
+          "fetch_ground_truth",
+          "trigger_downscale_inference"
+        ],
         "inference": "NoGroundTruthError: tidak ada pengukuran sensor darat pada time window ini"
       }
     },
@@ -257,8 +330,8 @@
       "check": "data_stale mengikuti umur window (> 3 jam setelah berakhir)",
       "passed": true,
       "evidence": {
-        "data_stale": false,
-        "expected": false
+        "data_stale": true,
+        "expected": true
       }
     },
     {
@@ -280,7 +353,7 @@
       "evidence": {
         "status": 200,
         "fallback_reason": "model_timeout",
-        "elapsed_s": 7.914
+        "elapsed_s": 7.911
       }
     },
     {
@@ -302,7 +375,7 @@
       "scenario": "E2E-06 inferensi rute gagal, fallback aktif",
       "check": "model slow: log mencatat outcome=fallback dan penyebab solver_timeout",
       "passed": true,
-      "evidence": "b37d70e81b5bd solver=http outcome=fallback route_source=baseline model_version=astar-baseline fallback_reason=model_timeout mode=walk alpha=0.3 beta=0.7 deadline_ms=7421 inference_ms=51.9 primary_ms=7722.0 reason=solver_timeout detail='no reply within 7721 ms'"
+      "evidence": "star-baseline fallback_reason=model_timeout mode=walk alpha=0.3 beta=0.7 deadline_ms=7377 inference_ms=48.8 primary_ms=7681.2 reason=solver_timeout detail='no reply within 7677 ms'\", \"service\": \"cache-api\", \"correlation_id\": \"b14963e86f8e2058cba91a99e1f8068a\"}"
     },
     {
       "scenario": "E2E-06 inferensi rute gagal, fallback aktif",
@@ -311,7 +384,7 @@
       "evidence": {
         "status": 200,
         "fallback_reason": "model_error",
-        "elapsed_s": 0.194
+        "elapsed_s": 0.234
       }
     },
     {
@@ -333,7 +406,7 @@
       "scenario": "E2E-06 inferensi rute gagal, fallback aktif",
       "check": "model error: log mencatat outcome=fallback dan penyebab solver_error",
       "passed": true,
-      "evidence": "f45c5b4347bc solver=http outcome=fallback route_source=baseline model_version=astar-baseline fallback_reason=model_error mode=walk alpha=0.3 beta=0.7 deadline_ms=7438 inference_ms=48.4 primary_ms=82.4 reason=solver_error detail='Route Model menjawab HTTP 500.'"
+      "evidence": "ar-baseline fallback_reason=model_error mode=walk alpha=0.3 beta=0.7 deadline_ms=7412 inference_ms=32.8 primary_ms=110.7 reason=solver_error detail='Route Model menjawab HTTP 500.'\", \"service\": \"cache-api\", \"correlation_id\": \"32f1e3419fb07111e1db22810540ef4d\"}"
     },
     {
       "scenario": "E2E-06 inferensi rute gagal, fallback aktif",
@@ -342,7 +415,7 @@
       "evidence": {
         "status": 200,
         "fallback_reason": "model_invalid_response",
-        "elapsed_s": 0.203
+        "elapsed_s": 0.263
       }
     },
     {
@@ -364,7 +437,7 @@
       "scenario": "E2E-06 inferensi rute gagal, fallback aktif",
       "check": "model mislabel: log mencatat outcome=fallback dan penyebab invalid_solver_response",
       "passed": true,
-      "evidence": "odel_version=astar-baseline fallback_reason=model_invalid_response mode=walk alpha=0.3 beta=0.7 deadline_ms=7440 inference_ms=53.0 primary_ms=87.6 reason=invalid_solver_response detail='route_source policy dengan preference_applied=False, fallback_reason=None'"
+      "evidence": "ha=0.3 beta=0.7 deadline_ms=7389 inference_ms=54.0 primary_ms=95.2 reason=invalid_solver_response detail='route_source policy dengan preference_applied=False, fallback_reason=None'\", \"service\": \"cache-api\", \"correlation_id\": \"592a108c4689a95c1c364de4f90018f6\"}"
     },
     {
       "scenario": "E2E-06 inferensi rute gagal, fallback aktif",
@@ -373,7 +446,7 @@
       "evidence": {
         "status": 200,
         "fallback_reason": "model_no_route",
-        "elapsed_s": 0.194
+        "elapsed_s": 0.254
       }
     },
     {
@@ -395,7 +468,7 @@
       "scenario": "E2E-06 inferensi rute gagal, fallback aktif",
       "check": "model no_route: log mencatat outcome=fallback dan penyebab solver_no_route",
       "passed": true,
-      "evidence": " outcome=fallback route_source=baseline model_version=astar-baseline fallback_reason=model_no_route mode=walk alpha=0.3 beta=0.7 deadline_ms=7440 inference_ms=48.8 primary_ms=83.7 reason=solver_no_route detail='solver reported no route on a reachable subgraph'"
+      "evidence": "ason=model_no_route mode=walk alpha=0.3 beta=0.7 deadline_ms=7407 inference_ms=61.5 primary_ms=96.4 reason=solver_no_route detail='solver reported no route on a reachable subgraph'\", \"service\": \"cache-api\", \"correlation_id\": \"4982c007e74f3c5e2a054a2eb0e3fa01\"}"
     },
     {
       "scenario": "E2E-06 inferensi rute gagal, fallback aktif",
@@ -416,7 +489,7 @@
           "route_service_unavailable",
           "solver_timeout"
         ],
-        "elapsed_s": 7.811
+        "elapsed_s": 7.805
       }
     },
     {
@@ -479,6 +552,26 @@
         "graph_version": null,
         "pollution_time_window": null,
         "pollution_data_stale": null
+      }
+    },
+    {
+      "scenario": "E2E-08 API dan basis data gagal",
+      "check": "/health/ready 503 saat basis data mati, /health/live tetap 200",
+      "passed": true,
+      "evidence": {
+        "ready": [
+          503,
+          {
+            "status": "not_ready",
+            "service": "cache-api",
+            "checks": {
+              "database": "unavailable",
+              "graph": "unknown",
+              "pollution": "unknown"
+            }
+          }
+        ],
+        "live": 200
       }
     },
     {
