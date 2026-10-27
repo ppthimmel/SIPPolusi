@@ -35,6 +35,7 @@ def main():
     from spatial_model.inference.serving import GridInputs, load_model
     from spatial_model.data.grid import GridSpec, to_lonlat
     from spatial_model.inference import run_downscale_inference, load_idw_settings
+    from spatial_model.inference.provenance import read_edge_trace
     from contracts import TimeWindow
     from spatial_model.artifacts.bundles import export_bundle
 
@@ -92,13 +93,22 @@ def main():
         conn.execute("INSERT INTO osm.graph_version(version,status) VALUES (%s,'active') ON CONFLICT(version) DO NOTHING",(graph_version,))
         conn.execute("INSERT INTO osm.road_edge(edge_id,graph_version,u,v,length_m,walk_allowed,bike_allowed,geom) VALUES (%s,%s,1,2,%s,true,true,ST_GeomFromText(%s,4326)) ON CONFLICT DO NOTHING",(edge_id,graph_version,float(xs[-1]-xs[0]),wkt))
         kwargs = dict(ground_truth=ground_truth,edges=edges,graph_version=graph_version,grid_spec=spec,
-                      conn=conn,settings=load_idw_settings(),inputs=inputs,artifact_dir=ROOT/'.cache/registered-grid-trace')
+                      conn=conn,settings=load_idw_settings(),inputs=inputs,artifact_dir=None)
         first = run_downscale_inference(window,force=True,**kwargs)
         assert first.rows_written == 1
         assert first.model_metadata['pm25']['source'] == 'idw_stgnn_residual', first.model_metadata
         assert first.model_metadata['no2']['source'] == 'lightgbm', first.model_metadata
         second = run_downscale_inference(window,**kwargs)
         assert second.status == 'skipped' and second.run_id == first.run_id
+        assert first.artifacts == {}
+        trace = read_edge_trace(conn, edge_id, window.start)
+        assert trace['run_id'] == first.run_id and len(trace['cells']) == width
+        assert trace['manifest']['input_fingerprint'] == first.input_fingerprint
+        cells = pd.DataFrame(trace['cells'])
+        reconstructed = {}
+        for pollutant in ('pm25', 'no2'):
+            valid = cells[f'{pollutant}_ugm3'].notna()
+            reconstructed[pollutant] = float(np.average(cells.loc[valid, f'{pollutant}_ugm3'], weights=cells.loc[valid, 'length_m']))
 
     async def readback():
         sys.path.append(str(ROOT / "src/backend"))
@@ -116,13 +126,20 @@ def main():
             assert len(result.weights)==1
             weight=result.weights[0]
             assert weight.model_metadata['no2']['source']=='lightgbm'
-            return dataclasses.asdict(weight)
+            assert weight.trace_run_id == first.run_id
+            backend_trace = await PollutionRepository(db,None).read_edge_trace(edge_id, BackendWindow(window.start))
+            assert backend_trace['run_id'] == first.run_id and len(backend_trace['cells']) == width
+            for pollutant in ('pm25', 'no2'):
+                assert abs(getattr(weight, f'{pollutant}_ugm3') - reconstructed[pollutant]) < 0.001
+            return dataclasses.asdict(weight), backend_trace
         finally:
             await db.close()
-    weight=asyncio.run(readback())
+    weight, backend_trace=asyncio.run(readback())
     report=dict(status='passed',dataset='ds-v0.3.0',registered_versions=versions,
                 window_start=window.start.isoformat(),grid_cells=spec.n_cells,
                 run=dataclasses.asdict(first),repeat_status=second.status,backend_readback=weight,
+                durable_trace=backend_trace, reconstructed_concentrations=reconstructed,
+                optional_artifacts_enabled=False,
                 limits='Historical local replay on a small grid; not citywide accuracy or Railway deployment.')
     args.out.parent.mkdir(parents=True,exist_ok=True)
     args.out.write_text(json.dumps(report,indent=2,default=str)+'\n')
