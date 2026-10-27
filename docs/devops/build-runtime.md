@@ -14,14 +14,24 @@ Manifes `k3s/` lama (Ingress Traefik) sudah dihapus.
 | Layanan | Folder (Root Directory Railway) | Start (CMD Dockerfile) | Mode Railway | Pemeriksaan |
 |---|---|---|---|---|
 | Backend API | `src/backend` | `python serve.py` | Service web, restart `ON_FAILURE` | `GET /health` (hidup), `GET /health/ready` (basis data) |
-| Cache API (`/v1/osm`, `/v1/pollution`) | `src/backend`, `RAILWAY_DOCKERFILE_PATH=osm/Dockerfile` | `uvicorn osm.app:app` | Service web privat | `GET /health` (`HEALTHCHECK` image) |
+| Cache API (`/v1/osm`, `/v1/pollution`) | `src/backend`, *Dockerfile Path* `/src/backend/osm/Dockerfile` (dashboard) | `uvicorn osm.app:app` | Service web privat | `GET /health` (`HEALTHCHECK` image) |
 | API Gateway | `src/gateway` | entrypoint image `nginx` | Service web publik, restart `ON_FAILURE` | `GET /healthz` |
 | Data Worker | `src/data_worker` | `python main.py cycle` | Cron `15 * * * *`, restart `NEVER` | `python main.py check` |
 
 Setiap folder memuat `Dockerfile`, `.dockerignore`, `.env.example`, dan
 `railway.json` (builder, *watch path*, health check, restart, cron). Cache API
-memakai folder dan berkas yang sama dengan Backend, dengan Dockerfile sendiri
+memakai folder yang sama dengan Backend, dengan Dockerfile sendiri yang dipilih
+lewat *Dockerfile Path* di dashboard
 (panduan: [`src/backend/osm/README.md`](../../src/backend/osm/README.md)).
+Railway membaca `src/backend/railway.json` untuk kedua service, jadi berkas itu
+tidak boleh memuat `dockerfilePath`.
+
+> **Config as Code dihentikan Railway.** Berkas `railway.json` yang sudah
+> dipakai tetap berlaku sampai **1 Desember 2026**; sejak 28 Agustus 2026
+> service yang belum pernah memakainya tidak bisa mengaktifkannya. Setelah
+> tanggal itu, builder, Dockerfile Path, *watch path*, health check, restart,
+> dan cron harus diisi di Settings tiap service (lihat tabel di atas).
+> Pengganti (Infrastructure as Code) dikerjakan terpisah.
 
 Pemetaan jalur ke layanan hanya ada di gateway: `/v1/osm/*` dan
 `/v1/pollution/*` ke Cache API, `/v1/*` lainnya ke Backend. Container frontend
@@ -107,13 +117,22 @@ docker run --rm --env-file src/data_worker/.env sippolusi-data-worker python mai
 Untuk setiap layanan: *New Service → GitHub Repo*, lalu di Settings:
 
 1. **Source → Root Directory**: folder pada tabel ringkasan.
-2. **Config-as-code**: `/src/<folder>/railway.json` bila tidak terbaca
-   otomatis. Nilai yang diisi manual di dashboard mengalahkan berkas ini;
-   kosongkan isian dashboard agar berkas yang berlaku.
+2. **Build dan Deploy**: isi Dockerfile Path, *watch path*, health check,
+   restart, dan cron di Settings sesuai tabel ringkasan. Service lama yang
+   sudah membaca `railway.json` tetap memakainya sampai 1 Desember 2026, dan
+   nilai berkas itu mengalahkan isian dashboard; service baru tidak bisa
+   lagi mengaktifkan Config as Code.
 3. **Variables**: sesuai tabel variabel di atas.
-4. **Networking**: hanya **gateway** yang diberi domain publik. Backend cukup
-   dijangkau lewat `backend.railway.internal`; penutupan domain publiknya
-   dikerjakan pada TI-DO-04.
+   Deploy manual: *Deploy latest commit* di dashboard, atau
+   `railway up --service <nama> --environment <env> --ci` dari **akar
+   repositori**. Jangan pakai `railway up src/<folder> --path-as-root`:
+   Root Directory service tetap diterapkan pada unggahan sehingga build gagal
+   (`Root directory "src/backend" was not found`). `.railwayignore`
+   mengecualikan data dan dokumen agar unggahan tidak ditolak (413).
+4. **Networking**: hanya **gateway** (dan frontend) yang diberi domain
+   publik. Layanan lain dijangkau lewat `*.railway.internal`; langkah
+   menutup domain publik dan TCP proxy basis data serta uji jaringannya ada
+   di [`private-networking.md`](private-networking.md) (TI-DO-04).
 
 Environment `staging` (proyek `humble-endurance`) dibuat dengan menduplikasi
 `development`, lalu hanya menyisakan `database`, `backend`, dan service baru
