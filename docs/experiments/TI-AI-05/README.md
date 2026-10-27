@@ -7,6 +7,9 @@ Training Python dan notebook memakai implementasi yang sama, dataset ds-v0.3.0, 
 terversi MLflow dengan payload MinIO. [Panduan training/inference](../../../src/data_worker/spatial_model/README.md).
 Agregasi dan cache di bawah merupakan bukti historis IDW; verifikasi model terdaftar dilaporkan terpisah.
 
+Optimasi pembacaan sumber antar-tile dan hasil verifikasi kesetaraan fitur:
+[`source_reader_cache.md`](source_reader_cache.md).
+
 ## Perbandingan ds-v0.3.0
 
 RMSE dalam µg/m³; seluruh angka berikut berasal dari [laporan eksperimen](../model-comparison-ds-v0.3.0/README.md),

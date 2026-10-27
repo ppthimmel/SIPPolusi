@@ -32,7 +32,16 @@ Bawaan `export`:
 - train < 25 Sep, validation 25–27 Sep, test 28–30 Sep;
 - jendela 24 jam, satu hop konteks.
 
-Durasi sekitar 10 detik. Keluaran ±3,3 MB dan tidak di-commit.
+Keluaran ±3,3 MB dan tidak di-commit. Durasi bergantung pada pemuatan sumber pertama.
+
+`SourceReader` memuat snapshot sumber secara lazy sekali per instance, lalu memilih
+baris sel dari indeks untuk setiap tile/batch. Cache menyimpan kolom yang diperlukan
+dengan ID kategorikal; keluaran fitur seluruh kota tidak disimpan. Worker membuat reader
+baru setiap run, sehingga pembaruan berkas dibaca pada run berikutnya. Buat instance
+baru jika sumber atau konfigurasi reader berubah; jangan berbagi instance mutable
+antar-thread. Biaya pemuatan awal dan RAM ditukar dengan penghapusan I/O berulang
+antar-tile. Perbandingan keluaran, waktu, dan penggunaan memori:
+[`source_reader_cache.md`](../../../docs/experiments/TI-AI-05/source_reader_cache.md).
 
 | Berkas | Isi |
 |---|---|
