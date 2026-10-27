@@ -69,8 +69,13 @@ internet selain lewat Railway edge ke `frontend` dan `gateway`.
 | inferensi spasial (`spatial-downscaling`) | tidak | backend | final |
 | inferensi rute (`morl-route-policy`) | tidak | backend | final |
 
-Observability (Prometheus, Pushgateway, Grafana) tidak termasuk cakupan
-TI-DO-04.
+| grafana / observability | **ya, belum ditutup** (`grafana-development-8ad2`, `observability-staging-a0ca`) | — | di luar TI-DO-04 |
+
+**Pengecualian yang diketahui:** Grafana (development) dan service
+`observability` (staging) masih memiliki domain publik; `/login` Grafana
+menjawab 200 dari internet. Keduanya di luar cakupan TI-DO-04 dan ditutup atau
+dilindungi pada pekerjaan observability (TI-DO-08). Sampai saat itu, pernyataan
+"hanya gateway dan frontend yang publik" berlaku untuk layanan aplikasi saja.
 
 ## Aturan konfigurasi
 
@@ -110,11 +115,14 @@ sini; kredensial hanya lewat referensi.
 | gateway | `CACHE_API_UPSTREAM` | `http://${{cache-api.RAILWAY_PRIVATE_DOMAIN}}:${{cache-api.PORT}}` |
 | frontend | `GATEWAY_UPSTREAM` | `http://${{gateway.RAILWAY_PRIVATE_DOMAIN}}:${{gateway.PORT}}` |
 | backend, cache-api, data_worker | `DATABASE_URL` | `${{database.DATABASE_URL}}` |
-| backend, data_worker | `MLFLOW_TRACKING_URI` | `http://${{model-registry.RAILWAY_PRIVATE_DOMAIN}}:5000` |
+| backend, data_worker | `MLFLOW_TRACKING_URI` | `http://${{model_registry.RAILWAY_PRIVATE_DOMAIN}}:5000` (terurai menjadi `modelregistry.railway.internal`) |
 | backend (final) | URL layanan inferensi | `http://${{<inferensi>.RAILWAY_PRIVATE_DOMAIN}}:${{<inferensi>.PORT}}` |
 
-Sesuaikan nama service (`cache-api`, `model-registry`) dengan nama di
-dashboard. Nama variabel URL inferensi ditetapkan bersama layanan inferensi;
+Sesuaikan nama service (`cache-api`, `model_registry`) dengan nama di
+dashboard. Domain privat diturunkan dari nama service dan tidak selalu sama
+dengannya: service `model_registry` mendapat `modelregistry.railway.internal`
+(garis bawah dibuang). Selalu pakai referensi `RAILWAY_PRIVATE_DOMAIN`, atau
+cek nilainya dengan `railway variables --service <nama> --json`. Nama variabel URL inferensi ditetapkan bersama layanan inferensi;
 aturannya sama: referensi privat, `http://`, tanpa path.
 
 ## Menutup jalur publik di Railway
@@ -133,15 +141,42 @@ Untuk setiap service selain `gateway` dan `frontend`:
    PostgreSQL ke internet dengan kata sandi sebagai satu-satunya pelindung.
    Bila perlu akses dari laptop (migrasi, inspeksi), aktifkan sementara,
    catat alasannya, lalu hapus lagi dan ulangi uji di bawah.
-3. Periksa tidak ada variabel yang merujuk alamat publik:
+3. **Ganti kata sandi PostgreSQL** (wajib setelah TCP proxy pernah aktif).
+   Menutup proxy tidak membatalkan paparan sebelumnya, dan alamat proxy lama
+   tercatat di dokumen bukti. Semua service memakai user `postgres` yang sama,
+   jadi rotasi menyentuh semuanya. Lakukan per environment, di luar menit
+   `:15` (cron Data Worker):
+   1. Buka shell di service `database` (tab **Console**, atau
+      `railway ssh --service database --environment <env>`), lalu
+      `psql -U postgres -d "$PGDATABASE"` dan jalankan `\password postgres`.
+      Kata sandi diketik di prompt, tidak masuk riwayat shell atau log.
+   2. Isi nilai yang sama ke variabel `POSTGRES_PASSWORD` dan `PGPASSWORD`
+      service `database` (`--skip-deploys`). `DATABASE_URL` service lain
+      adalah referensi `${{database.DATABASE_URL}}`, jadi ikut berubah.
+      `POSTGRES_PASSWORD` hanya dipakai saat volume pertama kali dibuat;
+      langkah 1 yang benar-benar mengganti kata sandinya.
+   3. Ganti juga setiap salinan kata sandi yang berupa teks, bukan referensi:
+      `MLFLOW_BACKEND_STORE_URI` (model_registry; URL ke
+      `postgres.railway.internal` dengan kata sandi di dalamnya), salinan
+      `DATABASE_URL`/`DATABASE_PUBLIC_URL` di `.env` lokal anggota tim, dan
+      alat lain yang pernah memakai `DATABASE_PUBLIC_URL`. Periksa variabel
+      setiap service dengan
+      `railway variables --service <nama> --environment <env> --json`.
+   4. Redeploy backend, cache-api, model_registry; Data Worker mengambil
+      nilai baru pada eksekusi cron berikutnya.
+   5. Periksa: log start-up backend (`configuration ok ... database=...`),
+      `GET https://<gateway>/v1/osm/version` tidak menjawab
+      `"reason": "database_unavailable"`, dan log cron Data Worker berikutnya
+      `cek basis data: ok`.
+4. Periksa tidak ada variabel yang merujuk alamat publik:
    `railway variables --service <nama> --environment <env> --kv | grep -i public`
    harus kosong untuk service yang memanggil service lain.
-4. Jalankan uji jalur publik dan jalur internal di bawah, lalu catat hasilnya
+5. Jalankan uji jalur publik dan jalur internal di bawah, lalu catat hasilnya
    di dokumen bukti.
 
 Untuk tahap final, layanan inferensi dibuat langsung **tanpa** domain publik
-(jangan klik *Generate Domain*), dengan health check di `railway.json` dan
-listen `::`.
+(jangan klik *Generate Domain*), dengan health check di Settings → Deploy
+(Config as Code tidak bisa diaktifkan untuk service baru) dan listen `::`.
 
 ## Prosedur uji
 
@@ -150,9 +185,16 @@ Alat uji: [`scripts/network_test.py`](../../scripts/network_test.py)
 
 - `--open TARGET`: harus terjangkau (DNS terurai, koneksi diterima, ada
   respons HTTP dari layanan).
-- `--closed TARGET`: harus tidak terjangkau (nama tidak terurai, koneksi
-  ditolak atau habis waktu, atau edge Railway menjawab domain yang tidak
-  lagi diarahkan ke service).
+- `--refused TARGET`: nama harus terurai, lalu koneksi ditolak, diputus,
+  habis waktu, atau dijawab fallback edge Railway. Pakai untuk nama yang
+  memang ada (domain publik lama, host TCP proxy, port localhost): salah
+  ketik nama host akan **gagal**, bukan lulus.
+- `--closed TARGET`: harus tidak terjangkau dengan alasan apa pun, termasuk
+  nama yang tidak terurai. Pakai hanya untuk nama yang memang tidak boleh
+  terurai dari tempat uji, misalnya `*.railway.internal` dari luar Railway.
+
+Skrip mengabaikan `HTTP(S)_PROXY`, jadi setiap pemeriksaan terhubung langsung
+ke target.
 
 Target berupa `tcp://HOST:PORT`, `postgres://HOST:PORT`, atau
 `http(s)://HOST[:PORT]/PATH`. Untuk TCP proxy Railway pakai `postgres://`:
@@ -179,9 +221,9 @@ docker compose -f docker-compose.yml -f docker-compose.private.yml up -d --build
 
 # 1. Dari host (= publik): hanya gateway yang menjawab.
 python scripts/network_test.py --open http://localhost:8081/healthz \
-    --closed tcp://localhost:8000 --closed tcp://localhost:8001 \
-    --closed tcp://localhost:5432 --closed tcp://localhost:5000 \
-    --closed tcp://localhost:9000 --closed tcp://localhost:9001 \
+    --refused tcp://localhost:8000 --refused tcp://localhost:8001 \
+    --refused tcp://localhost:5432 --refused tcp://localhost:5000 \
+    --refused tcp://localhost:9000 --refused tcp://localhost:9001 \
     --closed tcp://backend:8000 --closed tcp://postgres:5432
 
 # 2. Dari dalam backend: jalur yang diizinkan.
@@ -211,8 +253,8 @@ Ganti `<gateway>` dan domain lama dengan nilai environment yang diuji.
 python scripts/network_test.py \
     --open https://<gateway>.up.railway.app/healthz \
     --open https://<frontend>.up.railway.app/ \
-    --closed https://<domain-lama-backend>.up.railway.app/health \
-    --closed postgres://<host-tcp-proxy-lama>.proxy.rlwy.net:<port> \
+    --refused https://<domain-lama-backend>.up.railway.app/health \
+    --refused postgres://<host-tcp-proxy-lama>.proxy.rlwy.net:<port> \
     --closed tcp://backend.railway.internal:8000 \
     --closed tcp://postgres.railway.internal:5432
 
@@ -223,7 +265,7 @@ python scripts/smoke_test.py --gateway https://<gateway>.up.railway.app
 railway ssh --service backend --environment <env> -- python - \
     --open tcp://postgres.railway.internal:5432 \
     --open http://cache-api.railway.internal:8000/health \
-    --open http://model-registry.railway.internal:5000/health \
+    --open http://modelregistry.railway.internal:5000/health \
     < scripts/network_test.py
 
 # 4. Tahap final: backend ke kedua layanan inferensi.

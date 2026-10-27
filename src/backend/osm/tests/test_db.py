@@ -38,13 +38,27 @@ def _database(exc: Exception) -> OsmDatabase:
     asyncpg.UndefinedTableError('relation "osm.graph_version" does not exist'),
     asyncpg.InvalidSchemaNameError('schema "pollution" does not exist'),
 ])
-async def test_missing_schema_or_table_is_cache_empty(exc):
+async def test_missing_schema_or_table_is_cache_empty(exc, caplog):
     # A fresh database before the first import: 503 cache_empty, not 500.
     with pytest.raises(CacheUnavailable) as info:
         async with _database(exc).connection() as conn:
             await conn.fetchrow("SELECT 1")
     assert info.value.status_code == 503
     assert info.value.reason == CacheUnavailable.CACHE_EMPTY
+    # The original error stays visible in the log.
+    assert any(r.levelname == "WARNING" and str(exc) in r.getMessage() for r in caplog.records)
+
+
+@pytest.mark.parametrize("exc", [
+    asyncpg.UndefinedTableError('relation "osm_graph_version" does not exist'),  # typo, no schema
+    asyncpg.UndefinedTableError('relation "public.road_edge" does not exist'),
+    asyncpg.InvalidSchemaNameError('schema "osmm" does not exist'),
+])
+async def test_missing_object_outside_cache_schemas_stays_an_error(exc):
+    # Only the osm and pollution schemas mean "cache not filled yet".
+    with pytest.raises(type(exc)):
+        async with _database(exc).connection() as conn:
+            await conn.fetchrow("SELECT 1")
 
 
 async def test_other_postgres_errors_are_not_masked():

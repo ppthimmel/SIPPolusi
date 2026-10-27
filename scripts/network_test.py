@@ -1,12 +1,13 @@
 """Private-networking test: which services answer, and from where (TI-DO-04).
 
-Standard library only. Each target is expected either to answer (--open) or
-to be unreachable (--closed) from the place the script runs:
+Standard library only. Each target is expected to answer (--open), to be
+unreachable for any reason (--closed), or to resolve and then be refused
+(--refused) from the place the script runs:
 
     # From outside (laptop, CI): only the gateway may answer.
     python scripts/network_test.py \
         --open https://<gateway>.up.railway.app/healthz \
-        --closed https://<old-backend-domain>.up.railway.app/health \
+        --refused https://<old-backend-domain>.up.railway.app/health \
         --closed tcp://backend.railway.internal:8000
 
     # From inside the private network, e.g. in the backend container
@@ -23,6 +24,15 @@ A target counts as unreachable when its name does not resolve, the
 connection is refused or times out, or Railway's edge answers for a domain
 that no longer routes to a service (404 with X-Railway-Fallback). Any other
 HTTP response, whatever its status, means the service is reachable.
+
+--closed also passes when the name does not resolve, so a typo in a host name
+passes too. Use --refused for names that exist (public domains, TCP proxy
+hosts, localhost ports): it passes only when DNS answers and the connection
+is then refused, reset, timed out or answered by Railway's fallback. Keep
+--closed for names that must not resolve, such as *.railway.internal from
+outside. HTTP(S)_PROXY and similar variables are ignored, so every check
+connects directly.
+
 Exits 1 if any check fails.
 """
 from __future__ import annotations
@@ -41,14 +51,27 @@ DEFAULT_PORTS = {"http": 80, "https": 443}
 
 
 class Unreachable(Exception):
-    """The target could not be reached; the message says at which step."""
+    """The target could not be reached; the message says at which step.
+
+    resolved is False when DNS failed, True when the name resolved and the
+    connection or the service refused.
+    """
+
+    def __init__(self, message: str, resolved: bool = True):
+        super().__init__(message)
+        self.resolved = resolved
+
+
+# Direct connections only: a proxy from the environment would answer instead
+# of the target and make closed paths look open (or the reverse).
+_OPENER = urllib.request.build_opener(urllib.request.ProxyHandler({}))
 
 
 def resolve(host: str, port: int) -> list[str]:
     try:
         infos = socket.getaddrinfo(host, port, type=socket.SOCK_STREAM)
     except socket.gaierror as exc:
-        raise Unreachable(f"DNS: {host} not resolvable ({exc.strerror})") from None
+        raise Unreachable(f"DNS: {host} not resolvable ({exc.strerror})", resolved=False) from None
     return sorted({info[4][0] for info in infos})
 
 
@@ -88,7 +111,7 @@ def probe_http(url: str, timeout: float) -> str:
     addresses = resolve(parts.hostname, parts.port or DEFAULT_PORTS[parts.scheme])
     started = time.monotonic()
     try:
-        with urllib.request.urlopen(url, timeout=timeout) as resp:
+        with _OPENER.open(url, timeout=timeout) as resp:
             status, headers, body = resp.status, resp.headers, resp.read(200)
     except urllib.error.HTTPError as exc:
         status, headers, body = exc.code, exc.headers, exc.read(200)
@@ -117,25 +140,32 @@ def probe(target: str, timeout: float) -> str:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--open", action="append", default=[], metavar="TARGET", help="must be reachable")
-    parser.add_argument("--closed", action="append", default=[], metavar="TARGET", help="must be unreachable")
+    parser.add_argument("--closed", action="append", default=[], metavar="TARGET",
+                        help="must be unreachable, including a name that does not resolve")
+    parser.add_argument("--refused", action="append", default=[], metavar="TARGET",
+                        help="must resolve, then be refused (catches typos that --closed would pass)")
     parser.add_argument("--timeout", type=float, default=5, help="seconds per connection (default 5)")
     args = parser.parse_args(argv)
-    if not args.open and not args.closed:
-        parser.error("give at least one --open or --closed target")
+    if not (args.open or args.closed or args.refused):
+        parser.error("give at least one --open, --closed or --refused target")
 
     print(f"network test {dt.datetime.now(dt.timezone.utc).isoformat(timespec='seconds')} from {socket.gethostname()}")
-    checks = [(target, True) for target in args.open] + [(target, False) for target in args.closed]
+    checks = ([(target, "reachable") for target in args.open]
+              + [(target, "unreachable") for target in args.closed]
+              + [(target, "refused") for target in args.refused])
     failed = 0
-    for target, want_open in checks:
+    for target, expected in checks:
         try:
-            detail, is_open = probe(target, args.timeout), True
+            detail, outcome = probe(target, args.timeout), "reachable"
         except Unreachable as exc:
-            detail, is_open = str(exc), False
+            detail, outcome = str(exc), "refused" if exc.resolved else "unresolved"
         except ValueError as exc:
-            detail, is_open = str(exc), None
-        passed = is_open is want_open
+            detail, outcome = str(exc), None
+        if expected == "unreachable":
+            passed = outcome in ("refused", "unresolved")
+        else:
+            passed = outcome == expected
         failed += not passed
-        expected = "reachable" if want_open else "unreachable"
         print(f"{'PASS' if passed else 'FAIL'}  {expected:<11} {target}\n      {detail}")
     print(f"{len(checks) - failed}/{len(checks)} checks passed")
     return 1 if failed else 0

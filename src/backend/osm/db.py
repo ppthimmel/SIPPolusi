@@ -12,6 +12,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import re
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
@@ -23,6 +24,9 @@ from .errors import CacheUnavailable
 logger = logging.getLogger("osm")
 
 APPLICATION_NAME = "sippolusi-backend-osm"
+
+# 'relation "osm.graph_version" does not exist', 'schema "pollution" does not exist'
+_CACHE_SCHEMA_RE = re.compile(r'"(osm|pollution)[."]')
 
 # Errors meaning "the cache cannot be read right now", as opposed to bugs.
 _UNAVAILABLE_ERRORS = (
@@ -99,6 +103,11 @@ class OsmDatabase:
                 yield conn
         except (asyncpg.InvalidSchemaNameError, asyncpg.UndefinedTableError) as exc:
             # A fresh database the importer has not filled yet: same as no active graph.
+            # Only for the two cache schemas (every query names them); anything else,
+            # e.g. a typo'd table, stays a 500.
+            if not _CACHE_SCHEMA_RE.search(str(exc)):
+                raise
+            logger.warning("cache schema missing, answering cache_empty: %s: %s", type(exc).__name__, exc)
             raise CacheUnavailable(f"Schema cache belum dibuat ({type(exc).__name__}).",
                                    CacheUnavailable.CACHE_EMPTY) from exc
         except asyncpg.QueryCanceledError as exc:

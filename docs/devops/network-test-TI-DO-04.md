@@ -13,11 +13,12 @@ baru yang kosong.
 | Jalur publik: komponen internal tertutup | lulus 9/9 | lulus 5/5 per environment; development dengan gateway + backend aktif 7/7 (§6) |
 | Backend → basis data, cache-api, model_registry | lulus 5/5 | belum |
 | Data Worker → basis data, model_registry | lulus 3/3 + `main.py check` | basis data: lulus (log cron) |
-| Gateway → backend dan cache-api lewat nama internal | lulus 4/4 (smoke test) | backend: lulus; cache-api: jalur privat sampai, image salah (§6.6) |
+| Gateway → backend dan cache-api lewat nama internal | lulus 4/4 (smoke test) | backend: lulus; cache-api: **belum lulus**, service masih menjalankan image Backend (§8) |
 | DNS internal: terurai di dalam, tidak di luar | lulus | luar: lulus |
 | Layanan internal mendengarkan IPv6 | lulus (backend, cache-api, model_registry) | — |
 | Layanan tidak tersedia | lulus (backend, basis data) | backend tidak ada: 502, `/healthz` 200 |
 | Backend → layanan inferensi final | — | menunggu layanan inferensi |
+| Rotasi kata sandi PostgreSQL setelah TCP proxy ditutup | — | **belum** (§8.3) |
 
 ## 1. Port host setelah override
 
@@ -387,9 +388,8 @@ Hasil:
   `build.dockerfilePath ← $.build.dockerfilePath`): cache-api memakai
   `src/backend/railway.json` milik Backend, yang `"dockerfilePath":
   "Dockerfile"`-nya mengalahkan variabel `RAILWAY_DOCKERFILE_PATH` dan isian
-  dashboard. Jadi bukan soal path relatif atau absolut. Perbaikan: berkas
-  baru `src/backend/osm/railway.json` (`dockerfilePath: osm/Dockerfile`),
-  dipasang sebagai *Railway Config File* service cache-api.
+  dashboard. Jadi bukan soal path relatif atau absolut. (Perbaikan awal
+  berupa `src/backend/osm/railway.json` diganti; lihat §8.2.)
 - **Frontend → gateway: gagal, deployment lama.** `/v1/routes` lewat
   frontend 502; log frontend `gateway could not be resolved (3: Host not
   found)`. Frontend masih berjalan dari deployment sebelum
@@ -398,11 +398,7 @@ Hasil:
 
 ### 6.7 Belum dilakukan
 
-1. Di service `cache-api` (development) isi Settings → *Railway Config File*
-   `/src/backend/osm/railway.json`. Berkas ini baru ada di cabang `TI-DO-04`,
-   jadi sebelum PR di-review dan digabung, deploy dari checkout cabang ini:
-   `railway up --service cache-api --environment development --ci` dari akar
-   repositori. Variabel `RAILWAY_DOCKERFILE_PATH` boleh dihapus.
+1. cache-api: lihat §8.2 (langkah ini diganti setelah review).
 2. Redeploy `frontend` agar `GATEWAY_UPSTREAM` berlaku. Frontend memanggil
    `gateway.railway.internal`; bila environment hanya IPv6, gateway perlu
    `listen [::]` dari PR ini (deployment gateway saat ini dari `dev`).
@@ -428,9 +424,180 @@ TCP proxy diaktifkan lagi untuk akses sementara, host dan port-nya berubah.
   `InvalidSchemaNameError` ke `CacheUnavailable(cache_empty)`, sama seperti
   belum ada `graph_version` aktif. Hasilnya `/health` 200 `degraded`,
   `/v1/osm/version` 503 `cache_unavailable`, dan compose berjalan tanpa
-  `--no-deps` (§1, §3). Uji unit baru `osm/tests/test_db.py`; seluruh uji
-  image (`--target test`): osm 97 lulus, pollution 20 lulus.
+  `--no-deps` (§1, §3). Setelah review, pemetaan ini dibatasi pada schema
+  `osm` dan `pollution` (pesan galat harus menyebut `"osm.`/`"pollution.` atau
+  schema `"osm"`/`"pollution"`; semua kueri memakai nama berskema), dan galat
+  aslinya dicatat pada level WARNING. Tabel salah ketik atau schema lain tetap
+  500. Uji `osm/tests/test_db.py` (6 kasus); seluruh uji image
+  (`--target test`): osm 106 lulus, pollution 20 lulus.
 - **`src/gateway/.env` lokal lama** belum memuat `CACHE_API_UPSTREAM`
   (ditambahkan pada TI-DO-02), dan gateway menolak start dengan pesan yang
   menyebut variabel tersebut. Tambahkan baris dari `.env.example`
   (berkas `.env` tidak masuk repositori).
+
+## 8. Tanggapan review (27 Oktober 2026)
+
+Review AureliusJustin pada PR #58. Uji di bawah dijalankan ulang dengan kode
+setelah perbaikan.
+
+### 8.1 `--refused` dan proxy
+
+`--closed` meluluskan nama yang tidak terurai, sehingga salah ketik nama host
+ikut lulus. `network_test.py` sekarang punya `--refused`: lulus hanya bila DNS
+menjawab lalu koneksi ditolak, diputus, habis waktu, atau dijawab fallback
+Railway. Skrip juga mengabaikan `HTTP(S)_PROXY` (sebelumnya, dengan
+`HTTPS_PROXY=http://127.0.0.1:9`, pemeriksaan gateway gagal walaupun gateway
+hidup). Pembuktian: `--refused tcp://nonexistent-typo-host:5432` **gagal**
+(`DNS: nonexistent-typo-host not resolvable`), sedangkan `--closed` untuk
+target yang sama lulus.
+
+Lokal (compose + override privat):
+
+```
+network test 2026-10-27T03:55:33+00:00 from evexr_
+PASS  reachable   http://localhost:8081/healthz
+      DNS 127.0.0.1, ::1; HTTP 200 7 ms {"status":"ok","service":"gateway"}
+PASS  unreachable tcp://backend:8000
+      DNS: backend not resolvable (getaddrinfo failed)
+PASS  unreachable tcp://postgres:5432
+      DNS: postgres not resolvable (getaddrinfo failed)
+PASS  refused     tcp://localhost:8000
+      DNS 127.0.0.1, ::1; TCP: [127.0.0.1]:8000 No connection could be made because the target machine actively refused it; [::1]:8000 No connection could be made because the target machine actively refused it
+PASS  refused     tcp://localhost:8001
+      DNS 127.0.0.1, ::1; TCP: [127.0.0.1]:8001 No connection could be made because the target machine actively refused it; [::1]:8001 No connection could be made because the target machine actively refused it
+PASS  refused     tcp://localhost:5432
+      DNS 127.0.0.1, ::1; TCP: [127.0.0.1]:5432 No connection could be made because the target machine actively refused it; [::1]:5432 No connection could be made because the target machine actively refused it
+PASS  refused     tcp://localhost:5000
+      DNS 127.0.0.1, ::1; TCP: [127.0.0.1]:5000 No connection could be made because the target machine actively refused it; [::1]:5000 No connection could be made because the target machine actively refused it
+PASS  refused     tcp://localhost:9000
+      DNS 127.0.0.1, ::1; TCP: [127.0.0.1]:9000 No connection could be made because the target machine actively refused it; [::1]:9000 No connection could be made because the target machine actively refused it
+PASS  refused     tcp://localhost:9001
+      DNS 127.0.0.1, ::1; TCP: [127.0.0.1]:9001 No connection could be made because the target machine actively refused it; [::1]:9001 No connection could be made because the target machine actively refused it
+9/9 checks passed
+```
+
+```
+network test 2026-10-27T03:56:04+00:00 from 0293780bd999
+PASS  reachable   tcp://postgres:5432
+      DNS 172.21.0.3; TCP connect to [172.21.0.3]:5432 ok
+PASS  reachable   http://cache_api:8000/health
+      DNS 172.21.0.5; HTTP 200 6 ms {"status":"degraded","database":"ok","graph_version":null,"pollution_time_window":null,"pollution_data_stale":null}
+PASS  reachable   http://model_registry:5000/health
+      DNS 172.21.0.4; HTTP 200 4 ms OK
+PASS  refused     tcp://postgres:5433
+      DNS 172.21.0.3; TCP: [172.21.0.3]:5433 Connection refused
+4/4 checks passed
+```
+
+```
+smoke test 2026-10-27T03:56:04+00:00
+  gateway: http://localhost:8081
+  backend: (not checked directly)
+PASS  gateway liveness               GET http://localhost:8081/healthz
+      HTTP 200 23 ms {"status": "ok", "service": "gateway"} request_id=117435f525af7cd80e88b45156709007
+PASS  route request via gateway      POST http://localhost:8081/v1/routes
+      HTTP 503 13 ms {"status": "data_unavailable", "route": null, "metrics": null, "route_source": "fallback", "preference_applied": false, "message": "OSM graph export is unavaila request_id=4621b0e389cc988740d38326468202b4
+PASS  cache API via gateway          GET http://localhost:8081/v1/osm/version
+      HTTP 503 7 ms {"error": {"code": "cache_unavailable", "message": "Schema cache belum dibuat (UndefinedTableError).", "request_id": "56ed6dd319dbad45b506f85d22547bd5", "reason request_id=56ed6dd319dbad45b506f85d22547bd5
+PASS  unknown path not proxied       GET http://localhost:8081/health
+      HTTP 404 4 ms {"error": {"code": "not_found", "message": "Unknown path", "request_id": "904258ed348ec1ce22b77b03c57ff80b"}} request_id=904258ed348ec1ce22b77b03c57ff80b
+4/4 checks passed
+```
+
+Railway, dari luar:
+
+```
+network test 2026-10-27T03:54:12+00:00 from evexr_
+PASS  reachable   https://gateway-development-fa8c.up.railway.app/healthz
+      DNS 69.46.46.90; HTTP 200 319 ms {"status":"ok","service":"gateway"}
+PASS  reachable   https://frontend-development-49bf.up.railway.app/
+      DNS 69.46.46.93; HTTP 200 1293 ms <!doctype html> <html lang="id">   <head>     <meta charset="UTF-8" />     <meta name="viewport" content="width=device-w
+PASS  unreachable tcp://backend.railway.internal:8000
+      DNS: backend.railway.internal not resolvable (getaddrinfo failed)
+PASS  unreachable tcp://cache-api.railway.internal:8000
+      DNS: cache-api.railway.internal not resolvable (getaddrinfo failed)
+PASS  unreachable tcp://postgres.railway.internal:5432
+      DNS: postgres.railway.internal not resolvable (getaddrinfo failed)
+PASS  refused     https://backend-development-0740.up.railway.app/health
+      DNS 69.46.46.77; Railway edge: domain not routed to a service (404 {"status":"error","code":404,"message":"Application not found","request_id":"lA2mlGb9QlSLHcBf-8Y8hA"})
+PASS  refused     postgres://tokaido.proxy.rlwy.net:51696
+      DNS 66.33.22.222; PostgreSQL: An existing connection was forcibly closed by the remote host
+7/7 checks passed
+```
+
+```
+network test 2026-10-27T03:54:14+00:00 from evexr_
+PASS  unreachable tcp://backend.railway.internal:8000
+      DNS: backend.railway.internal not resolvable (getaddrinfo failed)
+PASS  unreachable tcp://postgres.railway.internal:5432
+      DNS: postgres.railway.internal not resolvable (getaddrinfo failed)
+PASS  refused     https://backend-staging-fe40.up.railway.app/health
+      DNS 69.46.46.45; Railway edge: domain not routed to a service (404 {"status":"error","code":404,"message":"Application not found","request_id":"0jkX0vcYQuaKHNTDJH0Vcg"})
+PASS  refused     postgres://iriguchi.proxy.rlwy.net:56279
+      DNS 66.33.22.219; PostgreSQL: An existing connection was forcibly closed by the remote host
+4/4 checks passed
+```
+
+### 8.2 cache-api di Railway: belum lulus
+
+```
+smoke test 2026-10-27T03:54:58+00:00
+  gateway: https://gateway-development-fa8c.up.railway.app
+  backend: (not checked directly)
+PASS  gateway liveness               GET https://gateway-development-fa8c.up.railway.app/healthz
+      HTTP 200 381 ms {"status": "ok", "service": "gateway"} request_id=103fe17f3f8ee79feb6d2969519983e3
+PASS  route request via gateway      POST https://gateway-development-fa8c.up.railway.app/v1/routes
+      HTTP 503 335 ms {"status": "data_unavailable", "route": null, "metrics": null, "route_source": "fallback", "preference_applied": false, "message": "OSM graph export is unavaila request_id=a6697b4d4922791d84873c5a0547f727
+FAIL  cache API via gateway          GET https://gateway-development-fa8c.up.railway.app/v1/osm/version
+      HTTP 404 365 ms {"detail": "Not Found"} request_id=9298847bd016cb5a09c3e2cb081ac8aa
+PASS  unknown path not proxied       GET https://gateway-development-fa8c.up.railway.app/health
+      HTTP 404 295 ms {"error": {"code": "not_found", "message": "Unknown path", "request_id": "ecfcdd1330f920fe2557ced96c229956"}} request_id=ecfcdd1330f920fe2557ced96c229956
+3/4 checks passed
+```
+
+Gateway → backend lulus. Percobaan pertama pagi ini menjawab 502 karena
+backend sedang *cold start*: log start-up backend `03:54:15`, request pertama
+`03:54:16`; percobaan ulang 20 detik kemudian lulus.
+
+cache-api masih gagal. Deployment terakhirnya (`dev` @ `4a7140f`, 26 Okt
+20:32Z) dibangun dari `src/backend/Dockerfile`, dan *Railway Config File* di
+dashboard kosong: Config as Code sedang dihentikan Railway (berkas yang sudah
+dipakai berlaku sampai 1 Desember 2026; sejak 28 Agustus 2026 service baru
+tidak bisa mengaktifkannya), jadi `osm/railway.json` tidak bisa dipasang.
+
+Metadata deployment tetap memuat `propertyFileMapping`
+`build.dockerfilePath ← $.build.dockerfilePath`: Railway membaca
+`src/backend/railway.json` secara otomatis karena Root Directory-nya
+`src/backend`. Perbaikan yang diganti:
+
+- `src/backend/osm/railway.json` dihapus.
+- `dockerfilePath` dihapus dari `src/backend/railway.json`. Backend tidak
+  terpengaruh (bawaan Railway adalah `Dockerfile` di Root Directory), dan
+  cache-api memakai *Dockerfile Path* dari dashboard atau
+  `RAILWAY_DOCKERFILE_PATH=/src/backend/osm/Dockerfile` (sudah terisi).
+- Health check `/health` dan restart `On Failure` (5) cache-api diisi di
+  dashboard, tidak bergantung pada berkas.
+
+Langkah tersisa: deploy cache-api dari checkout cabang ini
+(`railway up --service cache-api --environment development --ci` dari akar
+repositori) agar `src/backend/railway.json` tanpa `dockerfilePath` yang
+dibaca, lalu ulangi smoke test. Hasil dicatat di sini sebelum pemeriksaan
+cache-api dianggap lulus.
+
+### 8.3 Rotasi kata sandi PostgreSQL: belum
+
+PostgreSQL development dan staging pernah terbuka ke internet lewat TCP proxy
+(§6.1), dan alamat proxy lama tercatat di dokumen ini. Semua service memakai
+user `postgres` yang sama, termasuk `MLFLOW_BACKEND_STORE_URI` model_registry
+yang memuat kata sandi sebagai teks. Langkah rotasi ada di
+[`private-networking.md`](private-networking.md#menutup-jalur-publik-di-railway)
+(langkah 3). Belum dijalankan.
+
+### 8.4 Lain-lain
+
+- Nama domain privat model registry adalah `modelregistry.railway.internal`
+  (service `model_registry`); `private-networking.md` dan komentar
+  `src/model_registry/Dockerfile` sudah diperbaiki.
+- Grafana development (`grafana-development-8ad2`) dan service
+  `observability` staging masih publik; dicatat sebagai pengecualian di matriks
+  eksposur, ditangani di TI-DO-08.

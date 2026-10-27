@@ -207,17 +207,22 @@ Railway membangun image dari GitHub, jadi kodenya harus sudah di-push ke branch 
    SIPPolusi*. Lalu atur:
    - **Branch:** branch yang berisi modul ini.
    - **Root Directory:** `src/backend`, karena image memuat `osm/`, `pollution/`, `planner/`, `solver/`, dan `route_model/`.
-   - **Config-as-code:** Settings → *Config-as-code* → *Railway Config File*
-     `/src/backend/osm/railway.json`. Berkas ini memilih `osm/Dockerfile` (relatif terhadap Root
-     Directory). Tanpa itu Railway membaca `src/backend/railway.json` milik Backend, yang
-     `dockerfilePath`-nya mengalahkan variabel `RAILWAY_DOCKERFILE_PATH` dan isian dashboard,
-     sehingga service ini menjalankan Backend, bukan Cache API (terlihat dari log
-     `logger="backend"` dan 404 `{"detail": "Not Found"}` untuk `/v1/osm/*`). Tahap terakhir
-     Dockerfile adalah image runtime.
+   - **Dockerfile:** Settings → Build → *Dockerfile Path* `/src/backend/osm/Dockerfile` (atau
+     variabel `RAILWAY_DOCKERFILE_PATH` dengan nilai yang sama). Tahap terakhir Dockerfile adalah
+     image runtime.
+   - **Deploy:** *Healthcheck Path* `/health`, *Restart Policy* `On Failure` dengan 5 percobaan.
+     Isi di dashboard, bukan lewat berkas config: Railway menghentikan Config as Code (berkas
+     `railway.json` yang sudah dipakai masih berlaku sampai **1 Desember 2026**; sejak 28 Agustus
+     2026 service baru tidak bisa mengaktifkannya).
+   - **Catatan:** Railway otomatis membaca `src/backend/railway.json` (milik Backend) untuk
+     service ini karena Root Directory-nya sama. Berkas itu sengaja tidak memuat
+     `dockerfilePath`: bila ada, nilainya mengalahkan Dockerfile Path di atas dan service ini
+     menjalankan Backend, bukan Cache API (terlihat dari log `logger="backend"` dan 404
+     `{"detail": "Not Found"}` untuk `/v1/osm/*`).
 2. **Variables:** isi `DATABASE_URL` dengan referensi ke service database, misalnya
    `${{database.DATABASE_URL}}` (sesuaikan nama service). Referensi ini memakai URL privat
    `postgres.railway.internal`. Variabel `PORT` diisi otomatis oleh Railway.
-3. **Settings:** set *Healthcheck Path* ke `/health`. Jangan buat domain publik: Cache API hanya
+3. **Networking:** jangan buat domain publik: Cache API hanya
    dijangkau gateway lewat jaringan privat (TI-DO-04, `docs/devops/private-networking.md`).
    Uji dari luar lewat gateway, `https://<gateway>/v1/osm/...`.
 4. Uji dari terminal laptop dengan perintah seperti A-5, tetapi alamatnya diganti domain publik
