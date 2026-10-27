@@ -1,9 +1,72 @@
 # Rendered by the nginx image entrypoint (envsubst, filtered to the variables
 # below) after docker-entrypoint.d/10-validate-env.sh has checked them:
 #   PORT                   listen port; Railway injects it
-#   BACKEND_UPSTREAM       scheme://host:port of the backend, no path
-#   CACHE_API_UPSTREAM     scheme://host:port of the Cache API (/v1/osm, /v1/pollution)
+#   CACHE_API_UPSTREAM     scheme://host:port of the Cache API, which serves the
+#                          public API (POST /v1/routes, GET /v1/exposure-surface)
 #   NGINX_LOCAL_RESOLVERS  DNS servers from /etc/resolv.conf (image entrypoint)
+
+# Client address. Railway's edge sets X-Real-IP to the caller's address on every
+# request and replaces any copy the caller sent; the frontend passes it on
+# unchanged when it calls the gateway over the private network. The edge's own
+# addresses are not a documented range, so the header is taken from any peer:
+# on Railway nothing reaches the gateway except through the edge or the private
+# network. Locally (compose) a caller can set it, which the tests use. Without
+# the header $remote_addr stays the TCP peer. Do not put a CDN in front of the
+# gateway without revisiting this: every user would share the CDN's address.
+set_real_ip_from 0.0.0.0/0;
+set_real_ip_from ::/0;
+real_ip_header X-Real-IP;
+
+# Rate-limit key: an IPv4 address as is, an IPv6 address by its /64 network,
+# since one user usually holds a whole /64 and could otherwise rotate addresses
+# for a fresh bucket. $remote_addr is NGINX's canonical text (lowercase, no
+# leading zeros, the longest run of two or more zero groups written "::"), so
+# each rule below covers one place "::" can sit relative to the first four
+# groups and spells the /64 out as four groups.
+map $remote_addr $rate_limit_key {
+    # Four groups before any "::": they are the /64.
+    "~*^(?<n>[0-9a-f]+:[0-9a-f]+:[0-9a-f]+:[0-9a-f]+):"           $n::/64;
+    # "::" after three or two groups: the rest of the /64 is zero.
+    "~*^(?<n>[0-9a-f]+:[0-9a-f]+:[0-9a-f]+)::"                    $n:0::/64;
+    "~*^(?<n>[0-9a-f]+:[0-9a-f]+)::"                              $n:0:0::/64;
+    # "::" after one group: two zero groups when five groups follow it.
+    "~*^(?<n>[0-9a-f]+)::(?<d>[0-9a-f]+)(:[0-9a-f]+){4}$"         $n:0:0:$d::/64;
+    "~*^(?<n>[0-9a-f]+)::"                                        $n:0:0:0::/64;
+    # Leading "::": IPv4-mapped, then six or five groups after it, then zeros.
+    "~*^::ffff:(?<v4>[0-9.]+)$"                                   $v4;
+    "~*^::(?<c>[0-9a-f]+):(?<d>[0-9a-f]+)(:[0-9a-f]+){4}$"        0:0:$c:$d::/64;
+    "~*^::(?<d>[0-9a-f]+)(:[0-9a-f]+){4}$"                        0:0:0:$d::/64;
+    "~*^::"                                                       0:0:0:0::/64;
+    default                                                       $remote_addr;
+}
+
+# Rate limiting per client address (Tabel 3.5 enforce_rate_limit, Tabel 3.15,
+# PNF-05). NGINX's leaky bucket with nodelay behaves as a token bucket: up to
+# burst requests above the rate pass at once, then one per refill interval.
+#   POST /v1/routes             20 per minute (one per 3 s), burst 5
+#   GET  /v1/exposure-surface   60 per minute (one per 1 s), burst 10 (Tabel 3.15
+#                               gives no burst; 10 covers a few quick pans)
+# The limit applies per public address, so users behind one NAT (a campus or
+# office network) share a bucket; that is what Tabel 3.15 specifies.
+# 10 MB per zone holds tens of thousands of keys.
+limit_req_zone $rate_limit_key zone=routes:10m rate=20r/m;
+limit_req_zone $rate_limit_key zone=exposure_surface:10m rate=60r/m;
+limit_req_status 429;
+# Rejections are logged at info, below error_log's warn, so a refused client's
+# address does not reach stderr; the access log still records each 429.
+limit_req_log_level info;
+
+# Retry-After for a 429: one refill interval of the path's zone.
+map $uri $retry_after_s {
+    /v1/routes  3;
+    default     1;
+}
+
+# Allow header of a 405 from a public path (see the locations below).
+map $uri $allowed_methods {
+    /v1/routes  "POST, OPTIONS";
+    default     "GET, OPTIONS";
+}
 
 # One JSON object per request on stdout. Railway reads "level"; 5xx are
 # errors, 4xx warnings. Only the path is logged: no query string, headers,
@@ -29,17 +92,17 @@ server {
 
     access_log /dev/stdout gateway_json;
 
-    # Resolve the backend per request (valid 10 s) instead of once at start,
-    # so a redeployed backend with a new private IP is picked up. ipv6=on is
+    # Resolve the Cache API per request (valid 10 s) instead of once at start,
+    # so a redeployed Cache API with a new private IP is picked up. ipv6=on is
     # required for Railway private networking (*.railway.internal is IPv6).
     resolver ${NGINX_LOCAL_RESOLVERS} valid=10s ipv6=on;
 
     # Every response carries the ID logged above, for tracing a report back
-    # to its log line; the backend receives the same ID.
+    # to its log line; the upstream receives the same ID.
     add_header X-Request-ID $request_id always;
 
     # Liveness of the gateway itself (Railway health check). Does not touch
-    # the backend, so a backend outage never blocks a gateway deploy.
+    # the Cache API, so an upstream outage never blocks a gateway deploy.
     location = /healthz {
         access_log off;
         default_type application/json;
@@ -68,9 +131,27 @@ server {
     # Errors NGINX produces itself answer in the uniform schema of Table 3.16
     # instead of an HTML page. Upstream error responses pass through unchanged
     # (proxy_intercept_errors stays off).
+    error_page 405 = @method_not_allowed;
     error_page 413 = @payload_too_large;
+    error_page 429 = @rate_limited;
     error_page 502 = @upstream_unavailable;
     error_page 504 = @upstream_timeout;
+
+    location @rate_limited {
+        default_type application/json;
+        # add_header here replaces the server-level one, so X-Request-ID is repeated.
+        add_header X-Request-ID $request_id always;
+        add_header Retry-After $retry_after_s always;
+        return 429 '{"error":{"code":"rate_limited","message":"Terlalu banyak permintaan. Coba lagi dalam $retry_after_s detik.","request_id":"$request_id"}}';
+    }
+
+    location @method_not_allowed {
+        default_type application/json;
+        # add_header here replaces the server-level one, so X-Request-ID is repeated.
+        add_header X-Request-ID $request_id always;
+        add_header Allow $allowed_methods always;
+        return 405 '{"error":{"code":"method_not_allowed","message":"Metode HTTP ini tidak didukung pada path ini.","request_id":"$request_id"}}';
+    }
 
     location @payload_too_large {
         default_type application/json;
@@ -88,38 +169,41 @@ server {
     }
 
     # A variable in proxy_pass forces the per-request DNS lookup above.
-    # Without a URI part the original request URI is passed unchanged.
+    # The upstream gets the location's own path plus the raw query string, not
+    # the raw request path: NGINX matches locations on the normalised path, so
+    # /v1/osm/x/../../routes matches "= /v1/routes" and must not reach the
+    # Cache API in its raw form.
 
-    # Cache API (src/backend/osm/Dockerfile), a separate service.
-    location /v1/osm/ {
-        set $cache_api_upstream ${CACHE_API_UPSTREAM};
-        proxy_pass $cache_api_upstream;
-    }
-
-    location /v1/pollution/ {
-        set $cache_api_upstream ${CACHE_API_UPSTREAM};
-        proxy_pass $cache_api_upstream;
-    }
-
-    # Public route planning and exposure surface (TI-SE-08, IRouteQuery and
-    # IExposureSurface) are served by the Cache API. Exact matches only, so the
-    # Cache API's /v1/routes/* inspection endpoints stay off the public entry point.
+    # The public API is exactly the two endpoints the Frontend calls (TI-SE-08,
+    # IRouteQuery and IExposureSurface), both served by the Cache API
+    # (src/backend/osm/Dockerfile). Exact matches only: the Cache API's
+    # /v1/routes/* inspection endpoints and its internal /v1/osm/* and
+    # /v1/pollution/* reads stay on the private network, as does the backend.
+    # Each path takes only its own method (plus OPTIONS, for a CORS preflight);
+    # any other gets 405 here, before the rate limit and without reaching the
+    # Cache API.
     location = /v1/routes {
+        if ($request_method !~ ^(POST|OPTIONS)$) {
+            return 405;
+        }
+        limit_req zone=routes burst=5 nodelay;
         # A RouteRequest is about 200 bytes; same limit as the Cache API (API_MAX_BODY_BYTES).
         client_max_body_size 16k;
+        # Keep every accepted body in memory. The default buffer (8k on 64-bit)
+        # spills larger bodies to a temporary file and logs a warning carrying
+        # the client address for each one.
+        client_body_buffer_size 16k;
         set $cache_api_upstream ${CACHE_API_UPSTREAM};
-        proxy_pass $cache_api_upstream;
+        proxy_pass $cache_api_upstream/v1/routes$is_args$args;
     }
 
     location = /v1/exposure-surface {
+        if ($request_method !~ ^(GET|OPTIONS)$) {
+            return 405;
+        }
+        limit_req zone=exposure_surface burst=10 nodelay;
         set $cache_api_upstream ${CACHE_API_UPSTREAM};
-        proxy_pass $cache_api_upstream;
-    }
-
-    # Everything else under /v1/ goes to the backend.
-    location /v1/ {
-        set $backend_upstream ${BACKEND_UPSTREAM};
-        proxy_pass $backend_upstream;
+        proxy_pass $cache_api_upstream/v1/exposure-surface$is_args$args;
     }
 
     # Nothing else is exposed through the public entry point.

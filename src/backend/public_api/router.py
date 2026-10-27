@@ -66,7 +66,8 @@ def _errors(description: str, *examples: tuple[str, dict[str, Any]]) -> dict[str
 
 _GATEWAY_RESPONSES: dict[int | str, dict[str, Any]] = {
     429: _errors("Dari API Gateway: rate limit terlampaui; header Retry-After menyatakan detik tunggu "
-                 "(Tabel 3.15). Belum diaktifkan di gateway.",
+                 "(Tabel 3.15): 20 per menit per alamat IP (burst 5) untuk /v1/routes, "
+                 "60 per menit (burst 10) untuk /v1/exposure-surface.",
                  ("rate_limited", error_example("rate_limited", "Terlalu banyak permintaan. Coba lagi dalam 3 detik."))),
     500: _errors("Galat internal yang tidak terduga",
                  ("internal_error", error_example("internal_error", "Terjadi galat internal pada server."))),
