@@ -38,8 +38,8 @@ over Railway's private network (design document, Table 3.2). Build/start
 definitions, health checks, logging and the smoke test for the gateway,
 backend and data worker are in
 [docs/devops/build-runtime.md](docs/devops/build-runtime.md).
-CI/CD (build, test, regression, and the rule that Railway deploys `dev`/`main`
-only after the pipeline passes) is in
+CI/CD (build, test, regression, and the rule that Railway deploys a commit
+pushed to `dev` only after the pipeline passes) is in
 [docs/devops/ci-cd.md](docs/devops/ci-cd.md).
 
 ## Environment variables

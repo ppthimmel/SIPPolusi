@@ -100,9 +100,11 @@ cache_api-1  | INFO:     127.0.0.1:55160 - "GET /health HTTP/1.1" 500 Internal S
 Pada basis data yang belum memiliki skema `osm`, `GET /health` Cache API
 menjawab 500, bukan `degraded`, sehingga health check-nya gagal dan gateway
 tidak pernah start. Di Railway skema dibuat oleh Data Worker sebelum Cache
-API dipakai; stack e2e kini meniru urutan itu dengan DDL Data Worker sendiri
-(`osm_cache.schema_sql()`), tabel tetap kosong. Perilaku 500 pada skema yang
-belum ada dicatat untuk diperbaiki terpisah pada Cache API.
+API dipakai; stack e2e sempat meniru urutan itu dengan DDL Data Worker sendiri
+(`osm_cache.schema_sql()`), tabel tetap kosong. Cache API kemudian diperbaiki
+di `dev` (#58: skema `osm`/`pollution` yang belum ada menjadi `degraded` dan
+503 `cache_empty`), sehingga langkah itu dihapus setelah review: e2e kini
+berjalan pada basis data kosong tanpa skema dan ikut menguji perilaku tersebut.
 
 ## 4. Contoh run lulus
 
