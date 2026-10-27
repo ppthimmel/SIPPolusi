@@ -46,7 +46,7 @@ Selama stack berjalan:
 | ID | Skenario | Yang dibuktikan |
 |---|---|---|
 | E2E-01 | Cache kosong | 503 `cache_empty`, tanpa nilai yang dikarang; `/health/ready` siap dengan polusi `empty` |
-| E2E-02 | Sukses Worker → frontend | Siklus Worker exit 0 (portal dijelajahi, fallback IDW bertanda per polutan); window dipakai API dengan versi yang konsisten; `trace_run_id` di cache = `run_id` Worker; korelasi `X-Request-ID` sampai log JSON Cache API; frontend meneruskan ke gateway |
+| E2E-02 | Sukses Worker → frontend | Siklus Worker exit 0 (portal dijelajahi, fallback IDW bertanda per polutan); window dipakai API dengan versi yang konsisten dan `metadata.estimation` sesuai Worker; `trace_run_id` di cache = `run_id` Worker; korelasi `X-Request-ID` sampai log JSON Cache API; frontend meneruskan ke gateway |
 | E2E-03 | Window baru dan idempotensi | Window terbaru langsung dipakai; ETag heatmap berubah; Worker tidak menulis ulang |
 | E2E-04 | Sumber data tidak tersedia | Portal SPKU mati: `fetch_ground_truth` `failed`, Worker exit 1 tanpa menulis window; API tetap memakai window terakhir |
 | E2E-05 | Window sedang ditulis | Window `writing` tidak terbaca |

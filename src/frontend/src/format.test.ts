@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { confidenceCategory, fmtDistance, fmtMinutes, fmtNumber, fmtPercent, fmtWib, isOlderThanStaleLimit } from "./format";
+import { confidenceCategory, estimationSourceLabel, fmtDistance, fmtMinutes, fmtNumber, fmtPercent, fmtWib, isOlderThanStaleLimit } from "./format";
 
 describe("confidenceCategory (UT-FE-09a)", () => {
   it.each([
@@ -53,5 +53,22 @@ describe("isOlderThanStaleLimit", () => {
     expect(isOlderThanStaleLimit("2026-09-21T08:59:00Z", now)).toBe(true);
     expect(isOlderThanStaleLimit("2026-09-21T09:30:00Z", now)).toBe(false);
     expect(isOlderThanStaleLimit(null, now)).toBe(false);
+  });
+});
+
+describe("estimationSourceLabel (TI-SE-10, D-07)", () => {
+  it("does not claim satellite input for an IDW estimate", () => {
+    const text = estimationSourceLabel("idw", ["pm25", "no2"]);
+    expect(text).toContain("sensor darat");
+    expect(text).toContain("tidak tersedia");
+    expect(text).not.toContain("satelit");
+  });
+  it("names the pollutants that fell back when the model took part", () => {
+    expect(estimationSourceLabel("hybrid", ["no2"])).toMatch(/satelit.*NO2 memakai interpolasi dari sensor darat/);
+    expect(estimationSourceLabel("stgnn", [])).not.toContain("interpolasi");
+  });
+  it("stays neutral when the server does not say", () => {
+    expect(estimationSourceLabel(null, [])).toBe("Estimasi spasial; sumbernya tidak dilaporkan server");
+    expect(estimationSourceLabel("mixed", [])).toContain("Sebagian ruas");
   });
 });

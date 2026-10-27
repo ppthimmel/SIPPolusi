@@ -210,6 +210,11 @@ def scenario_success():
           {k: meta.get(k) for k in ("time_window_start", "model_version", "graph_version", "route_source", "solver")})
     check(s, "rute dari model (stub IRouteSolve) dengan label policy", meta.get("route_source") == "policy" and
           meta.get("preference_applied") is True, {"route_source": meta.get("route_source")})
+    fell_back = sorted(p for p, m in models.items() if m.get("fallback_reason"))
+    check(s, "metadata.estimation menyebut sumber estimasi dan polutan fallback yang dicatat Worker",
+          meta.get("estimation") == {"source": inf.get("estimation_source"), "fallback_pollutants": fell_back},
+          {"estimation": meta.get("estimation"), "worker": {"estimation_source": inf.get("estimation_source"),
+                                                            "fallback": fell_back}})
     no_false_success(s, r)
     rid = r["headers"].get("x-request-id")
     logs = compose("logs", "--no-color", "cache_api").stdout

@@ -129,6 +129,14 @@ describe("parseRouteResponse (UT-FE-04)", () => {
     );
   });
 
+  it("reads the estimation source and the pollutants that fell back", () => {
+    const body = sample();
+    (body.metadata as Record<string, unknown>).estimation = { source: "idw", fallback_pollutants: ["no2", "pm25", "so2"] };
+    expect(parseRouteResponse(body).metadata).toMatchObject({ estimationSource: "idw", downscalingFallback: ["pm25", "no2"] });
+    delete (body.metadata as Record<string, unknown>).estimation;
+    expect(parseRouteResponse(body).metadata).toMatchObject({ estimationSource: null, downscalingFallback: [] });
+  });
+
   it("accepts a single model_version string and a missing comparison route", () => {
     const body = sample();
     body.features.pop();

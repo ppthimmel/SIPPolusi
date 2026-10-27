@@ -66,6 +66,11 @@ export interface RouteMetadata {
   missingEdgeCount: number;
   fallbackReason: FallbackReason | null;
   downscalingVersion: string | null;
+  /** metadata.estimation.source: "idw" (ground sensors only), "stgnn"/"hybrid"
+   *  (downscaling model), "mixed", or null when the server did not say. */
+  estimationSource: string | null;
+  /** Pollutants estimated by the IDW fallback instead of the registered model. */
+  downscalingFallback: Pollutant[];
   routePolicyVersion: string | null;
   /** Version of the OSM road graph the route was computed on. */
   graphVersion: string | null;

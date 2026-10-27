@@ -25,7 +25,7 @@ from pollution.repository import PollutionRepository
 from .models import SnappedPoint, SolverInput, SourceMetadata
 from .schemas import RouteRequestIn
 from .validation import validate_route_request
-from .weights import attach_edge_weights, count_sources
+from .weights import attach_edge_weights, count_sources, downscaling_fallbacks
 
 
 async def build_solver_input(
@@ -52,7 +52,8 @@ async def build_solver_input(
     if isinstance(read, BaseException):
         raise read
     edges, status = attach_edge_weights(subgraph, read, request.profile, request.pollutant)  # R11
-    estimation, background = count_sources(edges, read.weights_by_edge_id())
+    by_edge = read.weights_by_edge_id()
+    estimation, background = count_sources(edges, by_edge)
 
     return SolverInput(
         request_id=request_id,
@@ -72,6 +73,7 @@ async def build_solver_input(
             estimation_sources=estimation,
             background_sources=background,
             rejected_graph_rows=dict(subgraph.rejected),
+            downscaling_fallback=downscaling_fallbacks(edges, by_edge),
         ),
         nodes={node_id: node.point for node_id, node in subgraph.nodes.items()},
         edges=edges,

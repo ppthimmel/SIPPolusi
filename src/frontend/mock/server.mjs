@@ -137,6 +137,7 @@ function buildRoutes(req, scenario) {
       fallback_reason: fb ? "model_timeout" : null,
       graph_version: "jakarta-20261005",
       model_version: { downscaling: "12", route_policy: fb ? "astar-baseline" : "4" },
+      estimation: { source: "hybrid", fallback_pollutants: [] },
       comparison: {
         delta_travel_time_min: rec.travel_time_min - fastMin,
         delta_exposure_pct: ((rec.exposure_index_min - fastExp) / fastExp) * 100,

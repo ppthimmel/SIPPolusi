@@ -241,6 +241,8 @@ export function parseRouteResponse(body: unknown): RouteResponse {
   const delta = isObj(meta.comparison) ? meta.comparison : {};
   const fallback = FALLBACK_REASONS.find((r) => r === meta.fallback_reason) ?? null;
   const version = parseModelVersion(meta.model_version);
+  const estimation = isObj(meta.estimation) ? meta.estimation : {};
+  const fallbackPollutants = Array.isArray(estimation.fallback_pollutants) ? estimation.fallback_pollutants : [];
 
   const metadata: RouteMetadata = {
     requestId: str(meta.request_id),
@@ -249,6 +251,8 @@ export function parseRouteResponse(body: unknown): RouteResponse {
     missingEdgeCount: Math.max(0, num(meta.missing_edge_count) ?? 0),
     fallbackReason: fallback,
     downscalingVersion: version.downscaling,
+    estimationSource: str(estimation.source),
+    downscalingFallback: (["pm25", "no2"] as const).filter((p) => fallbackPollutants.includes(p)),
     routePolicyVersion: version.routePolicy,
     graphVersion: str(meta.graph_version),
     deltaTravelTimeMin: num(delta.delta_travel_time_min),

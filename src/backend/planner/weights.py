@@ -95,3 +95,15 @@ def count_sources(edges: list[PlannedEdge], weights: dict[int, EdgeWeight]) -> t
             estimation[w.estimation_source or "unknown"] += 1
             background[w.background_source or "none"] += 1
     return dict(estimation), dict(background)
+
+
+def downscaling_fallbacks(edges: list[PlannedEdge], weights: dict[int, EdgeWeight]) -> tuple[str, ...]:
+    """Pollutants whose estimates on the subgraph came from the fallback instead of
+    the registered downscaling model (model_metadata[pollutant].fallback_reason, TI-AI-05)."""
+    fallen: set[str] = set()
+    for e in edges:
+        w = weights.get(e.edge_id)
+        if e.weight_source == ESTIMATE and w is not None:
+            fallen.update(p for p, m in (w.model_metadata or {}).items()
+                          if isinstance(m, dict) and m.get("fallback_reason"))
+    return tuple(sorted(fallen))

@@ -20,6 +20,8 @@ describe("contract with the Backend (TI-SE-08 responses)", () => {
       requestId: "contoh-route-policy",
       fallbackReason: null,
       downscalingVersion: "idw-p2-k8",
+      estimationSource: "idw",
+      downscalingFallback: [],
       routePolicyVersion: "mock-1",
       graphVersion: "v1",
       dataStale: false,

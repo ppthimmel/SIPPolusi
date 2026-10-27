@@ -1,5 +1,5 @@
 import { CONFIDENCE_HIGH, CONFIDENCE_LOW, STALE_AFTER_HOURS } from "./config";
-import type { ExposureUnit, Point } from "./types";
+import type { ExposureUnit, Point, Pollutant } from "./types";
 
 const nfCache = new Map<number, Intl.NumberFormat>();
 
@@ -34,6 +34,28 @@ export function exposureUnitLabel(unit: ExposureUnit): string {
 
 export function fmtPercent(value: number): string {
   return `${fmtNumber(Math.abs(value), 1)}%`;
+}
+
+const POLLUTANT_LABEL: Record<Pollutant, string> = { pm25: "PM2.5", no2: "NO2" };
+
+/** "Sumber estimasi" in the result details, from metadata.estimation (TI-SE-10, D-07).
+ *  Claims satellite and meteorological input only when the downscaling model took
+ *  part; an IDW estimate comes from ground sensors alone. */
+export function estimationSourceLabel(source: string | null, fallback: readonly Pollutant[]): string {
+  const sensors = "interpolasi dari sensor darat SPKU";
+  const fellBack = fallback.map((p) => POLLUTANT_LABEL[p]).join(" dan ");
+  switch (source) {
+    case "idw":
+      return `Interpolasi dari sensor darat SPKU (IDW); model downscaling ${fallback.length ? "tidak tersedia" : "tidak dipakai"}`;
+    case "stgnn":
+    case "hybrid":
+      return "Model downscaling spasial dari data satelit, meteorologi, dan sensor darat" +
+        (fallback.length ? `; ${fellBack} memakai ${sensors} karena modelnya tidak tersedia` : "");
+    case "mixed":
+      return `Sebagian ruas dari model downscaling spasial, sebagian dari ${sensors}`;
+    default:
+      return "Estimasi spasial; sumbernya tidak dilaporkan server";
+  }
 }
 
 export function fmtCoord(p: Point): string {
