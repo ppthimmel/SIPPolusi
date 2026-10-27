@@ -4,6 +4,7 @@
 !pollution
 !planner
 !solver
+!public_api
 !route_model
 !log_config.py
 !telemetry.py

@@ -12,6 +12,7 @@ import job_health
 import main
 from acquisition import schedule_acquisition
 from contracts import TimeWindow
+from log_config import configure_logging
 
 UTC = dt.timezone.utc
 RAHASIA = "s3cr3t-pa55word"
@@ -85,31 +86,107 @@ def test_perintah_health_keluar_0_saat_segar(monkeypatch, capsys, json_stdout):
 
 
 # correlation ID dan event siklus ------------------------------------------
-def test_semua_log_siklus_membawa_correlation_id_yang_sama(monkeypatch, capsys, json_stdout):
-    def langkah_fallback(window, config):
+class FakeRecorder:
+    """CycleRecorder di memori: kunci, baris cycle_run, dan status akhirnya."""
+
+    def __init__(self, lock_free: bool = True):
+        self.lock_free = lock_free
+        self.rows: dict[str, dict] = {}
+
+    def ensure_schema(self):
+        pass
+
+    def acquire_lock(self, wait_seconds=0.0):
+        return self.lock_free
+
+    def release_lock(self):
+        pass
+
+    def close_abandoned(self):
+        return []
+
+    def start(self, window, trigger, note=None, status="running"):
+        run_id = f"20261027T091500Z-{len(self.rows):06x}"
+        self.rows[run_id] = {"status": status, "note": note, "steps": []}
+        return run_id
+
+    def update_steps(self, run_id, steps):
+        self.rows[run_id]["steps"] = list(steps)
+
+    def finish(self, run_id, status, steps, note=None):
+        self.rows[run_id].update(status=status, steps=list(steps), note=note)
+
+
+def run_logged(capsys, recorder, steps) -> tuple[int, list[dict]]:
+    configure_logging({"LOG_FORMAT": "json", "DATABASE_URL": DSN}, service="data_worker")
+    try:
+        code = main.run_cycle(WINDOW, trigger="manual", recorder=recorder, steps=steps, config=object(),
+                              lock_wait_seconds=0)
+        out, _ = capsys.readouterr()
+    finally:
+        logging.getLogger().handlers.clear()
+    return code, log_json(out)
+
+
+def events(entries, name):
+    return [e for e in entries if e.get("event") == name]
+
+
+def test_run_id_siklus_menjadi_correlation_id_semua_log(capsys):
+    def langkah(window, config):
         logging.getLogger("spatial_model.inference").info("menghitung grid")
-        return {"status": "ok", "run_id": "run-1", "fallback_reason": "ModelUnavailableError: belum ada ST-GNN"}
+        return {"status": "ok", "run_id": "dsi-1", "fallback_reason": '{"pm25": "model tidak terdaftar"}'}
 
-    def siklus(window):
-        return schedule_acquisition(window, config=object(), steps=[("trigger_downscale_inference", langkah_fallback)])
+    recorder = FakeRecorder()
+    code, entries = run_logged(capsys, recorder, [("trigger_downscale_inference", langkah)])
+    (run_id,) = recorder.rows
+    assert code == 0
+    assert {e.get("correlation_id") for e in entries} == {run_id}
+    [step] = events(entries, "job_step")
+    # run_id milik langkah tidak bertabrakan dengan run_id siklus.
+    assert step["step_run_id"] == "dsi-1" and step["level"] == "warn" and "run_id" not in step
+    [finished] = events(entries, "job_finished")
+    assert finished["status"] == recorder.rows[run_id]["status"] == "ok"
+    assert finished["fallback_steps"] == "trigger_downscale_inference"
+    assert events(entries, "job_started")[0]["trigger"] == "manual"
 
-    monkeypatch.setattr(main, "schedule_acquisition", siklus)
-    monkeypatch.setattr(main, "_init_cache_schemas", lambda: None)
-    assert main.main(["cycle", "--window-start", "2026-10-27T08:00Z"]) == 0
-    out, _ = capsys.readouterr()
-    entries = log_json(out)
-    ids = {e.get("correlation_id") for e in entries}
-    assert len(ids) == 1 and ids.pop().startswith("cycle-")
-    report = json.loads(out[out.index("\n{\n") + 1: out.index("\n}\n") + 2])
-    assert report["correlation_id"] == entries[0]["correlation_id"]
 
-    by_event = {e["event"]: e for e in entries if "event" in e}
-    assert by_event["job_started"]["time_window"].startswith("2026-10-27T08:00")
-    step = by_event["job_step"]
-    assert step["level"] == "warn" and step["fallback_reason"].startswith("ModelUnavailableError")
-    finished = by_event["job_finished"]
-    assert finished["level"] == "warn" and finished["status"] == "degraded"
-    assert finished["fallback_steps"] == "trigger_downscale_inference" and "failed_steps" not in finished
+def test_status_job_finished_sama_dengan_cycle_run_untuk_langkah_degraded(capsys):
+    recorder = FakeRecorder()
+    steps = [("fetch_ground_truth", lambda w, c: {"status": "degraded", "note": "3 stasiun gagal"}),
+             ("fetch_meteo", lambda w, c: {"status": "unavailable", "note": "sumber kosong"})]
+    code, entries = run_logged(capsys, recorder, steps)
+    (row,) = recorder.rows.values()
+    [finished] = events(entries, "job_finished")
+    assert code == 0 and row["status"] == finished["status"] == "degraded"
+    assert finished["level"] == "warn"
+    assert finished["degraded_steps"] == "fetch_ground_truth,fetch_meteo"
+    # degraded dan unavailable tidak lagi tercatat sebagai INFO.
+    assert [(e["step"], e["level"], e["note"]) for e in events(entries, "job_step")] == [
+        ("fetch_ground_truth", "warn", "3 stasiun gagal"), ("fetch_meteo", "warn", "sumber kosong")]
+
+
+def test_siklus_dilewati_karena_kunci_tercatat_skipped(capsys):
+    recorder = FakeRecorder(lock_free=False)
+    code, entries = run_logged(capsys, recorder, [("a", lambda w, c: {"status": "ok"})])
+    (run_id,) = recorder.rows
+    [finished] = events(entries, "job_finished")
+    assert code == 1 and recorder.rows[run_id]["status"] == finished["status"] == "skipped"
+    assert finished["level"] == "error" and finished["correlation_id"] == run_id
+    assert not events(entries, "job_started")
+
+
+def test_siklus_terhenti_sigterm_tercatat_failed_interrupted(capsys):
+    def dihentikan(window, config):
+        raise main.CycleInterrupted("dihentikan oleh sinyal SIGTERM")
+
+    recorder = FakeRecorder()
+    steps = [("a", lambda w, c: {"status": "ok"}), ("b", dihentikan)]
+    code, entries = run_logged(capsys, recorder, steps)
+    (row,) = recorder.rows.values()
+    [finished] = events(entries, "job_finished")
+    assert code == 1 and row["status"] == finished["status"] == "failed"
+    assert finished["interrupted"] is True and "SIGTERM" in finished["note"]
 
 
 def test_langkah_gagal_tercatat_sebagai_error(caplog):

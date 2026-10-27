@@ -7,7 +7,7 @@
 - Configuration is fixed across folds; no per-fold hyperparameter search.
 - GPU input caching is checked against original preprocessing before training each fold.
 - Complete artifacts/checkpoints: `D:/Github/SIPPolusi/graphify-out/stgnn-ds-v0.3.0/loso_pm25_gpu_seed42_20261014_a7eabc1b` (local; not committed).
-- Reproduce: `python run_stgnn_loso.py --all`; resume an interrupted batch with `--resume <run directory>`.
+- Historical run configuration and source hashes are recorded in the adjacent manifest. Maintained training entry points: `python -m spatial_model.training` and `notebooks/spatial_model/`.
 
 ## Pooled test metrics
 

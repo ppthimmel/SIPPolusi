@@ -40,10 +40,10 @@ menimpa kunci di atas.
 | `http_request` | backend, cache-api | `info`; `error` bila status ≥ 500; `debug` untuk `/health*` dan `/metrics` | `method`, `route` (template, mis. `/v1/osm/nodes/{node_id}`), `status`, `duration_ms` |
 | `route_inference` | backend (`POST /v1/routes`) | `info` bila `ok`, `warn` bila `fallback`/`failed` | `outcome` (`ok`/`fallback`/`failed`), `status`, `route_source`, `fallback_reason`, `http_status`, `duration_ms` |
 | `route_inference` (baris teks) | cache-api (`/v1/routes/solve`, logger `solver`) | `info`/`warn` | sudah ada sejak TI-SE-07: `request_id`, `solver`, `outcome`, `fallback_reason`, `inference_ms`, ... |
-| `job_started` | data_worker | `info` | `job`, `time_window` |
-| `job_step` | data_worker | `info`; `warn` bila `unavailable`/`partial` atau ada `fallback_reason`; `error` bila `failed` | `time_window`, `step`, `status`, `duration_s`, `run_id`, `fallback_reason`, `error` |
-| `downscale_fallback` | data_worker | `warn` | `time_window`, `fallback` (`idw`), `reason` |
-| `job_finished` | data_worker | `info` `ok`, `warn` `degraded` (ada fallback), `error` `failed` | `job`, `time_window`, `status`, `duration_s`, `failed_steps`, `fallback_steps` |
+| `job_started` | data_worker | `info` | `job`, `time_window`, `trigger` |
+| `job_step` | data_worker | `error` bila `failed`; `warn` bila `degraded`/`unavailable` atau ada `fallback_reason`; selain itu `info` | `time_window`, `step`, `status`, `duration_s`, `step_run_id` (run SPKU/inferensi milik langkah), `fallback_reason`, `error`, `note` (bila status bukan ok) |
+| `downscale_fallback` | data_worker | `warn` | `time_window`, `pollutants` (yang jatuh ke IDW), `reason` (JSON per polutan) |
+| `job_finished` | data_worker | `info` `ok`, `warn` `degraded`, `error` `failed`/`skipped` | `job`, `time_window`, `trigger`, `status` (= `worker.cycle_run.status`, dari `worker_runs.cycle_status()`), `duration_s`, `failed_steps`, `degraded_steps`, `fallback_steps`, `interrupted` (SIGTERM), `note` |
 | `job_health` | data_worker (`main.py health`) | `info` sehat, `error` tidak sehat | `status`, `database`, `ground_truth`, `pollution_cache` |
 
 ### Yang tidak pernah dicatat
@@ -65,7 +65,7 @@ menimpa kunci di atas.
 |---|---|---|
 | Klien → Gateway → Backend / Cache API | NGINX `$request_id` → header `X-Request-ID` | middleware `telemetry` memakainya bila aman (`[A-Za-z0-9._:-]{1,128}`), selain itu membuat UUID v4; dikembalikan pada header respons dan `error.request_id` |
 | Cache API → Route Solver | `request.state.request_id` | header `X-Request-ID` dan `request_id` di body `IRouteSolve` (sudah ada, TI-SE-06) |
-| Data Worker, satu siklus | `cycle-<uuid4>` dibuat per `python main.py cycle` | semua baris log siklus, laporan siklus (`correlation_id`), lalu `run_id` per langkah (`full-...`, `dsi-...`) yang tersimpan di basis data |
+| Data Worker, satu siklus | `run_id` baris `worker.cycle_run` (TI-DO-07), mis. `20261027T081500Z-3fa9c1`, juga untuk siklus `skipped` | semua baris log siklus dan laporan siklus; `python main.py status` menampilkan `run_id` yang sama, jadi baris gagal langsung dicari di log dengan `@correlation_id:<run_id>`. Run milik langkah (SPKU `full-...`, inferensi `dsi-...`) tercatat sebagai `step_run_id` |
 
 ID dari luar yang tidak lolos pola (mis. memuat baris baru untuk menyuntik
 log palsu) diganti, tidak dicatat (`test_unsafe_request_id_is_replaced`).
@@ -79,11 +79,41 @@ dicatat selama request/siklus (repository, solver, inferensi) ikut membawanya.
 | Backend API | `GET /health` → 200 selama proses melayani | `GET /health/ready` → 200/503, `checks.database` (`ok`/`not_configured`/`unavailable`), `checks.route_graph` (`ok`/`unavailable`: berkas graf `OSM_GRAPH_DIR` tidak ada) | Railway deploy health check: `/health` |
 | Cache API | `GET /health/live` → 200 tanpa menyentuh basis data | `GET /health/ready` → 503 bila `database` ≠ `ok` atau `graph` ≠ `ok` (`empty`: belum ada graph_version aktif); `pollution` (`ok`/`stale`/`empty`) dilaporkan tetapi **tidak** membuat API unready | Docker `HEALTHCHECK`: `/health/live`. `GET /health` (status rinci, selalu 200) tetap ada |
 | Data Worker (cron) | `python main.py check --skip-db` (konfigurasi, impor) | `python main.py check` (+ koneksi dan skema basis data) | build dan pra-deploy |
-| Data Worker, kesegaran | — | `python main.py health [--max-lag-hours 2]` → exit 0 sehat, 1 tertinggal/tak terbaca, 2 konfigurasi | pemantauan job tertinggal |
+| Data Worker, jadwal | — | `python main.py status` (TI-DO-07) → exit 0 sehat, 1 eksekusi terakhir gagal, 3 tidak ada eksekusi untuk window yang jatuh tempo | **alert utama** |
+| Data Worker, kesegaran data | — | `python main.py health [--max-lag-hours 2]` → exit 0 segar, 1 tertinggal/tak terbaca, 2 konfigurasi | alert kedua |
 
 Liveness sengaja tidak bergantung pada basis data: basis data yang mati tidak
 boleh membuat container di-restart berulang; cukup readiness yang gagal.
 Detail galat (pesan driver, host) hanya masuk log, tidak ke respons health.
+
+### `status` atau `health` untuk Data Worker
+
+Keduanya dijalankan di Railway sebagai cron terpisah dengan image Data Worker;
+exit bukan 0 membuat run itu gagal dan memicu notifikasi Railway.
+
+| | `python main.py status` (TI-DO-07) | `python main.py health` (TI-DO-08) |
+|---|---|---|
+| Pertanyaan | Apakah siklus terjadwal berjalan, tepat waktu, dan berhasil? | Apakah data yang dipakai API masih segar? |
+| Sumber | `worker.cycle_run` | `ground_truth.run` (lintasan SPKU ok/partial terakhir) dan `pollution.pollution_window` (window complete terbaru) |
+| Menangkap | cron berhenti, siklus gagal/macet/terlambat, siklus `skipped` | siklus `ok`/`degraded` tetapi data tidak bertambah (mis. SPKU kosong berjam-jam, inferensi tidak menulis cache), atau cache dibersihkan |
+| Jadwal cron | `45 * * * *` | `50 * * * *` |
+
+Alert utama adalah `status`: ia menunjuk `run_id` yang gagal, dan `run_id`
+itu adalah `correlation_id` di log. `health` menjadi alert kedua untuk kasus
+yang tidak terlihat dari status siklus. Bila hanya satu cron yang dipasang,
+pasang `status`.
+
+### `/metrics`
+
+`GET /metrics` pada Backend API dan Cache API **tanpa autentikasi**. Itu
+disengaja: kedua service hanya dijangkau lewat jaringan privat Railway, dan
+gateway hanya meneruskan `POST /v1/routes`, `GET /v1/exposure-surface`, dan
+`/healthz` ke luar, sehingga `/metrics` tidak terbuka ke publik. Bila service
+diberi domain publik, `/metrics` harus ditutup (gateway atau token) lebih
+dulu. Penghitung disimpan di memori proses: nilainya kembali ke 0 setiap
+restart/deploy, dan bila service dijalankan dengan beberapa replika/worker
+uvicorn, setiap proses punya penghitung sendiri (Prometheus mengagregasi per
+target dengan `sum` dan `rate`).
 
 ## 4. Sinyal tidak sehat
 
@@ -95,17 +125,16 @@ Detail galat (pesan driver, host) hanya masuk log, tidak ke respons health.
 | `sippolusi_http_request_duration_seconds_sum / _count` naik | `/metrics` | latency rata-rata per route |
 | `event:route_inference outcome:fallback`, `sippolusi_route_fallback_total{reason}` | Backend | rute dilayani baseline, bukan policy; respons tetap 200 tetapi tercatat `warn` |
 | `sippolusi_route_inference_failures_total{reason}` | Backend | inferensi policy melempar exception |
-| `event:job_finished status:failed` / `degraded` | Data Worker | ada langkah gagal / inferensi jatuh ke IDW |
-| `event:downscale_fallback` | Data Worker | ST-GNN tidak dapat dimuat; EdgeWeight dihitung IDW |
+| `event:job_finished status:failed` / `skipped` / `degraded` | Data Worker | ada langkah gagal atau siklus terhenti (`interrupted`) / siklus lain masih memegang kunci / ada langkah `degraded` atau `unavailable` |
+| `event:downscale_fallback`, `fallback_steps` pada `job_finished` | Data Worker | model polutan tidak tersedia; EdgeWeight polutan itu dihitung IDW |
+| `main.py status` exit 1 / 3 | Data Worker | eksekusi terakhir gagal / tidak ada eksekusi untuk window yang jatuh tempo |
 | `main.py health` exit 1, `ground_truth: lagging` | Data Worker | run kolektor SPKU terakhir yang berhasil > 2 jam lalu |
 | `main.py health` exit 1, `pollution_cache: lagging`/`missing` | Data Worker | time window complete terbaru berakhir > 2 jam lalu (bila `DOWNSCALE_WRITE_CACHE=1`) |
 | `/health/ready` Cache API `pollution: stale` | Cache API | pengguna melihat data basi; Data Worker tertinggal |
 
 Batas 2 jam: siklus untuk jam H berjalan pada H+1:15, sehingga hasil normal
 berumur 15–75 menit; lebih dari 2 jam berarti paling sedikit satu siklus
-terlewat atau gagal. Di Railway, `python main.py health` dapat dijalankan
-sebagai cron terpisah (mis. `45 * * * *`): exit 1 membuat run tersebut
-gagal dan memicu notifikasi deploy Railway.
+terlewat atau gagal. Cara memasangnya sebagai cron Railway ada di subbab 3.
 
 ## 5. Contoh log teredaksi
 
@@ -119,14 +148,10 @@ dari gateway:
 {"time": "2026-10-27T01:16:40.192+00:00", "level": "info", "logger": "request", "message": "http_request method=POST route=/v1/routes status=200 duration_ms=15.4", "service": "backend", "correlation_id": "3f1c2a9e-0b1d-4c55-9a9e-1d2c3b4a5f60", "event": "http_request", "method": "POST", "route": "/v1/routes", "status": 200, "duration_ms": 15.4}
 ```
 
-Data Worker, satu siklus dengan fallback IDW; DSN yang ikut tercetak oleh
-galat koneksi tersamarkan:
+Data Worker, satu siklus: langkah ground truth `degraded`, NO2 jatuh ke IDW, dan DSN yang
+ikut tercetak oleh galat koneksi tersamarkan. `correlation_id` adalah `run_id` pada `worker.cycle_run`:
 
 ```json
-{"time": "2026-10-27T01:16:55.208+00:00", "level": "info", "logger": "data_worker", "message": "job_started job=acquisition_cycle time_window=2026-10-27T07:00Z/08:00Z", "service": "data_worker", "correlation_id": "cycle-c35d1428-725a-4281-bcc8-50ac81819465", "event": "job_started", "job": "acquisition_cycle", "time_window": "2026-10-27T07:00Z/08:00Z"}
-{"time": "2026-10-27T01:16:55.209+00:00", "level": "warn", "logger": "spatial_model.inference", "message": "koneksi gagal: postgresql://sippolusi:***@postgres.railway.internal:5432/railway", "service": "data_worker", "correlation_id": "cycle-c35d1428-725a-4281-bcc8-50ac81819465"}
-{"time": "2026-10-27T01:16:55.209+00:00", "level": "warn", "logger": "data_worker.acquisition", "message": "job_step time_window=2026-10-27T07:00Z/08:00Z step=trigger_downscale_inference status=ok duration_s=0.0 run_id=dsi-20261027T0700Z-idw-p2-k8 fallback_reason=ModelUnavailableError: artefak ST-GNN belum tersedia", "service": "data_worker", "correlation_id": "cycle-c35d1428-725a-4281-bcc8-50ac81819465", "event": "job_step", "step": "trigger_downscale_inference", "status": "ok", "run_id": "dsi-20261027T0700Z-idw-p2-k8", "fallback_reason": "ModelUnavailableError: artefak ST-GNN belum tersedia"}
-{"time": "2026-10-27T01:16:55.209+00:00", "level": "warn", "logger": "data_worker", "message": "job_finished job=acquisition_cycle time_window=2026-10-27T07:00Z/08:00Z status=degraded duration_s=0.0 fallback_steps=trigger_downscale_inference", "service": "data_worker", "correlation_id": "cycle-c35d1428-725a-4281-bcc8-50ac81819465", "event": "job_finished", "status": "degraded", "fallback_steps": "trigger_downscale_inference"}
 ```
 
 ## 6. Uji kondisi tidak sehat
@@ -147,6 +172,10 @@ galat koneksi tersamarkan:
 | Data Worker, basis data tak terbaca | `unhealthy`, `database: unavailable`, tanpa kredensial | `test_basis_data_tak_terbaca_dilaporkan_tanpa_kredensial` |
 | `main.py health` saat tertinggal | exit 1, event `job_health` level `error` | `test_perintah_health_keluar_1_dan_mencatat_event_saat_tertinggal` |
 | Satu langkah siklus gagal | `job_step` level `error` dengan `error`; langkah lain tetap jalan | `test_langkah_gagal_tercatat_sebagai_error` |
+| Langkah `degraded`/`unavailable` | `job_step` level `warn`; `job_finished.status` = `cycle_run.status` = `degraded` | `test_status_job_finished_sama_dengan_cycle_run_untuk_langkah_degraded` |
+| Siklus lain memegang kunci | `job_finished status=skipped` level `error`, `correlation_id` = `run_id` baris skipped | `test_siklus_dilewati_karena_kunci_tercatat_skipped` |
+| SIGTERM di tengah siklus | `job_finished status=failed interrupted=true` | `test_siklus_terhenti_sigterm_tercatat_failed_interrupted` |
+| Correlation ID siklus | semua baris log siklus membawa `run_id` `cycle_run` | `test_run_id_siklus_menjadi_correlation_id_semua_log` |
 
 Contoh keluaran `python main.py health` saat tertinggal (exit 1):
 

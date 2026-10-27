@@ -1,0 +1,117 @@
+{
+  "dataset": "ds-v0.3.0",
+  "purpose": "Verify saved-model evaluation extraction; not a new model benchmark",
+  "checks": {
+    "stgnn": {
+      "prediction_comparison": {
+        "val": {
+          "rows": 1008,
+          "max_abs_prediction_difference": 0.0
+        },
+        "test": {
+          "rows": 689,
+          "max_abs_prediction_difference": 0.0
+        }
+      },
+      "metrics_identical": true,
+      "evaluation_provenance": {
+        "model": "stgnn",
+        "checkpoint_sha256": "ebf86d08f8b6e6f5b2e8fa5d6326eee2053a92d686e41a132ce9ad80eda846f7",
+        "snapshot_hashes": {
+          "README.md": "de7e4f3875eb5c910928a5e1aac9a1a06e9a264c0340072bffb5f260369ce158",
+          "config.toml": "0290531143f3a2230e16e1e5dd2ce4127a1ba747c1e55d9b45bf19a6ee541c33",
+          "exclusion_rules.md": "30f22859bc3ce1921c5e4638a2616ea8c97994856fbea8e34fee060a6a3545d3",
+          "labels.parquet": "4d30c81321886029b6d1a17d710aeffae13fd917027e276f8371cd434569e351",
+          "leakage_report.json": "e540e42b81e582b0bd75340b8fb2a5a6701c7993cccaeea6cdc686a3a7e80e5a",
+          "leakage_report.md": "8c08a63e618f4b01d78d9f4938c650823516cd84cc0ddf1b202c8d2a43b4d7aa",
+          "manifest.json": "2fa699d5e5037284403bc2646f781a3802b17d59f8f0b20e6cc7f2fdd141ac2d",
+          "normalization.json": "830eb4a21595fcefaa2bf91c6e92937e78b24ce7e33343d8adec9aa600c15fb4",
+          "source/manifest.json": "54a81be289f12dafbd771c267d93b55d2a4a190a24314a9a398934c2d9efb634",
+          "source/observation.parquet": "5916c436a389e6756aca745a1538663b335b57fd0f185201f2dc99c55ac127f2",
+          "source/station.parquet": "c973a066fea1f393ef4be92b4131d32f06855f39418179bc2baf0be3ca069996",
+          "split_spec.json": "6e1703067471d38cb2ac7e5a99a84963b9b930a1889ac5451c39abb4ef52a500",
+          "split_stats.md": "84c91e0d61cbaa49a1d14c6f6a5a7ddd4c334e7c7d220c209413617baf1dc2b1",
+          "splits/loso_folds.parquet": "a03f5fcc076e1eb4be66115cceedda2189626f4f939667e2174f2f83c2bbf964",
+          "splits/loso_sensor_distance.parquet": "9a56337d52ccc692569e77673e63d7df9f2cc3dd99f286e67dc717716c2372d2",
+          "splits/test.parquet": "7c1da73e2ebe025d7d687f0bb24400202fc0548a09b0a2c13146ff15d1c00d85",
+          "splits/train.parquet": "1ff26724fefb4f6d554f9cb15446c96cc7a06d239d85d7f47c1d2c8911f8bbce",
+          "splits/val.parquet": "53b50991e394e3357c4977fad0276c92513829d273030eb0ca864747f1f562f5",
+          "stations.parquet": "f55bee04f97770d02c147228d8c58de9f6d1d20df8c00a9f67f56677f92ca07a",
+          "stgnn/edges.parquet": "37fce141c48578cd180774e5cec7564fb2d798cfd12fff46589925d6824e69b0",
+          "stgnn/features.parquet": "63aa324632a3566583d535768c2b467fa6d67dc3d626fb550a4dbdd96ca877c0",
+          "stgnn/labels.parquet": "1b5f50d316a526020ee8d8e76ab5e0a51a21e0c8dedcb6ef1e6a7f2528da4126",
+          "stgnn/manifest.json": "f2e789310832bc9b19d36e810e430adb74200221ed8d06f36f880157aa545d2c",
+          "stgnn/nodes.parquet": "e12324252225dfa1d0dcf29cacb9b003960908b402440a55321d20d90d77adcd",
+          "stgnn/quality_report.json": "88ea4c44530f234f39c47db79579cda1a0c9aa7e3ace24fe9708f533beb8366e",
+          "stgnn/quality_report.md": "9b48ba7e0cd8d1ddd149d2cc7371f88aa2fc7d8d55bf934fe5fa5ffb5bf7952c"
+        },
+        "protocol": "fixed_split",
+        "fold": null,
+        "splits": [
+          "val",
+          "test"
+        ],
+        "unit": "ug/m3"
+      }
+    },
+    "lightgbm": {
+      "prediction_comparison": {
+        "val": {
+          "rows": 72,
+          "max_abs_prediction_difference": 0.0
+        },
+        "test": {
+          "rows": 47,
+          "max_abs_prediction_difference": 0.0
+        }
+      },
+      "metrics_identical": true,
+      "evaluation_provenance": {
+        "model": "lightgbm",
+        "checkpoint_sha256": "7d4c9910c94d275fc81f06b808f2d6065164fe13842723d615f8cb5d2ac0cd10",
+        "metadata_sha256": "c1a4e559f7114bea4e458c2914f164db731f0b93896ea649a8e9f58ba399766f",
+        "snapshot_hashes": {
+          "README.md": "de7e4f3875eb5c910928a5e1aac9a1a06e9a264c0340072bffb5f260369ce158",
+          "config.toml": "0290531143f3a2230e16e1e5dd2ce4127a1ba747c1e55d9b45bf19a6ee541c33",
+          "exclusion_rules.md": "30f22859bc3ce1921c5e4638a2616ea8c97994856fbea8e34fee060a6a3545d3",
+          "labels.parquet": "4d30c81321886029b6d1a17d710aeffae13fd917027e276f8371cd434569e351",
+          "leakage_report.json": "e540e42b81e582b0bd75340b8fb2a5a6701c7993cccaeea6cdc686a3a7e80e5a",
+          "leakage_report.md": "8c08a63e618f4b01d78d9f4938c650823516cd84cc0ddf1b202c8d2a43b4d7aa",
+          "manifest.json": "2fa699d5e5037284403bc2646f781a3802b17d59f8f0b20e6cc7f2fdd141ac2d",
+          "normalization.json": "830eb4a21595fcefaa2bf91c6e92937e78b24ce7e33343d8adec9aa600c15fb4",
+          "source/manifest.json": "54a81be289f12dafbd771c267d93b55d2a4a190a24314a9a398934c2d9efb634",
+          "source/observation.parquet": "5916c436a389e6756aca745a1538663b335b57fd0f185201f2dc99c55ac127f2",
+          "source/station.parquet": "c973a066fea1f393ef4be92b4131d32f06855f39418179bc2baf0be3ca069996",
+          "split_spec.json": "6e1703067471d38cb2ac7e5a99a84963b9b930a1889ac5451c39abb4ef52a500",
+          "split_stats.md": "84c91e0d61cbaa49a1d14c6f6a5a7ddd4c334e7c7d220c209413617baf1dc2b1",
+          "splits/loso_folds.parquet": "a03f5fcc076e1eb4be66115cceedda2189626f4f939667e2174f2f83c2bbf964",
+          "splits/loso_sensor_distance.parquet": "9a56337d52ccc692569e77673e63d7df9f2cc3dd99f286e67dc717716c2372d2",
+          "splits/test.parquet": "7c1da73e2ebe025d7d687f0bb24400202fc0548a09b0a2c13146ff15d1c00d85",
+          "splits/train.parquet": "1ff26724fefb4f6d554f9cb15446c96cc7a06d239d85d7f47c1d2c8911f8bbce",
+          "splits/val.parquet": "53b50991e394e3357c4977fad0276c92513829d273030eb0ca864747f1f562f5",
+          "stations.parquet": "f55bee04f97770d02c147228d8c58de9f6d1d20df8c00a9f67f56677f92ca07a",
+          "stgnn/edges.parquet": "37fce141c48578cd180774e5cec7564fb2d798cfd12fff46589925d6824e69b0",
+          "stgnn/features.parquet": "63aa324632a3566583d535768c2b467fa6d67dc3d626fb550a4dbdd96ca877c0",
+          "stgnn/labels.parquet": "1b5f50d316a526020ee8d8e76ab5e0a51a21e0c8dedcb6ef1e6a7f2528da4126",
+          "stgnn/manifest.json": "f2e789310832bc9b19d36e810e430adb74200221ed8d06f36f880157aa545d2c",
+          "stgnn/nodes.parquet": "e12324252225dfa1d0dcf29cacb9b003960908b402440a55321d20d90d77adcd",
+          "stgnn/quality_report.json": "88ea4c44530f234f39c47db79579cda1a0c9aa7e3ace24fe9708f533beb8366e",
+          "stgnn/quality_report.md": "9b48ba7e0cd8d1ddd149d2cc7371f88aa2fc7d8d55bf934fe5fa5ffb5bf7952c"
+        },
+        "protocol": "loso",
+        "fold": 0,
+        "held_out_group": "G_DKI1",
+        "splits": [
+          "val",
+          "test"
+        ],
+        "unit": "ug/m3"
+      }
+    }
+  },
+  "limitations": [
+    "PM2.5 uses one training epoch for workflow verification",
+    "NO2 covers LOSO fold 0 only",
+    "Older PM2.5 checkpoint was rejected because its snapshot hashes differ from the current snapshot; its metadata was not rewritten"
+  ]
+}

@@ -1,0 +1,75 @@
+{
+  "503_cache_unavailable": {
+    "status": 503,
+    "body": {
+      "error": {
+        "code": "cache_unavailable",
+        "message": "Spatial Pollution Cache DB belum memiliki time window berstatus complete.",
+        "request_id": "contoh-cache-empty",
+        "reason": "cache_empty"
+      }
+    }
+  },
+  "400_invalid_request": {
+    "status": 400,
+    "body": {
+      "error": {
+        "code": "invalid_request",
+        "message": "preference.alpha + preference.beta harus 1 (sekarang 1.1).",
+        "request_id": "contoh-400"
+      }
+    }
+  },
+  "413_payload_too_large": {
+    "status": 413,
+    "body": {
+      "error": {
+        "code": "payload_too_large",
+        "message": "Body permintaan melebihi batas 16384 byte.",
+        "request_id": "contoh-413"
+      }
+    }
+  },
+  "422_outside_study_area": {
+    "status": 422,
+    "body": {
+      "error": {
+        "code": "outside_study_area",
+        "message": "Titik tujuan berada di luar wilayah studi (DKI Jakarta).",
+        "request_id": "contoh-422-luar"
+      }
+    }
+  },
+  "422_point_not_on_network": {
+    "status": 422,
+    "body": {
+      "error": {
+        "code": "point_not_on_network",
+        "message": "Titik tujuan: tidak ada simpul yang dapat dilalui moda walk dalam radius 200 m.",
+        "request_id": "contoh-422-snap"
+      }
+    }
+  },
+  "422_no_route_found": {
+    "status": 422,
+    "body": {
+      "error": {
+        "code": "no_route_found",
+        "message": "Titik asal dan tujuan ter-snap ke simpul yang sama; tidak ada perjalanan.",
+        "request_id": "contoh-422-same",
+        "reason": "same_node"
+      }
+    }
+  },
+  "503_route_service_unavailable": {
+    "status": 503,
+    "body": {
+      "error": {
+        "code": "route_service_unavailable",
+        "message": "Layanan penentuan rute mengalami galat. Silakan coba lagi.",
+        "request_id": "contoh-503-model",
+        "reason": "solver_error"
+      }
+    }
+  }
+}

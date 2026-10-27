@@ -1,0 +1,11 @@
+# Files `railway up` does not upload (same syntax as .gitignore, applied on
+# top of it). Services build from their own Root Directory, so data and docs
+# kept in git only make the upload exceed Railway's size limit (413).
+# GitHub-triggered deploys are not affected.
+
+# Processed datasets (~330 MB); already excluded from the Data Worker image
+# by src/data_worker/.dockerignore.
+src/data_worker/dataset_processed/
+
+# Experiment artefacts and documents.
+docs/

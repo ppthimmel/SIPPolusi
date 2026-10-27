@@ -1,0 +1,23 @@
+{
+  "optimizer": {
+    "learning_rate": 0.0003,
+    "weight_decay": 0.001,
+    "patience": 12,
+    "gradient_clip": 1.0
+  },
+  "scheduler": {
+    "factor": 0.5,
+    "patience": 3,
+    "min_lr": 1e-06
+  },
+  "model": {
+    "temporal_channels": 58,
+    "local_channels": 8,
+    "hidden_channels": 16,
+    "local_hidden_channels": 8,
+    "heads": 2,
+    "dropout": 0.2,
+    "use_graph": true,
+    "use_local": true
+  }
+}

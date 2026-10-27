@@ -1,10 +1,4 @@
-# Snapshot dataset ds-v0.3.0: fitur ds-v0.2.0 (prakiraan GEOS-CF dan kalender) dengan aturan eksklusi baru
-# `shared_signal`: stasiun yang deret per jamnya praktis sama dengan stasiun lain (12 sensor DKI_PM25_*
-# berjarak hingga 24 km dengan korelasi 0,999) bukan pengukuran lokal independen dan dibuang. ds-v0.1.0 dan
-# ds-v0.2.0 memuat kluster ini lintas train/val/test, sehingga digantikan versi ini.
-# Dokumen Desain: subbab 4.4 (evaluasi leave-one-station-out), EAI-02 (split spasial), ABD-01.
-# Berkas ini disalin utuh ke folder snapshot beserta SHA-256-nya.
-
+# ds-v0.3.0: fitur prakiraan GEOS-CF, kalender, dan eksklusi shared_signal.
 version = "ds-v0.3.0"
 seed = 42
 

@@ -39,7 +39,7 @@ def _window(text: str) -> TimeWindow:
 def _infer(args: argparse.Namespace) -> int:
     import psycopg
 
-    from spatial_model import cache
+    from spatial_model.inference import cache
     from spatial_model.inference import load_ground_truth_window, load_idw_settings, run_downscale_inference
 
     source_dsn = os.environ.get("DATABASE_URL")
@@ -53,6 +53,12 @@ def _infer(args: argparse.Namespace) -> int:
         if graph_version is None:
             raise SystemExit("tidak ada graf road network berstatus active")
         edges = cache.read_road_edges(src, graph_version)
+        from spatial_model.inference.runtime import worker_inputs
+        try:
+            inputs = worker_inputs(src, window, settings, args.ground_truth_schema)
+        except (ValueError, FileNotFoundError, KeyError):
+            logging.getLogger(__name__).warning("Model inputs unavailable; per-pollutant IDW fallback")
+            inputs = None
     out = pathlib.Path(args.out)
     target = None
     if args.write_cache:
@@ -60,7 +66,7 @@ def _infer(args: argparse.Namespace) -> int:
     try:
         summary = run_downscale_inference(window, ground_truth=ground_truth, edges=edges,
                                           graph_version=graph_version, conn=target, artifact_dir=out,
-                                          settings=settings, force=args.force, pieces_cache_dir=out / "pieces")
+                                          settings=settings, force=args.force, pieces_cache_dir=out / "pieces", inputs=inputs)
     finally:
         if target is not None:
             target.close()

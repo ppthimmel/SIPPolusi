@@ -31,3 +31,8 @@ def init_db(engine: Engine | None = None) -> None:
             conn.execute(text(f'CREATE SCHEMA IF NOT EXISTS "{schema}"'))
     PollutionBase.metadata.create_all(engine)
     OsmBase.metadata.create_all(engine)
+    from pathlib import Path
+    with engine.begin() as conn:
+        for statement in Path(__file__).with_name("spatial_migration.sql").read_text().split(";"):
+            if statement.strip():
+                conn.execute(text(statement))

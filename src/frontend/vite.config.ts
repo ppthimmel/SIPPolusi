@@ -12,6 +12,11 @@ export default defineConfig(({ mode }) => {
           target: env.BACKEND_URL || "http://localhost:8000",
           changeOrigin: true,
         },
+        // Scenario switch of `npm run mock`; the real Backend has no such path.
+        "/__mock": {
+          target: env.BACKEND_URL || "http://localhost:8000",
+          changeOrigin: true,
+        },
       },
     },
   };

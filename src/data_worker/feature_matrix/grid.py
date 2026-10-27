@@ -13,7 +13,7 @@ import numpy as np
 import pandas as pd
 import shapely
 
-from spatial_model.grid import GRID_CRS, to_grid_xy, to_lonlat  # noqa: F401  (GRID_CRS diekspor ulang)
+from spatial_model.data.grid import GRID_CRS, to_grid_xy, to_lonlat  # noqa: F401  (GRID_CRS diekspor ulang)
 
 BBOX = (106.6, -6.4, 107.0, -6.0)            # lon_min, lat_min, lon_max, lat_max
 GRID_RES = 100.0

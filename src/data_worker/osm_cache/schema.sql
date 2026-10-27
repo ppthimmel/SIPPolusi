@@ -69,13 +69,14 @@ CREATE TABLE __POLLUTION__.edge_pollution (
     confidence_score real,
     background_source text,
     estimation_source text,
+    model_metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
     graph_version text,
     model_version text,
     geom public.geometry(LineString, 4326),
     written_at timestamp with time zone DEFAULT now() NOT NULL,
     CONSTRAINT edge_pollution_pkey PRIMARY KEY (edge_id, time_window_start),
     CONSTRAINT ck_edge_pollution_background_source CHECK (background_source = ANY (ARRAY['aod'::text, 'reanalysis'::text])),
-    CONSTRAINT ck_edge_pollution_estimation_source CHECK (estimation_source = ANY (ARRAY['stgnn'::text, 'idw'::text]))
+    CONSTRAINT ck_edge_pollution_estimation_source CHECK (estimation_source = ANY (ARRAY['stgnn'::text, 'idw'::text, 'hybrid'::text]))
 );
 CREATE INDEX idx_edge_pollution_geom ON __POLLUTION__.edge_pollution USING gist (geom);
 
@@ -89,3 +90,35 @@ CREATE TABLE __POLLUTION__.pollution_window (
     CONSTRAINT pollution_window_pkey PRIMARY KEY (time_window_start),
     CONSTRAINT ck_pollution_window_status CHECK (status = ANY (ARRAY['writing'::text, 'complete'::text]))
 );
+
+-- Durable lineage, retained for the same lifetime as the cached time window.
+CREATE TABLE IF NOT EXISTS __POLLUTION__.inference_run (
+  run_id TEXT PRIMARY KEY,
+  time_window_start TIMESTAMPTZ NOT NULL REFERENCES __POLLUTION__.pollution_window(time_window_start) ON DELETE CASCADE,
+  manifest JSONB NOT NULL,
+  trace_sha256 TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS inference_run_window_idx ON __POLLUTION__.inference_run(time_window_start);
+CREATE TABLE IF NOT EXISTS __POLLUTION__.grid_prediction (
+  run_id TEXT NOT NULL REFERENCES __POLLUTION__.inference_run(run_id) ON DELETE CASCADE,
+  cell_id BIGINT NOT NULL,
+  x DOUBLE PRECISION NOT NULL,
+  y DOUBLE PRECISION NOT NULL,
+  pm25_ugm3 DOUBLE PRECISION,
+  no2_ugm3 DOUBLE PRECISION,
+  confidence_score DOUBLE PRECISION,
+  pm25_source TEXT NOT NULL,
+  no2_source TEXT NOT NULL,
+  PRIMARY KEY (run_id, cell_id)
+);
+CREATE TABLE IF NOT EXISTS __POLLUTION__.edge_cell (
+  run_id TEXT NOT NULL,
+  edge_id BIGINT NOT NULL,
+  cell_id BIGINT NOT NULL,
+  length_m DOUBLE PRECISION NOT NULL CHECK (length_m > 0),
+  PRIMARY KEY (run_id, edge_id, cell_id),
+  FOREIGN KEY (run_id, cell_id) REFERENCES __POLLUTION__.grid_prediction(run_id, cell_id) ON DELETE CASCADE
+);
+ALTER TABLE __POLLUTION__.edge_pollution
+  ADD COLUMN IF NOT EXISTS trace_run_id TEXT REFERENCES __POLLUTION__.inference_run(run_id);

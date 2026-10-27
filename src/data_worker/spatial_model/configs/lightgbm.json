@@ -1,0 +1,16 @@
+{
+  "hp": {
+    "n_estimators": 150,
+    "learning_rate": 0.02,
+    "num_leaves": 7,
+    "min_child_samples": 400,
+    "subsample": 1.0,
+    "colsample_bytree": 0.4,
+    "reg_lambda": 1,
+    "min_split_gain": 1.0
+  },
+  "target": "direct",
+  "hyperparameter_origin": "PM2.5 blocked CV parameters reused for NO2; target and full-feature choice selected on NO2 LOSO validation",
+  "selection": "Full-feature direct NO2 model selected on LOSO validation; hyperparameters from fixed_state.json",
+  "threads": 8
+}

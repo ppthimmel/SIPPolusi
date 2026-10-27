@@ -14,10 +14,10 @@ import pandas as pd
 import pytest
 
 from feature_matrix.labels import LabelRules, annotate_readings
-from spatial_model.baseline.evaluate import fixed_split_predict, loso_predict
-from spatial_model.snapshot.build import DEFAULT_CONFIG, build_snapshot, verify_checksums
-from spatial_model.snapshot.leakage import weather_violations
-from spatial_model.snapshot.split import split_groups, station_groups, systematic_labels
+from spatial_model.evaluation.idw.evaluate import fixed_split_predict, loso_predict
+from spatial_model.data.snapshot.build import DEFAULT_CONFIG, build_snapshot, verify_checksums
+from spatial_model.data.snapshot.leakage import weather_violations
+from spatial_model.data.snapshot.split import split_groups, station_groups, systematic_labels
 
 # 14 lokasi di Jakarta; s00 dan s01 berjarak ±150 m (satu grup).
 COORDS = [(106.8000, -6.2000), (106.8012, -6.2008), (106.7500, -6.1500), (106.8500, -6.1500), (106.9000, -6.2000),
@@ -66,7 +66,7 @@ def _config(tmp_path):
     for old, new in replace.items():
         assert old in text, old
         text = text.replace(old, new)
-    assert cfg["version"] == "ds-v0.1.0"
+    assert cfg["version"] == "ds-v0.3.0"
     path = tmp_path / "test.toml"
     path.write_text(text, encoding="utf-8")
     return path

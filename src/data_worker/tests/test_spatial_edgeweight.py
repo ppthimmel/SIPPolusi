@@ -15,10 +15,10 @@ import pandas as pd
 import pytest
 
 from contracts import BBox, EdgeWeight, TimeWindow
-from spatial_model.aggregate import aggregate_grid_to_edges, edge_cell_pieces
-from spatial_model.confidence import IDW_CAP, estimate_confidence
-from spatial_model.grid import GridSpec, to_grid_xy, to_lonlat
-from spatial_model.idw import NoGroundTruthError
+from spatial_model.inference.aggregate import aggregate_grid_to_edges, edge_cell_pieces
+from spatial_model.inference.confidence import IDW_CAP, estimate_confidence
+from spatial_model.data.grid import GridSpec, to_grid_xy, to_lonlat
+from spatial_model.models.idw import NoGroundTruthError
 from spatial_model.inference import load_idw_settings, make_run_id, run_downscale_inference, to_edge_weights
 
 UTC = dt.timezone.utc
@@ -145,8 +145,10 @@ def test_ut_sdm_01a_c_tanpa_model_jatuh_ke_idw_dan_runsummary_lengkap(tmp_path):
     settings = load_idw_settings()
     assert summary.status == "complete"
     assert summary.estimation_source == "idw"
-    assert summary.model_version == f"idw-p{settings['power']:g}-k{settings['neighbors']}"
-    assert "ModelUnavailableError" in summary.fallback_reason
+    assert summary.model_version.startswith("spatial-")
+    assert summary.model_metadata["pm25"]["source"] == "idw"
+    assert summary.model_metadata["no2"]["source"] == "idw"
+    assert summary.fallback_reason
     assert summary.coverage_ratio == pytest.approx(3 / 4)          # satu ruas di luar grid
     dist = summary.confidence_distribution
     assert dist["n"] == 3 and dist["max"] < 0.4 and dist["low_lt_0_4"] == 3
@@ -224,15 +226,34 @@ def _synthetic_weights(n, start_id=1_000_000, value=20.0):
     })
 
 
+
+def _synthetic_trace(weights, window):
+    import hashlib
+    from spatial_model.inference.provenance import InferenceTrace
+    spec = GridSpec(x0=X0, y0=Y0, nx=len(weights), ny=1)
+    x, y = spec.cell_centers()
+    grid = weights[["pm25_ugm3", "no2_ugm3", "confidence_score"]].copy().reset_index(drop=True)
+    grid["cell_id"], grid["x"], grid["y"] = np.arange(len(grid)), x, y
+    grid["pm25_source"] = grid["no2_source"] = "idw"
+    pieces = pd.DataFrame(dict(edge_id=weights.edge_id.to_numpy(), cell_id=np.arange(len(grid)), length_m=100.))
+    fingerprint = hashlib.sha256(weights.to_json().encode()).hexdigest()
+    return InferenceTrace(f"fixture-{window.start.isoformat()}-{fingerprint}", grid, pieces, spec.as_dict(), fingerprint, {}, {})
+
+
+def _write_cache(conn, weights, window, graph, model, **kwargs):
+    from spatial_model.inference.cache import write_pollution_weight
+    return write_pollution_weight(conn, weights, window, graph, model,
+                                  trace=_synthetic_trace(weights, window), **kwargs)
+
 def test_ut_ops_02a_b_tulis_1000_baris_dan_ulang_tanpa_duplikat(cache_db):
-    from spatial_model import cache
+    from spatial_model.inference import cache
 
     conn, s = cache_db
-    n = cache.write_pollution_weight(conn, _synthetic_weights(1000), WINDOW, "g-test", "idw-p2-k8",
+    n = _write_cache(conn, _synthetic_weights(1000), WINDOW, "g-test", "idw-p2-k8",
                                      coverage_ratio=1.0, pollution_schema=s["pollution"], osm_schema=s["osm"])
     assert n == 1000
     assert cache.window_record(conn, WINDOW.start, s["pollution"])["status"] == "complete"
-    cache.write_pollution_weight(conn, _synthetic_weights(1000, value=25.0), WINDOW, "g-test", "idw-p2-k8",
+    _write_cache(conn, _synthetic_weights(1000, value=25.0), WINDOW, "g-test", "idw-p2-k8",
                                  pollution_schema=s["pollution"], osm_schema=s["osm"])
     count, distinct, pm25 = conn.execute(
         f'SELECT count(*), count(DISTINCT edge_id), max(pm25_ugm3) FROM "{s["pollution"]}".edge_pollution'
@@ -241,18 +262,18 @@ def test_ut_ops_02a_b_tulis_1000_baris_dan_ulang_tanpa_duplikat(cache_db):
 
 
 def test_ut_ops_02c_galat_di_tengah_transaksi_tidak_meninggalkan_apa_pun(cache_db):
-    from spatial_model import cache
+    from spatial_model.inference import cache
 
     conn, s = cache_db
     previous = TimeWindow.starting_at(WINDOW.start - dt.timedelta(hours=1))
-    cache.write_pollution_weight(conn, _synthetic_weights(10), previous, "g-test", "idw-p2-k8",
+    _write_cache(conn, _synthetic_weights(10), previous, "g-test", "idw-p2-k8",
                                  pollution_schema=s["pollution"], osm_schema=s["osm"])
 
     def boom():
         raise RuntimeError("galat disuntikkan")
 
     with pytest.raises(RuntimeError):
-        cache.write_pollution_weight(conn, _synthetic_weights(1000), WINDOW, "g-test", "idw-p2-k8",
+        _write_cache(conn, _synthetic_weights(1000), WINDOW, "g-test", "idw-p2-k8",
                                      pollution_schema=s["pollution"], osm_schema=s["osm"], before_commit=boom)
     rows = conn.execute(f'SELECT count(*) FROM "{s["pollution"]}".edge_pollution WHERE time_window_start = %s',
                         (WINDOW.start,)).fetchone()[0]
@@ -262,7 +283,7 @@ def test_ut_ops_02c_galat_di_tengah_transaksi_tidak_meninggalkan_apa_pun(cache_d
 
 
 def test_ut_ops_01_baca_time_window_complete_terakhir_dan_bbox(cache_db):
-    from spatial_model import cache
+    from spatial_model.inference import cache
 
     conn, s = cache_db
     # (c) belum ada time window complete
@@ -284,7 +305,7 @@ def test_ut_ops_01_baca_time_window_complete_terakhir_dan_bbox(cache_db):
 
 
 def test_kompatibilitas_cache_tulis_baca_ulang_dan_idempoten(cache_db, tmp_path):
-    from spatial_model import cache
+    from spatial_model.inference import cache
 
     conn, s = cache_db
     first = _run(conn=conn, artifact_dir=tmp_path, pollution_schema=s["pollution"], osm_schema=s["osm"])
@@ -314,12 +335,12 @@ def test_kompatibilitas_cache_tulis_baca_ulang_dan_idempoten(cache_db, tmp_path)
 
 
 def test_retensi_cache_hanya_menyimpan_time_window_terakhir(cache_db):
-    from spatial_model import cache
+    from spatial_model.inference import cache
 
     conn, s = cache_db
     starts = [WINDOW.start + dt.timedelta(hours=h) for h in range(4)]
     for start in starts:
-        cache.write_pollution_weight(conn, _synthetic_weights(5), TimeWindow.starting_at(start), "g-test",
+        _write_cache(conn, _synthetic_weights(5), TimeWindow.starting_at(start), "g-test",
                                      "idw-p2-k8", pollution_schema=s["pollution"], osm_schema=s["osm"])
     writing = WINDOW.start + dt.timedelta(hours=10)
     conn.execute(f'INSERT INTO "{s["pollution"]}".pollution_window (time_window_start, status) VALUES (%s, %s)',
@@ -331,3 +352,93 @@ def test_retensi_cache_hanya_menyimpan_time_window_terakhir(cache_db):
     assert cache.window_record(conn, writing, s["pollution"])["status"] == "writing"
     with pytest.raises(ValueError):
         cache.prune_pollution_windows(conn, keep_windows=0, pollution_schema=s["pollution"])
+    traced = conn.execute(f'SELECT DISTINCT time_window_start FROM "{s["pollution"]}".inference_run ORDER BY 1').fetchall()
+    assert [r[0] for r in traced] == starts[2:]
+    assert conn.execute(f'SELECT count(*) FROM "{s["pollution"]}".edge_cell').fetchone()[0] == 10
+
+
+def test_cache_writer_requires_trace_and_rejects_inconsistent_values():
+    from spatial_model.inference import cache
+    weights = _synthetic_weights(2)
+    with pytest.raises(ValueError, match="require source-cell"):
+        cache.write_pollution_weight(None, weights, WINDOW, "g", "m")
+    trace = _synthetic_trace(weights, WINDOW)
+    trace.grid.loc[0, "pm25_ugm3"] += 10
+    with pytest.raises(ValueError, match="cannot be reconstructed"):
+        cache.write_pollution_weight(None, weights, WINDOW, "g", "m", trace=trace)
+
+
+def test_trace_reconstructs_cache_without_optional_artifacts(cache_db):
+    from spatial_model.inference import cache
+    from spatial_model.inference.provenance import read_edge_trace
+    conn, s = cache_db
+    first = _run(conn=conn, pollution_schema=s["pollution"], osm_schema=s["osm"])
+    assert first.artifacts == {}
+    weights, _ = cache.read_pollution_weight(conn, BBox(106, -7, 107, -6), WINDOW, pollution_schema=s["pollution"])
+    assert all(w.trace_run_id == first.run_id for w in weights)
+    for weight in weights:
+        trace = read_edge_trace(conn, weight.edge_id, WINDOW.start, s["pollution"])
+        assert trace["manifest"]["input_fingerprint"] == first.input_fingerprint
+        assert trace["manifest"]["time_window_end"] == WINDOW.end.isoformat()
+        assert trace["manifest"]["model_metadata"] == first.model_metadata
+        cells = pd.DataFrame(trace["cells"])
+        reconstructed, _ = aggregate_grid_to_edges(cells.drop(columns=["edge_id", "length_m"]),
+                                                  cells[["edge_id", "cell_id", "length_m"]])
+        for column in ("pm25_ugm3", "no2_ugm3", "exposure_index", "confidence_score"):
+            assert getattr(weight, column) == pytest.approx(reconstructed[column].iloc[0], rel=1e-6)
+    multi = read_edge_trace(conn, 2, WINDOW.start, s["pollution"])
+    assert len(multi["cells"]) > 1
+    repeat = _run(conn=conn, force=True, pollution_schema=s["pollution"], osm_schema=s["osm"])
+    assert repeat.run_id == first.run_id
+    assert conn.execute(f'SELECT count(*) FROM "{s["pollution"]}".inference_run').fetchone()[0] == 1
+
+
+def test_trace_and_cache_replacement_roll_back_together(cache_db):
+    from spatial_model.inference import cache
+    conn, s = cache_db
+    _write_cache(conn, _synthetic_weights(2), WINDOW, "g-test", "idw-p2-k8",
+                 pollution_schema=s["pollution"], osm_schema=s["osm"])
+    def fail():
+        assert conn.execute(f'SELECT count(*) FROM "{s["pollution"]}".inference_run').fetchone()[0] == 2
+        raise RuntimeError("rollback lineage")
+    with pytest.raises(RuntimeError, match="rollback lineage"):
+        _write_cache(conn, _synthetic_weights(2, value=30), WINDOW, "g-test", "idw-p2-k8",
+                     pollution_schema=s["pollution"], osm_schema=s["osm"], before_commit=fail)
+    assert conn.execute(f'SELECT max(pm25_ugm3) FROM "{s["pollution"]}".edge_pollution').fetchone()[0] == 20
+    assert conn.execute(f'SELECT count(*) FROM "{s["pollution"]}".inference_run').fetchone()[0] == 1
+    assert conn.execute(f'SELECT count(*) FROM "{s["pollution"]}".grid_prediction').fetchone()[0] == 2
+
+
+def test_trace_run_cannot_be_reused_for_different_cells(cache_db):
+    from spatial_model.inference import cache
+    conn, s = cache_db
+    weights = _synthetic_weights(2)
+    trace = _synthetic_trace(weights, WINDOW)
+    cache.write_pollution_weight(conn, weights, WINDOW, "g-test", "idw-p2-k8", trace=trace,
+                                 pollution_schema=s["pollution"], osm_schema=s["osm"])
+    trace.pieces.loc[0, "length_m"] *= 2  # One-cell averages agree, but lineage changed.
+    with pytest.raises(ValueError, match="Immutable"):
+        cache.write_pollution_weight(conn, weights, WINDOW, "g-test", "idw-p2-k8", trace=trace,
+                                     pollution_schema=s["pollution"], osm_schema=s["osm"])
+
+
+def test_pipeline_backfills_legacy_trace_instead_of_skipping(cache_db):
+    conn, s = cache_db
+    kwargs = dict(conn=conn, pollution_schema=s["pollution"], osm_schema=s["osm"])
+    first = _run(**kwargs)
+    conn.execute(f'UPDATE "{s["pollution"]}".edge_pollution SET trace_run_id = NULL')
+    restored = _run(**kwargs)
+    assert restored.status == "complete" and restored.run_id == first.run_id
+    assert conn.execute(f'SELECT bool_and(trace_run_id IS NOT NULL) FROM "{s["pollution"]}".edge_pollution').fetchone()[0]
+    assert _run(**kwargs).status == "skipped"
+
+
+def test_trace_format_change_invalidates_completed_cache(cache_db, monkeypatch):
+    from spatial_model.inference import provenance
+    conn, s = cache_db
+    kwargs = dict(conn=conn, pollution_schema=s["pollution"], osm_schema=s["osm"])
+    first = _run(**kwargs)
+    monkeypatch.setattr(provenance, "TRACE_VERSION", 2)
+    second = _run(**kwargs)
+    assert second.status == "complete" and second.run_id != first.run_id
+    assert conn.execute(f'SELECT count(*) FROM "{s["pollution"]}".inference_run').fetchone()[0] == 2

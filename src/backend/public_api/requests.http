@@ -1,0 +1,215 @@
+# Koleksi uji API publik SIPPolusi (TI-SE-08). Dibuat dari public_api/smoke.py:
+#   python -m public_api.smoke --export-http
+# Ganti @host dengan Cache API lokal (docker run -p 8001:8000) atau domain API Gateway.
+@host = http://localhost:8001
+
+### Rute jalan kaki Monas → Bundaran HI
+# Harapan: 200, 503 cache_unavailable
+POST {{host}}/v1/routes
+Content-Type: application/json
+
+{
+  "origin": {
+    "lat": -6.1754,
+    "lon": 106.8272
+  },
+  "destination": {
+    "lat": -6.195,
+    "lon": 106.823
+  },
+  "mode": "walk",
+  "pollutant": "pm25",
+  "preference": {
+    "alpha": 0.5,
+    "beta": 0.5
+  }
+}
+
+### Rute sepeda, polutan acuan NO2, utamakan paparan
+# Harapan: 200, 503 cache_unavailable
+POST {{host}}/v1/routes
+Content-Type: application/json
+
+{
+  "origin": {
+    "lat": -6.1754,
+    "lon": 106.8272
+  },
+  "destination": {
+    "lat": -6.195,
+    "lon": 106.823
+  },
+  "mode": "bike",
+  "pollutant": "no2",
+  "preference": {
+    "alpha": 0.2,
+    "beta": 0.8
+  }
+}
+
+### α + β ≠ 1
+# Harapan: 400 invalid_request
+POST {{host}}/v1/routes
+Content-Type: application/json
+
+{
+  "origin": {
+    "lat": -6.1754,
+    "lon": 106.8272
+  },
+  "destination": {
+    "lat": -6.195,
+    "lon": 106.823
+  },
+  "mode": "walk",
+  "pollutant": "pm25",
+  "preference": {
+    "alpha": 0.6,
+    "beta": 0.5
+  }
+}
+
+### Moda tidak dikenal
+# Harapan: 400 invalid_request
+POST {{host}}/v1/routes
+Content-Type: application/json
+
+{
+  "origin": {
+    "lat": -6.1754,
+    "lon": 106.8272
+  },
+  "destination": {
+    "lat": -6.195,
+    "lon": 106.823
+  },
+  "mode": "car",
+  "pollutant": "pm25",
+  "preference": {
+    "alpha": 0.5,
+    "beta": 0.5
+  }
+}
+
+### Lintang di luar rentang
+# Harapan: 400 invalid_request
+POST {{host}}/v1/routes
+Content-Type: application/json
+
+{
+  "origin": {
+    "lat": 106.8,
+    "lon": -6.2
+  },
+  "destination": {
+    "lat": -6.195,
+    "lon": 106.823
+  },
+  "mode": "walk",
+  "pollutant": "pm25",
+  "preference": {
+    "alpha": 0.5,
+    "beta": 0.5
+  }
+}
+
+### JSON rusak
+# Harapan: 400 invalid_request
+POST {{host}}/v1/routes
+Content-Type: application/json
+
+{"origin": 
+
+### Tujuan di Kepulauan Seribu (luar wilayah studi)
+# Harapan: 422 outside_study_area
+POST {{host}}/v1/routes
+Content-Type: application/json
+
+{
+  "origin": {
+    "lat": -6.1754,
+    "lon": 106.8272
+  },
+  "destination": {
+    "lat": -5.75,
+    "lon": 106.55
+  },
+  "mode": "walk",
+  "pollutant": "pm25",
+  "preference": {
+    "alpha": 0.5,
+    "beta": 0.5
+  }
+}
+
+### Pantai Ancol → laut (tidak dekat jalan)
+# Harapan: 422 point_not_on_network
+POST {{host}}/v1/routes
+Content-Type: application/json
+
+{
+  "origin": {
+    "lat": -6.1225,
+    "lon": 106.842
+  },
+  "destination": {
+    "lat": -6.1,
+    "lon": 106.842
+  },
+  "mode": "walk",
+  "pollutant": "pm25",
+  "preference": {
+    "alpha": 0.5,
+    "beta": 0.5
+  }
+}
+
+### Asal = tujuan
+# Harapan: 422 no_route_found, 503 cache_unavailable
+POST {{host}}/v1/routes
+Content-Type: application/json
+
+{
+  "origin": {
+    "lat": -6.1754,
+    "lon": 106.8272
+  },
+  "destination": {
+    "lat": -6.1754,
+    "lon": 106.8272
+  },
+  "mode": "walk",
+  "pollutant": "pm25",
+  "preference": {
+    "alpha": 0.5,
+    "beta": 0.5
+  }
+}
+
+### GET pada /v1/routes
+# Harapan: 405 method_not_allowed
+GET {{host}}/v1/routes
+
+### Heatmap per ruas, sekitar Monas, zoom 15
+# Harapan: 200, 503 cache_unavailable
+GET {{host}}/v1/exposure-surface?bbox=106.822,-6.180,106.832,-6.170&zoom=15
+
+### Heatmap grid 500 m, Jakarta Pusat, zoom 12
+# Harapan: 200, 503 cache_unavailable
+GET {{host}}/v1/exposure-surface?bbox=106.79,-6.22,106.87,-6.15&zoom=12&pollutant=pm25
+
+### Heatmap grid 1 km, seluruh Jakarta, zoom 11
+# Harapan: 200, 503 cache_unavailable
+GET {{host}}/v1/exposure-surface?bbox=106.68,-6.38,106.98,-6.08&zoom=11
+
+### Seluruh Jakarta pada zoom 15 (terlalu luas)
+# Harapan: 400 invalid_request
+GET {{host}}/v1/exposure-surface?bbox=106.68,-6.38,106.98,-6.08&zoom=15
+
+### Zoom di luar 0–22
+# Harapan: 400 invalid_request
+GET {{host}}/v1/exposure-surface?bbox=106.822,-6.180,106.832,-6.170&zoom=23
+
+### bbox hanya 3 angka
+# Harapan: 400 invalid_request
+GET {{host}}/v1/exposure-surface?bbox=106.82,-6.18,106.83&zoom=15
