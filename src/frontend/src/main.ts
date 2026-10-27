@@ -3,7 +3,7 @@ import "./style.css";
 
 import { compareRoutes } from "./compare";
 import { ApiError, requestExposureSurface, submitRouteRequest, surfaceZoom } from "./api";
-import { DISCLAIMER, STUDY_AREA, SURFACE_DEBOUNCE_MS } from "./config";
+import { DISCLAIMER, ROUTE_TIMEOUT_MS, STUDY_AREA, SURFACE_DEBOUNCE_MS } from "./config";
 import { clear, h, icon } from "./dom";
 import { describeRouteError, type ErrorField, type ErrorView } from "./errors";
 import { HEAT_LAYER_LABELS, allLowConfidence, exposureClass, layerRatio } from "./exposure";
@@ -258,7 +258,7 @@ function clearStatus(): void {
 
 function showStatusLoading(): void {
   clear(formStatus);
-  formStatus.append(h("div", { class: "loading" }, h("span", { class: "spinner", "aria-hidden": "true" }), "Menghitung rute… maksimal 12 detik."));
+  formStatus.append(h("div", { class: "loading" }, h("span", { class: "spinner", "aria-hidden": "true" }), `Menghitung rute… maksimal ${ROUTE_TIMEOUT_MS / 1000} detik.`));
 }
 
 function showError(view: ErrorView, retry: () => void): void {

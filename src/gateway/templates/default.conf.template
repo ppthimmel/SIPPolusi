@@ -133,12 +133,13 @@ server {
     proxy_set_header X-Forwarded-Host $host;
     proxy_set_header X-Forwarded-Proto $http_x_forwarded_proto;
 
-    # Design doc Table 3.15 (IRoutePlanning): 10 s at the gateway. Connecting
-    # takes milliseconds on the private network, so 2 s without a connection
-    # already means the Cache API is down (502, see @upstream_timeout).
+    # Design doc Table 3.15 (IRoutePlanning): 10 s at the gateway, the image default
+    # of GATEWAY_UPSTREAM_TIMEOUT_S (see src/gateway/README.md before raising it).
+    # Connecting takes milliseconds on the private network, so 2 s without a
+    # connection already means the Cache API is down (502, see @upstream_timeout).
     proxy_connect_timeout 2s;
-    proxy_send_timeout 10s;
-    proxy_read_timeout 10s;
+    proxy_send_timeout ${GATEWAY_UPSTREAM_TIMEOUT_S}s;
+    proxy_read_timeout ${GATEWAY_UPSTREAM_TIMEOUT_S}s;
 
     # Errors NGINX produces itself answer in the uniform schema of Table 3.16
     # instead of an HTML page. Upstream error responses pass through unchanged

@@ -12,9 +12,17 @@ export const STUDY_AREA = {
 export const MAP_CENTER: [number, number] = [106.8456, -6.2088];
 export const MAP_ZOOM = 12;
 
-/** Client-side timeouts (Tabel 3.15). */
-export const ROUTE_TIMEOUT_MS = 12_000;
-export const SURFACE_TIMEOUT_MS = 5_000;
+/** Client-side timeouts (Tabel 3.15): route 12 s, heatmap 5 s. VITE_ROUTE_TIMEOUT_MS and
+ *  VITE_SURFACE_TIMEOUT_MS override them at build time; keep the route timeout above the
+ *  gateway's GATEWAY_UPSTREAM_TIMEOUT_S so the gateway's own error reaches the page. */
+export const ROUTE_TIMEOUT_MS = timeoutMs(import.meta.env?.VITE_ROUTE_TIMEOUT_MS, 12_000);
+export const SURFACE_TIMEOUT_MS = timeoutMs(import.meta.env?.VITE_SURFACE_TIMEOUT_MS, 5_000);
+
+/** A positive whole number of milliseconds from a build variable, else the default. */
+export function timeoutMs(value: string | undefined, fallback: number): number {
+  const n = Number(value);
+  return value && Number.isInteger(n) && n > 0 ? n : fallback;
+}
 /** Debounce for pan/zoom before GET /v1/exposure-surface (Tabel 3.4). */
 export const SURFACE_DEBOUNCE_MS = 500;
 

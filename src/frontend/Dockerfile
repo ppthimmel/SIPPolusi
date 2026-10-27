@@ -6,6 +6,11 @@ COPY . .
 # Optional basemap tile URL baked into the bundle (empty = OpenStreetMap default).
 ARG VITE_BASEMAP_TILES=""
 ENV VITE_BASEMAP_TILES=$VITE_BASEMAP_TILES
+# Optional request timeouts in ms baked into the bundle (empty = 12000 route, 5000 heatmap).
+ARG VITE_ROUTE_TIMEOUT_MS=""
+ARG VITE_SURFACE_TIMEOUT_MS=""
+ENV VITE_ROUTE_TIMEOUT_MS=$VITE_ROUTE_TIMEOUT_MS \
+    VITE_SURFACE_TIMEOUT_MS=$VITE_SURFACE_TIMEOUT_MS
 RUN npm run build
 
 FROM nginx:alpine

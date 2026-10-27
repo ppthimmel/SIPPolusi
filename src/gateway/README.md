@@ -22,8 +22,9 @@ request for `/v1/osm/x/../../routes` reaches the Cache API as `/v1/routes`, neve
 in its raw form.
 
 All proxied paths share the same timeouts: connect 2 s, read/send 10 s
-(Table 3.15). Connecting takes milliseconds on the private network, so a
-connection that does not open within 2 s is treated as an unreachable Cache API. The frontend container forwards its `/v1/*` here, so this file
+(Table 3.15; read/send set by `GATEWAY_UPSTREAM_TIMEOUT_S`, see Configuration).
+Connecting takes milliseconds on the private network, so a connection that does
+not open within 2 s is treated as an unreachable Cache API. The frontend container forwards its `/v1/*` here, so this file
 is the only place that maps paths to services.
 
 ## Rate limiting
@@ -94,7 +95,7 @@ Errors produced by the gateway itself use the uniform schema
 | 413 | `payload_too_large` | Body over 16 KiB on `POST /v1/routes` |
 | 429 | `rate_limited` | Rate limit above exceeded; `Retry-After` in seconds |
 | 502 | `upstream_unavailable` | The Cache API cannot be reached: refused, its name does not resolve (e.g. while it redeploys), or no connection within 2 s (e.g. it stopped and its old address is still in the 10 s resolver cache; TI-SE-10 D-02) |
-| 504 | `upstream_timeout` | The Cache API accepted the connection but did not answer within 10 s |
+| 504 | `upstream_timeout` | The Cache API accepted the connection but did not answer within `GATEWAY_UPSTREAM_TIMEOUT_S` (10 s) |
 
 Error responses from the Cache API itself (400, 422, 503, …) are passed through
 unchanged. `/healthz` keeps answering 200 while the Cache API is down, so an
@@ -112,6 +113,7 @@ Table 3.5).
 |---|---|---|
 | `CACHE_API_UPSTREAM` | yes | `http(s)://host:port` and nothing else: port required (1–65535); no user-info, path, trailing slash, query or fragment. Host is a DNS name, IPv4, or bracketed IPv6 (`[fd12::1]`). Railway: `http://${{cache-api.RAILWAY_PRIVATE_DOMAIN}}:${{cache-api.PORT}}` (use the Cache API service's actual name); compose: `http://cache_api:8000` |
 | `PORT` | no | Railway injects it; image default `8080` |
+| `GATEWAY_UPSTREAM_TIMEOUT_S` | no | Proxy read/send timeout in whole seconds, 1–300; image default `10` (Table 3.15). Raise it only together with the Cache API's `ROUTE_SOLVER_BUDGET_MS` and `ROUTE_SOLVER_GATEWAY_TIMEOUT_MS` (kept below it) and the frontend's `VITE_ROUTE_TIMEOUT_MS` (kept above it); otherwise the lowest of them still ends the request. The frontend container's own proxy uses the nginx default of 60 s, so keep this below 60 |
 
 `BACKEND_UPSTREAM` is no longer read: no public path goes to the backend. A
 value left in the Railway service's variables is ignored and can be deleted.
@@ -125,7 +127,7 @@ gateway: invalid configuration: CACHE_API_UPSTREAM is not a valid upstream; expe
 ```
 
 The template is rendered by the official image's entrypoint (envsubst limited
-to `PORT`, `CACHE_API_UPSTREAM`, `NGINX_LOCAL_RESOLVERS`).
+to `PORT`, `CACHE_API_UPSTREAM`, `GATEWAY_UPSTREAM_TIMEOUT_S`, `NGINX_LOCAL_RESOLVERS`).
 
 ## Tests
 
@@ -157,7 +159,9 @@ fails the build. It needs no network and takes about 15 seconds, most of it the
    quick `/healthz` all get 200; no rejection reaches the error log;
 5. upstream failures: a refused connection gives `502 upstream_unavailable`; an
    upstream that accepts but never answers gives `504 upstream_timeout` after
-   10 s; `/healthz` still answers 200.
+   10 s; a connection that never opens gives `502` within the 2 s connect
+   timeout (skipped on build networks that accept every TCP connection, such as
+   Docker Desktop's); `/healthz` still answers 200.
 
 ```bash
 docker build --target test src/gateway
