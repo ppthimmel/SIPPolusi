@@ -7,8 +7,10 @@ import logging
 import os
 import pathlib
 import time
+import traceback
 from typing import Callable
 
+from connectors.http import scrub
 from contracts import JAKARTA_BBOX, TimeWindow
 from feature_store import steps as feature_steps
 from ground_truth import fetch_ground_truth
@@ -151,8 +153,9 @@ def _run_steps(time_window, config, steps, progress, context, report) -> None:
                     else step(time_window, config)
                 entry = {"step": name, **result}
             except Exception as exc:  # noqa: BLE001 - siklus tidak boleh berhenti
-                log.exception("langkah %s gagal", name)
-                entry = {"step": name, "status": "failed", "error": f"{type(exc).__name__}: {exc}"}
+                # Galat pustaka dapat memuat URL bertanda tangan; query dibuang dari log dan catatan siklus.
+                log.error("langkah %s gagal:\n%s", name, scrub("".join(traceback.format_exception(exc))))
+                entry = {"step": name, "status": "failed", "error": scrub(f"{type(exc).__name__}: {exc}")}
         entry["duration_s"] = round(time.monotonic() - started, 2)
         report["steps"].append(entry)
         level = logging.WARNING if entry["status"] in ("failed", "degraded", "unavailable") else logging.INFO

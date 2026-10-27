@@ -38,8 +38,14 @@ dengan mengambil ulang produk arsip lewat konektor lalu membandingkannya dengan 
   menjadi `FormatError` dan dicatat `failed` dengan catatan "format respons berubah". Granule yang formatnya
   berubah dilewati; produk lain tetap diproses (`degraded`).
 - **Kredensial:** hanya dari variabel lingkungan, dikirim lewat header atau URL bertanda tangan, dan tidak pernah
-  masuk log, catatan, maupun basis data (`safe_url` membuang query). Tanpa `EARTHDATA_TOKEN`, VIIRS dicatat
-  `disabled`.
+  masuk log, catatan, maupun basis data. Tanpa `EARTHDATA_TOKEN`, VIIRS dicatat `disabled`. Pembersihan berlapis:
+  - `safe_url` membuang query URL pada pesan yang dibuat konektor;
+  - `scrub` membuang query setiap URL pada galat tak terduga dan traceback-nya (`fetch_log.note`, laporan
+    langkah, log);
+  - filter logger pustaka melakukan hal yang sama pada log rasterio/GDAL dan urllib3; GDAL mencatat URL SAS
+    utuh pada level INFO saat pembacaan band gagal.
+- **Respons Range pendek:** respons 206 yang panjangnya tidak sesuai rentang yang diminta menjadi `SourceError`,
+  bukan pembacaan yang tidak pernah maju.
 - **Penyimpangan dari Dokumen Desain:** Sentinel-5P dan Landsat diambil dari Microsoft Planetary Computer, bukan
   Copernicus Data Space Ecosystem atau Earth Engine/EarthExplorer (Tabel 3.18). Data latih berasal dari
   Planetary Computer, dan aksesnya tidak memerlukan akun.

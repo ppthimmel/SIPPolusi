@@ -129,6 +129,8 @@ def fetch_product(client: HttpClient, item: dict, token: str) -> tuple[pd.DataFr
         with h5py.File(remote, "r") as h5:
             pixels, record = read_granule(h5, item["id"])
     except OSError as exc:
+        if remote.error is not None:       # galat transport di bawah h5py, bukan format berkas
+            raise remote.error from None
         raise FormatError(f"sentinel5p: {safe_url(href)} bukan HDF5/NetCDF4 yang terbaca") from exc
     record.update(source_url=safe_url(href), bytes_read=remote.fetched, catalog_created_at=item.get(
         "properties", {}).get("created"))

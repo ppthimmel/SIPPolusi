@@ -28,13 +28,14 @@ import json
 import logging
 import os
 import pathlib
+import traceback
 from typing import Callable
 
 import numpy as np
 import pandas as pd
 
 from connectors import geoscf, landsat, open_meteo, sentinel5p, stac, viirs
-from connectors.http import FormatError, HttpClient, Policy, SourceError
+from connectors.http import FormatError, HttpClient, Policy, SourceError, scrub
 from contracts import JAKARTA_BBOX, TimeWindow
 
 from .reader import StoreSourceReader, landsat_grid_positions
@@ -109,12 +110,13 @@ def run_source(store: FeatureStore, source: str, window: TimeWindow, policy: Pol
     try:
         result = fn(client, fetch_id)
     except SourceError as exc:
-        result = SourceResult("failed", note=str(exc))
+        result = SourceResult("failed", note=scrub(exc))
     except FormatError as exc:
-        result = SourceResult("failed", note=f"format respons berubah: {exc}")
+        result = SourceResult("failed", note=f"format respons berubah: {scrub(exc)}")
     except Exception as exc:  # noqa: BLE001 - satu sumber tidak boleh menghentikan yang lain
-        log.exception("konektor %s gagal", source)
-        result = SourceResult("failed", note=f"{type(exc).__name__}: {exc}")
+        # Pesan pustaka dapat memuat URL bertanda tangan (token SAS); query dibuang dari log dan catatan.
+        log.error("konektor %s gagal:\n%s", source, scrub("".join(traceback.format_exception(exc))))
+        result = SourceResult("failed", note=scrub(f"{type(exc).__name__}: {exc}"))
     counts = client.counts()
     store.finish_fetch(fetch_id, result.status, products_new=result.products_new, rows_written=result.rows_written,
                        counts=counts, note=result.note, detail=result.detail)

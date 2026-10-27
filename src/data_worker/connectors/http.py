@@ -13,6 +13,7 @@ from __future__ import annotations
 import dataclasses
 import io
 import logging
+import re
 import time
 from typing import Callable
 from urllib.parse import urlsplit
@@ -37,6 +38,39 @@ def safe_url(url: str) -> str:
     """URL tanpa query (token SAS dan kunci tidak ikut tercatat)."""
     parts = urlsplit(url)
     return f"{parts.scheme}://{parts.netloc}{parts.path}"
+
+
+_URL_QUERY = re.compile(r"((?:https?|s3)://[^\s?#'\"`]+)\?[^\s'\"`]*")
+
+
+def scrub(text) -> str:
+    """Teks dengan query setiap URL dibuang, untuk pesan galat pustaka yang memuat URL bertanda tangan."""
+    return _URL_QUERY.sub(r"\1?…", str(text))
+
+
+class ScrubQueryFilter(logging.Filter):
+    """Buang query URL dari catatan log pustaka (mis. GDAL lewat rasterio mencatat URL SAS pada INFO)."""
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        message = record.getMessage()
+        clean = scrub(message)
+        if clean != message:
+            record.msg, record.args = clean, ()
+        return True
+
+
+#: Logger pustaka yang dapat mencatat URL aset bertanda tangan. Filter logger tidak diwarisi
+#: logger anak, sehingga setiap nama didaftarkan sendiri.
+LIBRARY_LOGGERS = ("rasterio", "rasterio._env", "rasterio._err", "rasterio._base", "rasterio._io", "rasterio.env",
+                   "urllib3.connectionpool", "h5py")
+_SCRUB_FILTER = ScrubQueryFilter()
+
+
+def install_log_scrubbing() -> None:
+    for name in LIBRARY_LOGGERS:
+        logger = logging.getLogger(name)
+        if _SCRUB_FILTER not in logger.filters:
+            logger.addFilter(_SCRUB_FILTER)
 
 
 @dataclasses.dataclass(frozen=True, slots=True)
@@ -152,6 +186,8 @@ class RangeFile(io.RawIOBase):
         self.position = 0
         self.fetched = 0
         self.blocks: dict[int, bytes] = {}
+        #: Galat terakhir saat membaca blok; h5py membungkusnya menjadi OSError tanpa pesan asli.
+        self.error: Exception | None = None
 
     def readable(self) -> bool:
         return True
@@ -171,11 +207,19 @@ class RangeFile(io.RawIOBase):
         if index not in self.blocks:
             start = index * self.block_size
             end = min(start + self.block_size, self.size) - 1
-            data = self.client.get(self.url, headers={"Range": f"bytes={start}-{end}"}, ok=(206,),
-                                   plain=self.plain).content
-            self.fetched += len(data)
-            if self.fetched > self.max_bytes:
-                raise SourceError(f"{self.client.source}: pembacaan melebihi {self.max_bytes} byte")
+            try:
+                data = self.client.get(self.url, headers={"Range": f"bytes={start}-{end}"}, ok=(206,),
+                                       plain=self.plain).content
+                self.fetched += len(data)
+                if len(data) != end - start + 1:
+                    # Respons pendek atau kosong: tanpa pemeriksaan ini readinto tidak pernah maju.
+                    raise SourceError(f"{self.client.source}: respons Range {start}-{end} berisi {len(data)} byte, "
+                                      f"seharusnya {end - start + 1}")
+                if self.fetched > self.max_bytes:
+                    raise SourceError(f"{self.client.source}: pembacaan melebihi {self.max_bytes} byte")
+            except Exception as exc:
+                self.error = exc
+                raise
             self.blocks[index] = data
         return self.blocks[index]
 
@@ -188,6 +232,9 @@ class RangeFile(io.RawIOBase):
         while written < size:
             index, offset = divmod(self.position, self.block_size)
             chunk = self._block(index)[offset:offset + size - written]
+            if not chunk:
+                self.error = SourceError(f"{self.client.source}: blok {index} tidak memuat posisi {self.position}")
+                raise self.error
             out[written:written + len(chunk)] = chunk
             written += len(chunk)
             self.position += len(chunk)

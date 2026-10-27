@@ -23,7 +23,7 @@ Isu #2. Panduan: [`src/data_worker/feature_store/README.md`](../../src/data_work
 | Mengambil data dari sumber yang dikonfigurasi tanpa kredensial tertanam di kode | Lima sumber diambil langsung (bagian [Siklus langsung](#siklus-langsung)). Satu-satunya kredensial, `EARTHDATA_TOKEN`, dibaca dari lingkungan. Token SAS Planetary Computer diminta per siklus. Keluaran siklus diperiksa: 0 kemunculan token, `Bearer`, atau parameter SAS. `test_timeout_permanen_menjadi_source_error_dan_tercatat` memeriksa bahwa query URL tidak masuk log |
 | Rekaman keluaran memiliki stempel waktu, identitas sumber, status kualitas, dan nilai/penanda data hilang | Setiap baris skema `features` membawa `fetched_utc` dan `fetch_id`. Produk satelit membawa `product_id`, `observed_at`, `produced_at`, `processing_version`, dan ringkasan QA (`quality`). Nilai hilang adalah NULL, dan FeatureMatrix membawa `<nilai>_available`. Kualitas per pengambilan tercatat di `fetch_log`, ketersediaan per sumber pada τ di `feature_window.availability` |
 | Kegagalan sumber eksternal tidak merusak batch lain dan menghasilkan log yang dapat ditelusuri | Skenario C: kelima sumber tidak terjangkau. Setiap sumber dicoba tiga kali, tercatat `failed` di `fetch_log` dengan URL tanpa query, dan siklus tetap membentuk FeatureMatrix dari data sebelumnya. Uji `test_sumber_gagal_tercatat_dan_sumber_lain_tetap_berjalan`, `test_galat_tak_terduga_tidak_menghentikan_...` |
-| Uji unit: respons valid, respons kosong, format berubah, timeout, data duplikat | `tests/test_connectors.py` (43 uji, respons rekaman) dan `tests/test_feature_store.py` (11 uji, PostgreSQL); pemetaan pada tabel berikut |
+| Uji unit: respons valid, respons kosong, format berubah, timeout, data duplikat | `tests/test_connectors.py` (48 uji, respons rekaman) dan `tests/test_feature_store.py` (12 uji, PostgreSQL); pemetaan pada tabel berikut |
 
 | Kasus | Uji |
 |---|---|
@@ -31,6 +31,8 @@ Isu #2. Panduan: [`src/data_worker/feature_store/README.md`](../../src/data_work
 | Respons kosong | `test_open_meteo_respons_kosong`, `test_stac_respons_kosong`, `test_viirs_cmr_kosong_dan_format_berubah`, `test_sentinel5p_lintasan_di_luar_bbox_kosong`, `test_geoscf_fetch_ana_tanpa_jam_baru_tidak_meminta_subset` |
 | Format berubah | `test_open_meteo_format_berubah` (5 varian: variabel, satuan, zona waktu, panjang larik, objek hilang), `test_geoscf_ana_format_berubah`, `test_stac_format_berubah` (3 varian), `test_token_sas_tanpa_kunci_token`, `test_sentinel5p_format_berubah`, `test_viirs_koordinat_berubah_ditolak`, `test_viirs_nama_granule_tidak_dikenal`, `test_landsat_item_tanpa_aset_mtl_format_berubah` |
 | Timeout dan gagal permanen | `test_timeout_permanen_menjadi_source_error_dan_tercatat`, `test_open_meteo_timeout_dicoba_tiga_kali`, `test_geoscf_timeout_portal_menjadi_source_error`, `test_http_404_tidak_dicoba_ulang`, `test_viirs_token_ditolak_menjadi_source_error`, `test_langkah_meteo_dengan_respons_rekaman_dan_timeout` |
+| Respons Range pendek atau kosong | `test_respons_range_pendek_menjadi_source_error_bukan_putaran_tanpa_akhir` (dengan batas waktu 5 detik), `test_respons_range_lengkap_tetap_terbaca` |
+| URL bertanda tangan pada galat dan log pustaka | `test_galat_tak_terduga_dengan_url_bertanda_tangan_tidak_bocor`, `test_log_gdal_lewat_rasterio_tanpa_token_sas`, `test_scrub_membuang_query_url` |
 | Gagal sementara | `test_gagal_sementara_lalu_berhasil_dihitung_sebagai_coba_ulang`, `test_http_429_mematuhi_retry_after` |
 | Data duplikat | `test_open_meteo_jam_ganda_dan_nilai_di_luar_rentang`, `test_cuaca_idempoten_dan_revisi_berubah`, `test_geoscf_dan_produk_satelit_duplikat_diabaikan`, `test_write_features_dan_bangun_ulang_feature_version` (penulisan ulang manifest idempoten) |
 
@@ -40,8 +42,8 @@ Isu #2. Panduan: [`src/data_worker/feature_store/README.md`](../../src/data_work
 
 | Lingkungan | Hasil |
 |---|---|
-| Dengan PostGIS (`TEST_DATABASE_URL`) | 282 lulus (91 detik) |
-| Tanpa basis data | 214 lulus, 68 dilewati (28 detik) |
+| Dengan PostGIS (`TEST_DATABASE_URL`) | 291 lulus (122 detik) |
+| Tanpa basis data | 222 lulus, 69 dilewati (28 detik) |
 
 - **Tanpa jaringan:** uji tidak menghubungi sumber sekunder (`FEATURES_SOURCES=none` pada `conftest.py`).
 - **Respons rekaman:** `tests/fixtures/sources/`:

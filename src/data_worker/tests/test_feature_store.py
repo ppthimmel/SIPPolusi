@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import datetime as dt
 import json
+import logging
 import pathlib
 
 import numpy as np
@@ -219,3 +220,16 @@ def test_write_features_dan_bangun_ulang_feature_version(seeded, db, monkeypatch
     seeded.conn.execute(f"DELETE FROM {seeded.s}.geoscf_ana_hourly")
     with pytest.raises(ValueError, match="tidak cocok"):
         steps.read_features(seeded, window)
+
+
+def test_galat_tak_terduga_dengan_url_bertanda_tangan_tidak_bocor(fs, caplog):
+    """Pesan pustaka yang memuat URL SAS tidak masuk log maupun fetch_log (tinjauan PR #63)."""
+    def leaky(client, fetch_id):
+        raise RuntimeError("baca gagal https://blob.test/s5p.nc?sv=2026&sig=RAHASIA%3D")
+
+    with caplog.at_level(logging.INFO):
+        result = steps.run_source(fs, "sentinel5p", WINDOW, Policy(1), leaky, now=T0, environ={})
+    assert result["status"] == "failed" and "https://blob.test/s5p.nc" in result["note"]
+    note = fs.fetch_log(T0 - dt.timedelta(days=1)).set_index("source").loc["sentinel5p", "note"]
+    assert "RAHASIA" not in note and "RAHASIA" not in result["note"]
+    assert "RAHASIA" not in caplog.text and "RuntimeError" in caplog.text

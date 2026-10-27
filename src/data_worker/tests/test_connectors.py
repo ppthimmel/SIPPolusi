@@ -465,3 +465,68 @@ def test_landsat_item_tanpa_aset_mtl_format_berubah():
     item["assets"].pop("mtl.json")
     with pytest.raises(FormatError, match="mtl.json"):
         landsat.produced_at(client([]), item, "token")
+
+
+# Respons Range pendek dan URL bertanda tangan pada galat (tinjauan PR #63) ------
+def _range_file(blocks):
+    """RangeFile 100 byte; ``blocks`` memetakan header Range → isi respons 206."""
+    def answer(url, kwargs):
+        return FakeResponse(206, blocks.get(kwargs["headers"]["Range"], b"x"), headers={"Content-Range": "bytes 0-0/100"})
+    return RangeFile(HttpClient("uji", Policy(1, 1), session=FakeSession([("GET", "f.nc", answer)])),
+                     "https://a.test/f.nc", block_size=50)
+
+
+def _within(seconds, fn):
+    """Jalankan ``fn`` di thread daemon; gagal (tanpa menggantung pytest) bila melewati ``seconds``."""
+    import threading
+
+    outcome = {}
+
+    def run():
+        try:
+            outcome["value"] = fn()
+        except BaseException as exc:  # noqa: BLE001 - diteruskan ke thread uji
+            outcome["error"] = exc
+
+    worker = threading.Thread(target=run, daemon=True)
+    worker.start()
+    worker.join(seconds)
+    if worker.is_alive():
+        pytest.fail(f"tidak selesai dalam {seconds} detik (berputar tanpa maju)")
+    if "error" in outcome:
+        raise outcome["error"]
+    return outcome.get("value")
+
+
+@pytest.mark.parametrize("body", [b"", b"0123456789"], ids=["kosong", "pendek"])
+def test_respons_range_pendek_menjadi_source_error_bukan_putaran_tanpa_akhir(body):
+    remote = _range_file({"bytes=0-49": body})
+
+    def read():
+        with pytest.raises(SourceError, match="respons Range 0-49"):
+            remote.read(10)
+        return remote.error
+    assert isinstance(_within(5, read), SourceError)
+
+
+def test_respons_range_lengkap_tetap_terbaca():
+    remote = _range_file({"bytes=0-49": bytes(range(50)), "bytes=50-99": bytes(range(50, 100))})
+    remote.seek(45)
+    assert _within(5, lambda: remote.read(10)) == bytes(range(45, 55))
+
+
+def test_scrub_membuang_query_url():
+    from connectors.http import scrub
+
+    text = "'/vsicurl/https://pc.test/x.tif?st=2026&sig=RAHASIA' not recognized; lihat http://b.test/q?k=1"
+    assert "RAHASIA" not in scrub(text) and "k=1" not in scrub(text)
+    assert "https://pc.test/x.tif" in scrub(text) and scrub("tanpa url") == "tanpa url"
+
+
+def test_log_gdal_lewat_rasterio_tanpa_token_sas(caplog):
+    import connectors  # noqa: F401 - memasang filter logger pustaka
+
+    with caplog.at_level(logging.INFO):
+        logging.getLogger("rasterio._env").info(
+            "GDAL signalled an error: msg=\"`/vsicurl/https://pc.test/x.tif?st=2026&sig=RAHASIA' not recognized\"")
+    assert "RAHASIA" not in caplog.text and "https://pc.test/x.tif" in caplog.text
