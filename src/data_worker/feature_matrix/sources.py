@@ -107,6 +107,7 @@ class SourceReader:
         self._cells = active_cells().set_index("grid_id")
         self._cache_key: tuple[str, ...] | None = None
         self._cache: dict = {}
+        self._source_cache: dict | None = None
 
     # Berkas masukan --------------------------------------------------------
     def input_files(self) -> list[Path]:
@@ -120,46 +121,48 @@ class SourceReader:
                 r / "geos-cf/manifest.json", r / "geos-cf/geoscf_fcst_cell_hourly.parquet",
                 r / "geos-cf/fcst_manifest.json"]
 
-    # Pemetaan sel dan event per sumber (sekali per himpunan sel) ------------
-    def _prepare(self, grid_ids: tuple[str, ...]) -> dict:
-        if grid_ids == self._cache_key:
-            return self._cache
-        unknown = set(grid_ids) - set(self._cells.index)
-        if unknown:
-            raise ValueError(f"{len(unknown)} grid_id di luar sel aktif, mis. {sorted(unknown)[:3]}")
-        cells = self._cells.loc[list(grid_ids)].reset_index()
-        mapping = cells[["grid_id"]].copy()
-        mapping["landsat_cell_id"] = cells.grid_id
-        mapping["sentinel5p_cell_id"] = s5p_cell_ids(cells.easting, cells.northing)
+    def _load_sources(self) -> dict:
+        """Snapshot sumber sekali per instance; tidak menyimpan keluaran semua tile.
 
+        Worker membuat reader baru per run. Gunakan instance baru untuk membaca
+        pembaruan berkas. ID kategorikal membatasi RAM Landsat/VIIRS; indeks
+        terurut memungkinkan pemilihan sel tanpa memindai seluruh tabel tiap tile.
+        Cache diterbitkan hanya setelah semua sumber berhasil dimuat.
+        """
+        if self._source_cache is not None:
+            return self._source_cache
         viirs = pd.read_parquet(self.root / "viirs/daily.parquet", columns=[
             "viirs_cell_id", "observation_date_utc", "longitude", "latitude", "ntl", "ntl_available",
             "observed_end_at", "produced_at"])
-        if self.viirs_cell_rule == "tile":
-            mapping["viirs_cell_id"] = viirs_tile_cell_ids(cells.longitude, cells.latitude)
-        else:
-            listed = viirs.drop_duplicates("viirs_cell_id")
-            i = _nearest(cells[["longitude", "latitude"]].to_numpy(), listed[["longitude", "latitude"]].to_numpy())
-            mapping["viirs_cell_id"] = listed.viirs_cell_id.to_numpy()[i]
+        listed = viirs.drop_duplicates("viirs_cell_id")[["viirs_cell_id", "longitude", "latitude"]]
         manifest = json.loads((self.root / "viirs/manifest.json").read_text(encoding="utf-8"))
         names = {pd.Timestamp(x["observation_date"], tz="UTC"): x["scene_id"] for x in manifest["inputs"]}
-        viirs = viirs[viirs.viirs_cell_id.isin(set(mapping.viirs_cell_id))]
         viirs = viirs.rename(columns={"viirs_cell_id": "source_cell_id", "observed_end_at": "observed_at"})
         viirs["scene_id"] = viirs.observation_date_utc.map(names)
-        if viirs.scene_id.isna().any():
-            raise ValueError("Tanggal VIIRS tanpa nama berkas di manifest")
+        viirs = self._index_source(viirs.drop(columns=["longitude", "latitude", "observation_date_utc"]))
 
         s5p = pd.read_parquet(self.root / "sentinel5p/observations.parquet")
         s5p = s5p.rename(columns={"grid_id": "source_cell_id", "available": "no2_mol_m2_available"})
 
-        landsat = pd.concat([pd.read_parquet(p, filters=[("grid_id", "in", list(grid_ids))])
-                             for p in sorted((self.root / "landsat/scenes").glob("*.parquet"))], ignore_index=True)
-        landsat = landsat.rename(columns={"grid_id": "source_cell_id"})
+        land_columns = ["grid_id", "scene_id", "observed_at", "produced_at", *LANDSAT_FEATURES,
+                        *[f"{f}_available" for f in LANDSAT_FEATURES]]
+        scenes = []
+        for path in sorted((self.root / "landsat/scenes").glob("*.parquet")):
+            scene = pd.read_parquet(path, columns=land_columns)
+            scene["grid_id"] = pd.Categorical(scene.grid_id, categories=self._cells.index)
+            scene["scene_id"] = scene.scene_id.astype("category")
+            scenes.append(scene)
+        scene_ids = pd.Index([value for scene in scenes for value in scene.scene_id.cat.categories]).unique()
+        for scene in scenes:
+            scene["scene_id"] = scene.scene_id.cat.set_categories(scene_ids)
+        landsat = pd.concat(scenes, ignore_index=True).rename(columns={"grid_id": "source_cell_id"})
+        del scenes
+        landsat = self._index_source(landsat)
 
         lookup = pd.read_parquet(self.root / "geos-cf/grid100m_geoscf_lookup.parquet",
                                  columns=["gx", "gy", "geoscf_cell_id"])
         lookup["grid_id"] = [f"r{444 - y:04d}_c{x:04d}" for x, y in zip(lookup.gx, lookup.gy)]
-        mapping["geoscf_cell_id"] = mapping.grid_id.map(lookup.set_index("grid_id").geoscf_cell_id).astype("int64")
+        lookup = lookup.set_index("grid_id").geoscf_cell_id
         geos = pd.read_parquet(self.root / "geos-cf/geoscf_cell_hourly.parquet")
         geos["cell_id"] = geos.cell_id.astype("int64")
         for col in ("time_window_start", "available_at_utc"):
@@ -194,12 +197,65 @@ class SourceReader:
         weather = (weather.sort_values(["available_at_utc", "time_utc"])
                    .drop_duplicates("available_at_utc", keep="last").reset_index(drop=True))
 
-        self._cache_key = grid_ids
+        self._source_cache = dict(landsat=landsat, viirs=viirs, listed=listed, lookup=lookup,
+                                 s5p=satellite_events(s5p, "no2_mol_m2"),
+                                 weather=weather, geos=geos_events, fcst=fcst_events)
+        return self._source_cache
+
+    @staticmethod
+    def _index_source(frame: pd.DataFrame) -> pd.DataFrame:
+        if frame.source_cell_id.hasnans:
+            frame = frame.dropna(subset=["source_cell_id"])
+        frame["source_cell_id"] = frame.source_cell_id.astype("category").cat.remove_unused_categories()
+        frame["scene_id"] = frame.scene_id.astype("category")
+        frame.set_index("source_cell_id", inplace=True)
+        return frame.sort_index(kind="stable")
+
+    @staticmethod
+    def _source_rows(frame: pd.DataFrame, ids) -> pd.DataFrame:
+        selected = frame.index.categories.intersection(ids)
+        codes = frame.index.categories.get_indexer(selected).astype(frame.index.codes.dtype, copy=False)
+        # Locate contiguous cell ranges without pandas' non-unique .loc indexer,
+        # which can scan the entire city-sized index for a multi-cell request.
+        starts = np.searchsorted(frame.index.codes, codes, side="left")
+        ends = np.searchsorted(frame.index.codes, codes, side="right")
+        positions = (np.concatenate([np.arange(a, b) for a, b in zip(starts, ends)])
+                     if len(codes) else np.empty(0, dtype=np.intp))
+        rows = frame.iloc[positions].reset_index()
+        # Preserve the public/event dtype contract, independent of cache encoding.
+        rows["source_cell_id"] = rows.source_cell_id.astype(object)
+        rows["scene_id"] = rows.scene_id.astype(object)
+        return rows
+
+    # Pemetaan sel dan event per sumber (sekali per himpunan sel) ------------
+    def _prepare(self, grid_ids: tuple[str, ...]) -> dict:
+        if grid_ids == self._cache_key:
+            return self._cache
+        unknown = set(grid_ids) - set(self._cells.index)
+        if unknown:
+            raise ValueError(f"{len(unknown)} grid_id di luar sel aktif, mis. {sorted(unknown)[:3]}")
+        source = self._load_sources()
+        cells = self._cells.loc[list(grid_ids)].reset_index()
+        mapping = cells[["grid_id"]].copy()
+        mapping["landsat_cell_id"] = cells.grid_id
+        mapping["sentinel5p_cell_id"] = s5p_cell_ids(cells.easting, cells.northing)
+        if self.viirs_cell_rule == "tile":
+            mapping["viirs_cell_id"] = viirs_tile_cell_ids(cells.longitude, cells.latitude)
+        else:
+            listed = source["listed"]
+            i = _nearest(cells[["longitude", "latitude"]].to_numpy(), listed[["longitude", "latitude"]].to_numpy())
+            mapping["viirs_cell_id"] = listed.viirs_cell_id.to_numpy()[i]
+        viirs = self._source_rows(source["viirs"], mapping.viirs_cell_id)
+        if viirs.scene_id.isna().any():
+            raise ValueError("Tanggal VIIRS tanpa nama berkas di manifest")
+        landsat = self._source_rows(source["landsat"], grid_ids)
+        mapping["geoscf_cell_id"] = mapping.grid_id.map(source["lookup"]).astype("int64")
         self._cache = dict(
-            cells=cells, mapping=mapping, weather=weather, geos=geos_events, fcst=fcst_events,
+            cells=cells, mapping=mapping, weather=source["weather"], geos=source["geos"], fcst=source["fcst"],
             events={**{f: ("landsat", satellite_events(landsat, f)) for f in LANDSAT_FEATURES},
-                    "no2_mol_m2": ("sentinel5p", satellite_events(s5p, "no2_mol_m2")),
+                    "no2_mol_m2": ("sentinel5p", source["s5p"]),
                     "ntl": ("viirs", satellite_events(viirs, "ntl"))})
+        self._cache_key = grid_ids
         return self._cache
 
     def weather_available_at(self, valid_time: pd.Series) -> pd.Series:
