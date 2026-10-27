@@ -63,8 +63,23 @@ def write_weights(conn, start, edge_ids, graph_version, pm25=20.0, model="idw-p2
     weights = [EdgeWeight(edge_id=e, time_window_start=start, pm25_ugm3=pm25, no2_ugm3=40.0,
                           exposure_index=0.5 * (pm25 / 15 + 40 / 25), confidence_score=0.3,
                           background_source=None, estimation_source="idw") for e in edge_ids]
+    import dataclasses, hashlib
+    import numpy as np
+    import pandas as pd
+    from spatial_model.data.grid import GridSpec
+    from spatial_model.inference.provenance import InferenceTrace
+    spec = GridSpec(x0=700000., y0=9310000., nx=len(weights), ny=1)
+    frame = pd.DataFrame([dataclasses.asdict(w) for w in weights])
+    grid = frame[["pm25_ugm3", "no2_ugm3", "confidence_score"]].copy()
+    grid["cell_id"] = np.arange(len(weights))
+    grid["x"], grid["y"] = spec.cell_centers()
+    grid["pm25_source"] = grid["no2_source"] = "idw"
+    pieces = pd.DataFrame(dict(edge_id=edge_ids, cell_id=np.arange(len(weights)), length_m=100.))
+    fingerprint = hashlib.sha256(frame.to_json().encode()).hexdigest()
+    trace = InferenceTrace(f"fixture-{start.isoformat()}-{graph_version}-{fingerprint}", grid, pieces,
+                           spec.as_dict(), fingerprint, {}, {})
     return write_pollution_weight(conn, weights, WorkerWindow.starting_at(start), graph_version, model,
-                                  coverage_ratio=1.0)
+                                  coverage_ratio=1.0, trace=trace)
 
 
 def test_additive_provenance_migration_preserves_historical_rows(writer):
@@ -253,6 +268,15 @@ def test_http_api_reads_what_the_worker_wrote(writer, cache_dsn, monkeypatch):
             body = client.get("/v1/pollution/edge-weights",
                               params={"bbox": "106.79,-6.21,106.81,-6.19", "mode": "walk"}).json()
             assert body["count"] == 24 and body["graph_version"] == "v1"
+            run_id = body["weights"][0]["trace_run_id"]
+            assert run_id
+            trace_response = client.get("/v1/pollution/edge-weights/1/trace")
+            assert trace_response.status_code == 200
+            trace = trace_response.json()
+            assert trace["status"] == "available" and trace["run_id"] == run_id
+            assert trace["manifest"]["graph_version"] == "v1"
+            assert trace["cells"][0]["pm25_ugm3"] == 20.
+            assert trace["cells"][0]["length_m"] == 100.
             assert body["time_window_start"] == "2026-10-13T08:00:00Z"
             windows = client.get("/v1/pollution/windows").json()
             assert windows["latest_complete"]["status"] == "complete"
@@ -261,3 +285,14 @@ def test_http_api_reads_what_the_worker_wrote(writer, cache_dsn, monkeypatch):
     finally:
         get_settings.cache_clear()
         get_pollution_settings.cache_clear()
+
+
+async def test_legacy_cache_readable_without_claiming_cell_trace(writer, backend):
+    _, pollution, _ = backend
+    write_graph(writer, "legacy")
+    write_weights(writer, W2, [1], "legacy")
+    writer.execute("UPDATE pollution.edge_pollution SET trace_run_id = NULL")
+    result = await pollution.read_pollution_weight(BBOX_ALL)
+    assert len(result.weights) == 1 and result.weights[0].trace_run_id is None
+    trace = await pollution.read_edge_trace(1)
+    assert trace["status"] == "legacy_unavailable" and trace["cells"] == []

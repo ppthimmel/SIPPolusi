@@ -45,7 +45,8 @@ def to_edge_weights(weights: pd.DataFrame, time_window: TimeWindow) -> list[Edge
         EdgeWeight(edge_id=int(r.edge_id), time_window_start=time_window.start, pm25_ugm3=val(r.pm25_ugm3),
                    no2_ugm3=val(r.no2_ugm3), exposure_index=val(r.exposure_index),
                    confidence_score=val(r.confidence_score), background_source=r.background_source,
-                   estimation_source=r.estimation_source, model_metadata=getattr(r, "model_metadata", {}))
+                   estimation_source=r.estimation_source, model_metadata=getattr(r, "model_metadata", {}),
+                   trace_run_id=getattr(r, "trace_run_id", None))
         for r in weights.itertuples(index=False)
     ]
 
@@ -85,7 +86,10 @@ def run_downscale_inference(
     from spatial_model.inference.runtime import infer_registered
     grid, model_metadata, resolved_version, input_fingerprint = infer_registered(
         time_window, ground_truth, spec, settings, inputs=inputs, resolver=resolver, versions=model_versions)
-    resolved_version += "-" + hashlib.sha256(graph_version.encode()).hexdigest()[:12]
+    from .provenance import TRACE_VERSION, CONFIDENCE_POLICY
+    policy_identity = json.dumps(dict(graph=graph_version, trace_version=TRACE_VERSION,
+                                      confidence=CONFIDENCE_POLICY), sort_keys=True)
+    resolved_version += "-" + hashlib.sha256(policy_identity.encode()).hexdigest()[:12]
     estimation_source = "idw" if all(m["source"] == "idw" for m in model_metadata.values()) else "hybrid"
     background_source = None
     reasons = {p: m["fallback_reason"] for p, m in model_metadata.items() if m.get("fallback_reason")}
@@ -94,7 +98,8 @@ def run_downscale_inference(
 
     if conn is not None and not force:
         record = cache.window_record(conn, time_window.start, pollution_schema)
-        if record and record["status"] == "complete" and record["model_version"] == resolved_version:
+        if (record and record["status"] == "complete" and record["model_version"] == resolved_version
+                and not record["has_legacy_rows"]):
             log.info("time window %s sudah complete dengan %s; dilewati", time_window, resolved_version)
             return RunSummary(run_id=run_id, status="skipped", time_window_start=time_window.start,
                               model_version=resolved_version, estimation_source=estimation_source,
@@ -126,15 +131,18 @@ def run_downscale_inference(
             item["source"] = sources[0] if len(sources) == 1 else "mixed"
             item["cell_sources"] = sources
     weights["model_metadata"] = [road_metadata[int(edge)] for edge in weights.edge_id]
+    weights["trace_run_id"] = run_id
     timings["aggregate_s"] = time.perf_counter() - t
     coverage = len(weights) / len(edge_table) if len(edge_table) else 0.0
 
     rows_written = 0
     if conn is not None:
         t = time.perf_counter()
+        from .provenance import InferenceTrace
+        trace = InferenceTrace(run_id, grid, pieces, spec.as_dict(), input_fingerprint, model_metadata, settings)
         rows_written = cache.write_pollution_weight(conn, weights, time_window, graph_version, resolved_version,
                                                     coverage_ratio=coverage, pollution_schema=pollution_schema,
-                                                    osm_schema=osm_schema)
+                                                    osm_schema=osm_schema, trace=trace)
         timings["write_cache_s"] = time.perf_counter() - t
 
     summary = RunSummary(

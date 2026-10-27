@@ -117,6 +117,8 @@ def write_pollution_weight(
     pollution_schema: str = "pollution",
     osm_schema: str = "osm",
     before_commit: Callable[[], None] | None = None,
+    *,
+    trace=None,
 ) -> int:
     """Menulis EdgeWeight satu time window dalam satu transaksi (Tabel 3.11, B26–B27).
 
@@ -126,6 +128,9 @@ def write_pollution_weight(
     Mengembalikan jumlah baris yang ditulis.
     """
     df = _as_frame(edge_weights)
+    if trace is None:
+        raise ValueError("Cache writes require source-cell provenance (InferenceTrace)")
+    prepared = trace.prepare(df)
     window_start = time_window.start
     pollutants = ",".join(p for p, c in (("pm25", "pm25_ugm3"), ("no2", "no2_ugm3")) if df[c].notna().any())
     edge_table = _ident(pollution_schema, "edge_pollution")
@@ -141,6 +146,8 @@ def write_pollution_weight(
                            completed_at = NULL""").format(window_table),
             (window_start, pollutants, coverage_ratio, model_version),
         )
+        from .provenance import write_trace
+        write_trace(conn, trace, prepared, time_window, graph_version, model_version, pollution_schema)
         conn.execute("""CREATE TEMP TABLE edge_weight_incoming (
                             edge_id BIGINT PRIMARY KEY, pm25_ugm3 REAL, no2_ugm3 REAL, exposure_index REAL,
                             confidence_score REAL, background_source TEXT, estimation_source TEXT, model_metadata JSONB
@@ -154,9 +161,9 @@ def write_pollution_weight(
         written = conn.execute(
             sql.SQL("""INSERT INTO {edge} (edge_id, time_window_start, pm25_ugm3, no2_ugm3, exposure_index,
                                            confidence_score, background_source, estimation_source, model_metadata,
-                                           graph_version, model_version, geom, written_at)
+                                           graph_version, model_version, trace_run_id, geom, written_at)
                        SELECT t.edge_id, %(w)s, t.pm25_ugm3, t.no2_ugm3, t.exposure_index, t.confidence_score,
-                              t.background_source, t.estimation_source, t.model_metadata, %(g)s, %(m)s, e.geom, now()
+                              t.background_source, t.estimation_source, t.model_metadata, %(g)s, %(m)s, %(r)s, e.geom, now()
                        FROM edge_weight_incoming t
                        LEFT JOIN {road} e ON e.edge_id = t.edge_id AND e.graph_version = %(g)s
                        ON CONFLICT (edge_id, time_window_start) DO UPDATE SET
@@ -165,9 +172,10 @@ def write_pollution_weight(
                            background_source = EXCLUDED.background_source,
                            estimation_source = EXCLUDED.estimation_source, model_metadata = EXCLUDED.model_metadata,
                            graph_version = EXCLUDED.graph_version, model_version = EXCLUDED.model_version,
+                           trace_run_id = EXCLUDED.trace_run_id,
                            geom = EXCLUDED.geom, written_at = EXCLUDED.written_at""").format(
                 edge=edge_table, road=_ident(osm_schema, "road_edge")),
-            {"w": window_start, "g": graph_version, "m": model_version},
+            {"w": window_start, "g": graph_version, "m": model_version, "r": trace.run_id},
         ).rowcount
         # Baris lama time window yang sama yang tidak termasuk penulisan ini.
         conn.execute(
@@ -222,8 +230,11 @@ def latest_complete_window(conn, pollution_schema: str = "pollution") -> dt.date
 def window_record(conn, time_window_start: dt.datetime, pollution_schema: str = "pollution") -> dict | None:
     cur = conn.cursor()
     cur.execute(
-        sql.SQL("SELECT time_window_start, pollutant, status, coverage_ratio, model_version, completed_at "
-                "FROM {} WHERE time_window_start = %s").format(_ident(pollution_schema, "pollution_window")),
+        sql.SQL("SELECT w.time_window_start, w.pollutant, w.status, w.coverage_ratio, w.model_version, w.completed_at, "
+                "EXISTS (SELECT 1 FROM {} e WHERE e.time_window_start = w.time_window_start "
+                "AND e.trace_run_id IS NULL) AS has_legacy_rows "
+                "FROM {} w WHERE time_window_start = %s").format(
+                    _ident(pollution_schema, "edge_pollution"), _ident(pollution_schema, "pollution_window")),
         (time_window_start,),
     )
     row = cur.fetchone()
@@ -256,7 +267,7 @@ def read_pollution_weight(
     cur = conn.cursor()
     cur.execute(
         sql.SQL("""SELECT edge_id, time_window_start, pm25_ugm3, no2_ugm3, exposure_index, confidence_score,
-                          background_source, estimation_source, model_metadata
+                          background_source, estimation_source, model_metadata, trace_run_id
                    FROM {} WHERE time_window_start = %s
                    AND ST_Intersects(geom, ST_MakeEnvelope(%s, %s, %s, %s, 4326))
                    ORDER BY edge_id""").format(_ident(pollution_schema, "edge_pollution")),

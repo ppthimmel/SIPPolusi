@@ -42,6 +42,7 @@ class EdgeWeightOut(BaseModel):
     background_source: str | None
     estimation_source: str | None
     model_metadata: dict = Field(default_factory=dict)
+    trace_run_id: str | None = None
     graph_version: str | None
     model_version: str | None
 

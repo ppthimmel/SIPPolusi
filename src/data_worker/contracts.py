@@ -121,6 +121,7 @@ class EdgeWeight:
     background_source: str | None
     estimation_source: str
     model_metadata: dict = dataclasses.field(default_factory=dict)
+    trace_run_id: str | None = None
 
 
 @dataclasses.dataclass(slots=True)
