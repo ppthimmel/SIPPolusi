@@ -155,6 +155,8 @@ class SolveContext:
     data_stale: bool
     missing_edge_count: int
     pollution_model_version: str | None
+    estimation_sources: dict[str, int] = field(default_factory=dict)
+    downscaling_fallback: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)

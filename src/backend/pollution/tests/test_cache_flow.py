@@ -8,6 +8,7 @@ Run with TEST_DATABASE_URL pointing at src/backend/testdb.
 from __future__ import annotations
 
 import dataclasses
+import json
 from datetime import datetime, timedelta, timezone
 
 import asyncpg
@@ -207,6 +208,36 @@ async def test_ti_se_01_versioned_graph_and_weight_contract_roundtrip(writer, ba
     assert row["pm25_ugm3"] == 0. and row["no2_ugm3"] is None
     assert row["model_metadata"] == {"pm25": {"source": "idw"}}
     assert row["trace_run_id"] and batch["time_window_start"] == "2026-10-13T08:00:00Z"
+
+
+async def test_weights_cover_every_edge_of_the_road_graph_bbox(writer, backend):
+    """D-01: a diagonal edge whose bounding box overlaps the bbox but whose line
+    does not is in the road graph, so its weight must be read as well."""
+    from osm_cache import GraphEdge, GraphNode, RoadGraphData, write_road_graph
+
+    osm, pollution, _ = backend
+    a, b = GraphNode(1, 106.800, -6.200), GraphNode(2, 106.802, -6.198)
+    write_road_graph(writer, RoadGraphData("v1", [a, b], [GraphEdge(1, 1, 2, 280.0, "residential", True, True,
+                                                                     ((a.lon, a.lat), (b.lon, b.lat)))],
+                                           osm_timestamp=W1))
+    write_weights(writer, W2, [1], "v1")
+    corner = BBox(106.8015, -6.1999, 106.8025, -6.1995)  # below the line, inside its bounding box
+    graph = await osm.read_road_graph(corner, Mode.WALK)
+    weights = await pollution.read_pollution_weight(corner, mode=Mode.WALK)
+    assert set(graph.edges_by_id()) == set(weights.weights_by_edge_id()) == {1}
+
+
+async def test_window_model_metadata_is_the_runs_provenance(writer, backend):
+    """D-07 (TI-SE-10): routes read weights without lineage, so the run's provenance
+    comes from one row of the window."""
+    _, pollution, _ = backend
+    write_graph(writer, "v1")
+    write_weights(writer, W2, range(1, 25), "v1")
+    window = (await pollution.read_pollution_weight(BBOX_ALL, lineage=False)).window
+    assert await pollution.window_model_metadata(window) == {}  # fixture rows carry no per-pollutant metadata
+    meta = {"pm25": {"source": "idw", "fallback_reason": "resolve_registry:ValueError"}}
+    writer.execute("UPDATE pollution.edge_pollution SET model_metadata = %s::jsonb", (json.dumps(meta),))
+    assert await pollution.window_model_metadata(window) == meta
 
 
 async def test_upsert_does_not_duplicate(writer, backend):

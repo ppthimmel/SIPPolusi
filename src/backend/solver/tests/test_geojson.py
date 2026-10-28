@@ -50,6 +50,20 @@ def test_plan_returns_valid_geojson_mapped_to_graph_edges(client_with, osm_repo)
     meta = fc["metadata"]
     assert meta["request_id"] == "geo-1" and meta["route_source"] == "policy" and meta["fallback_reason"] is None
     assert meta["model_version"]["route_policy"] == "mock-1" and meta["disclaimer"]
+    assert meta["estimation"] == {"source": "idw", "fallback_pollutants": []}
+
+
+@pytest.mark.parametrize("sources, fallback, expected", [
+    ({"idw": 12}, (), {"source": "idw", "fallback_pollutants": []}),
+    ({"hybrid": 12}, ("no2",), {"source": "hybrid", "fallback_pollutants": ["no2"]}),
+    ({"idw": 3, "hybrid": 9}, (), {"source": "mixed", "fallback_pollutants": []}),
+    ({"unknown": 12}, (), {"source": None, "fallback_pollutants": []}),
+    ({}, (), {"source": None, "fallback_pollutants": []}),
+])
+def test_estimation_summary(sources, fallback, expected):
+    """D-07 (TI-SE-10): the response says where the estimates came from."""
+    from solver.geojson import estimation_summary
+    assert estimation_summary(sources, fallback) == expected
 
 
 def test_plan_marks_fallback_explicitly(client_with):

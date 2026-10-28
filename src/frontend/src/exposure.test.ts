@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { exposureClass, layerRatio } from "./exposure";
+import { allLowConfidence, exposureClass, layerRatio } from "./exposure";
 
 describe("exposureClass (UT-FE-07a)", () => {
   it.each([
@@ -27,5 +27,15 @@ describe("layerRatio (UT-FE-07b)", () => {
   it("returns null when the pollutant is missing", () => {
     expect(layerRatio("no2", { exposureIndex: 1, pm25: 10, no2: null })).toBeNull();
     expect(layerRatio("combined", { exposureIndex: null, pm25: 10, no2: 10 })).toBeNull();
+  });
+});
+
+describe("allLowConfidence (TI-SE-10, D-06)", () => {
+  it("is true only when every feature drawn is below 0,4", () => {
+    expect(allLowConfidence([{ confidence: 0.39 }, { confidence: 0.1 }, { confidence: null }])).toBe(true);
+    expect(allLowConfidence([{ confidence: 0.39 }, { confidence: 0.4 }])).toBe(false);
+  });
+  it("is false for an empty surface, so nothing claims all-low without data", () => {
+    expect(allLowConfidence([])).toBe(false);
   });
 });

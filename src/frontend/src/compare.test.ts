@@ -28,6 +28,8 @@ const meta: RouteMetadata = {
   missingEdgeCount: 0,
   fallbackReason: null,
   downscalingVersion: null,
+  estimationSource: null,
+  downscalingFallback: [],
   routePolicyVersion: null,
   graphVersion: null,
   deltaTravelTimeMin: null,

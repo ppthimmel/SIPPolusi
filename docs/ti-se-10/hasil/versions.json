@@ -1,0 +1,58 @@
+{
+  "git_commit": "e56ea81",
+  "git_branch": "feat/ti-se-10",
+  "git_dirty": false,
+  "components": {
+    "data_worker": "c9fd83d 2026-10-27 fix(data_worker): sesi yatim dari kontainer yang dihentikan tidak menahan siklus",
+    "cache_api": "d5c5dea 2026-10-27 feat: sumber estimasi polusi di metadata rute dan UI (D-07 TI-SE-10)",
+    "gateway": "e834e02 2026-10-27 fix(gateway): koneksi ke upstream yang tidak terbuka dijawab 502, bukan 504 (D-02 TI-SE-10)",
+    "frontend": "e56ea81 2026-10-27 fix(frontend): heatmap tanpa garis saat seluruh area berkeyakinan rendah; disclaimer sesuai sumber (D-06 TI-SE-10)"
+  },
+  "images": {
+    "db": {
+      "image": "postgis/postgis:18-3.6",
+      "id": "sha256:60f6ad1d21ea"
+    },
+    "worker": {
+      "image": "sippolusi-e2e-worker",
+      "id": "sha256:78fec07e40b1"
+    },
+    "spku_portal": {
+      "image": "python:3.11-slim",
+      "id": "sha256:b7a9e5f6a93d"
+    },
+    "route_model": {
+      "image": "sippolusi-e2e-route_model",
+      "id": "sha256:552476db2c3e"
+    },
+    "cache_api": {
+      "image": "sippolusi-e2e-cache_api",
+      "id": "sha256:066d052a83b3"
+    },
+    "gateway": {
+      "image": "sippolusi-e2e-gateway",
+      "id": "sha256:7d8f22c2d38e"
+    },
+    "frontend": {
+      "image": "sippolusi-e2e-frontend",
+      "id": "sha256:6de34a744578"
+    }
+  },
+  "dataset": {
+    "dataset_version": "c9503fc53769",
+    "graph_version": "jakarta-20261005",
+    "osm_timestamp": "2026-10-05T09:50:56+00:00",
+    "bbox": [
+      106.8,
+      -6.2,
+      106.845,
+      -6.155
+    ],
+    "ground_truth_windows": [
+      "2026-10-26T12:00Z",
+      "2026-10-26T13:00Z",
+      "2026-10-26T14:00Z"
+    ]
+  },
+  "postgres": "PostgreSQL 18.6 (Debian 18.6-1.pgdg13+2) on x86_64-pc-linux-"
+}

@@ -262,6 +262,10 @@
                           "downscaling": "idw-p2-k8",
                           "route_policy": "4"
                         },
+                        "estimation": {
+                          "source": "idw",
+                          "fallback_pollutants": []
+                        },
                         "solver": "http",
                         "comparison": {
                           "delta_travel_time_min": 4.3,
@@ -385,6 +389,10 @@
                         "model_version": {
                           "downscaling": "idw-p2-k8",
                           "route_policy": "astar-baseline"
+                        },
+                        "estimation": {
+                          "source": "idw",
+                          "fallback_pollutants": []
                         },
                         "solver": "baseline",
                         "comparison": {
@@ -1557,6 +1565,41 @@
         ],
         "title": "ErrorResponse"
       },
+      "Estimation": {
+        "properties": {
+          "source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source",
+            "description": "Sumber estimasi polusi pada ruas rute: idw = interpolasi sensor darat saja; stgnn atau hybrid = model downscaling ikut dipakai; mixed = ruas berbeda sumber; null = tidak tercatat di cache"
+          },
+          "fallback_pollutants": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "pm25",
+                "no2"
+              ]
+            },
+            "type": "array",
+            "title": "Fallback Pollutants",
+            "description": "Polutan yang estimasinya berasal dari fallback IDW karena model downscaling terdaftar tidak dapat dipakai"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "source",
+          "fallback_pollutants"
+        ],
+        "title": "Estimation"
+      },
       "LineString": {
         "properties": {
           "type": {
@@ -1872,6 +1915,9 @@
           "model_version": {
             "$ref": "#/components/schemas/ModelVersion"
           },
+          "estimation": {
+            "$ref": "#/components/schemas/Estimation"
+          },
           "solver": {
             "type": "string",
             "title": "Solver",
@@ -1938,6 +1984,7 @@
           "missing_edge_count",
           "graph_version",
           "model_version",
+          "estimation",
           "solver",
           "comparison",
           "notes",

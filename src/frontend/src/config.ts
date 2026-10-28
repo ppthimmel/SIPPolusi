@@ -12,9 +12,17 @@ export const STUDY_AREA = {
 export const MAP_CENTER: [number, number] = [106.8456, -6.2088];
 export const MAP_ZOOM = 12;
 
-/** Client-side timeouts (Tabel 3.15). */
-export const ROUTE_TIMEOUT_MS = 12_000;
-export const SURFACE_TIMEOUT_MS = 5_000;
+/** Client-side timeouts (Tabel 3.15): route 12 s, heatmap 5 s. VITE_ROUTE_TIMEOUT_MS and
+ *  VITE_SURFACE_TIMEOUT_MS override them at build time; keep the route timeout above the
+ *  gateway's GATEWAY_UPSTREAM_TIMEOUT_S so the gateway's own error reaches the page. */
+export const ROUTE_TIMEOUT_MS = timeoutMs(import.meta.env?.VITE_ROUTE_TIMEOUT_MS, 12_000);
+export const SURFACE_TIMEOUT_MS = timeoutMs(import.meta.env?.VITE_SURFACE_TIMEOUT_MS, 5_000);
+
+/** A positive whole number of milliseconds from a build variable, else the default. */
+export function timeoutMs(value: string | undefined, fallback: number): number {
+  const n = Number(value);
+  return value && Number.isInteger(n) && n > 0 ? n : fallback;
+}
 /** Debounce for pan/zoom before GET /v1/exposure-surface (Tabel 3.4). */
 export const SURFACE_DEBOUNCE_MS = 500;
 
@@ -44,7 +52,10 @@ export const BASEMAP_ATTRIBUTION = "© OpenStreetMap contributors";
 /** Always-visible disclaimer (PNF-07). The Backend sends its own text in
  *  metadata.disclaimer; this one is shown regardless of the response. */
 export const DISCLAIMER =
-  "Nilai paparan adalah estimasi model dari data satelit dan sensor darat, bukan pengukuran langsung. " +
+  // Holds whichever source produced the estimate: ground sensors always, satellite and
+  // meteorological data only when the downscaling model took part (TI-SE-10, D-07).
+  "Nilai paparan adalah estimasi dari sensor darat, ditambah data satelit dan meteorologi bila model " +
+  "downscaling tersedia; bukan pengukuran langsung. Sumber estimasi tiap rute ada di rincian hasil. " +
   "Indeks paparan menggabungkan PM2.5 dan NO2 terhadap pedoman WHO. " +
   "Hasil ini alat bantu keputusan perjalanan, bukan rekomendasi medis atau diagnosis kesehatan; " +
   "tetap perhatikan kondisi jalan.";

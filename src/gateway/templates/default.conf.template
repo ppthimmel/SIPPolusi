@@ -13,6 +13,16 @@
 # network. Locally (compose) a caller can set it, which the tests use. Without
 # the header $remote_addr stays the TCP peer. Do not put a CDN in front of the
 # gateway without revisiting this: every user would share the CDN's address.
+# A 504 whose upstream connection was never opened (connect timeout) means the
+# service cannot be reached, e.g. it stopped and its old address is still in
+# the resolver cache: answer 502 upstream_unavailable, not a timeout (TI-SE-10,
+# D-02). $upstream_connect_time is "-" for an attempt that did not connect.
+map $upstream_connect_time $upstream_not_connected {
+    ""      1;
+    "-"     1;
+    default 0;
+}
+
 set_real_ip_from 0.0.0.0/0;
 set_real_ip_from ::/0;
 real_ip_header X-Real-IP;
@@ -123,10 +133,13 @@ server {
     proxy_set_header X-Forwarded-Host $host;
     proxy_set_header X-Forwarded-Proto $http_x_forwarded_proto;
 
-    # Design doc Table 3.15 (IRoutePlanning): 10 s at the gateway.
-    proxy_connect_timeout 5s;
-    proxy_send_timeout 10s;
-    proxy_read_timeout 10s;
+    # Design doc Table 3.15 (IRoutePlanning): 10 s at the gateway, the image default
+    # of GATEWAY_UPSTREAM_TIMEOUT_S (see src/gateway/README.md before raising it).
+    # Connecting takes milliseconds on the private network, so 2 s without a
+    # connection already means the Cache API is down (502, see @upstream_timeout).
+    proxy_connect_timeout 2s;
+    proxy_send_timeout ${GATEWAY_UPSTREAM_TIMEOUT_S}s;
+    proxy_read_timeout ${GATEWAY_UPSTREAM_TIMEOUT_S}s;
 
     # Errors NGINX produces itself answer in the uniform schema of Table 3.16
     # instead of an HTML page. Upstream error responses pass through unchanged
@@ -165,6 +178,9 @@ server {
 
     location @upstream_timeout {
         default_type application/json;
+        if ($upstream_not_connected) {
+            return 502 '{"error":{"code":"upstream_unavailable","message":"Layanan sedang tidak dapat dihubungi. Silakan coba lagi.","request_id":"$request_id"}}';
+        }
         return 504 '{"error":{"code":"upstream_timeout","message":"Layanan tidak merespons tepat waktu. Silakan coba lagi.","request_id":"$request_id"}}';
     }
 

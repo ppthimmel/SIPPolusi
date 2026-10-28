@@ -11,8 +11,11 @@
 #    405, by the gateway.
 # 4. Rate limiting per client address (IPv6 per /64) answers 429 rate_limited
 #    with Retry-After.
-# 5. An upstream that is down or does not answer gives 502 or 504 in the
-#    uniform error schema (the 504 case waits out the 10 s read timeout).
+# 5. An upstream that is down or whose connection never opens gives 502, one
+#    that accepts but does not answer gives 504 after the 10 s read timeout,
+#    both in the uniform error schema.
+# GATEWAY_UPSTREAM_TIMEOUT_S is validated in 1 and rendered in 2; sections 3-5
+# run with the image default (10).
 set -u
 
 VALIDATE=/docker-entrypoint.d/10-validate-env.sh
@@ -90,6 +93,25 @@ expect_invalid "unclosed IPv6 bracket" "http://[fd12::1:8000"
 expect_invalid "non-numeric PORT" "http://cache_api:8000" "80a"
 expect_invalid "PORT 0" "http://cache_api:8000" "0"
 
+# expect_timeout LABEL GATEWAY_UPSTREAM_TIMEOUT_S accept|reject
+expect_timeout() {
+    if out=$(CACHE_API_UPSTREAM=http://cache_api:8000 GATEWAY_UPSTREAM_TIMEOUT_S="$2" sh "$VALIDATE" 2>&1); then
+        if [ "$3" = accept ]; then pass "accepts $1"; else fail "rejects $1: accepted"; fi
+        return
+    fi
+    case "$3:$out" in
+        reject:*"gateway: invalid configuration: GATEWAY_UPSTREAM_TIMEOUT_S"* ) pass "rejects $1" ;;
+        * ) fail "$3 $1: $out" ;;
+    esac
+}
+expect_timeout "upstream timeout 45 s" 45 accept
+expect_timeout "upstream timeout 300 s" 300 accept
+expect_timeout "empty upstream timeout" "" reject
+expect_timeout "upstream timeout 0" 0 reject
+expect_timeout "upstream timeout above 300" 301 reject
+expect_timeout "upstream timeout with a unit" 45s reject
+expect_timeout "fractional upstream timeout" 1.5 reject
+
 echo "== 2. template render and nginx -t (real entrypoint)"
 export PORT=8080 CACHE_API_UPSTREAM=http://127.0.0.1:9002
 if out=$(/docker-entrypoint.sh nginx -t 2>&1); then
@@ -99,6 +121,21 @@ else
     echo "$failures failure(s)"
     exit 1
 fi
+
+RENDERED=/etc/nginx/conf.d/default.conf
+if grep -q "proxy_read_timeout 10s;" "$RENDERED" && grep -q "proxy_send_timeout 10s;" "$RENDERED"; then
+    pass "upstream timeout defaults to 10 s (Table 3.15)"
+else
+    fail "upstream timeout default: $(grep -E 'proxy_(read|send)_timeout' "$RENDERED")"
+fi
+if out=$(GATEWAY_UPSTREAM_TIMEOUT_S=45 /docker-entrypoint.sh nginx -t 2>&1) &&
+    grep -q "proxy_read_timeout 45s;" "$RENDERED" && grep -q "proxy_send_timeout 45s;" "$RENDERED"; then
+    pass "GATEWAY_UPSTREAM_TIMEOUT_S=45 renders 45 s, nginx -t ok"
+else
+    fail "GATEWAY_UPSTREAM_TIMEOUT_S=45: $out $(grep -E 'proxy_(read|send)_timeout' "$RENDERED")"
+fi
+# Back to the default for the routing and timeout sections.
+/docker-entrypoint.sh nginx -t > /dev/null 2>&1 || fail "re-render with the default timeout"
 
 # Every request below comes from 127.0.0.1, so each one claims its own client
 # address in X-Real-IP (trusted, see the template) to stay clear of the rate
@@ -374,6 +411,28 @@ else
 fi
 kill "$hang_pid" 2>/dev/null
 pkill -f "nc -l -p 9002" 2>/dev/null
+
+# An upstream whose connection never opens (a stopped service whose old address
+# the resolver still caches): 502 upstream_unavailable within the 2 s connect
+# timeout, not 504 (TI-SE-10, D-02). 192.0.2.1 is TEST-NET-1, never routed, so
+# its packets are dropped. Some build networks (Docker Desktop) accept every TCP
+# connection themselves; there the case cannot be staged and is skipped.
+if nc -w 3 192.0.2.1 9002 < /dev/null > /dev/null 2>&1; then
+    echo "SKIP  never-opened connection: this network accepts every TCP connection"
+else
+    CACHE_API_UPSTREAM=http://192.0.2.1:9002 /docker-entrypoint.sh nginx -t > /dev/null 2>&1 \
+        || fail "re-render with an unreachable upstream"
+    nginx -s reload
+    sleep 0.5
+    started=$(date +%s)
+    expect_json_error POST /v1/routes 502 upstream_unavailable
+    elapsed=$(($(date +%s) - started))
+    if [ "$elapsed" -le 3 ]; then
+        pass "never-opened connection: 502 after ${elapsed} s (proxy_connect_timeout 2s)"
+    else
+        fail "never-opened connection: answered after ${elapsed} s, want at most 3"
+    fi
+fi
 
 # The gateway itself stays up while its upstream is down.
 expect_route GET /healthz 200 '{"status":"ok","service":"gateway"}'

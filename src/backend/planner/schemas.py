@@ -77,6 +77,8 @@ class SourceOut(BaseModel):
     estimation_sources: dict[str, int]
     background_sources: dict[str, int]
     rejected_graph_rows: dict[str, int]
+    downscaling_fallback: list[str] = Field(
+        default_factory=list, description="Polutan yang estimasinya dari fallback, bukan model downscaling terdaftar")
 
 
 class SolverNodeOut(BaseModel):

@@ -1,0 +1,56 @@
+{
+  "dataset": "sippolusi-e2e",
+  "exported_at": "2026-10-26T15:32:36+00:00",
+  "source": "Railway PostgreSQL, environment development (read-only export)",
+  "graph_version": "jakarta-20261005",
+  "osm_timestamp": "2026-10-05T09:50:56+00:00",
+  "bbox": [
+    106.8,
+    -6.2,
+    106.845,
+    -6.155
+  ],
+  "ground_truth_windows": [
+    "2026-10-26T12:00Z",
+    "2026-10-26T13:00Z",
+    "2026-10-26T14:00Z"
+  ],
+  "metrics": [
+    "PM25",
+    "NO2"
+  ],
+  "files": [
+    {
+      "file": "graph_version.csv",
+      "sha256": "745f3e65f816b792872db0bc8119cdd5d54807dd9e2dec26647723f6a38a89eb",
+      "bytes": 151,
+      "rows": 1
+    },
+    {
+      "file": "road_edge.csv.gz",
+      "sha256": "4445c35cb4a657fa3c25952ec564ab54449651777a266a22c66ac3d766cba997",
+      "bytes": 1523200,
+      "rows": 21987
+    },
+    {
+      "file": "road_node.csv.gz",
+      "sha256": "705c0bf4f46e796aa0b0f7240e58f269b0be18e7363298bc79a04241b32c2971",
+      "bytes": 357679,
+      "rows": 17334
+    },
+    {
+      "file": "gt_station.csv",
+      "sha256": "55184c36da47d015a2271997ce8b49900ea9c5549947b993082320ec027bfb95",
+      "bytes": 37514,
+      "rows": 129
+    },
+    {
+      "file": "gt_observation.csv.gz",
+      "sha256": "96418918041e387b44da9a62aa038a862da1c8461e7e296dc9dd11e9e18439de",
+      "bytes": 8484,
+      "rows": 705
+    }
+  ],
+  "license": "Road data \u00a9 OpenStreetMap contributors, ODbL. Air quality: SPKU, DLH DKI Jakarta (udara.jakarta.go.id).",
+  "dataset_version": "c9503fc53769"
+}

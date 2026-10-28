@@ -2,6 +2,7 @@ import { compareRoutes, type Comparison } from "./compare";
 import { clear, h, icon } from "./dom";
 import {
   confidenceCategory,
+  estimationSourceLabel,
   exposureUnitLabel,
   fmtCoord,
   fmtDistance,
@@ -218,7 +219,7 @@ function detailSection(resp: RouteResponse): HTMLElement {
     "Sumber rute",
     resp.recommended.routeSource === "baseline" ? "Rute tercepat (metode cadangan)" : "Model rute multi-tujuan (waktu dan paparan)",
   ]);
-  rows.push(["Sumber estimasi", "Model downscaling spasial dari data satelit, meteorologi, dan sensor darat"]);
+  rows.push(["Sumber estimasi", estimationSourceLabel(m.estimationSource, m.downscalingFallback)]);
   if (m.downscalingVersion) rows.push(["Versi model downscaling", m.downscalingVersion]);
   if (m.routePolicyVersion) rows.push(["Versi model rute", m.routePolicyVersion]);
   if (m.graphVersion) rows.push(["Versi data jalan (OpenStreetMap)", m.graphVersion]);

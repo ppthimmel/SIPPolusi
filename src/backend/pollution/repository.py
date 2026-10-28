@@ -50,6 +50,10 @@ LIMIT $1
 """
 
 # Access flags come from the road edge of the same graph_version as the row.
+# The bbox test is the same as the road graph's (osm.repository, bounding boxes
+# overlap): a stricter ST_Intersects here would drop weights of subgraph edges
+# whose bounding box touches the bbox but whose line does not, and the planner
+# would then count them as edges without an estimate (TI-SE-10, D-01).
 _SQL_WEIGHTS_TEMPLATE = """
 SELECT p.edge_id, p.time_window_start,
        round(p.pm25_ugm3::numeric, 4)::float8 AS pm25_ugm3,
@@ -63,7 +67,6 @@ FROM pollution.edge_pollution p
 LEFT JOIN osm.road_edge e ON e.edge_id = p.edge_id AND e.graph_version = p.graph_version
 WHERE p.time_window_start = $1
   AND p.geom && ST_MakeEnvelope($2, $3, $4, $5, 4326)
-  AND ST_Intersects(p.geom, ST_MakeEnvelope($2, $3, $4, $5, 4326))
 ORDER BY p.edge_id
 """
 
@@ -76,6 +79,21 @@ _SQL_WEIGHTS = _SQL_WEIGHTS_TEMPLATE.format(lineage="".join(f", p.{c}" for c in 
 _SQL_WEIGHTS_WITHOUT_LINEAGE = _SQL_WEIGHTS_TEMPLATE.format(lineage="")
 
 _WEIGHT_FIELDS = tuple(EdgeWeight.__dataclass_fields__)
+
+# The run's per-pollutant provenance (source, model version, fallback reason) from
+# one row of the window, for routes read without lineage: one run writes a whole
+# window at once, so every row carries the same model_metadata. No index starts
+# with time_window_start (the key is (edge_id, time_window_start)), so a bare
+# LIMIT 1 seq-scans until it meets the window: up to 1.8 s on Railway, depending
+# on where the window's rows sit in the heap. ORDER BY edge_id walks the primary
+# key instead and stops at the first edge, which every window covers (0.09 ms).
+_SQL_WINDOW_MODEL_METADATA = """
+SELECT model_metadata
+FROM pollution.edge_pollution
+WHERE time_window_start = $1
+ORDER BY edge_id
+LIMIT 1
+"""
 
 # Exposure surface, zoom >= 14 (get_exposure_surface, TI-SE-08): one row per edge of
 # graph_version with its stored geometry, [[lon, lat], ...] rounded to 6 decimals.
@@ -233,6 +251,16 @@ class PollutionRepository:
             rows = await conn.fetch(_SQL_SURFACE_CELLS, window.time_window_start, graph_version,
                                     *envelope.as_list(), *cell_deg, *index_range)
         return [dict(r) for r in rows]
+
+    async def window_model_metadata(self, window: WindowInfo) -> dict:
+        """model_metadata of the run that wrote window ({} for legacy rows): which
+        pollutants came from the registered model and which fell back to IDW."""
+        async with self._db.connection() as conn:
+            value = await conn.fetchval(_SQL_WINDOW_MODEL_METADATA, window.time_window_start)
+        if isinstance(value, str):
+            import json
+            value = json.loads(value)
+        return value if isinstance(value, dict) else {}
 
     async def read_pollution_weight(
         self,

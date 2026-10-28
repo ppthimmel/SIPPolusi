@@ -78,6 +78,16 @@ class ModelVersion(BaseModel):
     route_policy: str | None = Field(description="Versi Route Model, atau astar-baseline saat fallback")
 
 
+class Estimation(BaseModel):
+    model_config = _STRICT
+
+    source: str | None = Field(description=(
+        "Sumber estimasi polusi pada ruas rute: idw = interpolasi sensor darat saja; stgnn atau hybrid = model "
+        "downscaling ikut dipakai; mixed = ruas berbeda sumber; null = tidak tercatat di cache"))
+    fallback_pollutants: list[Literal["pm25", "no2"]] = Field(description=(
+        "Polutan yang estimasinya berasal dari fallback IDW karena model downscaling terdaftar tidak dapat dipakai"))
+
+
 class ComparisonSummary(BaseModel):
     model_config = _STRICT
 
@@ -102,6 +112,7 @@ class RouteMetadata(BaseModel):
     missing_edge_count: int = Field(description="Ruas subgraf tanpa estimasi polusi")
     graph_version: str = Field(description="Versi road graph OSM Cache DB")
     model_version: ModelVersion
+    estimation: Estimation
     solver: str = Field(description="Penyedia yang menghasilkan rute: mock, baseline, atau http")
     comparison: ComparisonSummary
     notes: list[str] = Field(description="Keterangan untuk pengguna: fallback, data kedaluwarsa, ruas tanpa estimasi")

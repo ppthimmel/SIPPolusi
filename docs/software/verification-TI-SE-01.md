@@ -150,3 +150,23 @@ Container dan network project tersebut sudah dihapus setelah verifikasi.
 Graphify diperbarui dengan `D:/conda_envs/base2/Scripts/graphify.exe update .`
 (AST-only, tanpa API); graph akhir memiliki 5.422 node dan memakai tampilan
 komunitas agregat karena melebihi 5.000 node. `git diff --check` bersih.
+
+## Pembaruan PR — 28 Oktober 2026
+
+PR #70 menargetkan dev. Perubahan dev sampai `9ee84d3` digabung ke branch ini;
+konflik penambahan test_cache_flow diselesaikan dengan mempertahankan uji kedua
+branch. Bundle skema dan corpus disinkronkan dengan metadata.estimation pada
+keluaran rute serta source.downscaling_fallback pada input solver dari dev.
+
+Verifikasi ulang setelah penggabungan:
+
+- Suite osm/pollution/planner/public_api dengan `-m 'not cacheflow'`:
+  **339 passed, 15 skipped, 27 deselected**, termasuk uji kontrak/OpenAPI.
+- Suite pollution/planner/public_api dengan `-m cacheflow` pada PostGIS lokal:
+  **26 passed, 1 failed, 219 deselected**. Kegagalan tetap
+  test_examples_are_what_the_api_answers (mismatch pembulatan fixture yang
+  dijelaskan di atas); uji pertukaran kontrak dan kedua uji tambahan dev lulus.
+- Frontend sesudah penggabungan: **117 passed** pada 9 berkas; build produksi
+  berhasil dengan peringatan ukuran chunk yang sama.
+
+Log sesi ini: ci-reports/ti-se-01-merge-{backend,integration,graphify}.log.

@@ -421,6 +421,41 @@
       "title": "EdgeWeightsOut",
       "type": "object"
     },
+    "Estimation": {
+      "additionalProperties": false,
+      "properties": {
+        "source": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Sumber estimasi polusi pada ruas rute: idw = interpolasi sensor darat saja; stgnn atau hybrid = model downscaling ikut dipakai; mixed = ruas berbeda sumber; null = tidak tercatat di cache",
+          "title": "Source"
+        },
+        "fallback_pollutants": {
+          "description": "Polutan yang estimasinya berasal dari fallback IDW karena model downscaling terdaftar tidak dapat dipakai",
+          "items": {
+            "enum": [
+              "pm25",
+              "no2"
+            ],
+            "type": "string"
+          },
+          "title": "Fallback Pollutants",
+          "type": "array"
+        }
+      },
+      "required": [
+        "source",
+        "fallback_pollutants"
+      ],
+      "title": "Estimation",
+      "type": "object"
+    },
     "GraphEdgeOut": {
       "properties": {
         "edge_id": {
@@ -949,6 +984,9 @@
         "model_version": {
           "$ref": "#/$defs/ModelVersion"
         },
+        "estimation": {
+          "$ref": "#/$defs/Estimation"
+        },
         "solver": {
           "description": "Penyedia yang menghasilkan rute: mock, baseline, atau http",
           "title": "Solver",
@@ -1013,6 +1051,7 @@
         "missing_edge_count",
         "graph_version",
         "model_version",
+        "estimation",
         "solver",
         "comparison",
         "notes",
@@ -1503,6 +1542,14 @@
           },
           "title": "Rejected Graph Rows",
           "type": "object"
+        },
+        "downscaling_fallback": {
+          "description": "Polutan yang estimasinya dari fallback, bukan model downscaling terdaftar",
+          "items": {
+            "type": "string"
+          },
+          "title": "Downscaling Fallback",
+          "type": "array"
         }
       },
       "required": [

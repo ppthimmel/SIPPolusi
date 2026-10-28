@@ -9,10 +9,12 @@ RUN chmod +x /docker-entrypoint.d/10-validate-env.sh && rm -f /etc/nginx/conf.d/
 # CACHE_API_UPSTREAM has no default on purpose: the start fails with a
 # message naming the variable instead of proxying to a guessed host (see
 # .env.example).
+# GATEWAY_UPSTREAM_TIMEOUT_S: proxy send/read timeout, 10 s per Table 3.15.
 # Only these variables are substituted, so nginx's own $variables are safe.
 ENV PORT=8080 \
+    GATEWAY_UPSTREAM_TIMEOUT_S=10 \
     NGINX_ENTRYPOINT_LOCAL_RESOLVERS=1 \
-    NGINX_ENVSUBST_FILTER="^(PORT|CACHE_API_UPSTREAM|NGINX_LOCAL_RESOLVERS)$"
+    NGINX_ENVSUBST_FILTER="^(PORT|CACHE_API_UPSTREAM|GATEWAY_UPSTREAM_TIMEOUT_S|NGINX_LOCAL_RESOLVERS)$"
 
 EXPOSE 8080
 

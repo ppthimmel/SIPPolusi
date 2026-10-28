@@ -193,12 +193,17 @@ role, route_source, preference_applied, edge_ids dan metrik berikut.
 | imputed_edge_count | integer ≥ 0 |
 
 Metadata memuat request_id, mode/pollutant/preference, waktu data, versi graf/model,
-sumber/fallback, comparison, notes, CRS, coordinate_order, units dan disclaimer;
+sumber/fallback, estimation, comparison, notes, CRS, coordinate_order, units dan disclaimer;
 field lengkap/required/null ada pada skema. Delta waktu/paparan boleh negatif;
 delta persen null jika denominator nol. Model kontrak output publik menolak
 field tambahan. Backend menghitung geometry/metrik dari edge ID terverifikasi.
 Frontend memvalidasi dan memetakan wire menjadi view types di api.ts; contoh
 policy/fallback yang sama dipakai uji frontend.
+
+`metadata.estimation` memuat `source` (nullable) dan `fallback_pollutants`
+(daftar pm25/no2). Input solver juga memuat `source.downscaling_fallback`
+(default daftar kosong). Keduanya mengikuti metadata provenance terbaru di dev
+dan tercakup dalam bundle skema v1.0.0.
 
 ## Versi dan regenerasi
 
