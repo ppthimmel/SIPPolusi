@@ -17,7 +17,8 @@ result = solve_baseline(
 ## Cost and metrics
 
 For each directed edge, `t_e = length_m / speed_mps`; `T(R) = sum(t_e)` in
-seconds. Default assumed speeds are **5 km/h walking** and **15 km/h cycling**.
+seconds. Default assumed speeds are **1.3 m/s walking** and **4.2 m/s cycling**,
+matching the planner's default mode profiles.
 These are configurable model assumptions in `SPEED_MPS`, not measured journey
 speeds. Traffic lights, congestion, slope, dismounting and surface delays are
 not modelled. Optional CSV columns `walk_time_s` and `bike_time_s` override

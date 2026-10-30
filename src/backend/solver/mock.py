@@ -1,4 +1,4 @@
-"""Deterministic mock solver for Backend development and contract tests.
+"""Deterministic weighted-Dijkstra comparator and backend test solver.
 
 Behaves like the production Route Model without any AI service:
 
@@ -20,11 +20,14 @@ from __future__ import annotations
 import asyncio
 
 from planner.models import SolverInput
+from route_model.costs import edge_exposure, route_totals, weighted_cost
 
 from .cancel import CancelToken, run_cancellable
 from .contract import SOLVER_ERROR, SolveRequest, SolverError, SolverReply
 from .paths import shortest_path
 
+# Despite its name, mock is the default deterministic routing comparator for
+# MORL experiments. Its search is real; only its fault injection is simulated.
 MODEL_VERSION = "mock-1"
 
 
@@ -53,9 +56,9 @@ def _routes(token: CancelToken, si: SolverInput) -> SolverReply:
         return SolverReply("no_route", "policy", False, None, MODEL_VERSION)
 
     by_id = {e.edge_id: e for e in si.edges}
-    t_ref = sum(by_id[i].travel_time_s for i in fastest) or 1.0
-    e_ref = sum(by_id[i].exposure_index * by_id[i].travel_time_s for i in fastest) or 1.0
+    t_ref, e_ref = route_totals((by_id[i].travel_time_s, by_id[i].exposure_index) for i in fastest)
     alpha, beta = si.preference.alpha, si.preference.beta
     recommended = shortest_path(
-        si, lambda e: alpha * e.travel_time_s / t_ref + beta * e.exposure_index * e.travel_time_s / e_ref, token)
+        si, lambda e: weighted_cost(e.travel_time_s, edge_exposure(e.travel_time_s, e.exposure_index),
+                                   t_ref, e_ref, alpha, beta), token)
     return SolverReply("ok", "policy", True, None, MODEL_VERSION, recommended or fastest, fastest)
