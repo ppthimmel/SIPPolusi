@@ -22,7 +22,10 @@ else:  # Preserve direct invocation of astar_osm.py as a CLI.
     from route_metrics import ExposureSnapshot, evaluate_route
 
 DEFAULT_GRAPH = Path(__file__).resolve().parents[2] / "data_worker/dataset_processed/OSM"
-SPEED_MPS = {"walk": 5 / 3.6, "bike": 15 / 3.6}
+# Standalone defaults must match osm/config.py's ModeProfile defaults; check
+# docs/route-time-exposure.md and route_model/README.md when changing them.
+# The backend planner can override its speeds through OSM_*_SPEED_MPS.
+SPEED_MPS = {"walk": 1.3, "bike": 4.2}
 EARTH_RADIUS_M = 6_371_008.8
 _LOAD_LOCK = threading.Lock()
 
@@ -250,6 +253,8 @@ def load_graph(folder, mode):
             if not boolean(row["walk_allowed" if mode == "walk" else "bike_allowed"]):
                 continue
             length = float(row["length_m"])
+            # Exported walk_time_s/bike_time_s override the default speed for
+            # this edge; planner-provided edge times are already computed.
             explicit = row.get(mode + "_time_s")
             seconds = float(explicit) if explicit else length / SPEED_MPS[mode]
             edges.append((Edge(edge_id, int(row["u"]), int(row["v"]), length, seconds, row["geom_wkt"]),

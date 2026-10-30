@@ -10,6 +10,10 @@ is unreachable from origin node **9398103262**. Reachability-aware snapping
 selects **2624398882**, 202.67 m from the requested destination, and finds a
 6,304.12 m route with estimated time 1,512.99 s (25.22 min at 15 km/h).
 Walking yields 5,190.01 m and 3,736.81 s (62.28 min at 5 km/h).
+
+These are historical results from the original 5 and 15 km/h defaults. The
+standalone baseline now defaults to 1.3 and 4.2 m/s, matching the planner; these
+recorded results have not been rerun with the new defaults.
 The offsets are reported; access travel outside the road graph is not modelled.
 
 Two requests per mode produce identical GeoJSON hashes. Measured locally on

@@ -151,8 +151,8 @@ class ExportTests(unittest.TestCase):
             folder = Path(tmp)
             write_export(folder)
             walk, bike = load_graph(folder, "walk"), load_graph(folder, "bike")
-            self.assertAlmostEqual(walk.search(1, 2)[1], 72)
-            self.assertAlmostEqual(bike.search(1, 2)[1], 24)
+            self.assertAlmostEqual(walk.search(1, 2)[1], 100 / 1.3)
+            self.assertAlmostEqual(bike.search(1, 2)[1], 100 / 4.2)
             self.assertIsNotNone(walk.search(2, 1)[0])
             self.assertIsNone(bike.search(2, 1)[0])
             edge_file = folder / "road_edge.csv.gz"
