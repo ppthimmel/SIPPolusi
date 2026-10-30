@@ -127,7 +127,7 @@ def run_source(store: FeatureStore, source: str, window: TimeWindow, policy: Pol
             counts["failed_requests"], f": {result.note}" if result.note else "")
     return {"status": result.status, "fetch_id": fetch_id, "products_new": result.products_new,
             "rows_written": result.rows_written, **counts, **({"note": result.note} if result.note else {}),
-            **{k: v for k, v in result.detail.items() if k in ("pending", "hours", "published_hours")}}
+            **{k: v for k, v in result.detail.items() if k in ("pending", "hours", "published_hours", "waiting_hours")}}
 
 
 def combine(sources: dict) -> dict:
@@ -161,7 +161,13 @@ def _geoscf_ana(store: FeatureStore, now: dt.datetime):
         stored = store.stored_ana_hours(pd.Timestamp(now) - pd.Timedelta(hours=geoscf.ANA_LOOKBACK_HOURS + 8))
         frame, info = geoscf.fetch_ana(client, now, stored)
         rows = store.write_geoscf_ana(frame, fetch_id, now)
-        return SourceResult("ok", products_new=int(info.get("published_hours", 0)), rows_written=rows, detail=info)
+        new, waiting = int(info.get("published_hours", 0)), int(info.get("waiting_hours", 0))
+        note = (f"{waiting} jam sudah terbit tetapi belum ada pada agregasi OPeNDAP "
+                f"({info['opendap_hours']} jam); diperiksa lagi pada siklus berikutnya") if waiting else None
+        # Tertinggalnya agregasi bukan kegagalan: tanpa jam baru sama sekali sumber "unavailable"
+        # (siklus degraded), selain itu "ok" dengan catatan.
+        status = "unavailable" if waiting and not new else "ok"
+        return SourceResult(status, products_new=new, rows_written=rows, note=note, detail=info)
     return run
 
 

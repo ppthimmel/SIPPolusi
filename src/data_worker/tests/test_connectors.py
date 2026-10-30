@@ -223,8 +223,12 @@ def test_geoscf_ana_kandidat_melewati_jam_tersimpan():
     assert stored.isdisjoint(pending) and len(pending) == geoscf.ANA_LOOKBACK_HOURS - 1
 
 
-def _ana_routes(head_status=200):
+def _ana_routes(head_status=200, opendap_hours=None):
+    """Rekaman ana; ``opendap_hours`` memendekkan sumbu agregasi OPeNDAP (agregasi tertinggal)."""
     meta = fixture_json("geoscf_ana_meta.json")
+    dds = fixture_text("geoscf_ana.dds")
+    if opendap_hours is not None:
+        dds = dds.replace("time = 10752", f"time = {opendap_hours}")
     by_name = {geoscf.ana_file_url(pd.Timestamp(k)).rsplit("/", 1)[1]: v for k, v in meta["last_modified"].items()}
 
     def head(url, kwargs):
@@ -233,7 +237,7 @@ def _ana_routes(head_status=200):
             return FakeResponse(head_status, headers={"Last-Modified": by_name[name]})
         return FakeResponse(404)
     return [("HEAD", "datashare", head),
-            ("GET", ".dds", FakeResponse(200, fixture_text("geoscf_ana.dds"))),
+            ("GET", ".dds", FakeResponse(200, dds)),
             ("GET", "time[0:0]", FakeResponse(200, fixture_text("geoscf_ana_time0.ascii"))),
             ("GET", "pm25_rh35", FakeResponse(200, fixture_text("geoscf_ana_subset.ascii")))]
 
@@ -249,6 +253,29 @@ def test_geoscf_fetch_ana_tanpa_jam_baru_tidak_meminta_subset():
     now = dt.datetime(2026, 10, 1, 5, 15, tzinfo=UTC)
     frame, info = geoscf.fetch_ana(c, now, stored=set(ANA_HOURS))
     assert frame.empty and info["published_hours"] == 0
+    assert not any("pm25_rh35" in url for _, url, _ in c.session.calls)
+
+
+def _ana_axis_index(hour):
+    first, _ = geoscf.ana_axis(client(_ana_routes()))
+    return geoscf.ana_index(first, hour)
+
+
+def test_geoscf_fetch_ana_jam_di_luar_agregasi_ditunda():
+    # Berkas jam terakhir sudah ada di datashare, tetapi agregasi OPeNDAP belum memuatnya.
+    c = client(_ana_routes(opendap_hours=_ana_axis_index(ANA_HOURS[-1])))
+    frame, info = geoscf.fetch_ana(c, dt.datetime(2026, 10, 1, 5, 15, tzinfo=UTC), stored=set())
+    assert set(frame.time_window_start) == set(ANA_HOURS[:-1]) and len(frame) == 18
+    assert info["published_hours"] == 2 and info["waiting_hours"] == 1
+    subset = [url for _, url, _ in c.session.calls if "pm25_rh35" in url]
+    last = _ana_axis_index(ANA_HOURS[-2])
+    assert len(subset) == 1 and f"[{last - 1}:{last}]" in subset[0]
+
+
+def test_geoscf_fetch_ana_seluruh_jam_di_luar_agregasi_tanpa_subset():
+    c = client(_ana_routes(opendap_hours=_ana_axis_index(ANA_HOURS[0])))
+    frame, info = geoscf.fetch_ana(c, dt.datetime(2026, 10, 1, 5, 15, tzinfo=UTC), stored=set())
+    assert frame.empty and info["published_hours"] == 0 and info["waiting_hours"] == 3
     assert not any("pm25_rh35" in url for _, url, _ in c.session.calls)
 
 

@@ -90,9 +90,13 @@ def ana_axis(client: HttpClient) -> tuple[pd.Timestamp, int]:
     return first, int(match.group(1))
 
 
+def ana_index(first: pd.Timestamp, start: pd.Timestamp) -> int:
+    """Indeks jam ``start`` pada sumbu waktu agregasi OPeNDAP ``ana``."""
+    return int((start + pd.Timedelta(minutes=30) - first) / pd.Timedelta(hours=1))
+
+
 def ana_query(first: pd.Timestamp, starts: list[pd.Timestamp]) -> tuple[str, int, int]:
-    i0 = int((min(starts) + pd.Timedelta(minutes=30) - first) / pd.Timedelta(hours=1))
-    i1 = int((max(starts) + pd.Timedelta(minutes=30) - first) / pd.Timedelta(hours=1))
+    i0, i1 = ana_index(first, min(starts)), ana_index(first, max(starts))
     (a, b), (c, d) = LAT_INDEX, LON_INDEX
     sub = f"[{i0}:{i1}][0][{a}:{b}][{c}:{d}]"
     query = f"pm25_rh35{sub},no2{sub},time[{i0}:{i1}],lat[{a}:{b}],lon[{c}:{d}]"
@@ -143,7 +147,13 @@ def parse_ana(text: str, published: dict) -> tuple[pd.DataFrame, dict]:
 
 
 def fetch_ana(client: HttpClient, now: dt.datetime, stored: set) -> tuple[pd.DataFrame, dict]:
-    """Jam ``ana`` yang baru terbit sejak siklus sebelumnya; kosong bila tidak ada yang baru."""
+    """Jam ``ana`` yang baru terbit sejak siklus sebelumnya; kosong bila tidak ada yang baru.
+
+    Agregasi OPeNDAP dapat tertinggal dari berkas jam di datashare (28 Oktober 2026: tertahan
+    sekitar 7 jam). Jam yang sudah terbit tetapi belum masuk agregasi tidak diminta; jam itu
+    tetap belum tersimpan, sehingga diperiksa lagi pada siklus berikutnya seperti jam yang
+    belum terbit, dan dihitung pada ``waiting_hours``.
+    """
     published = {}
     pending = ana_candidates(now, stored)
     for start in pending[-ANA_MAX_HEADS:]:
@@ -154,9 +164,13 @@ def fetch_ana(client: HttpClient, now: dt.datetime, stored: set) -> tuple[pd.Dat
     if not published:
         return pd.DataFrame(), info
     first, length = ana_axis(client)
-    url, i0, i1 = ana_query(first, list(published))
-    if i1 >= length:
-        raise FormatError(f"geoscf_ana: jam terbit belum ada pada agregasi OPeNDAP (indeks {i1} ≥ {length})")
+    waiting = {h for h in published if ana_index(first, h) >= length}
+    if waiting:
+        published = {h: t for h, t in published.items() if h not in waiting}
+        info.update(published_hours=len(published), waiting_hours=len(waiting), opendap_hours=length)
+        if not published:
+            return pd.DataFrame(), info
+    url, _, _ = ana_query(first, list(published))
     frame, quality = parse_ana(client.get(url, timeout=OPENDAP_TIMEOUT_S).text, published)
     if frame.time_window_start.nunique() != len(published):
         raise FormatError("geoscf_ana: subset tidak memuat seluruh jam yang diminta")
