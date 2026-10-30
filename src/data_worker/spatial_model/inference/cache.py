@@ -90,8 +90,27 @@ def _as_frame(edge_weights) -> pd.DataFrame:
         raise ValueError(f"kolom EdgeWeight hilang: {missing}")
     if df["edge_id"].duplicated().any():
         raise ValueError("edge_id ganda pada EdgeWeight satu time window")
+    if not df.empty:
+        if not pd.api.types.is_integer_dtype(df["edge_id"].dtype) or pd.api.types.is_bool_dtype(df["edge_id"].dtype):
+            raise ValueError("EdgeWeight.edge_id wajib integer BIGINT")
+        if df["edge_id"].isna().any() or not df["edge_id"].between(-(2**63), 2**63 - 1).all():
+            raise ValueError("EdgeWeight.edge_id di luar rentang BIGINT")
+        for name in ("pm25_ugm3", "no2_ugm3", "exposure_index", "confidence_score"):
+            values = df[name].dropna()
+            if not values.empty and (not pd.api.types.is_numeric_dtype(values.dtype)
+                                     or pd.api.types.is_bool_dtype(values.dtype)):
+                raise ValueError(f"EdgeWeight.{name} wajib numerik atau kosong")
+            if not values.empty and (not np.isfinite(values).all() or (values < 0).any()
+                                     or (name == "confidence_score" and (values > 1).any())):
+                raise ValueError(f"EdgeWeight.{name} di luar batas")
+    for metadata in df["model_metadata"]:
+        if not isinstance(metadata, dict):
+            raise ValueError("EdgeWeight.model_metadata wajib object JSON")
+        json.dumps(metadata, allow_nan=False)
     if not df["estimation_source"].isin(["stgnn", "idw", "hybrid"]).all():
         raise ValueError("estimation_source wajib 'stgnn', 'idw' atau 'hybrid'")
+    if not df["background_source"].dropna().isin(["aod", "reanalysis"]).all():
+        raise ValueError("background_source wajib 'aod', 'reanalysis' atau kosong")
     return df[EDGE_WEIGHT_COLUMNS]
 
 
@@ -127,6 +146,19 @@ def write_pollution_weight(
     transaksi ditutup; dipakai uji untuk menyuntikkan galat (UT-OPS-02c).
     Mengembalikan jumlah baris yang ditulis.
     """
+    for name, value in (("graph_version", graph_version), ("model_version", model_version)):
+        if not isinstance(value, str) or not value.strip():
+            raise ValueError(f"{name} wajib string tidak kosong")
+    if coverage_ratio is not None and (not np.isfinite(coverage_ratio) or not 0 <= coverage_ratio <= 1):
+        raise ValueError("coverage_ratio wajib 0..1 atau None")
+    # Dataclass inputs carry their own window; DataFrame inputs use the batch window.
+    if not isinstance(edge_weights, pd.DataFrame):
+        edge_weights = list(edge_weights)
+        if any(w.time_window_start != time_window.start for w in edge_weights):
+            raise ValueError("EdgeWeight.time_window_start berbeda dari batch time_window")
+    elif "time_window_start" in edge_weights:
+        if any(v != time_window.start for v in edge_weights["time_window_start"]):
+            raise ValueError("EdgeWeight.time_window_start berbeda dari batch time_window")
     df = _as_frame(edge_weights)
     if trace is None:
         raise ValueError("Cache writes require source-cell provenance (InferenceTrace)")

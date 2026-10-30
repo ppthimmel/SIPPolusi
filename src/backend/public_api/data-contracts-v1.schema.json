@@ -1,0 +1,1662 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:sippolusi:data-contracts:1.0.0",
+  "title": "SIPPolusi data exchange contracts",
+  "description": "Select a type using #/$defs/<type>. Cross-field rules require runtime validation; see the TI-SE-01 contract document.",
+  "x-contract-version": "1.0.0",
+  "$defs": {
+    "ComparisonSummary": {
+      "additionalProperties": false,
+      "properties": {
+        "delta_travel_time_min": {
+          "description": "T(rekomendasi) − T(pembanding), menit",
+          "title": "Delta Travel Time Min",
+          "type": "number"
+        },
+        "delta_exposure_pct": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Perubahan E(R) rekomendasi terhadap pembanding, %",
+          "title": "Delta Exposure Pct"
+        }
+      },
+      "required": [
+        "delta_travel_time_min",
+        "delta_exposure_pct"
+      ],
+      "title": "ComparisonSummary",
+      "type": "object"
+    },
+    "EdgeWeight": {
+      "properties": {
+        "edge_id": {
+          "title": "Edge Id",
+          "type": "integer"
+        },
+        "pm25_ugm3": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Pm25 Ugm3"
+        },
+        "no2_ugm3": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "No2 Ugm3"
+        },
+        "exposure_index": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Exposure Index"
+        },
+        "confidence_score": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Confidence Score"
+        },
+        "background_source": {
+          "anyOf": [
+            {
+              "enum": [
+                "aod",
+                "reanalysis"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Background Source"
+        },
+        "estimation_source": {
+          "anyOf": [
+            {
+              "enum": [
+                "stgnn",
+                "idw",
+                "hybrid"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Estimation Source"
+        },
+        "model_metadata": {
+          "additionalProperties": true,
+          "title": "Model Metadata",
+          "type": "object"
+        },
+        "trace_run_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Trace Run Id"
+        },
+        "graph_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Graph Version"
+        },
+        "model_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Model Version"
+        }
+      },
+      "required": [
+        "edge_id",
+        "pm25_ugm3",
+        "no2_ugm3",
+        "exposure_index",
+        "confidence_score",
+        "background_source",
+        "estimation_source",
+        "graph_version",
+        "model_version"
+      ],
+      "title": "EdgeWeightOut",
+      "type": "object"
+    },
+    "EdgeWeightOut": {
+      "properties": {
+        "edge_id": {
+          "title": "Edge Id",
+          "type": "integer"
+        },
+        "pm25_ugm3": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Pm25 Ugm3"
+        },
+        "no2_ugm3": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "No2 Ugm3"
+        },
+        "exposure_index": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Exposure Index"
+        },
+        "confidence_score": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Confidence Score"
+        },
+        "background_source": {
+          "anyOf": [
+            {
+              "enum": [
+                "aod",
+                "reanalysis"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Background Source"
+        },
+        "estimation_source": {
+          "anyOf": [
+            {
+              "enum": [
+                "stgnn",
+                "idw",
+                "hybrid"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Estimation Source"
+        },
+        "model_metadata": {
+          "additionalProperties": true,
+          "title": "Model Metadata",
+          "type": "object"
+        },
+        "trace_run_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Trace Run Id"
+        },
+        "graph_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Graph Version"
+        },
+        "model_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Model Version"
+        }
+      },
+      "required": [
+        "edge_id",
+        "pm25_ugm3",
+        "no2_ugm3",
+        "exposure_index",
+        "confidence_score",
+        "background_source",
+        "estimation_source",
+        "graph_version",
+        "model_version"
+      ],
+      "title": "EdgeWeightOut",
+      "type": "object"
+    },
+    "EdgeWeights": {
+      "properties": {
+        "time_window_start": {
+          "format": "date-time",
+          "title": "Time Window Start",
+          "type": "string"
+        },
+        "time_window_end": {
+          "format": "date-time",
+          "title": "Time Window End",
+          "type": "string"
+        },
+        "model_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Model Version"
+        },
+        "coverage_ratio": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Coverage Ratio"
+        },
+        "graph_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Versi graf yang dipakai menyaring baris; null = tanpa filter",
+          "title": "Graph Version"
+        },
+        "mode": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Mode"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "bbox": {
+          "items": {
+            "type": "number"
+          },
+          "title": "Bbox",
+          "type": "array"
+        },
+        "data_stale": {
+          "title": "Data Stale",
+          "type": "boolean"
+        },
+        "age_minutes": {
+          "title": "Age Minutes",
+          "type": "number"
+        },
+        "count": {
+          "title": "Count",
+          "type": "integer"
+        },
+        "excluded": {
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "description": "Baris di dalam bbox yang tidak dikembalikan, per alasan",
+          "title": "Excluded",
+          "type": "object"
+        },
+        "weights": {
+          "items": {
+            "$ref": "#/$defs/EdgeWeightOut"
+          },
+          "title": "Weights",
+          "type": "array"
+        }
+      },
+      "required": [
+        "time_window_start",
+        "time_window_end",
+        "model_version",
+        "coverage_ratio",
+        "graph_version",
+        "mode",
+        "bbox",
+        "data_stale",
+        "age_minutes",
+        "count",
+        "excluded",
+        "weights"
+      ],
+      "title": "EdgeWeightsOut",
+      "type": "object"
+    },
+    "Estimation": {
+      "additionalProperties": false,
+      "properties": {
+        "source": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Sumber estimasi polusi pada ruas rute: idw = interpolasi sensor darat saja; stgnn atau hybrid = model downscaling ikut dipakai; mixed = ruas berbeda sumber; null = tidak tercatat di cache",
+          "title": "Source"
+        },
+        "fallback_pollutants": {
+          "description": "Polutan yang estimasinya berasal dari fallback IDW karena model downscaling terdaftar tidak dapat dipakai",
+          "items": {
+            "enum": [
+              "pm25",
+              "no2"
+            ],
+            "type": "string"
+          },
+          "title": "Fallback Pollutants",
+          "type": "array"
+        }
+      },
+      "required": [
+        "source",
+        "fallback_pollutants"
+      ],
+      "title": "Estimation",
+      "type": "object"
+    },
+    "GraphEdgeOut": {
+      "properties": {
+        "edge_id": {
+          "title": "Edge Id",
+          "type": "integer"
+        },
+        "u": {
+          "title": "U",
+          "type": "integer"
+        },
+        "v": {
+          "title": "V",
+          "type": "integer"
+        },
+        "length_m": {
+          "description": "Length, metres",
+          "exclusiveMinimum": 0,
+          "title": "Length M",
+          "type": "number"
+        },
+        "highway": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Highway"
+        },
+        "name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Name"
+        },
+        "oneway": {
+          "title": "Oneway",
+          "type": "boolean"
+        },
+        "walk_allowed": {
+          "title": "Walk Allowed",
+          "type": "boolean"
+        },
+        "bike_allowed": {
+          "title": "Bike Allowed",
+          "type": "boolean"
+        },
+        "osm_way_id": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Osm Way Id"
+        },
+        "coordinates": {
+          "anyOf": [
+            {
+              "items": {
+                "items": false,
+                "maxItems": 2,
+                "minItems": 2,
+                "prefixItems": [
+                  {
+                    "maximum": 180,
+                    "minimum": -180,
+                    "type": "number"
+                  },
+                  {
+                    "maximum": 90,
+                    "minimum": -90,
+                    "type": "number"
+                  }
+                ],
+                "type": "array"
+              },
+              "minItems": 2,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "[[lon, lat], ...] from u to v; null if not requested",
+          "title": "Coordinates"
+        }
+      },
+      "required": [
+        "edge_id",
+        "u",
+        "v",
+        "length_m",
+        "highway",
+        "name",
+        "oneway",
+        "walk_allowed",
+        "bike_allowed",
+        "osm_way_id",
+        "coordinates"
+      ],
+      "title": "GraphEdgeOut",
+      "type": "object"
+    },
+    "GraphNodeOut": {
+      "properties": {
+        "node_id": {
+          "title": "Node Id",
+          "type": "integer"
+        },
+        "lon": {
+          "maximum": 180,
+          "minimum": -180,
+          "title": "Lon",
+          "type": "number"
+        },
+        "lat": {
+          "maximum": 90,
+          "minimum": -90,
+          "title": "Lat",
+          "type": "number"
+        },
+        "tags": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Tags",
+          "type": "object"
+        }
+      },
+      "required": [
+        "node_id",
+        "lon",
+        "lat",
+        "tags"
+      ],
+      "title": "GraphNodeOut",
+      "type": "object"
+    },
+    "LineString": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "LineString",
+          "title": "Type",
+          "type": "string"
+        },
+        "coordinates": {
+          "description": "[lon, lat] WGS 84 (CRS84), searah perjalanan",
+          "items": {
+            "items": false,
+            "maxItems": 2,
+            "minItems": 2,
+            "prefixItems": [
+              {
+                "maximum": 180,
+                "minimum": -180,
+                "type": "number"
+              },
+              {
+                "maximum": 90,
+                "minimum": -90,
+                "type": "number"
+              }
+            ],
+            "type": "array"
+          },
+          "minItems": 2,
+          "title": "Coordinates",
+          "type": "array"
+        }
+      },
+      "required": [
+        "type",
+        "coordinates"
+      ],
+      "title": "LineString",
+      "type": "object"
+    },
+    "Mode": {
+      "description": "Travel mode and its access rules (handoff_database.md, bagian 3 butir 7).",
+      "enum": [
+        "walk",
+        "bike"
+      ],
+      "title": "Mode",
+      "type": "string"
+    },
+    "ModelVersion": {
+      "additionalProperties": false,
+      "properties": {
+        "downscaling": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Versi Spatial Downscaling Model untuk time window yang dipakai",
+          "title": "Downscaling"
+        },
+        "route_policy": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Versi Route Model, atau astar-baseline saat fallback",
+          "title": "Route Policy"
+        }
+      },
+      "required": [
+        "downscaling",
+        "route_policy"
+      ],
+      "title": "ModelVersion",
+      "type": "object"
+    },
+    "Point": {
+      "properties": {
+        "lat": {
+          "description": "Latitude WGS 84, degrees",
+          "maximum": 90,
+          "minimum": -90,
+          "title": "Lat",
+          "type": "number"
+        },
+        "lon": {
+          "description": "Longitude WGS 84, degrees",
+          "maximum": 180,
+          "minimum": -180,
+          "title": "Lon",
+          "type": "number"
+        }
+      },
+      "required": [
+        "lat",
+        "lon"
+      ],
+      "title": "PointModel",
+      "type": "object"
+    },
+    "PointModel": {
+      "properties": {
+        "lat": {
+          "description": "Latitude WGS 84, degrees",
+          "maximum": 90,
+          "minimum": -90,
+          "title": "Lat",
+          "type": "number"
+        },
+        "lon": {
+          "description": "Longitude WGS 84, degrees",
+          "maximum": 180,
+          "minimum": -180,
+          "title": "Lon",
+          "type": "number"
+        }
+      },
+      "required": [
+        "lat",
+        "lon"
+      ],
+      "title": "PointModel",
+      "type": "object"
+    },
+    "PreferenceIn": {
+      "properties": {
+        "alpha": {
+          "description": "Bobot waktu tempuh α, tanpa satuan, 0–1",
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Alpha",
+          "type": "number"
+        },
+        "beta": {
+          "description": "Bobot paparan β, tanpa satuan, 0–1; α + β = 1 (toleransi 1e-6)",
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Beta",
+          "type": "number"
+        }
+      },
+      "required": [
+        "alpha",
+        "beta"
+      ],
+      "title": "PreferenceIn",
+      "type": "object"
+    },
+    "PreferenceOut": {
+      "properties": {
+        "alpha": {
+          "title": "Alpha",
+          "type": "number"
+        },
+        "beta": {
+          "title": "Beta",
+          "type": "number"
+        }
+      },
+      "required": [
+        "alpha",
+        "beta"
+      ],
+      "title": "PreferenceOut",
+      "type": "object"
+    },
+    "RoadGraph": {
+      "properties": {
+        "graph_version": {
+          "minLength": 1,
+          "title": "Graph Version",
+          "type": "string"
+        },
+        "mode": {
+          "$ref": "#/$defs/Mode"
+        },
+        "bbox": {
+          "items": {
+            "type": "number"
+          },
+          "maxItems": 4,
+          "minItems": 4,
+          "title": "Bbox",
+          "type": "array"
+        },
+        "node_count": {
+          "minimum": 0,
+          "title": "Node Count",
+          "type": "integer"
+        },
+        "edge_count": {
+          "minimum": 0,
+          "title": "Edge Count",
+          "type": "integer"
+        },
+        "rejected": {
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "description": "Rows left out by validation, per reason",
+          "title": "Rejected",
+          "type": "object"
+        },
+        "nodes": {
+          "items": {
+            "$ref": "#/$defs/GraphNodeOut"
+          },
+          "title": "Nodes",
+          "type": "array"
+        },
+        "edges": {
+          "items": {
+            "$ref": "#/$defs/GraphEdgeOut"
+          },
+          "title": "Edges",
+          "type": "array"
+        }
+      },
+      "required": [
+        "graph_version",
+        "mode",
+        "bbox",
+        "node_count",
+        "edge_count",
+        "rejected",
+        "nodes",
+        "edges"
+      ],
+      "title": "RoadGraphOut",
+      "type": "object"
+    },
+    "RouteContextOut": {
+      "properties": {
+        "mode": {
+          "$ref": "#/$defs/Mode"
+        },
+        "speed_mps": {
+          "title": "Speed Mps",
+          "type": "number"
+        },
+        "preference": {
+          "$ref": "#/$defs/PreferenceOut"
+        },
+        "pollutant": {
+          "title": "Pollutant",
+          "type": "string"
+        },
+        "bbox": {
+          "items": {
+            "type": "number"
+          },
+          "title": "Bbox",
+          "type": "array"
+        },
+        "origin": {
+          "$ref": "#/$defs/SnappedPointOut"
+        },
+        "destination": {
+          "$ref": "#/$defs/SnappedPointOut"
+        },
+        "same_node": {
+          "title": "Same Node",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "mode",
+        "speed_mps",
+        "preference",
+        "pollutant",
+        "bbox",
+        "origin",
+        "destination",
+        "same_node"
+      ],
+      "title": "RouteContextOut",
+      "type": "object"
+    },
+    "RouteFeature": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "Feature",
+          "title": "Type",
+          "type": "string"
+        },
+        "geometry": {
+          "$ref": "#/$defs/LineString"
+        },
+        "properties": {
+          "$ref": "#/$defs/RouteProperties"
+        }
+      },
+      "required": [
+        "type",
+        "geometry",
+        "properties"
+      ],
+      "title": "RouteFeature",
+      "type": "object"
+    },
+    "RouteMetadata": {
+      "additionalProperties": false,
+      "properties": {
+        "request_id": {
+          "title": "Request Id",
+          "type": "string"
+        },
+        "mode": {
+          "$ref": "#/$defs/Mode"
+        },
+        "pollutant": {
+          "description": "Polutan acuan untuk exposure_ug_min_m3",
+          "enum": [
+            "pm25",
+            "no2"
+          ],
+          "title": "Pollutant",
+          "type": "string"
+        },
+        "preference": {
+          "$ref": "#/$defs/PreferenceOut"
+        },
+        "route_source": {
+          "enum": [
+            "policy",
+            "baseline"
+          ],
+          "title": "Route Source",
+          "type": "string"
+        },
+        "preference_applied": {
+          "title": "Preference Applied",
+          "type": "boolean"
+        },
+        "fallback_reason": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "null bila rute rekomendasi dari model. Saat fallback: model_timeout, model_unavailable, model_error, model_invalid_response, model_no_route; policy_unavailable bila penyedianya baseline",
+          "title": "Fallback Reason"
+        },
+        "time_window_start": {
+          "description": "Awal time window polusi (ISO 8601, UTC)",
+          "format": "date-time",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}[Tt]\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?(?:[Zz]|[+-](?:[01]\\d|2[0-3]):[0-5]\\d)$",
+          "title": "Time Window Start",
+          "type": "string"
+        },
+        "data_stale": {
+          "description": "true bila time window terakhir berakhir lebih dari 3 jam lalu",
+          "title": "Data Stale",
+          "type": "boolean"
+        },
+        "missing_edge_count": {
+          "description": "Ruas subgraf tanpa estimasi polusi",
+          "title": "Missing Edge Count",
+          "type": "integer"
+        },
+        "graph_version": {
+          "description": "Versi road graph OSM Cache DB",
+          "title": "Graph Version",
+          "type": "string"
+        },
+        "model_version": {
+          "$ref": "#/$defs/ModelVersion"
+        },
+        "estimation": {
+          "$ref": "#/$defs/Estimation"
+        },
+        "solver": {
+          "description": "Penyedia yang menghasilkan rute: mock, baseline, atau http",
+          "title": "Solver",
+          "type": "string"
+        },
+        "comparison": {
+          "$ref": "#/$defs/ComparisonSummary"
+        },
+        "notes": {
+          "description": "Keterangan untuk pengguna: fallback, data kedaluwarsa, ruas tanpa estimasi",
+          "items": {
+            "type": "string"
+          },
+          "title": "Notes",
+          "type": "array"
+        },
+        "crs": {
+          "const": "urn:ogc:def:crs:OGC::CRS84",
+          "description": "Sistem acuan koordinat (RFC 7946: WGS 84)",
+          "title": "Crs",
+          "type": "string"
+        },
+        "coordinate_order": {
+          "description": "Urutan sumbu koordinat: [lon, lat]",
+          "items": {
+            "enum": [
+              "lon",
+              "lat"
+            ],
+            "type": "string"
+          },
+          "title": "Coordinate Order",
+          "type": "array"
+        },
+        "units": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Satuan setiap metrik numerik pada properties dan metadata.comparison",
+          "title": "Units",
+          "type": "object"
+        },
+        "exposure_index_definition": {
+          "title": "Exposure Index Definition",
+          "type": "string"
+        },
+        "disclaimer": {
+          "title": "Disclaimer",
+          "type": "string"
+        }
+      },
+      "required": [
+        "request_id",
+        "mode",
+        "pollutant",
+        "preference",
+        "route_source",
+        "preference_applied",
+        "fallback_reason",
+        "time_window_start",
+        "data_stale",
+        "missing_edge_count",
+        "graph_version",
+        "model_version",
+        "estimation",
+        "solver",
+        "comparison",
+        "notes",
+        "crs",
+        "coordinate_order",
+        "units",
+        "exposure_index_definition",
+        "disclaimer"
+      ],
+      "title": "RouteMetadata",
+      "type": "object"
+    },
+    "RouteOutput": {
+      "additionalProperties": false,
+      "description": "GeoJSON FeatureCollection (RFC 7946, Kode 3.2): Feature recommended lalu comparison.",
+      "properties": {
+        "type": {
+          "const": "FeatureCollection",
+          "title": "Type",
+          "type": "string"
+        },
+        "features": {
+          "items": {
+            "$ref": "#/$defs/RouteFeature"
+          },
+          "maxItems": 2,
+          "minItems": 2,
+          "title": "Features",
+          "type": "array"
+        },
+        "metadata": {
+          "$ref": "#/$defs/RouteMetadata"
+        }
+      },
+      "required": [
+        "type",
+        "features",
+        "metadata"
+      ],
+      "title": "RouteFeatureCollection",
+      "type": "object"
+    },
+    "RouteProperties": {
+      "additionalProperties": false,
+      "properties": {
+        "role": {
+          "description": "recommended = rute rekomendasi; comparison = rute tercepat sebagai pembanding",
+          "enum": [
+            "recommended",
+            "comparison"
+          ],
+          "title": "Role",
+          "type": "string"
+        },
+        "route_source": {
+          "description": "policy = hasil Multi-Objective Route Model; baseline = rute tercepat (A*)",
+          "enum": [
+            "policy",
+            "baseline"
+          ],
+          "title": "Route Source",
+          "type": "string"
+        },
+        "preference_applied": {
+          "description": "Apakah preferensi α/β diterapkan; selalu false untuk baseline",
+          "title": "Preference Applied",
+          "type": "boolean"
+        },
+        "travel_time_min": {
+          "description": "T(R), menit",
+          "minimum": 0,
+          "title": "Travel Time Min",
+          "type": "number"
+        },
+        "distance_m": {
+          "description": "Panjang rute, meter",
+          "minimum": 0,
+          "title": "Distance M",
+          "type": "number"
+        },
+        "exposure_index_min": {
+          "description": "E(R) = Σ Iₑ·τₑ, indeks·menit",
+          "minimum": 0,
+          "title": "Exposure Index Min",
+          "type": "number"
+        },
+        "exposure_ug_min_m3": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Σ konsentrasi polutan acuan · τₑ, µg·min/m³; null bila ada ruas tanpa konsentrasi",
+          "title": "Exposure Ug Min M3"
+        },
+        "concentration_coverage": {
+          "description": "Bagian ruas yang memiliki konsentrasi, 0–1",
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Concentration Coverage",
+          "type": "number"
+        },
+        "confidence_score": {
+          "description": "Rata-rata confidence ruas berbobot paparan, 0–1",
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Confidence Score",
+          "type": "number"
+        },
+        "imputed_edge_count": {
+          "description": "Jumlah ruas yang indeksnya diisi median wilayah",
+          "minimum": 0,
+          "title": "Imputed Edge Count",
+          "type": "integer"
+        },
+        "edge_ids": {
+          "description": "Urutan edge_id OSM Cache DB dari asal ke tujuan",
+          "items": {
+            "type": "integer"
+          },
+          "title": "Edge Ids",
+          "type": "array"
+        }
+      },
+      "required": [
+        "role",
+        "route_source",
+        "preference_applied",
+        "travel_time_min",
+        "distance_m",
+        "exposure_index_min",
+        "exposure_ug_min_m3",
+        "concentration_coverage",
+        "confidence_score",
+        "imputed_edge_count",
+        "edge_ids"
+      ],
+      "title": "RouteProperties",
+      "type": "object"
+    },
+    "RouteRequest": {
+      "description": "RouteRequest (Tabel 3.3, Kode 3.1).",
+      "properties": {
+        "origin": {
+          "$ref": "#/$defs/PointModel"
+        },
+        "destination": {
+          "$ref": "#/$defs/PointModel"
+        },
+        "mode": {
+          "$ref": "#/$defs/Mode"
+        },
+        "pollutant": {
+          "default": "pm25",
+          "description": "Polutan untuk concentration_ugm3 per ruas",
+          "enum": [
+            "pm25",
+            "no2"
+          ],
+          "title": "Pollutant",
+          "type": "string"
+        },
+        "preference": {
+          "$ref": "#/$defs/PreferenceIn"
+        }
+      },
+      "required": [
+        "origin",
+        "destination",
+        "mode",
+        "preference"
+      ],
+      "title": "RouteRequestIn",
+      "type": "object"
+    },
+    "SnappedPointOut": {
+      "properties": {
+        "lat": {
+          "title": "Lat",
+          "type": "number"
+        },
+        "lon": {
+          "title": "Lon",
+          "type": "number"
+        },
+        "node_id": {
+          "title": "Node Id",
+          "type": "integer"
+        },
+        "snap_distance_m": {
+          "title": "Snap Distance M",
+          "type": "number"
+        }
+      },
+      "required": [
+        "lat",
+        "lon",
+        "node_id",
+        "snap_distance_m"
+      ],
+      "title": "SnappedPointOut",
+      "type": "object"
+    },
+    "SolverEdgeOut": {
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "integer"
+        },
+        "u": {
+          "title": "U",
+          "type": "integer"
+        },
+        "v": {
+          "title": "V",
+          "type": "integer"
+        },
+        "length_m": {
+          "title": "Length M",
+          "type": "number"
+        },
+        "highway": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Highway"
+        },
+        "oneway": {
+          "title": "Oneway",
+          "type": "boolean"
+        },
+        "bidirectional": {
+          "description": "Moda ini juga boleh v → u",
+          "title": "Bidirectional",
+          "type": "boolean"
+        },
+        "travel_time_s": {
+          "title": "Travel Time S",
+          "type": "number"
+        },
+        "exposure_index": {
+          "title": "Exposure Index",
+          "type": "number"
+        },
+        "confidence_score": {
+          "title": "Confidence Score",
+          "type": "number"
+        },
+        "weight_source": {
+          "enum": [
+            "estimate",
+            "imputed_median"
+          ],
+          "title": "Weight Source",
+          "type": "string"
+        },
+        "concentration_ugm3": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Concentration Ugm3"
+        },
+        "pm25_ugm3": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Pm25 Ugm3"
+        },
+        "no2_ugm3": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "No2 Ugm3"
+        },
+        "estimation_source": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Estimation Source"
+        }
+      },
+      "required": [
+        "id",
+        "u",
+        "v",
+        "length_m",
+        "highway",
+        "oneway",
+        "bidirectional",
+        "travel_time_s",
+        "exposure_index",
+        "confidence_score",
+        "weight_source",
+        "concentration_ugm3",
+        "pm25_ugm3",
+        "no2_ugm3",
+        "estimation_source"
+      ],
+      "title": "SolverEdgeOut",
+      "type": "object"
+    },
+    "SolverInput": {
+      "properties": {
+        "request_id": {
+          "title": "Request Id",
+          "type": "string"
+        },
+        "context": {
+          "$ref": "#/$defs/RouteContextOut"
+        },
+        "weights": {
+          "$ref": "#/$defs/WeightStatusOut"
+        },
+        "source": {
+          "$ref": "#/$defs/SourceOut"
+        },
+        "origin_node": {
+          "title": "Origin Node",
+          "type": "integer"
+        },
+        "destination_node": {
+          "title": "Destination Node",
+          "type": "integer"
+        },
+        "node_count": {
+          "title": "Node Count",
+          "type": "integer"
+        },
+        "edge_count": {
+          "title": "Edge Count",
+          "type": "integer"
+        },
+        "nodes": {
+          "anyOf": [
+            {
+              "items": {
+                "$ref": "#/$defs/SolverNodeOut"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "null bila summary=true",
+          "title": "Nodes"
+        },
+        "edges": {
+          "anyOf": [
+            {
+              "items": {
+                "$ref": "#/$defs/SolverEdgeOut"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "null bila summary=true",
+          "title": "Edges"
+        }
+      },
+      "required": [
+        "request_id",
+        "context",
+        "weights",
+        "source",
+        "origin_node",
+        "destination_node",
+        "node_count",
+        "edge_count",
+        "nodes",
+        "edges"
+      ],
+      "title": "SolverInputOut",
+      "type": "object"
+    },
+    "SolverNodeOut": {
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "integer"
+        },
+        "lon": {
+          "title": "Lon",
+          "type": "number"
+        },
+        "lat": {
+          "title": "Lat",
+          "type": "number"
+        }
+      },
+      "required": [
+        "id",
+        "lon",
+        "lat"
+      ],
+      "title": "SolverNodeOut",
+      "type": "object"
+    },
+    "SourceOut": {
+      "properties": {
+        "graph_version": {
+          "title": "Graph Version",
+          "type": "string"
+        },
+        "osm_timestamp": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Osm Timestamp"
+        },
+        "pollution_model_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Pollution Model Version"
+        },
+        "pollution_coverage_ratio": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Pollution Coverage Ratio"
+        },
+        "estimation_sources": {
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "title": "Estimation Sources",
+          "type": "object"
+        },
+        "background_sources": {
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "title": "Background Sources",
+          "type": "object"
+        },
+        "rejected_graph_rows": {
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "title": "Rejected Graph Rows",
+          "type": "object"
+        },
+        "downscaling_fallback": {
+          "description": "Polutan yang estimasinya dari fallback, bukan model downscaling terdaftar",
+          "items": {
+            "type": "string"
+          },
+          "title": "Downscaling Fallback",
+          "type": "array"
+        }
+      },
+      "required": [
+        "graph_version",
+        "osm_timestamp",
+        "pollution_model_version",
+        "pollution_coverage_ratio",
+        "estimation_sources",
+        "background_sources",
+        "rejected_graph_rows"
+      ],
+      "title": "SourceOut",
+      "type": "object"
+    },
+    "TimeWindow": {
+      "description": "The start/end envelope used by cache API responses; one UTC hour.",
+      "properties": {
+        "time_window_start": {
+          "format": "date-time",
+          "title": "Time Window Start",
+          "type": "string"
+        },
+        "time_window_end": {
+          "format": "date-time",
+          "title": "Time Window End",
+          "type": "string"
+        }
+      },
+      "required": [
+        "time_window_start",
+        "time_window_end"
+      ],
+      "title": "TimeWindowOut",
+      "type": "object"
+    },
+    "WeightStatusOut": {
+      "properties": {
+        "time_window_start": {
+          "format": "date-time",
+          "title": "Time Window Start",
+          "type": "string"
+        },
+        "time_window_end": {
+          "format": "date-time",
+          "title": "Time Window End",
+          "type": "string"
+        },
+        "data_stale": {
+          "title": "Data Stale",
+          "type": "boolean"
+        },
+        "age_minutes": {
+          "title": "Age Minutes",
+          "type": "number"
+        },
+        "edge_count": {
+          "title": "Edge Count",
+          "type": "integer"
+        },
+        "estimated_edge_count": {
+          "title": "Estimated Edge Count",
+          "type": "integer"
+        },
+        "missing_edge_count": {
+          "description": "Ruas tanpa estimasi; exposure_index diisi median, confidence 0",
+          "title": "Missing Edge Count",
+          "type": "integer"
+        },
+        "imputed_exposure_index": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Median exposure_index bbox yang dipakai mengisi ruas tanpa estimasi",
+          "title": "Imputed Exposure Index"
+        },
+        "concentration_missing_count": {
+          "description": "Ruas tanpa concentration_ugm3 untuk polutan yang diminta (tidak diisi)",
+          "title": "Concentration Missing Count",
+          "type": "integer"
+        },
+        "excluded_rows": {
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "title": "Excluded Rows",
+          "type": "object"
+        }
+      },
+      "required": [
+        "time_window_start",
+        "time_window_end",
+        "data_stale",
+        "age_minutes",
+        "edge_count",
+        "estimated_edge_count",
+        "missing_edge_count",
+        "imputed_exposure_index",
+        "concentration_missing_count",
+        "excluded_rows"
+      ],
+      "title": "WeightStatusOut",
+      "type": "object"
+    }
+  }
+}

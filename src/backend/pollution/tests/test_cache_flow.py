@@ -180,6 +180,36 @@ async def test_weights_written_by_worker_are_read_by_backend(writer, backend):
     assert 0 < len(corner.weights) < 24
 
 
+async def test_ti_se_01_versioned_graph_and_weight_contract_roundtrip(writer, backend):
+    """Actual worker -> PostGIS -> backend serializers obey the same wire schemas."""
+    from jsonschema import Draft202012Validator, FormatChecker
+    from contracts import EdgeWeight as WorkerWeight, TimeWindow as WorkerWindow
+    from spatial_model.inference.cache import write_pollution_weight
+    from osm.schemas import RoadGraphOut
+    from pollution.schemas import EdgeWeightsOut
+    from public_api.data_contracts import build
+
+    osm, pollution, _ = backend
+    write_graph(writer, "contract-v1")
+    weights = [WorkerWeight(1, W2, 0., None, 0., 0., None, "idw", {"pm25": {"source": "idw"}})]
+    write_pollution_weight(writer, weights, WorkerWindow.starting_at(W2), "contract-v1", "idw-v1",
+                           trace=trace_for_weights(weights, W2, "contract-v1"))
+    graph = await osm.read_road_graph(BBOX_ALL, Mode.WALK)
+    graph_json = RoadGraphOut.build(graph.graph_version, graph.mode, graph.bbox, graph.nodes,
+                                   graph.edges, graph.rejected).model_dump(mode="json")
+    read = await pollution.read_pollution_weight(BBOX_ALL)
+    batch = EdgeWeightsOut.of(read, Mode.WALK, BBOX_ALL.as_list()).model_dump(mode="json")
+    schema = build()
+    for name, payload in (("RoadGraph", graph_json), ("EdgeWeights", batch)):
+        Draft202012Validator({**schema, "$ref": f"#/$defs/{name}"}, format_checker=FormatChecker()).validate(payload)
+    row = batch["weights"][0]
+    assert row["edge_id"] in {edge["edge_id"] for edge in graph_json["edges"]}
+    assert row["graph_version"] == graph_json["graph_version"] == "contract-v1"
+    assert row["pm25_ugm3"] == 0. and row["no2_ugm3"] is None
+    assert row["model_metadata"] == {"pm25": {"source": "idw"}}
+    assert row["trace_run_id"] and batch["time_window_start"] == "2026-10-13T08:00:00Z"
+
+
 async def test_weights_cover_every_edge_of_the_road_graph_bbox(writer, backend):
     """D-01: a diagonal edge whose bounding box overlaps the bbox but whose line
     does not is in the road graph, so its weight must be read as well."""

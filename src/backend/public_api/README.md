@@ -1,5 +1,8 @@
 # `public_api`: API publik SIPPolusi (TI-SE-08)
 
+Kontrak lintas komponen versi 1.0.0 (TI-SE-01), skema JSON dan pemetaan cache:
+[`data-contracts-TI-SE-01.md`](../../../docs/software/data-contracts-TI-SE-01.md).
+
 Dua endpoint yang dipakai Frontend lewat API Gateway, dengan kontrak yang stabil dan
 terdokumentasi. Rujukan desain: Tabel 3.14–3.16, Kode 3.1 dan 3.2, `get_exposure_surface` di
 Tabel 3.6, dan Subbab 3.1 (skala warna heatmap).
