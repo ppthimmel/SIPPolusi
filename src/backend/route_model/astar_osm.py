@@ -17,8 +17,10 @@ from pathlib import Path
 import networkx as nx
 
 if __package__:
+    from .costs import travel_time
     from .route_metrics import ExposureSnapshot, evaluate_route
 else:  # Preserve direct invocation of astar_osm.py as a CLI.
+    from costs import travel_time
     from route_metrics import ExposureSnapshot, evaluate_route
 
 DEFAULT_GRAPH = Path(__file__).resolve().parents[2] / "data_worker/dataset_processed/OSM"
@@ -256,7 +258,7 @@ def load_graph(folder, mode):
             # Exported walk_time_s/bike_time_s override the default speed for
             # this edge; planner-provided edge times are already computed.
             explicit = row.get(mode + "_time_s")
-            seconds = float(explicit) if explicit else length / SPEED_MPS[mode]
+            seconds = float(explicit) if explicit else travel_time(length, SPEED_MPS[mode])
             edges.append((Edge(edge_id, int(row["u"]), int(row["v"]), length, seconds, row["geom_wkt"]),
                           mode == "walk" or not boolean(row["oneway"])))
     if len(seen) != int(active[0]["edge_count"]):

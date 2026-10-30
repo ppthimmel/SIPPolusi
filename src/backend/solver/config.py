@@ -9,7 +9,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from osm.config import BACKEND_DIR
 
-Provider = Literal["mock", "baseline", "http"]
+Provider = Literal["mock", "baseline", "weighted", "http"]
 Fault = Literal["none", "timeout", "error", "no_route", "invalid"]
 Fallback = Literal["baseline", "none"]
 
@@ -24,7 +24,8 @@ class SolverSettings(BaseSettings):
 
     # mock: deterministic, no AI service needed; baseline: fastest route with the
     # A* of route_model (TI-AI-07) in this process; http: the Multi-Objective Route
-    # Model service (IRouteSolve, POST /internal/v1/solve).
+    # Model service (IRouteSolve, POST /internal/v1/solve); weighted is the
+    # deterministic preference-aware A* comparator, not the MORL policy.
     provider: Provider = "mock"
     url: str | None = Field(None, description="Base URL of the Route Model service, for provider=http")
     # Mock only: make every call fail in a given way (FAULT_INJECTION, IT-K-04).

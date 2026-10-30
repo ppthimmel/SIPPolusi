@@ -31,14 +31,29 @@ concentrations are not imputed. Stale data is flagged rather than silently
 presented as fresh. See [planner details](../src/backend/planner/README.md) and
 [baseline details](../src/backend/route_model/README.md).
 
-The backend's development mock solver computes the dimensionless objective
+The deterministic weighted A* provider and development mock compute the dimensionless objective
 `α × T(R)/T_ref + β × E(R)/E_ref`, where the reference values are computed
 on the fastest route, and α and β sum to one. It calculates equivalent edge
 costs using seconds for both numerator and reference. If a reference total is
-zero, the mock uses 1.0 as its denominator. The mock finds the minimum-cost
-route with Dijkstra. The A* baseline minimizes travel time alone and does not
-apply α/β; the production HTTP solver is a separate provider. See
+zero, both use 1.0 as its denominator (in the units of that reference). This
+preserves defined, nonnegative costs but is not relative normalization when the
+reference is zero. The `weighted` provider finds the minimum-cost route with
+A*, using the fastest route as reference; select it with
+`ROUTE_SOLVER_PROVIDER=weighted`. The mock uses Dijkstra. The A* baseline
+minimizes travel time alone and does not apply α/β; the HTTP solver is a
+separate provider intended for MORL. The current API's `route_source: policy`
+means preference-applied, not necessarily MORL: `solver: weighted`, model
+version `weighted-astar-1` and the response note identify deterministic A*.
+The configured default remains `mock`. See
 [solver providers](../src/backend/solver/README.md).
+
+The shared numeric functions in [`costs.py`](../src/backend/route_model/costs.py)
+return raw seconds, index-seconds and dimensionless costs. The planner uses the
+time function, backend and standalone route metrics use the exposure function,
+and both deterministic providers use the cost functions. A future MORL model
+can consume them without API formatting. The weighted search accepts the same
+`SolverInput` as the planner. Its lower-bound proof and reproducible Dijkstra
+comparison are in [the verification notebook](../notebooks/weighted_astar_verification.ipynb).
 
 The baseline's [small-graph test](../src/backend/tests/test_baseline.py) gives
 an example: two edges each take 10 s, with concentrations 10 and 20 µg/m³.

@@ -8,6 +8,7 @@ from solver.baseline import BaselineSolver
 from solver.contract import SolveResult
 from solver.http_client import HttpSolver
 from solver.mock import MockSolver
+from solver.weighted import WeightedSolver
 from solver.orchestrator import solve_route_request
 
 from .conftest import mock_service_transport, node_id, request_body
@@ -15,6 +16,7 @@ from .conftest import mock_service_transport, node_id, request_body
 PROVIDERS = {
     "mock": lambda: MockSolver(),
     "baseline": lambda: BaselineSolver(),
+    "weighted": lambda: WeightedSolver(),
     "http": lambda: HttpSolver("http://route-model.internal", transport=mock_service_transport()),
 }
 

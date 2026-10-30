@@ -43,6 +43,7 @@ from osm.repository import OsmRepository
 from planner.assembler import build_solver_input
 from planner.models import IMPUTED_MEDIAN, PlannedEdge, SolverInput
 from pollution.repository import PollutionRepository
+from route_model.costs import edge_exposure
 
 from .config import SolverSettings
 from .cancel import run_cancellable
@@ -126,7 +127,7 @@ def route_metrics(path: list[tuple[PlannedEdge, bool]]) -> RouteMetrics:
     """compute_route_metrics (Tabel 3.7)."""
     edges = [e for e, _ in path]
     minutes = [e.travel_time_s / 60 for e in edges]
-    exposure = [e.exposure_index * m for e, m in zip(edges, minutes)]
+    exposure = [edge_exposure(e.travel_time_s, e.exposure_index) / 60 for e in edges]
     known = [(e.concentration_ugm3, m) for e, m in zip(edges, minutes) if e.concentration_ugm3 is not None]
     total_exposure = sum(exposure)
     if total_exposure > 0:
@@ -336,6 +337,8 @@ async def solve_route_request(
                      "rute tercepat (baseline) dan preferensi waktu-paparan tidak diterapkan.")
     elif not preference_applied:
         notes.append("Preferensi waktu-paparan tidak diterapkan; rute rekomendasi berasal dari baseline.")
+    elif attempt.solver == "weighted":
+        notes.append("Rute rekomendasi dihitung dengan A* berbobot deterministik, bukan model MORL.")
     if si.weights.data_stale:
         notes.append("Estimasi polusi berasal dari time window yang lebih lama dari batas kebaruan.")
     if rec_metrics.imputed_edge_count:

@@ -15,6 +15,7 @@ from statistics import median
 from osm.errors import CacheUnavailable
 from osm.models import Mode, ModeProfile, RoadEdge, Subgraph
 from pollution.models import EdgeWeight, PollutionRead
+from route_model.costs import travel_time
 
 from .models import ESTIMATE, IMPUTED_MEDIAN, PlannedEdge, WeightStatus
 
@@ -29,7 +30,7 @@ def _travel_time_s(edge: RoadEdge, profile: ModeProfile) -> float:
     # profile.speed_mps comes from the configurable OSM mode speed settings.
     # Keep defaults and assumptions aligned with route_model/astar_osm.py and
     # docs/route-time-exposure.md when changing the time calculation.
-    return edge.length_m / profile.speed_mps  # length_m > 0, validated by assemble_road_graph
+    return travel_time(edge.length_m, profile.speed_mps)
 
 
 def attach_edge_weights(

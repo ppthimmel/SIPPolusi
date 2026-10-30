@@ -112,7 +112,7 @@ class RouteMetadata(BaseModel):
     graph_version: str = Field(description="Versi road graph OSM Cache DB")
     model_version: ModelVersion
     estimation: Estimation
-    solver: str = Field(description="Penyedia yang menghasilkan rute: mock, baseline, atau http")
+    solver: str = Field(description="Penyedia yang menghasilkan rute: mock, baseline, weighted, atau http")
     comparison: ComparisonSummary
     notes: list[str] = Field(description="Keterangan untuk pengguna: fallback, data kedaluwarsa, ruas tanpa estimasi")
     crs: Literal["urn:ogc:def:crs:OGC::CRS84"] = Field(description="Sistem acuan koordinat (RFC 7946: WGS 84)")

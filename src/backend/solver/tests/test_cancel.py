@@ -128,6 +128,17 @@ async def test_baseline_still_finds_routes_when_not_cancelled(tokens):
     assert not tokens[0].raised
 
 
+async def test_weighted_stops_after_timeout(big, tokens):
+    """Stop the weighted worker when the route solver deadline expires."""
+    from solver.weighted import WeightedSolver
+
+    with pytest.raises(RouteServiceUnavailable) as exc:
+        await call_route_solve(WeightedSolver(), SolveRequest(big, deadline_ms=100), grace_ms=0)
+    assert exc.value.reason == SOLVER_TIMEOUT
+    (token,) = tokens
+    assert token.finished.wait(1.0) and token.raised
+
+
 def _router(si, token: CancelToken) -> RoadRouter:
     coords = {n: (p.lon, p.lat) for n, p in si.nodes.items()}
     edges = [(Edge(e.edge_id, e.u, e.v, e.length_m, e.travel_time_s,

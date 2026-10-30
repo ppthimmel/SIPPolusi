@@ -1,4 +1,4 @@
-"""Route endpoints through the configured solver (ROUTE_SOLVER_PROVIDER: mock, baseline, http).
+"""Route endpoints through the configured solver (mock, baseline, weighted, http).
 
     POST /v1/routes/solve   RouteRequest -> SolveResult (TI-SE-06, internal shape)
     POST /v1/routes/plan    RouteRequest -> GeoJSON FeatureCollection (TI-SE-07, Kode 3.2)
