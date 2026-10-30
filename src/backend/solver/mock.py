@@ -1,4 +1,4 @@
-"""Deterministic mock solver for Backend development and contract tests.
+"""Deterministic weighted-Dijkstra comparator and backend test solver.
 
 Behaves like the production Route Model without any AI service:
 
@@ -26,6 +26,8 @@ from .cancel import CancelToken, run_cancellable
 from .contract import SOLVER_ERROR, SolveRequest, SolverError, SolverReply
 from .paths import shortest_path
 
+# Despite its name, mock is the default deterministic routing comparator for
+# MORL experiments. Its search is real; only its fault injection is simulated.
 MODEL_VERSION = "mock-1"
 
 

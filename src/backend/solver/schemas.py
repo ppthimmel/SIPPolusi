@@ -73,7 +73,7 @@ class FallbackOut(BaseModel):
 
 
 class SolveResultOut(BaseModel):
-    solver: str = Field(description="Penyedia solver: mock, baseline, weighted, atau http")
+    solver: str = Field(description="Penyedia solver: mock, baseline, atau http")
     route_source: Literal["policy", "baseline"]
     preference_applied: bool
     fallback_reason: str | None

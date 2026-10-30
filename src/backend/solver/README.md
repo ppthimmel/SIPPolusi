@@ -59,9 +59,8 @@ Dipilih dengan `ROUTE_SOLVER_PROVIDER`; endpoint-nya tidak berubah.
 
 | Penyedia | Isi | Kapan dipakai |
 |---|---|---|
-| `mock` (bawaan) | Deterministik. Pembanding = Dijkstra waktu tempuh; rekomendasi = Dijkstra pada α·τ/T_ref + β·I·τ/E_ref; `route_source: policy`, `model_version: mock-1`. `ROUTE_SOLVER_FAULT` = `timeout`, `error`, `no_route`, atau `invalid` menyuntikkan galat | Pengembangan Backend dan uji integrasi tanpa layanan AI |
+| `mock` (bawaan) | Deterministik. Pembanding = Dijkstra waktu tempuh; rekomendasi = Dijkstra pada α·τ/T_ref + β·I·τ/E_ref; `route_source: policy`, `model_version: mock-1`. `ROUTE_SOLVER_FAULT` = `timeout`, `error`, `no_route`, atau `invalid` menyuntikkan galat | Pembanding rute deterministik untuk MORL serta pengembangan dan uji integrasi |
 | `baseline` | A* rute tercepat dari `route_model` (TI-AI-07), dijalankan di proses ini pada subgraf dan simpul snap yang sama. `route_source: baseline`, `fallback_reason: policy_unavailable` | Rute nyata sebelum MORL tersedia |
-| `weighted` | A* deterministik pada cost waktu–paparan ternormalisasi; pembanding adalah A* waktu saja. `model_version: weighted-astar-1` | Pembanding deterministik untuk eksperimen, bukan policy MORL |
 | `http` | Klien `POST {ROUTE_SOLVER_URL}/internal/v1/solve`, JSON gzip (Kode 3.3) | Layanan Multi-Objective Route Model produksi |
 
 ## Batas waktu dan pembatalan
@@ -96,7 +95,7 @@ Penyedia `http` tidak memakai thread: permintaan HTTP dibatalkan langsung oleh `
 
 | Variabel | Bawaan | Keterangan |
 |---|---|---|
-| `ROUTE_SOLVER_PROVIDER` | `mock` | `mock`, `baseline`, `weighted`, atau `http` |
+| `ROUTE_SOLVER_PROVIDER` | `mock` | `mock`, `baseline`, atau `http` |
 | `ROUTE_SOLVER_URL` | – | Wajib untuk `http` |
 | `ROUTE_SOLVER_FAULT` | `none` | Khusus `mock`: `timeout`, `error`, `no_route`, `invalid` |
 | `ROUTE_SOLVER_BUDGET_MS` | `8000` | Batas latensi Backend |

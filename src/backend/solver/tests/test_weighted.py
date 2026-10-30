@@ -11,10 +11,8 @@ from planner.models import Preference
 from route_model.costs import edge_exposure, normalize, route_totals, travel_time, weighted_cost
 from route_model.weighted_astar import weighted_astar
 from solver.cancel import CancelToken, Cancelled
-from solver.config import SolverSettings
-from solver.factory import make_solver
+from solver.mock import MockSolver, _routes
 from solver.paths import shortest_path
-from solver.weighted import WeightedSolver
 
 from .biggrid import grid_input
 from .conftest import request_body
@@ -63,6 +61,9 @@ def test_manual_two_route_tradeoff(alpha, expected, cost):
     result = weighted_astar(si, 20, 80)
     assert result.edge_ids == expected
     assert result.cost == pytest.approx(cost)
+    reply = _routes(CancelToken(), si)
+    assert reply.comparison == (1, 3)
+    assert reply.recommended == expected
 
 
 @pytest.mark.parametrize("alpha", [0, .2, .5, .8, 1])
@@ -108,13 +109,13 @@ def test_zero_exposure_reference_routes():
     result = weighted_astar(si, 20, 0)
     assert result.edge_ids == (1, 3)
     assert result.cost == 0
+    assert _routes(CancelToken(), si).recommended == (1, 3)
 
 
 async def test_provider_runs_planner_contract(osm_repo, pollution_repo, settings, solver_settings):
-    """Run the weighted provider through planning, validation and route metrics."""
-    assert isinstance(make_solver(SolverSettings(provider="weighted", _env_file=None)), WeightedSolver)
-    result = await solve(WeightedSolver(), osm_repo, pollution_repo, settings, solver_settings,
+    """Run the mock comparator through planning, validation and route metrics."""
+    result = await solve(MockSolver(), osm_repo, pollution_repo, settings, solver_settings,
                          request_body(alpha=.3, beta=.7))
-    assert result.solver == "weighted" and result.model_version == "weighted-astar-1"
+    assert result.solver == "mock" and result.model_version == "mock-1"
     assert result.preference_applied and result.comparison.route_source == "baseline"
-    assert result.recommended.edge_ids and any("bukan model MORL" in note for note in result.notes)
+    assert result.recommended.edge_ids

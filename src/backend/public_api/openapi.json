@@ -1893,7 +1893,7 @@
           "solver": {
             "type": "string",
             "title": "Solver",
-            "description": "Penyedia yang menghasilkan rute: mock, baseline, weighted, atau http"
+            "description": "Penyedia yang menghasilkan rute: mock, baseline, atau http"
           },
           "comparison": {
             "$ref": "#/components/schemas/ComparisonSummary"

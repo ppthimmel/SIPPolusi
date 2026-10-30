@@ -12,8 +12,5 @@ def make_solver(settings: SolverSettings) -> RouteSolver:
     if settings.provider == "baseline":
         from .baseline import BaselineSolver
         return BaselineSolver()
-    if settings.provider == "weighted":
-        from .weighted import WeightedSolver
-        return WeightedSolver()
     from .http_client import HttpSolver
     return HttpSolver(settings.url, settings.grace_ms)

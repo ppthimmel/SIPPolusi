@@ -34,7 +34,7 @@ def client_for(cache_dsn, monkeypatch):
         cached.cache_clear()
 
 
-@pytest.mark.parametrize("provider", ["mock", "baseline", "weighted"])
+@pytest.mark.parametrize("provider", ["mock", "baseline"])
 def test_solve_on_data_written_by_the_worker(writer, client_for, provider):
     write_graph(writer, "v1")
     now = datetime.now(timezone.utc).replace(minute=0, second=0, microsecond=0)

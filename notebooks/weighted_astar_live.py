@@ -22,10 +22,7 @@ from pollution.repository import PollutionRepository
 from route_model.astar_osm import distance_m
 from route_model.costs import edge_exposure, route_totals, weighted_cost
 from route_model.weighted_astar import weighted_astar
-from solver.contract import SolveRequest
-from solver.mock import MockSolver
 from solver.paths import shortest_path
-from solver.weighted import WeightedSolver
 
 ROOT = Path(__file__).resolve().parent.parent
 SCENARIOS = (
@@ -160,9 +157,9 @@ def _run_searches(si, repeats):
     if path is None or astar_path is None:
         raise ValueError("A reachable graph produced no weighted route")
     reference_cost = _cost_of_path(si, path, time_ref, exposure_ref)
-    production = weighted_astar(si, time_ref, exposure_ref)
+    research_astar = weighted_astar(si, time_ref, exposure_ref)
     if not all(math.isclose(cost, reference_cost, rel_tol=1e-9, abs_tol=1e-11)
-               for cost in (astar_cost, dijkstra_cost, production.cost)):
+               for cost in (astar_cost, dijkstra_cost, research_astar.cost)):
         raise AssertionError("Weighted A* and Dijkstra returned different minimum costs")
     astar_time, astar_exposure = _path_totals(si, astar_path)
     dijkstra_time, dijkstra_exposure = _path_totals(si, path)
@@ -177,32 +174,6 @@ def _run_searches(si, repeats):
             "dijkstra_exposure_index_s": round(dijkstra_exposure, 4),
             "same_edge_path": astar_path == path, "cost": round(astar_cost, 8),
             "t_ref_s": time_ref, "e_ref": exposure_ref}
-
-
-async def _provider_times(si, repeats):
-    """Time the complete in-process providers, including reference-route searches."""
-    request = SolveRequest(si, deadline_ms=120000)
-    providers = {"weighted": WeightedSolver(), "mock": MockSolver()}
-    samples = {name: [] for name in providers}
-    replies = {}
-    for i in range(repeats):
-        names = ("weighted", "mock") if i % 2 == 0 else ("mock", "weighted")
-        for name in names:
-            started = time.perf_counter()
-            reply = await providers[name].solve(request)
-            samples[name].append(_milliseconds(started))
-            if reply.status != "ok":
-                raise ValueError(f"{name} provider did not return a route")
-            replies[name] = reply
-    by_id = {e.edge_id: e for e in si.edges}
-    references = {}
-    for name, reply in replies.items():
-        references[name] = route_totals((by_id[i].travel_time_s, by_id[i].exposure_index)
-                                        for i in reply.comparison)
-    return {"weighted_provider_ms": round(statistics.median(samples["weighted"]), 2),
-            "mock_provider_ms": round(statistics.median(samples["mock"]), 2),
-            "matching_references": all(math.isclose(a, b, rel_tol=1e-9, abs_tol=1e-9)
-                                       for a, b in zip(references["weighted"], references["mock"]))}
 
 
 async def benchmark_live(repeats=3, scenarios=SCENARIOS):
@@ -237,13 +208,12 @@ async def benchmark_live(repeats=3, scenarios=SCENARIOS):
             for alpha in (0.0, .5, 1.0):
                 si.preference = Preference(alpha, 1 - alpha)
                 search = _run_searches(si, repeats)
-                provider = await _provider_times(si, repeats)
                 rows.append({"scenario": label, "alpha": alpha, "nodes": len(si.nodes), "edges": len(si.edges),
                              "graph_version": si.source.graph_version,
                              "window_utc": si.weights.time_window_start.isoformat(),
                              "data_stale": si.weights.data_stale,
                              "imputed_edges": si.weights.missing_edge_count,
-                             "planner_ms": round(planner_ms, 2), **search, **provider})
+                             "planner_ms": round(planner_ms, 2), **search})
     finally:
         await db.close()
     return rows

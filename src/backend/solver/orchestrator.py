@@ -337,8 +337,6 @@ async def solve_route_request(
                      "rute tercepat (baseline) dan preferensi waktu-paparan tidak diterapkan.")
     elif not preference_applied:
         notes.append("Preferensi waktu-paparan tidak diterapkan; rute rekomendasi berasal dari baseline.")
-    elif attempt.solver == "weighted":
-        notes.append("Rute rekomendasi dihitung dengan A* berbobot deterministik, bukan model MORL.")
     if si.weights.data_stale:
         notes.append("Estimasi polusi berasal dari time window yang lebih lama dari batas kebaruan.")
     if rec_metrics.imputed_edge_count:
