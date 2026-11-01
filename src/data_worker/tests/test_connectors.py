@@ -304,6 +304,59 @@ def test_geoscf_fcst_run_dari_rekaman():
     np.testing.assert_array_equal(frame.pm25_ugm3.to_numpy(), reference.pm25_ugm3.to_numpy())
 
 
+def _fcst_client(text, init):
+    heads = fixture_json("geoscf_fcst_meta.json")
+    times = geoscf.fcst_script.run_times(init)
+    first, last = (geoscf.fcst_script._lead_url(init, t).rsplit("/", 1)[1] for t in (times[0], times[-1]))
+    return client([("GET", "ascii?pm25_rh35", FakeResponse(200, text)),
+                   ("HEAD", first, FakeResponse(200, headers={"Last-Modified": heads["first"]})),
+                   ("HEAD", last, FakeResponse(200, headers={"Last-Modified": heads["last"]}))])
+
+
+def _fcst_time_changed(changes):
+    """Rekaman run 2026-09-30 09z dengan angka lead tertentu pada larik ``time`` ASCII diganti.
+
+    ``changes`` memetakan lead ke angka pengganti, atau ke fungsi dari angka asli.
+    """
+    text = fixture_text("geoscf_fcst_20260930_09z.ascii")
+    start = text.index("time, [120]\n") + len("time, [120]\n")
+    end = text.index("\n", start)
+    numbers = text[start:end].split(", ")
+    for lead, change in changes.items():
+        numbers[lead] = repr(change(float(numbers[lead]))) if callable(change) else change
+    return text[:start] + ", ".join(numbers) + text[end:]
+
+
+def test_geoscf_fcst_waktu_ascii_rusak_seperti_run_20261101_tetap_terbaca():
+    """Run 2026-11-01 09z: lead 67 terbaca 2133.1875 (tahun 6), lead 86 dan 109 maju 20 dan 29 menit.
+
+    Nilai polutannya wajar, jadi run tetap dipakai dengan sumbu linear dan lead itu dicatat.
+    """
+    init = pd.Timestamp("2026-09-30 09:00", tz="UTC")
+    minutes = lambda m: lambda days: days - m / 1440  # noqa: E731
+    text = _fcst_time_changed({67: "2133.1875", 86: minutes(20), 109: minutes(29)})
+    frame, quality = geoscf.fetch_fcst(_fcst_client(text, init), init)
+    clean, clean_quality = geoscf.fetch_fcst(_fcst_client(fixture_text("geoscf_fcst_20260930_09z.ascii"), init), init)
+    pd.testing.assert_frame_equal(frame, clean)
+    assert quality["time_mismatch_leads"] == [67, 86, 109] and clean_quality["time_mismatch_leads"] == []
+
+
+@pytest.mark.parametrize("changes", [
+    {0: "2133.1875"},                                            # lead pertama: sumbu tidak dapat dipastikan
+    {119: lambda days: days + 1 / 24},                           # lead terakhir bergeser satu jam
+    {lead: lambda days: days + 1 / 24 for lead in range(10, 17)},  # 7 lead > MAX_TIME_MISMATCHES
+], ids=["lead_pertama", "lead_terakhir", "terlalu_banyak"])
+def test_geoscf_fcst_sumbu_waktu_bergeser_ditolak(changes):
+    init = pd.Timestamp("2026-09-30 09:00", tz="UTC")
+    with pytest.raises(FormatError, match="waktu run tidak sesuai"):
+        geoscf.fetch_fcst(_fcst_client(_fcst_time_changed(changes), init), init)
+
+
+def test_geoscf_waktu_grads_di_luar_rentang_menjadi_nat():
+    decoded = geoscf.fcst_script._grads_time(np.array([739922.3958333334, 2133.1875]))
+    assert decoded[0] == pd.Timestamp("2026-11-01 09:30", tz="UTC") and pd.isna(decoded[1])
+
+
 def test_geoscf_fcst_inits_terbaru_dulu():
     assert geoscf.fcst_inits(dt.datetime(2026, 10, 27, 5, tzinfo=UTC)) == [
         pd.Timestamp("2026-10-26 09:00", tz="UTC"), pd.Timestamp("2026-10-25 09:00", tz="UTC")]

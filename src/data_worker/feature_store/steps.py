@@ -175,17 +175,24 @@ def _geoscf_fcst(store: FeatureStore, now: dt.datetime):
     def run(client: HttpClient, fetch_id: str) -> SourceResult:
         inits = geoscf.fcst_inits(now)
         stored = store.stored_fcst_inits(min(inits))
-        new, rows, waiting = 0, 0, []
+        new, rows, waiting, mismatched = 0, 0, [], {}
         for init in sorted(i for i in inits if i not in stored):
             if not geoscf.fcst_complete(client, init):
                 waiting.append(f"{init:%Y-%m-%dT%Hz}")
                 continue
-            frame, _ = geoscf.fetch_fcst(client, init)
+            frame, quality = geoscf.fetch_fcst(client, init)
             rows += store.write_geoscf_fcst(frame, fetch_id, now)
             new += 1
-        note = f"run belum lengkap terbit: {', '.join(waiting)}" if waiting else None
-        return SourceResult("ok", products_new=new, rows_written=rows, note=note,
-                            detail={"runs_checked": [f"{i:%Y-%m-%dT%Hz}" for i in inits]})
+            if quality["time_mismatch_leads"]:
+                mismatched[f"{init:%Y-%m-%dT%Hz}"] = quality["time_mismatch_leads"]
+        notes = [f"run belum lengkap terbit: {', '.join(waiting)}"] if waiting else []
+        notes += [f"run {label}: waktu ASCII lead {leads} tidak sesuai sumbu linear; nilai mengikuti sumbu linear"
+                  for label, leads in mismatched.items()]
+        detail = {"runs_checked": [f"{i:%Y-%m-%dT%Hz}" for i in inits]}
+        if mismatched:
+            detail["time_mismatch_leads"] = mismatched
+        return SourceResult("ok", products_new=new, rows_written=rows, note="; ".join(notes) or None,
+                            detail=detail)
     return run
 
 

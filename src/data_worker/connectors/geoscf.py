@@ -208,5 +208,5 @@ def fetch_fcst(client: HttpClient, init: pd.Timestamp) -> tuple[pd.DataFrame, di
     except (ValueError, IndexError) as exc:
         raise FormatError(f"geoscf_fcst: run {init:%Y-%m-%d %Hz} tidak terbaca ({exc})") from exc
     quality = {"rows": len(frame), "pm25_missing": int(frame.pm25_ugm3.isna().sum()),
-               "no2_missing": int(frame.no2_ppb.isna().sum())}
+               "no2_missing": int(frame.no2_ppb.isna().sum()), "time_mismatch_leads": run["time_mismatch_leads"]}
     return frame, quality

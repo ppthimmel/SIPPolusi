@@ -23,7 +23,8 @@ from feature_store import steps
 from feature_store.reader import StoreSourceReader
 from feature_store.seed import seed
 from feature_store.store import decode_layer, encode_layer
-from test_connectors import ANA_HOURS, FakeResponse, FakeSession, _ana_axis_index, _ana_routes, client, fixture_json
+from test_connectors import (ANA_HOURS, FakeResponse, FakeSession, _ana_axis_index, _ana_routes,
+                             _fcst_client, _fcst_time_changed, client, fixture_json)
 
 UTC = dt.timezone.utc
 T0 = dt.datetime(2026, 10, 27, 5, 15, tzinfo=UTC)
@@ -146,6 +147,23 @@ def test_galat_tak_terduga_tidak_menghentikan_dan_format_berubah_dicatat(fs):
     assert steps.run_source(fs, "landsat", WINDOW, Policy(1), bug, now=T0, environ={})["status"] == "failed"
     result = steps.run_source(fs, "open_meteo", WINDOW, Policy(1), changed, now=T0, environ={})
     assert result["status"] == "failed" and result["note"].startswith("format respons berubah")
+
+
+def test_prakiraan_dengan_waktu_ascii_rusak_tersimpan_dan_dicatat(fs, monkeypatch):
+    """Seperti run 2026-11-01 09z: tiga lead dengan waktu ASCII salah tidak menggagalkan siklus."""
+    from connectors import geoscf
+
+    init = pd.Timestamp("2026-09-30 09:00", tz="UTC")
+    text = _fcst_time_changed({67: "2133.1875", 86: lambda days: days - 20 / 1440})
+    fetch = geoscf.fetch_fcst
+    monkeypatch.setattr(geoscf, "fcst_inits", lambda now: [init])
+    monkeypatch.setattr(geoscf, "fcst_complete", lambda client, i: True)
+    monkeypatch.setattr(geoscf, "fetch_fcst", lambda client, i: fetch(_fcst_client(text, i), i))
+    result = steps.run_source(fs, "geoscf_fcst", WINDOW, Policy(1), steps._geoscf_fcst(fs, T0), now=T0, environ={})
+    assert result["status"] == "ok" and result["rows_written"] == 1080
+    assert "run 2026-09-30T09z: waktu ASCII lead [67, 86]" in result["note"]
+    log = fs.fetch_log(T0 - dt.timedelta(days=1)).set_index("source")
+    assert log.loc["geoscf_fcst", "detail"]["time_mismatch_leads"] == {"2026-09-30T09z": [67, 86]}
 
 
 def test_jadwal_katalog_harian_dan_sumber_nonaktif(fs, monkeypatch):
