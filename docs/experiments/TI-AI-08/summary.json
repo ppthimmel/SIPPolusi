@@ -1,0 +1,49 @@
+{
+  "all": {
+    "episodes": 20,
+    "outcomes": {
+      "reached": 10,
+      "truncated": 0,
+      "dead_end": 10
+    },
+    "success_rate": 0.5,
+    "mean_return": -1.5912360646712556,
+    "mean_steps": 36.4,
+    "illegal_actions": 10,
+    "reached_mean_time_ratio": 1.0000000000000002,
+    "reached_mean_exposure_ratio": 1.0,
+    "reached_mean_weighted_cost": 1.0
+  },
+  "by_policy": {
+    "reference": {
+      "episodes": 10,
+      "outcomes": {
+        "reached": 10,
+        "truncated": 0,
+        "dead_end": 0
+      },
+      "success_rate": 1.0,
+      "mean_return": -1.0,
+      "mean_steps": 64.9,
+      "illegal_actions": 0,
+      "reached_mean_time_ratio": 1.0000000000000002,
+      "reached_mean_exposure_ratio": 1.0,
+      "reached_mean_weighted_cost": 1.0
+    },
+    "random": {
+      "episodes": 10,
+      "outcomes": {
+        "reached": 0,
+        "truncated": 0,
+        "dead_end": 10
+      },
+      "success_rate": 0.0,
+      "mean_return": -2.182472129342511,
+      "mean_steps": 7.9,
+      "illegal_actions": 10,
+      "reached_mean_time_ratio": null,
+      "reached_mean_exposure_ratio": null,
+      "reached_mean_weighted_cost": null
+    }
+  }
+}

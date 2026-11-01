@@ -1,0 +1,46 @@
+{
+  "env_version": "route-env-1",
+  "graph_version": "jakarta-20261005",
+  "mode": "bike",
+  "graph_files_sha256": {
+    "graph_version.csv": "be37aed8f1922136b8201ac62c4773990823c4637a898cabef2206e9a97f313f",
+    "road_node.csv.gz": "4921a432db17b2c274cd6c0aa2cf78787b6b81e4d6b4d5620f0dd495cd8fa3b9",
+    "road_edge.csv.gz": "792fa12eca4d44e122999e2e446f3d6a8c7b71ceeb4150b533314c82ec699554"
+  },
+  "graph_nodes": 299067,
+  "graph_edges": 303972,
+  "weights": {
+    "time_window": "synthetic",
+    "name": "synthetic_exposure_index",
+    "sha256": "238dae00f8578b4869aaf30b146b56e9ed37d4cde8d77b1bbe075612608e1b94",
+    "covered_edges": 297935,
+    "imputed_edges": 6037,
+    "imputed_value": 1.500259
+  },
+  "config": {
+    "split": "train",
+    "seed": 42,
+    "max_steps": 400,
+    "max_steps_factor": 3.0,
+    "failure_penalty": 2.0,
+    "illegal_action_penalty": 0.1,
+    "allow_revisit": false,
+    "preference": {
+      "mode": "uniform",
+      "grid": [
+        0.0,
+        0.25,
+        0.5,
+        0.75,
+        1.0
+      ]
+    }
+  },
+  "od_pairs": 40,
+  "od_sha256": "aedde73106d292065c31813bddd8924b2bda8868820b6be169a71c0d792245ae",
+  "smoke": {
+    "seed": 42,
+    "episodes_per_policy": 10,
+    "synthetic_weights": true
+  }
+}
