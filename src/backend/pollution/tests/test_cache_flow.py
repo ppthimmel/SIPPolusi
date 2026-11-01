@@ -59,13 +59,15 @@ def write_graph(conn, version, **kw):
     return write_road_graph(conn, _graph(version, **kw))
 
 
-def write_weights(conn, start, edge_ids, graph_version, pm25=20.0, model="idw-p2-k8"):
+def write_weights(conn, start, edge_ids, graph_version, pm25=20.0, model="idw-p2-k8", metadata=None):
+    """metadata(edge_id) gives an edge's model_metadata (default: none)."""
     from contracts import EdgeWeight, TimeWindow as WorkerWindow
     from spatial_model.inference.cache import write_pollution_weight
 
     weights = [EdgeWeight(edge_id=e, time_window_start=start, pm25_ugm3=pm25, no2_ugm3=40.0,
                           exposure_index=0.5 * (pm25 / 15 + 40 / 25), confidence_score=0.3,
-                          background_source=None, estimation_source="idw") for e in edge_ids]
+                          background_source=None, estimation_source="idw",
+                          model_metadata=metadata(e) if metadata else {}) for e in edge_ids]
     return write_pollution_weight(conn, weights, WorkerWindow.starting_at(start), graph_version, model,
                                   coverage_ratio=1.0, trace=trace_for_weights(weights, start, graph_version))
 
@@ -208,6 +210,23 @@ async def test_window_model_metadata_is_the_runs_provenance(writer, backend):
     meta = {"pm25": {"source": "idw", "fallback_reason": "resolve_registry:ValueError"}}
     writer.execute("UPDATE pollution.edge_pollution SET model_metadata = %s::jsonb", (json.dumps(meta),))
     assert await pollution.window_model_metadata(window) == meta
+
+
+async def test_per_edge_model_metadata_is_stored_once_and_read_per_edge(writer, backend):
+    """The Data Worker stores each distinct value of a run once (edge_metadata); reads
+    still return every edge's own value."""
+    _, pollution, _ = backend
+    write_graph(writer, "v1")
+    base = {"source": "idw", "fallback_reason": "resolve_registry:LookupError"}
+    values = ({"pm25": {**base, "cell_sources": ["idw"]}},
+              {"pm25": {**base, "source": "mixed", "cell_sources": ["idw", "stgnn"]}})
+    write_weights(writer, W2, range(1, 25), "v1", metadata=lambda e: values[e % 2])
+    assert writer.execute("SELECT count(*) FROM pollution.edge_metadata").fetchone()[0] == 2
+    assert writer.execute("SELECT bool_and(model_metadata = '{}'::jsonb) FROM pollution.edge_pollution").fetchone()[0]
+    read = await pollution.read_pollution_weight(BBOX_ALL)
+    assert len(read.weights) == 24
+    assert all(w.model_metadata == values[w.edge_id % 2] for w in read.weights)
+    assert await pollution.window_model_metadata(read.window) == values[1]  # edge 1, the first by edge_id
 
 
 async def test_upsert_does_not_duplicate(writer, backend):

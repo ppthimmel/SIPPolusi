@@ -47,9 +47,31 @@ def test_init_db_memberi_index_untuk_setiap_foreign_key(cache_db):
         assert _fk_without_index(conn, ["osm", "pollution"]) == []
         names = {r[0] for r in conn.execute(
             "SELECT indexname FROM pg_indexes WHERE schemaname = 'pollution'").fetchall()}
-    assert {"edge_cell_run_cell_idx", "edge_pollution_trace_run_idx"} <= names
+    assert {"edge_cell_run_cell_idx", "edge_pollution_trace_run_idx", "inference_run_edge_cell_set_idx",
+            "edge_pollution_metadata_idx"} <= names
     # Idempoten: siklus berikutnya menjalankan migrasi yang sama.
     init_db(engine)
+
+
+def test_init_db_meningkatkan_skema_sebelum_penyimpanan_bersama(cache_db):
+    """Basis data dengan skema lama (seperti Railway sebelum November 2026) mendapat tabel dan kolom baru."""
+    import psycopg
+
+    from database import init_db
+
+    engine, dsn = cache_db
+    init_db(engine)
+    with psycopg.connect(dsn, autocommit=True) as conn:
+        conn.execute("ALTER TABLE pollution.edge_pollution DROP COLUMN metadata_id")
+        conn.execute("ALTER TABLE pollution.inference_run DROP COLUMN edge_cell_set_id")
+        conn.execute("DROP TABLE pollution.edge_metadata, pollution.edge_cell_piece, pollution.edge_cell_set")
+    init_db(engine)
+    with psycopg.connect(dsn) as conn:
+        columns = {r[0] for r in conn.execute(
+            "SELECT table_name || '.' || column_name FROM information_schema.columns WHERE table_schema = 'pollution'")}
+        assert {"edge_pollution.metadata_id", "inference_run.edge_cell_set_id", "edge_metadata.model_metadata",
+                "edge_cell_piece.length_m", "edge_cell_set.pieces_sha256"} <= columns
+        assert _fk_without_index(conn, ["pollution"]) == []
 
 
 def test_skema_uji_osm_cache_memberi_index_untuk_setiap_foreign_key(pg_dsn):

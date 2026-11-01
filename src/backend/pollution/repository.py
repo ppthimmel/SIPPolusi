@@ -64,34 +64,40 @@ SELECT p.edge_id, p.time_window_start,
        p.graph_version, p.model_version{lineage},
        e.walk_allowed, e.bike_allowed
 FROM pollution.edge_pollution p
-LEFT JOIN osm.road_edge e ON e.edge_id = p.edge_id AND e.graph_version = p.graph_version
+LEFT JOIN osm.road_edge e ON e.edge_id = p.edge_id AND e.graph_version = p.graph_version{lineage_join}
 WHERE p.time_window_start = $1
   AND p.geom && ST_MakeEnvelope($2, $3, $4, $5, 4326)
 ORDER BY p.edge_id
 """
 
-# Per-edge lineage. One inference run writes the same values on every row of its
-# window, and model_metadata alone is ~0.3 kB per row: for a 9 km trip (64k edges)
+# A row's model_metadata. The Data Worker stores each distinct value of a run once
+# (pollution.edge_metadata) and rows point at theirs through metadata_id; rows
+# written before that carry their own copy in edge_pollution.model_metadata.
+_MODEL_METADATA = "coalesce(nullif(p.model_metadata, '{}'::jsonb), m.model_metadata, p.model_metadata)"
+_JOIN_MODEL_METADATA = "\nLEFT JOIN pollution.edge_metadata m ON m.metadata_id = p.metadata_id"
+
+# Per-edge lineage. One inference run writes nearly the same values on every row of
+# its window, and model_metadata alone is ~0.3 kB per row: for a 9 km trip (64k edges)
 # these columns double the rows sent to the route planner (40.8 vs 20.1 MB), which
 # never reads them. lineage=False leaves them out.
-_LINEAGE_COLUMNS = ("written_at", "model_metadata", "trace_run_id")
-_SQL_WEIGHTS = _SQL_WEIGHTS_TEMPLATE.format(lineage="".join(f", p.{c}" for c in _LINEAGE_COLUMNS))
-_SQL_WEIGHTS_WITHOUT_LINEAGE = _SQL_WEIGHTS_TEMPLATE.format(lineage="")
+_LINEAGE = f", p.written_at, {_MODEL_METADATA} AS model_metadata, p.trace_run_id"
+_SQL_WEIGHTS = _SQL_WEIGHTS_TEMPLATE.format(lineage=_LINEAGE, lineage_join=_JOIN_MODEL_METADATA)
+_SQL_WEIGHTS_WITHOUT_LINEAGE = _SQL_WEIGHTS_TEMPLATE.format(lineage="", lineage_join="")
 
 _WEIGHT_FIELDS = tuple(EdgeWeight.__dataclass_fields__)
 
 # The run's per-pollutant provenance (source, model version, fallback reason) from
 # one row of the window, for routes read without lineage: one run writes a whole
-# window at once, so every row carries the same model_metadata. No index starts
+# window at once, so every row carries the same fallback reasons. No index starts
 # with time_window_start (the key is (edge_id, time_window_start)), so a bare
 # LIMIT 1 seq-scans until it meets the window: up to 1.8 s on Railway, depending
 # on where the window's rows sit in the heap. ORDER BY edge_id walks the primary
 # key instead and stops at the first edge, which every window covers (0.09 ms).
-_SQL_WINDOW_MODEL_METADATA = """
-SELECT model_metadata
-FROM pollution.edge_pollution
-WHERE time_window_start = $1
-ORDER BY edge_id
+_SQL_WINDOW_MODEL_METADATA = f"""
+SELECT {_MODEL_METADATA}
+FROM pollution.edge_pollution p{_JOIN_MODEL_METADATA}
+WHERE p.time_window_start = $1
+ORDER BY p.edge_id
 LIMIT 1
 """
 
@@ -225,9 +231,18 @@ class PollutionRepository:
             if row["trace_run_id"] is None:
                 return dict(status="legacy_unavailable", edge_id=edge_id,
                             time_window_start=window.time_window_start, run_id=None, cells=[])
+            # The pieces of the run's road-cell mapping (edge_cell_piece), or edge_cell for
+            # runs written before the mapping was shared (edge_cell_set_id NULL).
             cells = await conn.fetch("""SELECT c.edge_id, c.length_m, g.*
+                FROM pollution.inference_run r
+                JOIN pollution.edge_cell_piece c ON c.set_id = r.edge_cell_set_id
+                JOIN pollution.grid_prediction g ON g.run_id = r.run_id AND g.cell_id = c.cell_id
+                WHERE r.run_id = $1 AND c.edge_id = $2
+                UNION ALL
+                SELECT c.edge_id, c.length_m, g.*
                 FROM pollution.edge_cell c JOIN pollution.grid_prediction g USING (run_id, cell_id)
-                WHERE c.run_id = $1 AND c.edge_id = $2 ORDER BY c.cell_id""", row["trace_run_id"], edge_id)
+                WHERE c.run_id = $1 AND c.edge_id = $2
+                ORDER BY cell_id""", row["trace_run_id"], edge_id)
             manifest = row["manifest"]
             if isinstance(manifest, str):
                 manifest = json.loads(manifest)

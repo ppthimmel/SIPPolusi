@@ -82,8 +82,10 @@ Kueri EdgeWeight ikut dihitung dalam `statement_timeout` 1,5 detik, termasuk wak
 Untuk perjalanan 9 km diagonal (±64 ribu ruas), kueri lama melewati batas itu (503 `query_timeout`).
 Penyebabnya dua:
 
-- **Lineage per ruas:** `model_metadata`, `trace_run_id`, dan `written_at` bernilai sama untuk setiap baris
-  satu run, tetapi `model_metadata` saja ±0,3 kB per baris. Planner rute tidak memakainya, jadi
+- **Lineage per ruas:** `model_metadata`, `trace_run_id`, dan `written_at` hampir sama untuk setiap baris
+  satu run, tetapi `model_metadata` saja ±0,3 kB per baris yang dikirim. Data Worker menyimpan setiap
+  nilai berbeda sekali per run (`pollution.edge_metadata`, dirujuk `edge_pollution.metadata_id`);
+  baris yang ditulis sebelumnya masih membawa salinannya sendiri. Planner rute tidak memakainya, jadi
   `read_pollution_weight(..., lineage=False)` tidak membacanya; ketiga kolom itu bernilai bawaan
   (`None`, `{}`, `None`). `/edge-weights` tetap membaca lineage lengkap.
 - **`work_mem` 4 MB:** join ke `osm.road_edge` dan pengurutan tumpah ke disk. Kueri ini kini memakai

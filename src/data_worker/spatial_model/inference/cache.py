@@ -7,6 +7,8 @@
   ``complete``. Galat di tengah jalan membatalkan seluruhnya, sehingga
   time window sebelumnya tetap berlaku (UT-OPS-02, IT-K-08). Geometri ruas
   diambil dari ``osm.road_edge`` di dalam SQL, tidak dikirim dari Python.
+  Setiap nilai model_metadata yang berbeda disimpan sekali per run
+  (``edge_metadata``); baris hanya menyimpan ``metadata_id``.
 * ``read_pollution_weight``: baris time window terakhir berstatus ``complete``
   yang memotong bbox (UT-OPS-01).
 
@@ -14,8 +16,6 @@ Nama skema dapat diganti agar uji berjalan pada skema sementara.
 """
 
 from __future__ import annotations
-
-import json
 
 import datetime as dt
 from typing import Callable, Iterable
@@ -146,24 +146,29 @@ def write_pollution_weight(
                            completed_at = NULL""").format(window_table),
             (window_start, pollutants, coverage_ratio, model_version),
         )
-        from .provenance import write_trace
+        from .provenance import write_edge_metadata, write_trace
         write_trace(conn, trace, prepared, time_window, graph_version, model_version, pollution_schema)
+        # Each distinct model_metadata value is stored once (edge_metadata); rows keep only its ID.
+        rows = df.drop(columns="model_metadata").assign(
+            metadata_id=write_edge_metadata(conn, trace.run_id, df.model_metadata, pollution_schema))
         conn.execute("""CREATE TEMP TABLE edge_weight_incoming (
                             edge_id BIGINT PRIMARY KEY, pm25_ugm3 REAL, no2_ugm3 REAL, exposure_index REAL,
-                            confidence_score REAL, background_source TEXT, estimation_source TEXT, model_metadata JSONB
+                            confidence_score REAL, background_source TEXT, estimation_source TEXT, metadata_id BIGINT
                         ) ON COMMIT DROP""")
         with conn.cursor().copy(
             "COPY edge_weight_incoming (edge_id, pm25_ugm3, no2_ugm3, exposure_index, confidence_score, "
-            "background_source, estimation_source, model_metadata) FROM STDIN"
+            "background_source, estimation_source, metadata_id) FROM STDIN"
         ) as copy:
-            for row in df.itertuples(index=False, name=None):
-                copy.write_row([json.dumps(v) if isinstance(v, dict) else _nullable(v) for v in row])
+            for row in rows.itertuples(index=False, name=None):
+                copy.write_row([_nullable(v) for v in row])
+        # model_metadata is left at its default '{}', which also clears the copy on rows
+        # written before metadata_id existed.
         written = conn.execute(
             sql.SQL("""INSERT INTO {edge} (edge_id, time_window_start, pm25_ugm3, no2_ugm3, exposure_index,
-                                           confidence_score, background_source, estimation_source, model_metadata,
+                                           confidence_score, background_source, estimation_source, metadata_id,
                                            graph_version, model_version, trace_run_id, geom, written_at)
                        SELECT t.edge_id, %(w)s, t.pm25_ugm3, t.no2_ugm3, t.exposure_index, t.confidence_score,
-                              t.background_source, t.estimation_source, t.model_metadata, %(g)s, %(m)s, %(r)s, e.geom, now()
+                              t.background_source, t.estimation_source, t.metadata_id, %(g)s, %(m)s, %(r)s, e.geom, now()
                        FROM edge_weight_incoming t
                        LEFT JOIN {road} e ON e.edge_id = t.edge_id AND e.graph_version = %(g)s
                        ON CONFLICT (edge_id, time_window_start) DO UPDATE SET
@@ -171,6 +176,7 @@ def write_pollution_weight(
                            exposure_index = EXCLUDED.exposure_index, confidence_score = EXCLUDED.confidence_score,
                            background_source = EXCLUDED.background_source,
                            estimation_source = EXCLUDED.estimation_source, model_metadata = EXCLUDED.model_metadata,
+                           metadata_id = EXCLUDED.metadata_id,
                            graph_version = EXCLUDED.graph_version, model_version = EXCLUDED.model_version,
                            trace_run_id = EXCLUDED.trace_run_id,
                            geom = EXCLUDED.geom, written_at = EXCLUDED.written_at""").format(
@@ -197,10 +203,12 @@ def write_pollution_weight(
 def prune_pollution_windows(conn, keep_windows: int, pollution_schema: str = "pollution") -> int:
     """Hapus time window complete selain ``keep_windows`` terakhir beserta barisnya.
 
-    Satu time window seluruh graf memakan ±92 MB termasuk indeks (TI-AI-05), sedangkan Backend
+    Satu time window seluruh graf memakan ±215 MB termasuk indeks dan jejak sel grid,
+    ditambah ±60 MB potongan ruas-sel yang dipakai bersama (±580 MB sebelum potongan dan
+    model_metadata disimpan sekali; uji skala ¼, November 2026), sedangkan Backend
     hanya membaca time window complete terakhir (data_stale bila > 3 jam).
-    Time window berstatus writing tidak disentuh. Mengembalikan jumlah time
-    window yang dihapus.
+    Time window berstatus writing tidak disentuh. Potongan ruas-sel yang tidak lagi
+    dirujuk run mana pun ikut dihapus. Mengembalikan jumlah time window yang dihapus.
     """
     if keep_windows < 1:
         raise ValueError("keep_windows minimal 1")
@@ -215,6 +223,9 @@ def prune_pollution_windows(conn, keep_windows: int, pollution_schema: str = "po
         if old:
             conn.execute(sql.SQL("DELETE FROM {} WHERE time_window_start = ANY(%s)").format(edge_table), (old,))
             conn.execute(sql.SQL("DELETE FROM {} WHERE time_window_start = ANY(%s)").format(window_table), (old,))
+            conn.execute(sql.SQL("""DELETE FROM {} s WHERE NOT EXISTS (
+                                        SELECT 1 FROM {} r WHERE r.edge_cell_set_id = s.set_id)""").format(
+                _ident(pollution_schema, "edge_cell_set"), _ident(pollution_schema, "inference_run")))
     return len(old)
 
 
@@ -265,12 +276,18 @@ def read_pollution_weight(
     if window_start is None:
         return [], None
     cur = conn.cursor()
+    # Rows written before metadata_id existed carry their own model_metadata.
     cur.execute(
-        sql.SQL("""SELECT edge_id, time_window_start, pm25_ugm3, no2_ugm3, exposure_index, confidence_score,
-                          background_source, estimation_source, model_metadata, trace_run_id
-                   FROM {} WHERE time_window_start = %s
-                   AND ST_Intersects(geom, ST_MakeEnvelope(%s, %s, %s, %s, 4326))
-                   ORDER BY edge_id""").format(_ident(pollution_schema, "edge_pollution")),
+        sql.SQL("""SELECT p.edge_id, p.time_window_start, p.pm25_ugm3, p.no2_ugm3, p.exposure_index,
+                          p.confidence_score, p.background_source, p.estimation_source,
+                          coalesce(nullif(p.model_metadata, '{{}}'::jsonb), m.model_metadata, p.model_metadata)
+                              AS model_metadata,
+                          p.trace_run_id
+                   FROM {} p LEFT JOIN {} m ON m.metadata_id = p.metadata_id
+                   WHERE p.time_window_start = %s
+                   AND ST_Intersects(p.geom, ST_MakeEnvelope(%s, %s, %s, %s, 4326))
+                   ORDER BY p.edge_id""").format(_ident(pollution_schema, "edge_pollution"),
+                                                 _ident(pollution_schema, "edge_metadata")),
         (window_start, *bbox.as_tuple()),
     )
     names = [c.name for c in cur.description]
