@@ -42,19 +42,24 @@ Preferences are drawn as `α ~ U[0, 1]`, `β = 1 − α`.
 
 ## Smoke test result
 
-The environment has `max_steps = 400`, `max_steps_factor = 3`, `failure_penalty = 2`
-and `illegal_action_penalty = 0.1`. It ran two scripted policies with 10 episodes each:
+The environment has `max_steps = 400`, `max_steps_factor = 3`, `failure_return = 4`
+and `illegal_action_penalty = 0.1`. The weights are synthetic, so the time-window
+split is explicitly opted out with `window_splits=None`. Two scripted policies ran
+10 episodes each:
 
 | Policy | Reached | Dead end | Truncated | Mean return | Mean steps | Illegal actions |
 |---|---:|---:|---:|---:|---:|---:|
 | `reference` (follows the fastest route) | 10 | 0 | 0 | −1.000 | 64.9 | 0 |
-| `random` (uniform legal action, one injected illegal action) | 0 | 10 | 0 | −2.182 | 7.9 | 10 |
+| `random` (uniform legal action, one injected illegal action) | 0 | 10 | 0 | −4.000 | 7.9 | 10 |
+
+Every failed episode returns exactly −4, regardless of how far it got. The longest
+reference route has 133 edges, below `max_steps`.
 
 The `reference` policy reaches every destination with return −1 (within floating
 point) for every sampled α. Its `time_ratio` and `exposure_ratio` are both 1. This
 confirms that the summed step rewards equal `−(α·T/T_ref + β·E/E_ref)` on the real
 graph. The `random` policy shows that illegal actions and dead-end terminations,
-with their penalties, are recorded per episode. Truncation is covered by the unit
+settled at the fixed failure return, are recorded per episode. Truncation is covered by the unit
 test `test_truncation_at_step_limit`, because random walks on this graph hit a dead
 end before the step limit.
 
@@ -65,7 +70,8 @@ end before the step limit.
   uses a deterministic synthetic exposure index, `1.5 + 0.5·sin(300x)·cos(300y)` at
   each edge's midpoint. It deliberately leaves 2% of edges missing (`edge_id % 50 == 0`).
   Those 6,037 edges are imputed with the median, 1.500, and counted in the manifest.
-  For a real snapshot, pass `--weights <edge_weights.csv> --time-window <ISO window>`.
+  For a real snapshot, pass `--weights <run>/edge_weights.parquet --time-window <ISO window>
+  --windows <all windows, comma-separated>`. The window must fall in the train split.
 - **Simple-path routes.** The default `allow_revisit=False` restricts routes to simple
   paths, so a policy can trap itself in a dead end. This is reported as an explicit
   outcome, not hidden.

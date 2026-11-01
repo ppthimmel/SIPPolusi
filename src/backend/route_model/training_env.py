@@ -10,6 +10,7 @@ import csv
 import hashlib
 import json
 import math
+import numbers
 import random
 import statistics
 from dataclasses import asdict, dataclass, field
@@ -21,6 +22,9 @@ from .route_metrics import ExposureSnapshot
 ENV_VERSION = "route-env-1"
 SPLITS = ("train", "val", "test")
 PREFERENCE_TOLERANCE = 1e-6
+# Time window of a synthetic weight field. Only such snapshots may skip the
+# time-window split (window_splits=None); a real snapshot must name its split.
+SYNTHETIC_WINDOW = "synthetic"
 GRAPH_FILES = ("graph_version.csv", "road_node.csv.gz", "road_edge.csv.gz")
 
 
@@ -78,9 +82,13 @@ class SplitSpec:
 def split_windows(windows, fractions=(0.7, 0.15, 0.15)):
     """Chronological split of time windows: earliest to train, latest to test.
 
-    ISO-8601 UTC strings sort chronologically. Every split with a positive
-    fraction gets at least one window when there are enough windows.
+    ISO-8601 UTC strings sort chronologically. Val and test get
+    round(n * fraction) windows, at least one each when their fraction is
+    positive; train takes the remainder.
     """
+    if (len(fractions) != 3 or any(f < 0 for f in fractions) or fractions[0] == 0
+            or abs(sum(fractions) - 1) > 1e-9):
+        raise ValueError("fractions must be three nonnegative values summing to 1, with a positive train share")
     windows = sorted(set(windows))
     if len(windows) < 3:
         raise ValueError("At least three time windows are needed for train/val/test")
@@ -118,12 +126,14 @@ class PreferenceSpec:
 class EnvConfig:
     split: str = "train"
     seed: int = 0
-    # Episode step limit: min(max_steps, ceil(max_steps_factor * reference edges)).
+    # Episode step limit: min(max_steps, ceil(max_steps_factor * reference edges)),
+    # but never below the reference edge count, so the fastest route always fits.
     max_steps: int = 1000
     max_steps_factor: float = 3.0
-    # Added to both reward components when an episode ends without reaching
-    # the destination (truncated or dead end).
-    failure_penalty: float = 2.0
+    # A failed episode (truncated or dead end) returns exactly -failure_return
+    # on both components, however far it got: failing early is never cheaper
+    # than searching longer. Successful routes cost their weighted cost.
+    failure_return: float = 4.0
     # Added to both reward components for an illegal action; the state is unchanged.
     illegal_action_penalty: float = 0.1
     # False masks arcs into already visited nodes, so routes are simple paths.
@@ -137,10 +147,10 @@ class EnvConfig:
             raise ValueError("max_steps must be a positive integer")
         if not (self.max_steps_factor >= 1 and math.isfinite(self.max_steps_factor)):
             raise ValueError("max_steps_factor must be finite and at least 1")
-        for name in ("failure_penalty", "illegal_action_penalty"):
-            value = getattr(self, name)
-            if not (value >= 0 and math.isfinite(value)):
-                raise ValueError(f"{name} must be finite and nonnegative")
+        if not (self.failure_return > 0 and math.isfinite(self.failure_return)):
+            raise ValueError("failure_return must be positive and finite")
+        if not (self.illegal_action_penalty >= 0 and math.isfinite(self.illegal_action_penalty)):
+            raise ValueError("illegal_action_penalty must be finite and nonnegative")
 
 
 def _reachable_components(router, component, cache):
@@ -219,16 +229,25 @@ def load_od_pairs(path, *, split=None, graph_version=None):
     return [p for p in pairs if split is None or p.split == split]
 
 
-def load_weights_csv(path, graph_version, time_window, column="exposure_index"):
-    """Read an EdgeWeight export (edge_id plus `column`) into an ExposureSnapshot.
+def load_weights(path, graph_version, time_window, column="exposure_index"):
+    """Read EdgeWeights (edge_id plus `column`) into an ExposureSnapshot.
 
+    Accepts the `edge_weights.parquet` written by `spatial_model infer`
+    (needs pandas with a Parquet engine) or a CSV with the same columns.
     Empty cells are treated as missing, never as zero.
     """
+    path = Path(path)
     values = {}
-    with open(path, newline="", encoding="utf-8-sig") as stream:
-        for row in csv.DictReader(stream):
-            if row.get(column) not in (None, ""):
-                values[int(row["edge_id"])] = float(row[column])
+    if path.suffix == ".parquet":
+        import pandas as pd  # Optional: only Parquet input needs it.
+
+        frame = pd.read_parquet(path, columns=["edge_id", column]).dropna(subset=[column])
+        values = {int(e): float(v) for e, v in zip(frame["edge_id"], frame[column])}
+    else:
+        with path.open(newline="", encoding="utf-8-sig") as stream:
+            for row in csv.DictReader(stream):
+                if row.get(column) not in (None, ""):
+                    values[int(row["edge_id"])] = float(row[column])
     return ExposureSnapshot(graph_version, time_window, column, values)
 
 
@@ -281,20 +300,29 @@ class RouteEnv:
 
     The graph comes from a versioned RoadRouter and the edge exposure from an
     ExposureSnapshot of the same graph version. The environment holds only the
-    OD pairs (and, if given, time windows) of its own split.
+    OD pairs and the time window of its own split.
+
+    `window_splits` (from split_windows) is required: the snapshot's time
+    window must belong to this split. Passing None is an explicit opt-out
+    allowed only for a synthetic snapshot (time_window == SYNTHETIC_WINDOW).
     """
 
     def __init__(self, router: RoadRouter, weights: ExposureSnapshot, od_pairs, config: EnvConfig = EnvConfig(),
-                 *, window_splits=None, logger: EpisodeLogger | None = None):
+                 *, window_splits, logger: EpisodeLogger | None = None):
         if not isinstance(weights, ExposureSnapshot) or weights.graph_version != router.version:
             raise ValueError("Edge weights must be an ExposureSnapshot of the router's graph version")
-        if window_splits is not None:
+        if window_splits is None:
+            if weights.time_window != SYNTHETIC_WINDOW:
+                raise InvalidEpisode("split_violation",
+                                     f"window_splits is required for the real time window {weights.time_window}")
+        else:
             # A time window belongs to exactly one split; using another split's
             # window would leak its pollution field into this split.
-            own = set(window_splits.get(config.split, ()))
-            if weights.time_window not in own:
+            owners = [name for name in SPLITS if weights.time_window in set(window_splits.get(name, ()))]
+            if owners != [config.split]:
                 raise InvalidEpisode("split_violation",
-                                     f"Time window {weights.time_window} is not in the {config.split} split")
+                                     f"Time window {weights.time_window} belongs to {owners or 'no split'}, "
+                                     f"not only to {config.split}")
         self.router, self.weights, self.config, self.logger = router, weights, config, logger
         self.od_pairs = list(od_pairs)
         if not self.od_pairs:
@@ -351,8 +379,8 @@ class RouteEnv:
         self.reference_exposure = math.fsum(self.exposure[e] * edges[e].time_s for e in self.reference_edge_ids)
         # Zero-exposure reference: normalise by 1 (same policy as the mock solver).
         self._exposure_scale = self.reference_exposure or 1.0
-        self.step_limit = min(self.config.max_steps,
-                              math.ceil(self.config.max_steps_factor * len(self.reference_edge_ids)))
+        self.step_limit = max(len(self.reference_edge_ids), min(
+            self.config.max_steps, math.ceil(self.config.max_steps_factor * len(self.reference_edge_ids))))
 
         self.episode_index += 1
         self.episode_seed = seed
@@ -372,10 +400,11 @@ class RouteEnv:
             raise RuntimeError("Episode has finished; call reset()")
         self.steps += 1
         arcs, mask = self._arcs()
-        legal = (not isinstance(action, bool) and isinstance(action, int)
-                 and 0 <= action < len(arcs) and mask[action])
+        # Any integer type is accepted (numpy's np.argmax returns np.int64); bool is not an action.
+        legal = (isinstance(action, numbers.Integral) and not isinstance(action, bool)
+                 and 0 <= action < len(arcs) and mask[int(action)])
         if legal:
-            neighbor, seconds, edge_id, _ = arcs[action]
+            neighbor, seconds, edge_id, _ = arcs[int(action)]
             exposure = self.exposure[edge_id] * seconds
             vector = [-seconds / self.reference_time, -exposure / self._exposure_scale]
             self.node = neighbor
@@ -396,7 +425,9 @@ class RouteEnv:
         elif self.steps >= self.step_limit:
             outcome = "truncated"
         if outcome in ("dead_end", "truncated"):
-            vector = [v - self.config.failure_penalty for v in vector]
+            # Settle the episode at exactly -failure_return per component: this
+            # final reward offsets everything accumulated so far, this step included.
+            vector = [-self.config.failure_return - self.returns[1], -self.config.failure_return - self.returns[2]]
         # alpha + beta = 1, so the scalar reward is exactly the scalarised vector.
         reward = self.alpha * vector[0] + self.beta * vector[1]
         self.returns = [self.returns[0] + reward, self.returns[1] + vector[0], self.returns[2] + vector[1]]

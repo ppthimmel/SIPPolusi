@@ -8,8 +8,10 @@ One illegal action is injected per random episode to show it is logged.
 
 Without --weights the edge exposure is a deterministic synthetic field, as the
 OSM export carries no pollution snapshot; 2% of edges are left missing to
-exercise median imputation. Pass an EdgeWeight CSV (edge_id, exposure_index)
-from `spatial_model infer` together with --time-window for a real snapshot.
+exercise median imputation. For a real snapshot pass the run's
+`edge_weights.parquet` from `spatial_model infer` (or a CSV with edge_id and
+exposure_index), its --time-window, and --windows: every available window, which
+is split chronologically. The snapshot's window must fall in the train split.
 """
 import argparse
 import json
@@ -20,7 +22,8 @@ from pathlib import Path
 from .astar_osm import DEFAULT_GRAPH, get_router
 from .route_metrics import ExposureSnapshot
 from .training_env import (
-    EnvConfig, EpisodeLogger, RouteEnv, SplitSpec, load_weights_csv, sample_od_pairs, save_od_pairs,
+    SYNTHETIC_WINDOW, EnvConfig, EpisodeLogger, RouteEnv, SplitSpec, load_weights, sample_od_pairs,
+    save_od_pairs, split_windows,
 )
 
 DEFAULT_OUTPUT = Path(__file__).resolve().parents[3] / "docs/experiments/TI-AI-08"
@@ -34,7 +37,7 @@ def synthetic_weights(router):
         (x1, y1), (x2, y2) = router.coords[edge.u], router.coords[edge.v]
         x, y = (x1 + x2) / 2, (y1 + y2) / 2
         values[edge_id] = round(1.5 + 0.5 * math.sin(x * 300) * math.cos(y * 300), 6)
-    return ExposureSnapshot(router.version, "synthetic", "synthetic_exposure_index", values)
+    return ExposureSnapshot(router.version, SYNTHETIC_WINDOW, "synthetic_exposure_index", values)
 
 
 def main():
@@ -43,16 +46,20 @@ def main():
     parser.add_argument("--mode", default="bike")
     parser.add_argument("--weights", type=Path)
     parser.add_argument("--time-window")
+    parser.add_argument("--windows", help="comma-separated ISO time windows available for splitting")
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--episodes", type=int, default=10, help="per policy")
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
     args = parser.parse_args()
-    if args.weights and not args.time_window:
-        parser.error("--weights requires --time-window")
+    if args.weights and not (args.time_window and args.windows):
+        parser.error("--weights requires --time-window and --windows")
 
     router = get_router(args.graph_dir, args.mode)
-    weights = (load_weights_csv(args.weights, router.version, args.time_window)
-               if args.weights else synthetic_weights(router))
+    if args.weights:
+        weights = load_weights(args.weights, router.version, args.time_window)
+        window_splits = split_windows(args.windows.split(","))
+    else:
+        weights, window_splits = synthetic_weights(router), None  # synthetic: explicit opt-out
     spec = SplitSpec(block_deg=0.02, seed=args.seed)
     pairs, stats = sample_od_pairs(router, spec, {"train": 40, "val": 10, "test": 10}, seed=args.seed,
                                    min_distance_m=500, max_distance_m=3000)
@@ -62,7 +69,7 @@ def main():
     train = [p for p in pairs if p.split == "train"]
     config = EnvConfig(split="train", seed=args.seed, max_steps=400)
     logger = EpisodeLogger(args.output / "episodes.jsonl")
-    env = RouteEnv(router, weights, train, config, logger=logger)
+    env = RouteEnv(router, weights, train, config, window_splits=window_splits, logger=logger)
     rng = random.Random(args.seed)
     for policy in ("reference", "random"):
         for _ in range(args.episodes):
@@ -93,7 +100,8 @@ def main():
         for record in logger.records:
             stream.write(json.dumps(record, allow_nan=False) + "\n")
     manifest = env.manifest(args.graph_dir) | {"smoke": {"seed": args.seed, "episodes_per_policy": args.episodes,
-                                                         "synthetic_weights": args.weights is None}}
+                                                         "synthetic_weights": args.weights is None,
+                                                         "window_splits": window_splits}}
     (args.output / "manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
     summary = {"all": logger.summary(), "by_policy": by_policy}
     (args.output / "summary.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")

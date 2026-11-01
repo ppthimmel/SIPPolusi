@@ -22,7 +22,7 @@
     "seed": 42,
     "max_steps": 400,
     "max_steps_factor": 3.0,
-    "failure_penalty": 2.0,
+    "failure_return": 4.0,
     "illegal_action_penalty": 0.1,
     "allow_revisit": false,
     "preference": {
@@ -41,6 +41,7 @@
   "smoke": {
     "seed": 42,
     "episodes_per_policy": 10,
-    "synthetic_weights": true
+    "synthetic_weights": true,
+    "window_splits": null
   }
 }

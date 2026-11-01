@@ -8,14 +8,16 @@ Gymnasium's convention: `reset()` returns `(obs, info)`, and `step(action)` retu
 ```python
 from src.backend.route_model.astar_osm import get_router, DEFAULT_GRAPH
 from src.backend.route_model.training_env import (
-    EnvConfig, EpisodeLogger, RouteEnv, load_od_pairs, load_weights_csv)
+    EnvConfig, EpisodeLogger, RouteEnv, load_od_pairs, load_weights, split_windows)
 
 router = get_router(DEFAULT_GRAPH, "bike")
-weights = load_weights_csv("edge_weights.csv", router.version, "2026-10-07T16:00:00Z")
+# edge_weights.parquet of one `spatial_model infer` run (a CSV with the same columns also works)
+weights = load_weights("runs/<run_id>/edge_weights.parquet", router.version, "2026-10-07T16:00:00Z")
+window_splits = split_windows(all_available_windows)  # every window in the study period
 train = load_od_pairs("docs/experiments/TI-AI-08/od_pairs.json", split="train",
                       graph_version=router.version)
 env = RouteEnv(router, weights, train, EnvConfig(split="train", seed=42),
-               logger=EpisodeLogger("runs/episodes.jsonl"))
+               window_splits=window_splits, logger=EpisodeLogger("runs/episodes.jsonl"))
 obs, info = env.reset()
 obs, reward, terminated, truncated, info = env.step(0)
 ```
@@ -25,7 +27,7 @@ obs, reward, terminated, truncated, info = env.step(0)
 | Input | Source | Check |
 |---|---|---|
 | Graph | `RoadRouter` from `get_router` (the export's active `graph_version`) | The edge times are those used by the A* baseline (TI-AI-07) |
-| Edge weights | `ExposureSnapshot` (graph version, time window, name, `edge_id → value`) | `graph_version` must equal the router's version |
+| Edge weights | `ExposureSnapshot` (graph version, time window, name, `edge_id → value`), e.g. from `load_weights` | `graph_version` must equal the router's version; the time window must belong to the environment's split |
 | OD pairs | `sample_od_pairs`, saved with `save_od_pairs` | Every pair must belong to the environment's split |
 
 `env.manifest(graph_dir)` records the environment version, the graph version, the
@@ -33,7 +35,9 @@ SHA-256 of the three export files, the SHA-256 of the weight mapping, edge cover
 the configuration, and the SHA-256 of the OD set. Store it with every training run.
 
 The weight value is the backend's dimensionless exposure index `I_e` (TI-AI-05
-EdgeWeight `exposure_index`). A concentration in µg/m³ can be supplied instead; the
+EdgeWeight `exposure_index`). `load_weights` reads the `edge_weights.parquet` that
+`spatial_model infer` writes per run (this needs pandas with a Parquet engine such
+as pyarrow), or a CSV with the same `edge_id` and `exposure_index` columns. A concentration in µg/m³ can be supplied instead; the
 reward is normalised, so only the reported totals change unit. **Missing values**:
 an edge with no value receives the median of the covered edges. This matches the
 planner's `imputed_median` rule. The number of imputed edges is in the manifest,
@@ -71,22 +75,24 @@ deterministic: the agent moves to `neighbor`, and `t_e` and `I_e·t_e` are added
 the totals.
 
 By default (`allow_revisit=False`), arcs into visited nodes are masked, so every
-route is a simple path. **Illegal action**: any action that is out of range, not an
-`int`, or masked. The agent stays at the same node, both reward components receive
+route is a simple path. Actions may be any integer type, including numpy integers
+such as the `np.int64` that `np.argmax` returns; `bool` is never an action.
+**Illegal action**: any action that is out of range, not an integer, or masked. The agent stays at the same node, both reward components receive
 `-illegal_action_penalty` (default 0.1), the step counts toward the limit, and
 `info["illegal_action"]` is `true`. The episode record counts illegal actions.
 
 ## Terminal conditions
 
-| Outcome | Condition | `terminated` / `truncated` | Extra penalty |
+| Outcome | Condition | `terminated` / `truncated` | Episode return |
 |---|---|---|---|
-| `reached` | `node == destination` | true / false | – |
-| `dead_end` | No legal action left from the current node | true / false | `failure_penalty` (default 2.0) on both components |
-| `truncated` | `steps ≥ step_limit` | false / true | `failure_penalty` on both components |
+| `reached` | `node == destination` | true / false | `−weighted_cost` minus any illegal-action penalties |
+| `dead_end` | No legal action left from the current node | true / false | exactly `−failure_return` (default 4.0) |
+| `truncated` | `steps ≥ step_limit` | false / true | exactly `−failure_return` |
 
-`step_limit = min(max_steps, ceil(max_steps_factor × reference edge count))`. The
-defaults are 1000 and 3, so the limit is always at least the reference route's
-length. Calling `step` after an episode has ended raises `RuntimeError`.
+`step_limit = max(R, min(max_steps, ceil(max_steps_factor × R)))`, where `R` is the
+reference route's edge count. The defaults are 1000 and 3. The outer `max` means the
+fastest route always fits, even when `max_steps` is smaller than `R`. Calling `step`
+after an episode has ended raises `RuntimeError`.
 
 **Invalid episodes** are rejected before the first step by raising `InvalidEpisode`
 with a `reason` code. Pairs from `sample_od_pairs` have already been checked for
@@ -98,7 +104,7 @@ reachability, so none of these fire during normal sampling:
 | `same_node` | Origin and destination are the same node |
 | `unknown_node` | A node has no outgoing arc (origin) or no incoming arc (destination) for this mode |
 | `unknown_od` | `reset(od_id=...)` names a pair outside this environment's split |
-| `split_violation` | An OD pair or time window from another split is passed in |
+| `split_violation` | An OD pair from another split is passed in; the weight time window is not in exactly this split; or `window_splits=None` with a real (non-synthetic) snapshot |
 | `invalid_preference` | `α, β ∉ [0, 1]` or `|α + β − 1| > 1e-6` |
 
 ## Reward
@@ -110,8 +116,8 @@ r_vec = (−t_e / T_ref, −I_e·t_e / E_ref)
 r     = α·r_vec[0] + β·r_vec[1]
 ```
 
-Penalties are added to both vector components. Because `α + β = 1`, the scalar
-reward is always exactly the scalarised vector. Scalarised MORL can use `r`;
+Illegal-action penalties are added to both vector components. Because `α + β = 1`,
+the scalar reward is always exactly the scalarised vector. Scalarised MORL can use `r`;
 multi-policy or preference-conditioned MORL can use `info["reward_vector"]`. For an
 episode that reaches the destination without illegal actions, the return is
 
@@ -129,6 +135,31 @@ enough. Example (unit test `test_hand_calculated_preference_tradeoff`):
 - At `α = 0.8`, the cleaner route gives `G = −1.275` (worse than −1).
 - At `α = 0.2`, the cleaner route gives `G = −0.6` (better than −1).
 
+**Failure return.** The last step of a failed episode (`dead_end` or `truncated`)
+settles each component at exactly `−failure_return`:
+
+```
+r_vec_final = (−failure_return − Σ earlier r_time, −failure_return − Σ earlier r_exposure)
+```
+
+This step offsets everything accumulated so far, including the failing step's own
+cost and any illegal-action penalties. The return is then `−failure_return` however
+long the agent searched. An earlier version subtracted a fixed penalty from the
+cost accumulated so far, which made failing early cheaper than searching longer:
+walking into the nearest cul-de-sac scored about −2.2, while searching up to the
+step limit scored about −5. With a fixed failure return, all failures score the
+same (unit test `test_failing_early_is_not_cheaper_than_failing_late`). The final
+step's reward depends on the accumulated cost, but that cost is part of the
+observation (`time_ratio`, `exposure_ratio`), so the reward stays Markov in the
+observation.
+
+**Training risk:** a successful route whose weighted cost exceeds `failure_return`
+still scores worse than failing. With the default of 4.0, any route within four
+times the reference time and exposure costs at most 4.0, so it scores at least as
+well as failing. Raise it if TI-AI-09's
+policies produce longer successful detours, and keep it fixed within a run so that
+returns stay comparable.
+
 ## OD samples, splits and preferences
 
 **Spatial split** (`SplitSpec`): the area is divided into 0.02° blocks, about
@@ -145,8 +176,14 @@ reachable through the strongly connected component DAG. Rejections are counted b
 reason (`distance`, `unreachable`, `duplicate`) and saved with the pairs.
 
 **Time windows** (`split_windows`): the windows are split chronologically, with the
-earliest going to train and the latest to test. When `window_splits` is passed,
-`RouteEnv` refuses a weight snapshot from another split's window.
+earliest going to train and the latest to test. Val and test each get
+`round(n × fraction)` windows (at least one), and train takes the rest. The
+fractions must be nonnegative, sum to 1, and give train a positive share.
+`RouteEnv` requires a `window_splits` argument and accepts a snapshot only if its
+time window lies in exactly the environment's split. Omitting the argument is a
+`TypeError`. Passing `window_splits=None` is an explicit opt-out that is allowed
+only for a synthetic snapshot (`time_window == SYNTHETIC_WINDOW`, `"synthetic"`), as
+in the smoke test. A real snapshot without a split is rejected with `split_violation`.
 
 **Preferences** (`PreferenceSpec`): `uniform` draws `α ~ U[0, 1]` with `β = 1 − α`
 (training). `grid` draws from a fixed grid, by default `0, 0.25, 0.5, 0.75, 1`

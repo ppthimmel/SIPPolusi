@@ -7,7 +7,7 @@
       "dead_end": 10
     },
     "success_rate": 0.5,
-    "mean_return": -1.5912360646712556,
+    "mean_return": -2.5,
     "mean_steps": 36.4,
     "illegal_actions": 10,
     "reached_mean_time_ratio": 1.0000000000000002,
@@ -38,7 +38,7 @@
         "dead_end": 10
       },
       "success_rate": 0.0,
-      "mean_return": -2.182472129342511,
+      "mean_return": -4.0,
       "mean_steps": 7.9,
       "illegal_actions": 10,
       "reached_mean_time_ratio": null,
