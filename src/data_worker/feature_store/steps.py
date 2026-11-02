@@ -127,7 +127,7 @@ def run_source(store: FeatureStore, source: str, window: TimeWindow, policy: Pol
             counts["failed_requests"], f": {result.note}" if result.note else "")
     return {"status": result.status, "fetch_id": fetch_id, "products_new": result.products_new,
             "rows_written": result.rows_written, **counts, **({"note": result.note} if result.note else {}),
-            **{k: v for k, v in result.detail.items() if k in ("pending", "hours", "published_hours")}}
+            **{k: v for k, v in result.detail.items() if k in ("pending", "hours", "published_hours", "waiting_hours")}}
 
 
 def combine(sources: dict) -> dict:
@@ -161,7 +161,20 @@ def _geoscf_ana(store: FeatureStore, now: dt.datetime):
         stored = store.stored_ana_hours(pd.Timestamp(now) - pd.Timedelta(hours=geoscf.ANA_LOOKBACK_HOURS + 8))
         frame, info = geoscf.fetch_ana(client, now, stored)
         rows = store.write_geoscf_ana(frame, fetch_id, now)
-        return SourceResult("ok", products_new=int(info.get("published_hours", 0)), rows_written=rows, detail=info)
+        new, waiting = int(info.get("published_hours", 0)), int(info.get("waiting_hours", 0))
+        expiring = info.get("expiring_hours", [])
+        notes = [f"{waiting} jam sudah terbit tetapi belum ada pada agregasi OPeNDAP "
+                 f"({info['opendap_hours']} jam); diperiksa lagi pada siklus berikutnya"] if waiting else []
+        if expiring:
+            notes.append(f"{len(expiring)} jam di antaranya (paling lama {expiring[0]}) keluar dari jendela "
+                         f"{geoscf.ANA_LOOKBACK_HOURS} jam dalam kurang dari {geoscf.ANA_EXPIRY_WARNING_HOURS} jam "
+                         "dan tidak diperiksa lagi sesudahnya")
+        # Tertinggalnya agregasi bukan kegagalan: tanpa jam baru sama sekali sumber "unavailable"
+        # (siklus degraded), selain itu "ok" dengan catatan. Jam yang hampir keluar dari jendela
+        # akan hilang permanen, jadi sumber "degraded" agar terlihat.
+        status = "degraded" if expiring else "unavailable" if waiting and not new else "ok"
+        return SourceResult(status, products_new=new, rows_written=rows, note="; ".join(notes) or None,
+                            detail=info)
     return run
 
 
@@ -169,17 +182,28 @@ def _geoscf_fcst(store: FeatureStore, now: dt.datetime):
     def run(client: HttpClient, fetch_id: str) -> SourceResult:
         inits = geoscf.fcst_inits(now)
         stored = store.stored_fcst_inits(min(inits))
-        new, rows, waiting = 0, 0, []
+        new, rows, waiting, deferred = 0, 0, [], {}
         for init in sorted(i for i in inits if i not in stored):
             if not geoscf.fcst_complete(client, init):
                 waiting.append(f"{init:%Y-%m-%dT%Hz}")
                 continue
-            frame, _ = geoscf.fetch_fcst(client, init)
+            frame, quality = geoscf.fetch_fcst(client, init)
+            if quality["deferred"]:
+                deferred[f"{init:%Y-%m-%dT%Hz}"] = quality["time_mismatch_leads"]
+                continue
             rows += store.write_geoscf_fcst(frame, fetch_id, now)
             new += 1
-        note = f"run belum lengkap terbit: {', '.join(waiting)}" if waiting else None
-        return SourceResult("ok", products_new=new, rows_written=rows, note=note,
-                            detail={"runs_checked": [f"{i:%Y-%m-%dT%Hz}" for i in inits]})
+        notes = [f"run belum lengkap terbit: {', '.join(waiting)}"] if waiting else []
+        notes += [f"run {label} ditunda: waktu ASCII lead {leads} tidak sesuai sumbu linear setelah "
+                  f"{geoscf.FCST_ATTEMPTS} permintaan; diminta lagi pada siklus berikutnya"
+                  for label, leads in deferred.items()]
+        detail = {"runs_checked": [f"{i:%Y-%m-%dT%Hz}" for i in inits]}
+        if deferred:
+            detail["deferred_time_mismatch_leads"] = deferred
+        # Run yang ditunda bukan kegagalan; tanpa run baru sama sekali sumber "unavailable".
+        status = "unavailable" if deferred and not new else "ok"
+        return SourceResult(status, products_new=new, rows_written=rows, note="; ".join(notes) or None,
+                            detail=detail)
     return run
 
 

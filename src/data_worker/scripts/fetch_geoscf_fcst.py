@@ -46,6 +46,11 @@ UGM3_PER_PPB = 1.8804308553640376      # 298,15 K, 101.325 Pa; sama dengan manif
 PM25_RANGE = (0.0, 2000.0)
 NO2_PPB_RANGE = (0.0, 10000.0)
 VERSION = "geoscf-fcst-preprocessed-v1"
+GRADS_UNIX_EPOCH = dt.date(1970, 1, 1).toordinal() + 1     # waktu GrADS 1970-01-01T00:00Z
+#: Lead yang waktu ASCII-nya boleh tidak sesuai sumbu linear (5% dari 120). Teramati 1 (2026-08-27)
+#: dan 3 (2026-11-01: satu nilai tahun 6, dua bergeser 20 dan 29 menit, nilai polutannya wajar). Pada
+#: 2026-11-01 kueri yang sama kadang menjawab waktu yang benar, jadi kesalahannya ada di sisi server.
+MAX_TIME_MISMATCHES = 6
 
 
 def _get(url: str, method: str = "GET", tries: int = 4) -> tuple[bytes, dict]:
@@ -79,9 +84,12 @@ def _parse_ascii(text: str, name: str) -> np.ndarray:
 
 
 def _grads_time(days: np.ndarray) -> pd.DatetimeIndex:
-    """Waktu GrADS (hari; ordinal Python + 1) → UTC. Diverifikasi terhadap waktu awal run."""
-    base = [dt.datetime.fromordinal(int(d) - 1) + dt.timedelta(days=float(d) - int(d)) for d in days]
-    return pd.DatetimeIndex(base).tz_localize("UTC").round("min")
+    """Waktu GrADS (hari; ordinal Python + 1) → UTC. Diverifikasi terhadap waktu awal run.
+
+    Nilai di luar rentang pandas (mis. ``2133.1875`` = tahun 6 pada run 2026-11-01 09z) menjadi NaT.
+    """
+    seconds = (np.asarray(days, dtype=float) - GRADS_UNIX_EPOCH) * 86400
+    return pd.DatetimeIndex(pd.to_datetime(seconds, unit="s", utc=True, errors="coerce")).round("min")
 
 
 def run_times(init: pd.Timestamp) -> pd.DatetimeIndex:
@@ -108,10 +116,15 @@ def fetch_run(init: pd.Timestamp, get=None) -> dict:
         raise ValueError(f"{init}: grid subset tidak sesuai ({lat}, {lon})")
     times = run_times(init)
     # Sumbu waktu GrADS linear (awal run + 30 menit + k jam). Larik ``time`` ASCII hanya pemeriksaan:
-    # baris panjangnya dapat terpotong sehingga satu angka terbaca salah (teramati pada run 2026-08-27).
+    # beberapa angkanya dapat salah (teramati pada run 2026-08-27 dan 2026-11-01). Run ditolak bila
+    # sumbunya tampak bergeser atau milik run lain: lead pertama atau terakhir salah, atau lebih dari
+    # MAX_TIME_MISMATCHES lead salah. Lead lain yang salah dicatat pada ``time_mismatch_leads``;
+    # Data Worker meminta ulang run seperti itu dan tidak menyimpannya bila masih salah
+    # (``connectors.geoscf.fetch_fcst``).
     decoded = _grads_time(_parse_ascii(text, "time"))
-    if decoded[0] != times[0] or (decoded != times).sum() > 2:
-        raise ValueError(f"{init}: waktu run tidak sesuai ({decoded[0]}, {(decoded != times).sum()} beda)")
+    mismatched = np.flatnonzero(decoded != times).tolist()
+    if decoded[0] != times[0] or decoded[-1] != times[-1] or len(mismatched) > MAX_TIME_MISMATCHES:
+        raise ValueError(f"{init}: waktu run tidak sesuai ({decoded[0]}, {decoded[-1]}, {len(mismatched)} beda)")
     first = get(_lead_url(init, times[0]), "HEAD")[1].get("Last-Modified")
     last = get(_lead_url(init, times[-1]), "HEAD")[1].get("Last-Modified")
     if not first or not last:
@@ -121,7 +134,7 @@ def fetch_run(init: pd.Timestamp, get=None) -> dict:
                 pm25_rh35=_parse_ascii(text, "pm25_rh35")[:, 0].tolist(),
                 no2=_parse_ascii(text, "no2")[:, 0].tolist(),
                 first_lead_last_modified=as_iso(first), last_lead_last_modified=as_iso(last),
-                source_url=url.split("?")[0])
+                time_mismatch_leads=mismatched, source_url=url.split("?")[0])
 
 
 def process(raw: dict) -> pd.DataFrame:
@@ -213,10 +226,10 @@ def main() -> None:
         publication_hours_after_init=dict(min=float(publish.min()), median=float(publish.median()),
                                           max=float(publish.max())),
         no2_conversion=dict(ugm3_per_ppb=UGM3_PER_PPB, T_ref_K=298.15, P_ref_Pa=101325.0),
-        decoded_time_mismatches={r["init_utc"]: int((pd.to_datetime(r["time_utc"], utc=True)
-                                                       != run_times(pd.Timestamp(r["init_utc"]))).sum())
-                                 for r in raw["runs"] if (pd.to_datetime(r["time_utc"], utc=True)
-                                                          != run_times(pd.Timestamp(r["init_utc"]))).any()},
+        # Lead yang waktu ASCII-nya tidak sesuai; nilainya tetap mengikuti sumbu linear. Run yang diunduh
+        # sebelum time_mismatch_leads dicatat tidak muncul di sini.
+        decoded_time_mismatches={r["init_utc"]: r["time_mismatch_leads"] for r in raw["runs"]
+                                 if r.get("time_mismatch_leads")},
         qc=dict(pm25_range=PM25_RANGE, no2_ppb_range=NO2_PPB_RANGE,
                 pm25_missing=int(frame.pm25_ugm3.isna().sum()), no2_missing=int(frame.no2_ppb.isna().sum())),
         rows=int(len(frame)), output=dict(file=path.name, sha256=sha256(path)))
