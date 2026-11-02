@@ -1,4 +1,4 @@
-"""Deterministic mock solver for Backend development and contract tests.
+"""Deterministic weighted-Dijkstra comparator and backend test solver.
 
 Behaves like the production Route Model without any AI service:
 
@@ -18,13 +18,17 @@ node expansion once that timeout cancels it.
 from __future__ import annotations
 
 import asyncio
+import math
 
 from planner.models import SolverInput
+from route_model.costs import edge_exposure, route_totals, weighted_cost
 
-from .cancel import CancelToken, run_cancellable
+from .cancel import CHECK_EVERY, CancelToken, run_cancellable
 from .contract import SOLVER_ERROR, SolveRequest, SolverError, SolverReply
 from .paths import shortest_path
 
+# Despite its name, mock is the default deterministic routing comparator for
+# MORL experiments. Its search is real; only its fault injection is simulated.
 MODEL_VERSION = "mock-1"
 
 
@@ -48,14 +52,25 @@ class MockSolver:
 
 
 def _routes(token: CancelToken, si: SolverInput) -> SolverReply:
+    """Find fastest and weighted routes after validating the input edges once."""
+    by_id = {}
+    for i, edge in enumerate(si.edges):
+        if i % CHECK_EVERY == 0:
+            token.check()
+        exposure = edge_exposure(edge.travel_time_s, edge.exposure_index)
+        if not math.isfinite(exposure):
+            raise ValueError("edge exposure must be finite")
+        by_id[edge.edge_id] = edge
     fastest = shortest_path(si, lambda e: e.travel_time_s, token)
     if fastest is None:
         return SolverReply("no_route", "policy", False, None, MODEL_VERSION)
 
-    by_id = {e.edge_id: e for e in si.edges}
-    t_ref = sum(by_id[i].travel_time_s for i in fastest) or 1.0
-    e_ref = sum(by_id[i].exposure_index * by_id[i].travel_time_s for i in fastest) or 1.0
+    t_ref, e_ref = route_totals((by_id[i].travel_time_s, by_id[i].exposure_index) for i in fastest)
     alpha, beta = si.preference.alpha, si.preference.beta
+    weighted_cost(0, 0, t_ref, e_ref, alpha, beta)
+    time_factor, exposure_factor = alpha / (t_ref or 1.0), beta / (e_ref or 1.0)
+    if not math.isfinite(time_factor) or not math.isfinite(exposure_factor):
+        raise ValueError("normalized cost factors must be finite")
     recommended = shortest_path(
-        si, lambda e: alpha * e.travel_time_s / t_ref + beta * e.exposure_index * e.travel_time_s / e_ref, token)
+        si, lambda e: e.travel_time_s * time_factor + e.travel_time_s * e.exposure_index * exposure_factor, token)
     return SolverReply("ok", "policy", True, None, MODEL_VERSION, recommended or fastest, fastest)

@@ -3,6 +3,11 @@ from dataclasses import dataclass
 import math
 from typing import Mapping
 
+if __package__:
+    from .costs import edge_exposure
+else:  # Support direct invocation of astar_osm.py.
+    from costs import edge_exposure
+
 
 @dataclass(frozen=True)
 class ExposureSnapshot:
@@ -38,7 +43,7 @@ def evaluate_route(edges, graph_version, exposure=None):
         value = exposure.concentration_ug_m3.get(edge.edge_id) if exposure is not None else None
         if value is not None:
             covered += 1
-            cumulative_exposure += value * edge.time_s
+            cumulative_exposure += edge_exposure(edge.time_s, value)
     return {
         "travel_time_s": seconds,
         "length_m": length,

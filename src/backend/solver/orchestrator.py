@@ -31,6 +31,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import math
 import time
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
@@ -43,6 +44,7 @@ from osm.repository import OsmRepository
 from planner.assembler import build_solver_input
 from planner.models import IMPUTED_MEDIAN, PlannedEdge, SolverInput
 from pollution.repository import PollutionRepository
+from route_model.costs import edge_exposure
 
 from .config import SolverSettings
 from .cancel import run_cancellable
@@ -126,7 +128,7 @@ def route_metrics(path: list[tuple[PlannedEdge, bool]]) -> RouteMetrics:
     """compute_route_metrics (Tabel 3.7)."""
     edges = [e for e, _ in path]
     minutes = [e.travel_time_s / 60 for e in edges]
-    exposure = [e.exposure_index * m for e, m in zip(edges, minutes)]
+    exposure = [edge_exposure(e.travel_time_s, e.exposure_index) / 60 for e in edges]
     known = [(e.concentration_ugm3, m) for e, m in zip(edges, minutes) if e.concentration_ugm3 is not None]
     total_exposure = sum(exposure)
     if total_exposure > 0:
@@ -134,7 +136,8 @@ def route_metrics(path: list[tuple[PlannedEdge, bool]]) -> RouteMetrics:
     else:
         confidence = sum(e.confidence_score for e in edges) / len(edges)
     return RouteMetrics(
-        travel_time_min=round(sum(minutes), 3),
+        # fsum keeps the API's rounding stable across Python versions.
+        travel_time_min=round(math.fsum(minutes), 3),
         distance_m=round(sum(e.length_m for e in edges), 2),
         exposure_index_min=round(total_exposure, 4),
         exposure_ug_min_m3=round(sum(c * m for c, m in known), 3) if len(known) == len(edges) else None,

@@ -52,7 +52,9 @@ class OsmSettings(BaseSettings):
     max_bbox_km2: float = Field(25.0, gt=0)
     study_area_bbox: str = DEFAULT_STUDY_AREA
 
-    # ModeProfile speeds (Tabel 3.3).
+    # ModeProfile speeds (Tabel 3.3), configurable via OSM_WALK_SPEED_MPS and
+    # OSM_BIKE_SPEED_MPS. When changing defaults, check route_model/astar_osm.py
+    # and docs/route-time-exposure.md so standalone runs and documentation agree.
     walk_speed_mps: float = Field(1.3, gt=0)
     bike_speed_mps: float = Field(4.2, gt=0)
 
