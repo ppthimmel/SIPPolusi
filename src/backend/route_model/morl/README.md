@@ -67,8 +67,8 @@ for the split check, but their files are never opened, and no test OD pair is sa
 `manifest.json` with identity, configuration, code commit, data hashes, status and
 `stop_reason`. A failed, interrupted or limit-stopped run keeps its checkpoints.
 
-A run stops cleanly when RSS exceeds 16 GB, when RSS keeps rising by more than 512 MB
-across 50 updates, or when under 2 GB of disk is free. Two cores are always left
+A run stops cleanly when RSS exceeds 16 GB, when the lowest RSS keeps rising by more than
+512 MB across 150 updates (temporary peaks do not count), or when under 2 GB of disk is free. Two cores are always left
 free. Only `best.pt`, `last.pt` and the last three periodic checkpoints stay.
 
 The limits and the module's other settings are in the configuration file.

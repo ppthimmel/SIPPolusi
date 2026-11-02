@@ -629,11 +629,24 @@ class ResourceGuardTests(unittest.TestCase):
         stops = [r for r in reasons if r]
         self.assertTrue(stops and "Memory growth" in stops[0])
 
+    def test_a_temporary_peak_that_comes_back_is_not_growth(self):
+        """Measured on the M4: RSS rose about 1 GB for 25 updates, then fell back to where it was."""
+        values = [int(1.7 * GB)] * 60 + [int(2.5 * GB)] * 25 + [int(1.7 * GB)] * 60
+        guard = self.guard(values, growth_window_updates=90, growth_limit_mb=512)
+        self.assertEqual([guard.check()[1] for _ in values], [None] * len(values))
+
+    def test_a_slow_leak_under_a_noisy_signal_is_caught(self):
+        wave = [0, 300, 600, 900, 600, 300]
+        values = [1 * GB + i * 10 * MB + wave[i % 6] * MB for i in range(150)]
+        guard = self.guard(values, growth_window_updates=90, growth_limit_mb=512)
+        stops = [r for r in (guard.check()[1] for _ in values) if r]
+        self.assertTrue(stops and "floor rose" in stops[0])
+
     def test_a_plateau_after_startup_is_not_growth(self):
-        values = [1 * GB + min(i, 5) * 200 * MB for i in range(40)]
-        guard = self.guard(values, growth_window_updates=10, growth_limit_mb=500)
-        reasons = [guard.check()[1] for _ in range(40)]
-        self.assertEqual(reasons, [None] * 40)
+        values = [1 * GB + min(i, 5) * 200 * MB for i in range(60)]
+        guard = self.guard(values, growth_window_updates=30, growth_limit_mb=500)
+        reasons = [guard.check()[1] for _ in range(60)]
+        self.assertEqual(reasons, [None] * 60)
 
     def test_only_a_bounded_window_of_samples_is_kept(self):
         guard = self.guard([1 * GB] * 100, growth_window_updates=10)

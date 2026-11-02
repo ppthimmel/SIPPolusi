@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import os
 import shutil
-import statistics
 import subprocess
 from collections import deque
 from dataclasses import asdict, dataclass
@@ -27,8 +26,10 @@ _MIN_GROWTH_WINDOW = 9  # three segments of at least three samples
 @dataclass(frozen=True)
 class ResourceLimits:
     max_rss_gb: float = 16.0
-    # Stop when RSS grows this much across this many updates: a leak, long before the absolute limit.
-    growth_window_updates: int = 50
+    # Stop when RSS's floor grows this much across this many updates: a leak, long before the
+    # absolute limit. The window must outlast a hump: on the M4, RSS rises by about 1 GB for
+    # about 25 updates and comes back, so each third of the window needs to be longer than that.
+    growth_window_updates: int = 150
     growth_limit_mb: float = 512.0
     min_free_disk_gb: float = 2.0
     keep_checkpoints: int = 3
@@ -94,22 +95,23 @@ class ResourceGuard:
             return snapshot, f"Disk limit: {free / GB:.2f} GB free, below {limits.min_free_disk_gb} GB"
         growth = self._sustained_growth()
         if growth is not None:
-            return snapshot, (f"Memory growth: RSS rose {growth / MB:.0f} MB in {limits.growth_window_updates} "
-                              f"updates (limit {limits.growth_limit_mb} MB)")
+            return snapshot, (f"Memory growth: the RSS floor rose {growth / MB:.0f} MB in "
+                              f"{limits.growth_window_updates} updates (limit {limits.growth_limit_mb} MB)")
         return snapshot, None
 
     def _sustained_growth(self) -> float | None:
-        """Bytes grown across the window, if RSS kept rising through it.
+        """Bytes the floor of RSS grew across the window, if it kept rising through it.
 
-        A leak rises throughout. The allocator warming up rises once and then holds,
-        so the later segments must keep rising too (each by a quarter of the limit).
+        Leaked memory never comes back, so a leak lifts the lowest RSS of each segment.
+        A temporary peak does not: RSS falls back to the same floor afterwards. The
+        allocator warming up lifts the floor once and then holds, so the later segments
+        must keep rising too (each by a quarter of the limit).
         """
         if len(self._samples) < self._samples.maxlen:
             return None
         samples = list(self._samples)
         third = len(samples) // 3
-        first, middle, last = (statistics.median(samples[:third]), statistics.median(samples[third:-third]),
-                               statistics.median(samples[-third:]))
+        first, middle, last = min(samples[:third]), min(samples[third:-third]), min(samples[-third:])
         limit = self.limits.growth_limit_mb * MB
         if last - first > limit and middle - first > limit / 4 and last - middle > limit / 4:
             return last - first
