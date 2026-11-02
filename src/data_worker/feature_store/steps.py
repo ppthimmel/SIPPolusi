@@ -162,12 +162,19 @@ def _geoscf_ana(store: FeatureStore, now: dt.datetime):
         frame, info = geoscf.fetch_ana(client, now, stored)
         rows = store.write_geoscf_ana(frame, fetch_id, now)
         new, waiting = int(info.get("published_hours", 0)), int(info.get("waiting_hours", 0))
-        note = (f"{waiting} jam sudah terbit tetapi belum ada pada agregasi OPeNDAP "
-                f"({info['opendap_hours']} jam); diperiksa lagi pada siklus berikutnya") if waiting else None
+        expiring = info.get("expiring_hours", [])
+        notes = [f"{waiting} jam sudah terbit tetapi belum ada pada agregasi OPeNDAP "
+                 f"({info['opendap_hours']} jam); diperiksa lagi pada siklus berikutnya"] if waiting else []
+        if expiring:
+            notes.append(f"{len(expiring)} jam di antaranya (paling lama {expiring[0]}) keluar dari jendela "
+                         f"{geoscf.ANA_LOOKBACK_HOURS} jam dalam kurang dari {geoscf.ANA_EXPIRY_WARNING_HOURS} jam "
+                         "dan tidak diperiksa lagi sesudahnya")
         # Tertinggalnya agregasi bukan kegagalan: tanpa jam baru sama sekali sumber "unavailable"
-        # (siklus degraded), selain itu "ok" dengan catatan.
-        status = "unavailable" if waiting and not new else "ok"
-        return SourceResult(status, products_new=new, rows_written=rows, note=note, detail=info)
+        # (siklus degraded), selain itu "ok" dengan catatan. Jam yang hampir keluar dari jendela
+        # akan hilang permanen, jadi sumber "degraded" agar terlihat.
+        status = "degraded" if expiring else "unavailable" if waiting and not new else "ok"
+        return SourceResult(status, products_new=new, rows_written=rows, note="; ".join(notes) or None,
+                            detail=info)
     return run
 
 
@@ -175,23 +182,27 @@ def _geoscf_fcst(store: FeatureStore, now: dt.datetime):
     def run(client: HttpClient, fetch_id: str) -> SourceResult:
         inits = geoscf.fcst_inits(now)
         stored = store.stored_fcst_inits(min(inits))
-        new, rows, waiting, mismatched = 0, 0, [], {}
+        new, rows, waiting, deferred = 0, 0, [], {}
         for init in sorted(i for i in inits if i not in stored):
             if not geoscf.fcst_complete(client, init):
                 waiting.append(f"{init:%Y-%m-%dT%Hz}")
                 continue
             frame, quality = geoscf.fetch_fcst(client, init)
+            if quality["deferred"]:
+                deferred[f"{init:%Y-%m-%dT%Hz}"] = quality["time_mismatch_leads"]
+                continue
             rows += store.write_geoscf_fcst(frame, fetch_id, now)
             new += 1
-            if quality["time_mismatch_leads"]:
-                mismatched[f"{init:%Y-%m-%dT%Hz}"] = quality["time_mismatch_leads"]
         notes = [f"run belum lengkap terbit: {', '.join(waiting)}"] if waiting else []
-        notes += [f"run {label}: waktu ASCII lead {leads} tidak sesuai sumbu linear; nilai mengikuti sumbu linear"
-                  for label, leads in mismatched.items()]
+        notes += [f"run {label} ditunda: waktu ASCII lead {leads} tidak sesuai sumbu linear setelah "
+                  f"{geoscf.FCST_ATTEMPTS} permintaan; diminta lagi pada siklus berikutnya"
+                  for label, leads in deferred.items()]
         detail = {"runs_checked": [f"{i:%Y-%m-%dT%Hz}" for i in inits]}
-        if mismatched:
-            detail["time_mismatch_leads"] = mismatched
-        return SourceResult("ok", products_new=new, rows_written=rows, note="; ".join(notes) or None,
+        if deferred:
+            detail["deferred_time_mismatch_leads"] = deferred
+        # Run yang ditunda bukan kegagalan; tanpa run baru sama sekali sumber "unavailable".
+        status = "unavailable" if deferred and not new else "ok"
+        return SourceResult(status, products_new=new, rows_written=rows, note="; ".join(notes) or None,
                             detail=detail)
     return run
 

@@ -45,6 +45,11 @@ PM25_RANGE, NO2_PPB_RANGE = fcst_script.PM25_RANGE, fcst_script.NO2_PPB_RANGE
 ANA_LOOKBACK_HOURS = 72
 ANA_MIN_LATENCY_HOURS = 6
 ANA_MAX_HEADS = 80
+#: Jam ana yang menunggu agregasi OPeNDAP dan akan keluar dari jendela ANA_LOOKBACK_HOURS dalam
+#: kurang dari ini diberi peringatan: setelah keluar, jam itu tidak diperiksa lagi.
+ANA_EXPIRY_WARNING_HOURS = 12
+#: Permintaan per run fcst bila larik waktu ASCII-nya tidak sesuai sumbu linear.
+FCST_ATTEMPTS = 2
 
 
 def _http_time(value: str | None) -> pd.Timestamp | None:
@@ -59,10 +64,15 @@ def ana_file_url(window_start: pd.Timestamp) -> str:
     return f"{PORTAL_ANA}/Y{stamp:%Y}/M{stamp:%m}/D{stamp:%d}/{name}"
 
 
+def ana_window(now: dt.datetime) -> tuple[pd.Timestamp, pd.Timestamp]:
+    """[awal, akhir) awal jam yang diperiksa pada siklus ``now``."""
+    end = pd.Timestamp(now).floor("h") - pd.Timedelta(hours=ANA_MIN_LATENCY_HOURS)
+    return end - pd.Timedelta(hours=ANA_LOOKBACK_HOURS), end
+
+
 def ana_candidates(now: dt.datetime, stored: set) -> list[pd.Timestamp]:
     """Awal jam yang mungkin sudah terbit tetapi belum tersimpan, terlama dulu."""
-    end = pd.Timestamp(now).floor("h") - pd.Timedelta(hours=ANA_MIN_LATENCY_HOURS)
-    hours = pd.date_range(end - pd.Timedelta(hours=ANA_LOOKBACK_HOURS), end, freq="h", inclusive="left")
+    hours = pd.date_range(*ana_window(now), freq="h", inclusive="left")
     return [h for h in hours if h not in stored]
 
 
@@ -152,7 +162,9 @@ def fetch_ana(client: HttpClient, now: dt.datetime, stored: set) -> tuple[pd.Dat
     Agregasi OPeNDAP dapat tertinggal dari berkas jam di datashare (28 Oktober 2026: tertahan
     sekitar 7 jam). Jam yang sudah terbit tetapi belum masuk agregasi tidak diminta; jam itu
     tetap belum tersimpan, sehingga diperiksa lagi pada siklus berikutnya seperti jam yang
-    belum terbit, dan dihitung pada ``waiting_hours``.
+    belum terbit, dan dihitung pada ``waiting_hours``. Jam yang menunggu dan akan keluar dari
+    jendela pemeriksaan dalam kurang dari ``ANA_EXPIRY_WARNING_HOURS`` dicantumkan pada
+    ``expiring_hours``, karena setelah keluar jam itu tidak diperiksa lagi.
     """
     published = {}
     pending = ana_candidates(now, stored)
@@ -168,6 +180,10 @@ def fetch_ana(client: HttpClient, now: dt.datetime, stored: set) -> tuple[pd.Dat
     if waiting:
         published = {h: t for h, t in published.items() if h not in waiting}
         info.update(published_hours=len(published), waiting_hours=len(waiting), opendap_hours=length)
+        edge = ana_window(now)[0] + pd.Timedelta(hours=ANA_EXPIRY_WARNING_HOURS)
+        expiring = sorted(h for h in waiting if h < edge)
+        if expiring:
+            info["expiring_hours"] = [f"{h:%Y-%m-%dT%H:%MZ}" for h in expiring]
         if not published:
             return pd.DataFrame(), info
     url, _, _ = ana_query(first, list(published))
@@ -201,12 +217,25 @@ def _getter(client: HttpClient):
 
 
 def fetch_fcst(client: HttpClient, init: pd.Timestamp) -> tuple[pd.DataFrame, dict]:
-    """Satu run lengkap → skema ``geoscf_fcst_cell_hourly.parquet`` (``process`` skrip data latih)."""
+    """Satu run lengkap → skema ``geoscf_fcst_cell_hourly.parquet`` (``process`` skrip data latih).
+
+    Bila larik waktu ASCII memuat lead yang tidak sesuai sumbu linear, run diminta ulang
+    (``FCST_ATTEMPTS`` kali; pada run 2026-11-01 09z kueri yang sama kadang menjawab waktu yang
+    benar). Bila masih tidak sesuai, keselarasan nilai lead itu tidak dapat dipastikan: run tidak
+    disimpan (frame kosong, ``deferred``), sehingga diminta lagi pada siklus berikutnya, dan
+    pembaca fitur memakai run sebelumnya untuk jam yang sama.
+    """
     try:
-        run = fcst_script.fetch_run(init, get=_getter(client))
+        for attempt in range(1, FCST_ATTEMPTS + 1):
+            run = fcst_script.fetch_run(init, get=_getter(client))
+            if not run["time_mismatch_leads"]:
+                break
+        else:
+            return pd.DataFrame(), {"rows": 0, "deferred": True, "attempts": attempt,
+                                    "time_mismatch_leads": run["time_mismatch_leads"]}
         frame = fcst_script.process({"runs": [run]})
     except (ValueError, IndexError) as exc:
         raise FormatError(f"geoscf_fcst: run {init:%Y-%m-%d %Hz} tidak terbaca ({exc})") from exc
     quality = {"rows": len(frame), "pm25_missing": int(frame.pm25_ugm3.isna().sum()),
-               "no2_missing": int(frame.no2_ppb.isna().sum()), "time_mismatch_leads": run["time_mismatch_leads"]}
+               "no2_missing": int(frame.no2_ppb.isna().sum()), "deferred": False, "attempts": attempt}
     return frame, quality

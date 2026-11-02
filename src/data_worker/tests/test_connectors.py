@@ -279,6 +279,18 @@ def test_geoscf_fetch_ana_seluruh_jam_di_luar_agregasi_tanpa_subset():
     assert not any("pm25_rh35" in url for _, url, _ in c.session.calls)
 
 
+def test_geoscf_fetch_ana_jam_menunggu_dekat_batas_jendela_diperingatkan():
+    # 3 Oktober 20.15Z: jendela pemeriksaan mulai 30 September 14.00Z, jadi jam 20.00–22.00Z
+    # keluar dari jendela dalam kurang dari 12 jam.
+    c = client(_ana_routes(opendap_hours=_ana_axis_index(ANA_HOURS[0])))
+    frame, info = geoscf.fetch_ana(c, dt.datetime(2026, 10, 3, 20, 15, tzinfo=UTC), stored=set())
+    assert frame.empty and info["waiting_hours"] == 3
+    assert info["expiring_hours"] == [f"{h:%Y-%m-%dT%H:%MZ}" for h in ANA_HOURS]
+    _, later = geoscf.fetch_ana(client(_ana_routes(opendap_hours=_ana_axis_index(ANA_HOURS[0]))),
+                                dt.datetime(2026, 10, 1, 5, 15, tzinfo=UTC), stored=set())
+    assert "expiring_hours" not in later
+
+
 def test_geoscf_timeout_portal_menjadi_source_error():
     c = client([("HEAD", "datashare", requests.Timeout())], policy=geoscf.POLICY)
     c.sleep = lambda s: None
@@ -304,11 +316,13 @@ def test_geoscf_fcst_run_dari_rekaman():
     np.testing.assert_array_equal(frame.pm25_ugm3.to_numpy(), reference.pm25_ugm3.to_numpy())
 
 
-def _fcst_client(text, init):
+def _fcst_client(texts, init):
+    """Rekaman run fcst; ``texts`` satu respons ASCII atau daftar respons untuk permintaan berturut-turut."""
     heads = fixture_json("geoscf_fcst_meta.json")
     times = geoscf.fcst_script.run_times(init)
     first, last = (geoscf.fcst_script._lead_url(init, t).rsplit("/", 1)[1] for t in (times[0], times[-1]))
-    return client([("GET", "ascii?pm25_rh35", FakeResponse(200, text)),
+    texts = [texts] if isinstance(texts, str) else texts
+    return client([("GET", "ascii?pm25_rh35", [FakeResponse(200, t) for t in texts]),
                    ("HEAD", first, FakeResponse(200, headers={"Last-Modified": heads["first"]})),
                    ("HEAD", last, FakeResponse(200, headers={"Last-Modified": heads["last"]}))])
 
@@ -327,18 +341,27 @@ def _fcst_time_changed(changes):
     return text[:start] + ", ".join(numbers) + text[end:]
 
 
-def test_geoscf_fcst_waktu_ascii_rusak_seperti_run_20261101_tetap_terbaca():
-    """Run 2026-11-01 09z: lead 67 terbaca 2133.1875 (tahun 6), lead 86 dan 109 maju 20 dan 29 menit.
+RUSAK_20261101 = {67: "2133.1875", 86: lambda days: days - 20 / 1440, 109: lambda days: days - 29 / 1440}
 
-    Nilai polutannya wajar, jadi run tetap dipakai dengan sumbu linear dan lead itu dicatat.
-    """
+
+def test_geoscf_fcst_waktu_ascii_rusak_diminta_ulang():
+    """Run 2026-11-01 09z: lead 67 terbaca 2133.1875 (tahun 6), lead 86 dan 109 maju 20 dan 29 menit;
+    kueri yang sama kadang menjawab waktu yang benar, jadi run diminta ulang."""
     init = pd.Timestamp("2026-09-30 09:00", tz="UTC")
-    minutes = lambda m: lambda days: days - m / 1440  # noqa: E731
-    text = _fcst_time_changed({67: "2133.1875", 86: minutes(20), 109: minutes(29)})
-    frame, quality = geoscf.fetch_fcst(_fcst_client(text, init), init)
-    clean, clean_quality = geoscf.fetch_fcst(_fcst_client(fixture_text("geoscf_fcst_20260930_09z.ascii"), init), init)
-    pd.testing.assert_frame_equal(frame, clean)
-    assert quality["time_mismatch_leads"] == [67, 86, 109] and clean_quality["time_mismatch_leads"] == []
+    clean = fixture_text("geoscf_fcst_20260930_09z.ascii")
+    frame, quality = geoscf.fetch_fcst(_fcst_client([_fcst_time_changed(RUSAK_20261101), clean], init), init)
+    expected, _ = geoscf.fetch_fcst(_fcst_client(clean, init), init)
+    pd.testing.assert_frame_equal(frame, expected)
+    assert (quality["deferred"], quality["attempts"]) == (False, 2)
+
+
+def test_geoscf_fcst_waktu_ascii_tetap_rusak_run_ditunda():
+    """Keselarasan lead yang salah tidak dapat dipastikan, jadi run tidak dikembalikan untuk disimpan."""
+    init = pd.Timestamp("2026-09-30 09:00", tz="UTC")
+    c = _fcst_client(_fcst_time_changed(RUSAK_20261101), init)
+    frame, quality = geoscf.fetch_fcst(c, init)
+    assert frame.empty and quality["deferred"] and quality["time_mismatch_leads"] == [67, 86, 109]
+    assert sum("ascii?pm25_rh35" in url for _, url, _ in c.session.calls) == geoscf.FCST_ATTEMPTS
 
 
 @pytest.mark.parametrize("changes", [

@@ -116,9 +116,11 @@ def fetch_run(init: pd.Timestamp, get=None) -> dict:
         raise ValueError(f"{init}: grid subset tidak sesuai ({lat}, {lon})")
     times = run_times(init)
     # Sumbu waktu GrADS linear (awal run + 30 menit + k jam). Larik ``time`` ASCII hanya pemeriksaan:
-    # beberapa angkanya dapat salah (teramati pada run 2026-08-27 dan 2026-11-01). Run ditolak hanya
-    # bila sumbunya tampak bergeser atau milik run lain: lead pertama atau terakhir salah, atau lebih
-    # dari MAX_TIME_MISMATCHES lead salah.
+    # beberapa angkanya dapat salah (teramati pada run 2026-08-27 dan 2026-11-01). Run ditolak bila
+    # sumbunya tampak bergeser atau milik run lain: lead pertama atau terakhir salah, atau lebih dari
+    # MAX_TIME_MISMATCHES lead salah. Lead lain yang salah dicatat pada ``time_mismatch_leads``;
+    # Data Worker meminta ulang run seperti itu dan tidak menyimpannya bila masih salah
+    # (``connectors.geoscf.fetch_fcst``).
     decoded = _grads_time(_parse_ascii(text, "time"))
     mismatched = np.flatnonzero(decoded != times).tolist()
     if decoded[0] != times[0] or decoded[-1] != times[-1] or len(mismatched) > MAX_TIME_MISMATCHES:

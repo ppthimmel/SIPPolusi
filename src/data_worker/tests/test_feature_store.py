@@ -24,7 +24,8 @@ from feature_store.reader import StoreSourceReader
 from feature_store.seed import seed
 from feature_store.store import decode_layer, encode_layer
 from test_connectors import (ANA_HOURS, FakeResponse, FakeSession, _ana_axis_index, _ana_routes,
-                             _fcst_client, _fcst_time_changed, client, fixture_json)
+                             _fcst_client, _fcst_time_changed, client, fixture_json,
+                             fixture_text)
 
 UTC = dt.timezone.utc
 T0 = dt.datetime(2026, 10, 27, 5, 15, tzinfo=UTC)
@@ -149,21 +150,38 @@ def test_galat_tak_terduga_tidak_menghentikan_dan_format_berubah_dicatat(fs):
     assert result["status"] == "failed" and result["note"].startswith("format respons berubah")
 
 
-def test_prakiraan_dengan_waktu_ascii_rusak_tersimpan_dan_dicatat(fs, monkeypatch):
-    """Seperti run 2026-11-01 09z: tiga lead dengan waktu ASCII salah tidak menggagalkan siklus."""
+def test_prakiraan_dengan_waktu_ascii_rusak_ditunda_lalu_tersimpan(fs, monkeypatch):
+    """Seperti run 2026-11-01 09z: run dengan waktu ASCII salah tidak disimpan dan tidak menggagalkan
+    siklus; siklus berikutnya memintanya lagi."""
     from connectors import geoscf
 
     init = pd.Timestamp("2026-09-30 09:00", tz="UTC")
-    text = _fcst_time_changed({67: "2133.1875", 86: lambda days: days - 20 / 1440})
+    responses = [_fcst_time_changed({67: "2133.1875", 86: lambda days: days - 20 / 1440}),
+                 fixture_text("geoscf_fcst_20260930_09z.ascii")]
     fetch = geoscf.fetch_fcst
     monkeypatch.setattr(geoscf, "fcst_inits", lambda now: [init])
     monkeypatch.setattr(geoscf, "fcst_complete", lambda client, i: True)
-    monkeypatch.setattr(geoscf, "fetch_fcst", lambda client, i: fetch(_fcst_client(text, i), i))
-    result = steps.run_source(fs, "geoscf_fcst", WINDOW, Policy(1), steps._geoscf_fcst(fs, T0), now=T0, environ={})
-    assert result["status"] == "ok" and result["rows_written"] == 1080
-    assert "run 2026-09-30T09z: waktu ASCII lead [67, 86]" in result["note"]
+    monkeypatch.setattr(geoscf, "fetch_fcst", lambda client, i: fetch(_fcst_client(responses.pop(0), i), i))
+    first = steps.run_source(fs, "geoscf_fcst", WINDOW, Policy(1), steps._geoscf_fcst(fs, T0), now=T0, environ={})
+    assert first["status"] == "unavailable" and first["rows_written"] == 0
+    assert "run 2026-09-30T09z ditunda: waktu ASCII lead [67, 86]" in first["note"]
     log = fs.fetch_log(T0 - dt.timedelta(days=1)).set_index("source")
-    assert log.loc["geoscf_fcst", "detail"]["time_mismatch_leads"] == {"2026-09-30T09z": [67, 86]}
+    assert log.loc["geoscf_fcst", "detail"]["deferred_time_mismatch_leads"] == {"2026-09-30T09z": [67, 86]}
+    later = T0 + dt.timedelta(hours=1)
+    second = steps.run_source(fs, "geoscf_fcst", WINDOW, Policy(1), steps._geoscf_fcst(fs, later), now=later,
+                              environ={})
+    assert second["status"] == "ok" and second["rows_written"] == 1080 and second.get("note") is None
+
+
+def test_jam_ana_dekat_batas_jendela_membuat_sumber_degraded(fs, monkeypatch):
+    from connectors import geoscf
+
+    info = {"checked_hours": 3, "published_hours": 0, "waiting_hours": 3, "opendap_hours": 10752,
+            "expiring_hours": ["2026-09-30T20:00Z", "2026-09-30T21:00Z"]}
+    monkeypatch.setattr(geoscf, "fetch_ana", lambda client, now, stored: (pd.DataFrame(), info))
+    result = steps.run_source(fs, "geoscf_ana", WINDOW, Policy(1), steps._geoscf_ana(fs, T0), now=T0, environ={})
+    assert result["status"] == "degraded"
+    assert "2 jam di antaranya (paling lama 2026-09-30T20:00Z) keluar dari jendela 72 jam" in result["note"]
 
 
 def test_jadwal_katalog_harian_dan_sumber_nonaktif(fs, monkeypatch):
