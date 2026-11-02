@@ -149,6 +149,13 @@ The OSM exports come from merged PR #44.
 Retain OpenStreetMap attribution: © OpenStreetMap contributors,
 ODbL, https://www.openstreetmap.org/copyright.
 
+## MORL training environment
+
+`training_env.py` wraps the same `RoadRouter` (graph, edge times, snapping
+reachability) as a reinforcement learning environment for the MORL policy.
+State, action, reward, splits and logging are specified in
+[TRAINING_ENV.md](TRAINING_ENV.md).
+
 ## Verification
 
 ```shell

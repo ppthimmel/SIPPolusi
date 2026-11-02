@@ -1,2 +1,6 @@
 -r requirements.txt
 httpx>=0.24,<1
+# training_env: numpy action test and Parquet weights (CI fails on an unexpected skip)
+numpy
+pandas>=2.1
+pyarrow>=15

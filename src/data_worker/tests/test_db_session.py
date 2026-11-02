@@ -8,7 +8,6 @@ memegang kunci tabel cache. Keepalive sisi server menutup sesi itu, dan
 from __future__ import annotations
 
 import time
-import uuid
 
 import pytest
 
@@ -41,29 +40,6 @@ def test_sesi_baru_memakai_keepalive(pg_dsn, monkeypatch):
             pytest.skip("keepalive TCP tidak berlaku pada soket Unix")
         for name, value in KEEPALIVE_OPTIONS.items():
             assert conn.execute(f"SHOW {name}").fetchone()[0] == value
-
-
-@pytest.fixture
-def cache_db(pg_dsn):
-    """Basis data sementara: init_db memakai skema tetap ``pollution`` dan ``osm``."""
-    import psycopg
-    from sqlalchemy import create_engine
-    from sqlalchemy.engine import make_url
-
-    name = f"t_init_{uuid.uuid4().hex[:10]}"
-    try:
-        with psycopg.connect(pg_dsn, autocommit=True) as conn:
-            conn.execute(f'CREATE DATABASE "{name}"')
-    except psycopg.Error as exc:
-        pytest.skip(f"tidak dapat membuat basis data uji: {exc}")
-    url = make_url(pg_dsn).set(drivername="postgresql+psycopg2", database=name)
-    engine = create_engine(url)
-    try:
-        yield engine, psycopg.conninfo.make_conninfo(pg_dsn, dbname=name)
-    finally:
-        engine.dispose()
-        with psycopg.connect(pg_dsn, autocommit=True) as conn:
-            conn.execute(f'DROP DATABASE IF EXISTS "{name}" WITH (FORCE)')
 
 
 def test_init_db_tidak_menunggu_kunci_sesi_yatim_tanpa_batas(cache_db):

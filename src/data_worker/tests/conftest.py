@@ -90,3 +90,26 @@ def db(pg_dsn, monkeypatch):
     with psycopg.connect(pg_dsn, autocommit=True) as conn:
         for name in (schema, f"{schema}_f"):
             conn.execute(sql.SQL("DROP SCHEMA IF EXISTS {} CASCADE").format(sql.Identifier(name)))
+
+
+@pytest.fixture
+def cache_db(pg_dsn):
+    """Basis data sementara: init_db memakai skema tetap ``pollution`` dan ``osm``."""
+    import psycopg
+    from sqlalchemy import create_engine
+    from sqlalchemy.engine import make_url
+
+    name = f"t_init_{uuid.uuid4().hex[:10]}"
+    try:
+        with psycopg.connect(pg_dsn, autocommit=True) as conn:
+            conn.execute(f'CREATE DATABASE "{name}"')
+    except psycopg.Error as exc:
+        pytest.skip(f"tidak dapat membuat basis data uji: {exc}")
+    url = make_url(pg_dsn).set(drivername="postgresql+psycopg2", database=name)
+    engine = create_engine(url)
+    try:
+        yield engine, psycopg.conninfo.make_conninfo(pg_dsn, dbname=name)
+    finally:
+        engine.dispose()
+        with psycopg.connect(pg_dsn, autocommit=True) as conn:
+            conn.execute(f'DROP DATABASE IF EXISTS "{name}" WITH (FORCE)')

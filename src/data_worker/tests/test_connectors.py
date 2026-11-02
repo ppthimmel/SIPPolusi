@@ -223,8 +223,12 @@ def test_geoscf_ana_kandidat_melewati_jam_tersimpan():
     assert stored.isdisjoint(pending) and len(pending) == geoscf.ANA_LOOKBACK_HOURS - 1
 
 
-def _ana_routes(head_status=200):
+def _ana_routes(head_status=200, opendap_hours=None):
+    """Rekaman ana; ``opendap_hours`` memendekkan sumbu agregasi OPeNDAP (agregasi tertinggal)."""
     meta = fixture_json("geoscf_ana_meta.json")
+    dds = fixture_text("geoscf_ana.dds")
+    if opendap_hours is not None:
+        dds = dds.replace("time = 10752", f"time = {opendap_hours}")
     by_name = {geoscf.ana_file_url(pd.Timestamp(k)).rsplit("/", 1)[1]: v for k, v in meta["last_modified"].items()}
 
     def head(url, kwargs):
@@ -233,7 +237,7 @@ def _ana_routes(head_status=200):
             return FakeResponse(head_status, headers={"Last-Modified": by_name[name]})
         return FakeResponse(404)
     return [("HEAD", "datashare", head),
-            ("GET", ".dds", FakeResponse(200, fixture_text("geoscf_ana.dds"))),
+            ("GET", ".dds", FakeResponse(200, dds)),
             ("GET", "time[0:0]", FakeResponse(200, fixture_text("geoscf_ana_time0.ascii"))),
             ("GET", "pm25_rh35", FakeResponse(200, fixture_text("geoscf_ana_subset.ascii")))]
 
@@ -250,6 +254,41 @@ def test_geoscf_fetch_ana_tanpa_jam_baru_tidak_meminta_subset():
     frame, info = geoscf.fetch_ana(c, now, stored=set(ANA_HOURS))
     assert frame.empty and info["published_hours"] == 0
     assert not any("pm25_rh35" in url for _, url, _ in c.session.calls)
+
+
+def _ana_axis_index(hour):
+    first, _ = geoscf.ana_axis(client(_ana_routes()))
+    return geoscf.ana_index(first, hour)
+
+
+def test_geoscf_fetch_ana_jam_di_luar_agregasi_ditunda():
+    # Berkas jam terakhir sudah ada di datashare, tetapi agregasi OPeNDAP belum memuatnya.
+    c = client(_ana_routes(opendap_hours=_ana_axis_index(ANA_HOURS[-1])))
+    frame, info = geoscf.fetch_ana(c, dt.datetime(2026, 10, 1, 5, 15, tzinfo=UTC), stored=set())
+    assert set(frame.time_window_start) == set(ANA_HOURS[:-1]) and len(frame) == 18
+    assert info["published_hours"] == 2 and info["waiting_hours"] == 1
+    subset = [url for _, url, _ in c.session.calls if "pm25_rh35" in url]
+    last = _ana_axis_index(ANA_HOURS[-2])
+    assert len(subset) == 1 and f"[{last - 1}:{last}]" in subset[0]
+
+
+def test_geoscf_fetch_ana_seluruh_jam_di_luar_agregasi_tanpa_subset():
+    c = client(_ana_routes(opendap_hours=_ana_axis_index(ANA_HOURS[0])))
+    frame, info = geoscf.fetch_ana(c, dt.datetime(2026, 10, 1, 5, 15, tzinfo=UTC), stored=set())
+    assert frame.empty and info["published_hours"] == 0 and info["waiting_hours"] == 3
+    assert not any("pm25_rh35" in url for _, url, _ in c.session.calls)
+
+
+def test_geoscf_fetch_ana_jam_menunggu_dekat_batas_jendela_diperingatkan():
+    # 3 Oktober 20.15Z: jendela pemeriksaan mulai 30 September 14.00Z, jadi jam 20.00–22.00Z
+    # keluar dari jendela dalam kurang dari 12 jam.
+    c = client(_ana_routes(opendap_hours=_ana_axis_index(ANA_HOURS[0])))
+    frame, info = geoscf.fetch_ana(c, dt.datetime(2026, 10, 3, 20, 15, tzinfo=UTC), stored=set())
+    assert frame.empty and info["waiting_hours"] == 3
+    assert info["expiring_hours"] == [f"{h:%Y-%m-%dT%H:%MZ}" for h in ANA_HOURS]
+    _, later = geoscf.fetch_ana(client(_ana_routes(opendap_hours=_ana_axis_index(ANA_HOURS[0]))),
+                                dt.datetime(2026, 10, 1, 5, 15, tzinfo=UTC), stored=set())
+    assert "expiring_hours" not in later
 
 
 def test_geoscf_timeout_portal_menjadi_source_error():
@@ -275,6 +314,70 @@ def test_geoscf_fcst_run_dari_rekaman():
                                 / "dataset_processed/geos-cf/geoscf_fcst_cell_hourly.parquet",
                                 filters=[("init_utc", "==", init)])
     np.testing.assert_array_equal(frame.pm25_ugm3.to_numpy(), reference.pm25_ugm3.to_numpy())
+
+
+def _fcst_client(texts, init):
+    """Rekaman run fcst; ``texts`` satu respons ASCII atau daftar respons untuk permintaan berturut-turut."""
+    heads = fixture_json("geoscf_fcst_meta.json")
+    times = geoscf.fcst_script.run_times(init)
+    first, last = (geoscf.fcst_script._lead_url(init, t).rsplit("/", 1)[1] for t in (times[0], times[-1]))
+    texts = [texts] if isinstance(texts, str) else texts
+    return client([("GET", "ascii?pm25_rh35", [FakeResponse(200, t) for t in texts]),
+                   ("HEAD", first, FakeResponse(200, headers={"Last-Modified": heads["first"]})),
+                   ("HEAD", last, FakeResponse(200, headers={"Last-Modified": heads["last"]}))])
+
+
+def _fcst_time_changed(changes):
+    """Rekaman run 2026-09-30 09z dengan angka lead tertentu pada larik ``time`` ASCII diganti.
+
+    ``changes`` memetakan lead ke angka pengganti, atau ke fungsi dari angka asli.
+    """
+    text = fixture_text("geoscf_fcst_20260930_09z.ascii")
+    start = text.index("time, [120]\n") + len("time, [120]\n")
+    end = text.index("\n", start)
+    numbers = text[start:end].split(", ")
+    for lead, change in changes.items():
+        numbers[lead] = repr(change(float(numbers[lead]))) if callable(change) else change
+    return text[:start] + ", ".join(numbers) + text[end:]
+
+
+RUSAK_20261101 = {67: "2133.1875", 86: lambda days: days - 20 / 1440, 109: lambda days: days - 29 / 1440}
+
+
+def test_geoscf_fcst_waktu_ascii_rusak_diminta_ulang():
+    """Run 2026-11-01 09z: lead 67 terbaca 2133.1875 (tahun 6), lead 86 dan 109 maju 20 dan 29 menit;
+    kueri yang sama kadang menjawab waktu yang benar, jadi run diminta ulang."""
+    init = pd.Timestamp("2026-09-30 09:00", tz="UTC")
+    clean = fixture_text("geoscf_fcst_20260930_09z.ascii")
+    frame, quality = geoscf.fetch_fcst(_fcst_client([_fcst_time_changed(RUSAK_20261101), clean], init), init)
+    expected, _ = geoscf.fetch_fcst(_fcst_client(clean, init), init)
+    pd.testing.assert_frame_equal(frame, expected)
+    assert (quality["deferred"], quality["attempts"]) == (False, 2)
+
+
+def test_geoscf_fcst_waktu_ascii_tetap_rusak_run_ditunda():
+    """Keselarasan lead yang salah tidak dapat dipastikan, jadi run tidak dikembalikan untuk disimpan."""
+    init = pd.Timestamp("2026-09-30 09:00", tz="UTC")
+    c = _fcst_client(_fcst_time_changed(RUSAK_20261101), init)
+    frame, quality = geoscf.fetch_fcst(c, init)
+    assert frame.empty and quality["deferred"] and quality["time_mismatch_leads"] == [67, 86, 109]
+    assert sum("ascii?pm25_rh35" in url for _, url, _ in c.session.calls) == geoscf.FCST_ATTEMPTS
+
+
+@pytest.mark.parametrize("changes", [
+    {0: "2133.1875"},                                            # lead pertama: sumbu tidak dapat dipastikan
+    {119: lambda days: days + 1 / 24},                           # lead terakhir bergeser satu jam
+    {lead: lambda days: days + 1 / 24 for lead in range(10, 17)},  # 7 lead > MAX_TIME_MISMATCHES
+], ids=["lead_pertama", "lead_terakhir", "terlalu_banyak"])
+def test_geoscf_fcst_sumbu_waktu_bergeser_ditolak(changes):
+    init = pd.Timestamp("2026-09-30 09:00", tz="UTC")
+    with pytest.raises(FormatError, match="waktu run tidak sesuai"):
+        geoscf.fetch_fcst(_fcst_client(_fcst_time_changed(changes), init), init)
+
+
+def test_geoscf_waktu_grads_di_luar_rentang_menjadi_nat():
+    decoded = geoscf.fcst_script._grads_time(np.array([739922.3958333334, 2133.1875]))
+    assert decoded[0] == pd.Timestamp("2026-11-01 09:30", tz="UTC") and pd.isna(decoded[1])
 
 
 def test_geoscf_fcst_inits_terbaru_dulu():

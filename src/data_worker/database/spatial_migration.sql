@@ -38,3 +38,10 @@ CREATE TABLE IF NOT EXISTS pollution.edge_cell (
 );
 ALTER TABLE pollution.edge_pollution
   ADD COLUMN IF NOT EXISTS trace_run_id TEXT REFERENCES pollution.inference_run(run_id);
+-- Every foreign key needs an index led by its own columns. ON DELETE CASCADE from
+-- grid_prediction finds edge_cell rows by (run_id, cell_id), and deleting an
+-- inference_run checks edge_pollution.trace_run_id. Without these, pruning one
+-- window scanned edge_cell once per grid cell and ran for hours (111k cells,
+-- 1.7M edge_cell rows), so the hourly cycle fell behind.
+CREATE INDEX IF NOT EXISTS edge_cell_run_cell_idx ON pollution.edge_cell (run_id, cell_id);
+CREATE INDEX IF NOT EXISTS edge_pollution_trace_run_idx ON pollution.edge_pollution (trace_run_id);

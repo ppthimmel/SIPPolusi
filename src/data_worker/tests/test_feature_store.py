@@ -23,7 +23,9 @@ from feature_store import steps
 from feature_store.reader import StoreSourceReader
 from feature_store.seed import seed
 from feature_store.store import decode_layer, encode_layer
-from test_connectors import FakeResponse, FakeSession, fixture_json
+from test_connectors import (ANA_HOURS, FakeResponse, FakeSession, _ana_axis_index, _ana_routes,
+                             _fcst_client, _fcst_time_changed, client, fixture_json,
+                             fixture_text)
 
 UTC = dt.timezone.utc
 T0 = dt.datetime(2026, 10, 27, 5, 15, tzinfo=UTC)
@@ -107,6 +109,33 @@ def test_sumber_gagal_tercatat_dan_sumber_lain_tetap_berjalan(fs):
     assert "Timeout" in log.loc["geoscf_ana", "note"] and log.loc["open_meteo", "rows_written"] == 3
 
 
+def test_agregasi_ana_tertinggal_ditunda_tanpa_menggagalkan_siklus(fs):
+    """28 Oktober 2026: agregasi OPeNDAP tertahan ~7 jam di belakang datashare; tujuh siklus gagal."""
+    import worker_runs
+
+    now = dt.datetime(2026, 10, 1, 5, 15, tzinfo=UTC)
+
+    def cycle(opendap_hours=None):
+        recorded = client(_ana_routes(opendap_hours=opendap_hours))
+
+        def fn(_client, fetch_id):
+            return steps._geoscf_ana(fs, now)(recorded, fetch_id)
+        return steps.run_source(fs, "geoscf_ana", WINDOW, Policy(1), fn, now=now, environ={})
+
+    stalled = cycle(_ana_axis_index(ANA_HOURS[0]))
+    assert stalled["status"] == "unavailable" and stalled["rows_written"] == 0 and stalled["waiting_hours"] == 3
+    assert "agregasi OPeNDAP" in stalled["note"]
+    step = steps.combine({"geoscf_ana": stalled})
+    assert worker_runs.cycle_status([{"step": "fetch_satellite_archive", **step}]) == "degraded"
+
+    partial = cycle(_ana_axis_index(ANA_HOURS[-1]))
+    assert partial["status"] == "ok" and partial["rows_written"] == 18 and partial["waiting_hours"] == 1
+
+    caught_up = cycle()
+    assert caught_up["status"] == "ok" and caught_up["rows_written"] == 9 and "waiting_hours" not in caught_up
+    assert fs.stored_ana_hours(now - dt.timedelta(days=2)) == set(ANA_HOURS)
+
+
 def test_galat_tak_terduga_tidak_menghentikan_dan_format_berubah_dicatat(fs):
     from connectors.http import FormatError
 
@@ -119,6 +148,40 @@ def test_galat_tak_terduga_tidak_menghentikan_dan_format_berubah_dicatat(fs):
     assert steps.run_source(fs, "landsat", WINDOW, Policy(1), bug, now=T0, environ={})["status"] == "failed"
     result = steps.run_source(fs, "open_meteo", WINDOW, Policy(1), changed, now=T0, environ={})
     assert result["status"] == "failed" and result["note"].startswith("format respons berubah")
+
+
+def test_prakiraan_dengan_waktu_ascii_rusak_ditunda_lalu_tersimpan(fs, monkeypatch):
+    """Seperti run 2026-11-01 09z: run dengan waktu ASCII salah tidak disimpan dan tidak menggagalkan
+    siklus; siklus berikutnya memintanya lagi."""
+    from connectors import geoscf
+
+    init = pd.Timestamp("2026-09-30 09:00", tz="UTC")
+    responses = [_fcst_time_changed({67: "2133.1875", 86: lambda days: days - 20 / 1440}),
+                 fixture_text("geoscf_fcst_20260930_09z.ascii")]
+    fetch = geoscf.fetch_fcst
+    monkeypatch.setattr(geoscf, "fcst_inits", lambda now: [init])
+    monkeypatch.setattr(geoscf, "fcst_complete", lambda client, i: True)
+    monkeypatch.setattr(geoscf, "fetch_fcst", lambda client, i: fetch(_fcst_client(responses.pop(0), i), i))
+    first = steps.run_source(fs, "geoscf_fcst", WINDOW, Policy(1), steps._geoscf_fcst(fs, T0), now=T0, environ={})
+    assert first["status"] == "unavailable" and first["rows_written"] == 0
+    assert "run 2026-09-30T09z ditunda: waktu ASCII lead [67, 86]" in first["note"]
+    log = fs.fetch_log(T0 - dt.timedelta(days=1)).set_index("source")
+    assert log.loc["geoscf_fcst", "detail"]["deferred_time_mismatch_leads"] == {"2026-09-30T09z": [67, 86]}
+    later = T0 + dt.timedelta(hours=1)
+    second = steps.run_source(fs, "geoscf_fcst", WINDOW, Policy(1), steps._geoscf_fcst(fs, later), now=later,
+                              environ={})
+    assert second["status"] == "ok" and second["rows_written"] == 1080 and second.get("note") is None
+
+
+def test_jam_ana_dekat_batas_jendela_membuat_sumber_degraded(fs, monkeypatch):
+    from connectors import geoscf
+
+    info = {"checked_hours": 3, "published_hours": 0, "waiting_hours": 3, "opendap_hours": 10752,
+            "expiring_hours": ["2026-09-30T20:00Z", "2026-09-30T21:00Z"]}
+    monkeypatch.setattr(geoscf, "fetch_ana", lambda client, now, stored: (pd.DataFrame(), info))
+    result = steps.run_source(fs, "geoscf_ana", WINDOW, Policy(1), steps._geoscf_ana(fs, T0), now=T0, environ={})
+    assert result["status"] == "degraded"
+    assert "2 jam di antaranya (paling lama 2026-09-30T20:00Z) keluar dari jendela 72 jam" in result["note"]
 
 
 def test_jadwal_katalog_harian_dan_sumber_nonaktif(fs, monkeypatch):
