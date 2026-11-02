@@ -188,3 +188,17 @@ Sebelum perbaikan: 6 failed / 3 passed. Sesudahnya: **69 passed** pada uji
 kontrak/OpenAPI; suite osm/pollution/planner/public_api tanpa cacheflow:
 **348 passed, 15 skipped, 27 deselected**. Tidak ada pengujian DB baru pada
 perubahan ini. Log: ci-reports/ti-se-01-bbox-{review,regression}.log.
+
+## CI merge dengan refactor cache — 3 November 2026
+
+Run 41478626086 gagal dengan 17 NameError pada validator metadata. Refactor
+cache di dev menghapus import json tingkat modul karena writer tidak lagi
+menyerialisasikan metadata per row; validator _as_frame pada PR masih memakai
+json.dumps. Masalah ini hanya muncul pada gabungan PR dengan dev, bukan head
+PR sendiri. Sumber merge GitHub 5c9c2d4 direproduksi dengan uji kontrak yang
+sudah ada: 3 failed / 12 passed. Import dumps kini dimiliki langsung oleh
+_as_frame, sehingga tidak bergantung pada implementasi serialisasi writer.
+Dengan perbaikan yang sama pada sumber merge tersebut, **15 passed**.
+Uji kontrak dan spatial_edgeweight pada head PR: **29 passed, 10 skipped**
+(database tidak dikonfigurasi). Uji yang memakai tmp_path dijalankan dengan
+basetemp di .cache repository karena direktori TEMP sandbox tidak dapat ditulis.

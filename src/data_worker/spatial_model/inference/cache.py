@@ -78,6 +78,8 @@ def read_road_edges(conn, graph_version: str, osm_schema: str = "osm"):
 
 
 def _as_frame(edge_weights) -> pd.DataFrame:
+    from json import dumps
+
     if isinstance(edge_weights, pd.DataFrame):
         df = edge_weights.copy()
     else:
@@ -106,7 +108,7 @@ def _as_frame(edge_weights) -> pd.DataFrame:
     for metadata in df["model_metadata"]:
         if not isinstance(metadata, dict):
             raise ValueError("EdgeWeight.model_metadata wajib object JSON")
-        json.dumps(metadata, allow_nan=False)
+        dumps(metadata, allow_nan=False)
     if not df["estimation_source"].isin(["stgnn", "idw", "hybrid"]).all():
         raise ValueError("estimation_source wajib 'stgnn', 'idw' atau 'hybrid'")
     if not df["background_source"].dropna().isin(["aod", "reanalysis"]).all():
