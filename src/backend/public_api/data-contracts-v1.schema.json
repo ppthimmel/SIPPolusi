@@ -789,11 +789,36 @@
           "$ref": "#/$defs/Mode"
         },
         "bbox": {
-          "items": {
-            "type": "number"
-          },
+          "description": "[min_lon, min_lat, max_lon, max_lat]. Also validate min_lon < max_lon and min_lat < max_lat in consumer code; standard JSON Schema cannot compare array items.",
+          "items": false,
           "maxItems": 4,
           "minItems": 4,
+          "prefixItems": [
+            {
+              "description": "min_lon, WGS 84 degrees",
+              "maximum": 180,
+              "minimum": -180,
+              "type": "number"
+            },
+            {
+              "description": "min_lat, WGS 84 degrees",
+              "maximum": 90,
+              "minimum": -90,
+              "type": "number"
+            },
+            {
+              "description": "max_lon, WGS 84 degrees",
+              "maximum": 180,
+              "minimum": -180,
+              "type": "number"
+            },
+            {
+              "description": "max_lat, WGS 84 degrees",
+              "maximum": 90,
+              "minimum": -90,
+              "type": "number"
+            }
+          ],
           "title": "Bbox",
           "type": "array"
         },

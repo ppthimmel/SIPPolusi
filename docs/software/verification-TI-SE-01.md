@@ -170,3 +170,21 @@ Verifikasi ulang setelah penggabungan:
   berhasil dengan peringatan ukuran chunk yang sama.
 
 Log sesi ini: ci-reports/ti-se-01-merge-{backend,integration,graphify}.log.
+
+## Review bbox JSON Schema — 2 November 2026
+
+Komentar review pada BBoxCoordinates menunjukkan AfterValidator tidak diekspor
+menjadi batas numerik per posisi pada JSON Schema. Ditambahkan prefixItems untuk
+min_lon/max_lon −180…180 dan min_lat/max_lat −90…90, tepat empat angka, serta
+penolakan koersi string/boolean pada runtime agar konsisten dengan skema JSON.
+Aturan min_lon < max_lon dan min_lat < max_lat tetap semantik: backend memakai
+AfterValidator, consumer raw schema harus menjalankan pemeriksaan tambahannya.
+Keterbatasan tersebut dijelaskan pada skema dan dokumentasi dengan contoh JS.
+
+Uji regresi memvalidasi payload melalui Draft202012Validator tanpa Pydantic,
+lalu memeriksa model runtime: keempat batas sumbu, panjang salah, boolean/string,
+batas dunia valid, serta bbox terbalik yang hanya ditolak validator semantik.
+Sebelum perbaikan: 6 failed / 3 passed. Sesudahnya: **69 passed** pada uji
+kontrak/OpenAPI; suite osm/pollution/planner/public_api tanpa cacheflow:
+**348 passed, 15 skipped, 27 deselected**. Tidak ada pengujian DB baru pada
+perubahan ini. Log: ci-reports/ti-se-01-bbox-{review,regression}.log.

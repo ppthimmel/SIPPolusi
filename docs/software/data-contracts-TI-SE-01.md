@@ -35,6 +35,21 @@ dan batas per field. Aturan lintas field (jumlah preferensi, durasi window,
 referensi simpul) diperiksa oleh model runtime dan uji kontrak. Lolos skema
 saja belum berarti valid secara semantik.
 
+Untuk `RoadGraph.bbox`, skema mengekspor `prefixItems`: posisi 0/2 adalah
+longitude −180…180 dan posisi 1/3 latitude −90…90, semuanya angka dengan tepat
+empat item. Consumer raw JSON Schema dapat memeriksa batas tersebut tanpa
+Pydantic. Namun `min_lon < max_lon` dan `min_lat < max_lat` membandingkan nilai
+antarposisi, yang tidak dapat dinyatakan oleh JSON Schema standar. Sesudah
+validasi skema, consumer non-Pydantic harus memeriksa kedua kondisi itu sendiri;
+backend memeriksanya lewat `AfterValidator(_bbox)`. Contoh pemeriksaan tambahan:
+
+```javascript
+// Jalankan setelah payload lolos JSON Schema 2020-12.
+if (bbox[0] >= bbox[2] || bbox[1] >= bbox[3]) {
+  throw new Error("bbox membutuhkan min_lon < max_lon dan min_lat < max_lat");
+}
+```
+
 ## Aturan umum
 
 | Aspek | Ketentuan |

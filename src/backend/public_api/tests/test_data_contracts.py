@@ -54,6 +54,42 @@ def test_real_graph_and_weight_serializers_obey_versioned_schema():
     assert payload["pm25_ugm3"] == 0. and payload["no2_ugm3"] is None
 
 
+@pytest.mark.parametrize("bbox", [
+    [-181, -6.3, 106.9, -6.1],
+    [106.7, -91, 106.9, -6.1],
+    [106.7, -6.3, 181, -6.1],
+    [106.7, -6.3, 106.9, 91],
+    [106.7, -6.3, 106.9],
+    [106.7, -6.3, 106.9, -6.1, 0],
+    [True, -6.3, 106.9, -6.1],
+    ["106.7", -6.3, 106.9, -6.1],
+])
+def test_raw_json_schema_and_runtime_reject_invalid_bbox_coordinates(bbox):
+    """A JSON Schema consumer must enforce axis ranges without AfterValidator."""
+    from public_api import data_contracts as contracts
+
+    payload = {**graph_payload(), "bbox": bbox}
+    schema = contracts.build()
+    validator = Draft202012Validator({**schema, "$ref": "#/$defs/RoadGraph"})
+    assert list(validator.iter_errors(payload)), "raw JSON Schema accepted an invalid bbox"
+    with pytest.raises(ValidationError):
+        RoadGraphOut.model_validate(payload)
+
+
+def test_raw_bbox_schema_accepts_axis_limits_but_order_is_a_semantic_rule():
+    from public_api import data_contracts as contracts
+
+    validator = Draft202012Validator({**contracts.build(), "$ref": "#/$defs/RoadGraph"})
+    world = {**graph_payload(), "bbox": [-180, -90, 180, 90]}
+    validator.validate(world)
+    RoadGraphOut.model_validate(world)
+    # Standard JSON Schema cannot compare the values at two array positions.
+    reversed_bbox = {**graph_payload(), "bbox": [106.9, -6.3, 106.7, -6.1]}
+    validator.validate(reversed_bbox)
+    with pytest.raises(ValidationError):
+        RoadGraphOut.model_validate(reversed_bbox)
+
+
 @pytest.mark.parametrize("name", ["route_policy.geojson", "route_fallback.geojson"])
 def test_real_route_examples_obey_versioned_schema(name):
     from public_api import data_contracts as contracts

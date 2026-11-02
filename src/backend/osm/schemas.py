@@ -52,7 +52,20 @@ def _bbox(value: list[float]) -> list[float]:
     return value
 
 
-BBoxCoordinates = Annotated[list[float], Field(min_length=4, max_length=4), AfterValidator(_bbox)]
+BBoxCoordinates = Annotated[
+    list[Annotated[float, Field(strict=True)]],
+    Field(min_length=4, max_length=4, json_schema_extra={
+        "prefixItems": [
+            {"type": "number", "minimum": -180, "maximum": 180, "description": "min_lon, WGS 84 degrees"},
+            {"type": "number", "minimum": -90, "maximum": 90, "description": "min_lat, WGS 84 degrees"},
+            {"type": "number", "minimum": -180, "maximum": 180, "description": "max_lon, WGS 84 degrees"},
+            {"type": "number", "minimum": -90, "maximum": 90, "description": "max_lat, WGS 84 degrees"},
+        ],
+        "items": False,
+        "description": "[min_lon, min_lat, max_lon, max_lat]. Also validate min_lon < max_lon and min_lat < max_lat in consumer code; standard JSON Schema cannot compare array items.",
+    }),
+    AfterValidator(_bbox),
+]
 
 
 class GraphVersionOut(BaseModel):
