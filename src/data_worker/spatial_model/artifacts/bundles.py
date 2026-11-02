@@ -21,7 +21,10 @@ def export_bundle(output, target, snapshot, metadata):
     output, snapshot = Path(output), Path(snapshot)
     bundle = output / "bundle"
     bundle.mkdir(exist_ok=True)
-    files = ["best.pt"] if target == "pm25" else ["model.txt", "metadata.json"]
+    family = metadata.get("model_family", "stgnn" if target == "pm25" else "lightgbm")
+    if family not in ("stgnn", "lightgbm"):
+        raise ValueError("Unsupported model family")
+    files = ["best.pt"] if family == "stgnn" else ["model.txt", "metadata.json"]
     files += [name for name in ("metrics.json", "evaluation_metrics.csv", "idw_comparison.csv", "history.csv", "evaluation.json") if (output / name).is_file()]
     for name in files:
         shutil.copyfile(output / name, bundle / name)
@@ -31,14 +34,14 @@ def export_bundle(output, target, snapshot, metadata):
         revision = subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True, text=True).stdout.strip()
     except FileNotFoundError:
         revision = os.environ.get("GIT_COMMIT", "unavailable; see source_hashes")
-    manifest = dict(format_version=1, target=target, dataset="ds-v0.3.0", unit="ug/m3",
+    manifest = dict(format_version=1, model_family=family, target=target, dataset="ds-v0.3.0", unit="ug/m3",
                     metadata=metadata, snapshot_hashes=verify_snapshot(snapshot),
                     code_revision=revision, python=platform.python_version(),
                     config_hashes={p.name: digest(p) for p in sorted(
                         (Path(__file__).resolve().parent.parent / "configs").iterdir())
                         if p.suffix in (".json", ".toml")},
                     libraries={name: importlib.metadata.version(name) for name in
-                               (["torch", "torch-geometric", "numpy", "pandas"] if target == "pm25" else ["lightgbm", "numpy", "pandas", "scikit-learn"])},
+                               (["torch", "torch-geometric", "numpy", "pandas"] if family == "stgnn" else ["lightgbm", "numpy", "pandas", "scikit-learn"])},
                     source_hashes={str(p.relative_to(Path(__file__).resolve().parent.parent)): digest(p)
                                    for p in sorted(Path(__file__).resolve().parent.parent.rglob("*.py"))},
                     hashes={p.name: digest(p) for p in bundle.iterdir() if p.is_file() and p.name != "bundle.json"})
@@ -53,7 +56,10 @@ def validate_bundle(directory, target=None):
         raise ValueError("Unsupported model bundle contract")
     if manifest["target"] not in ("pm25", "no2") or (target and manifest["target"] != target):
         raise ValueError("Model target mismatch")
-    required = {"stations.parquet", "best.pt"} if manifest["target"] == "pm25" else {"stations.parquet", "model.txt", "metadata.json"}
+    family = manifest.get("model_family", "stgnn" if manifest["target"] == "pm25" else "lightgbm")
+    if family not in ("stgnn", "lightgbm"):
+        raise ValueError("Unsupported model family")
+    required = {"stations.parquet", "best.pt"} if family == "stgnn" else {"stations.parquet", "model.txt", "metadata.json"}
     if not required <= manifest["hashes"].keys():
         raise ValueError("Incomplete model bundle")
     for name, expected in manifest["hashes"].items():

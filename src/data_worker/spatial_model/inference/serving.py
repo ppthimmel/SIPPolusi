@@ -15,6 +15,9 @@ from spatial_model.artifacts.bundles import validate_bundle
 def load_model(directory, target):
     directory = Path(directory)
     manifest = validate_bundle(directory, target)
+    expected_family = "stgnn" if target == "pm25" else "lightgbm"
+    if manifest.get("model_family", expected_family) != expected_family:
+        raise ValueError("Research model family is incompatible with the production target pairing")
     if target == "pm25":
         import torch
         from spatial_model.models.stgnn.model import ModelConfig, STGNN

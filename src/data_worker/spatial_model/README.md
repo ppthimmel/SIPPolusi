@@ -55,6 +55,13 @@ mencatat prediksi dan metrik yang identik sebelum/sesudah pemindahan modul dan k
 
 - [Notebook training](../../../notebooks/spatial_model): satu notebook per model, memanggil Python yang sama.
 
+Notebook riset kini mendukung kedua target pada kedua keluarga model: PM2.5 dengan
+`fixed_split` atau `loso`, NO₂ hanya `loso`. Lihat [panduan manual](../../../notebooks/spatial_model/README.md)
+untuk pengaturan target/protokol, satu atau seluruh fold, evaluasi checkpoint, dan ringkasan cakupan.
+API `train(..., target=..., protocol=..., fold=...)` dipakai notebook; CLI di bawah tetap memakai
+pasangan produksi semula. Bundle riset merekam `model_family` terpisah dari target; serving menolak
+pasangan eksperimen PM2.5 LightGBM atau NO₂ ST-GNN. Flag registrasi/promosi notebook nonaktif secara bawaan.
+
 ## Training
 
 Dari `src/data_worker`, dengan dependensi `requirements.txt`:
@@ -178,8 +185,9 @@ pembaruan data sumber. Deployment Railway terpisah dari verifikasi lokal.
 
 LightGBM dipatok 4.6.0: versi 4.7.0 gagal pada native label construction Windows untuk dataset ini,
 sementara 4.6.0 berhasil. Versi pustaka per model dicatat dalam bundle. Pada environment Conda Windows
-`base2` di mesin pengembangan, PyTorch perlu dimuat sebelum pustaka native lain; `scripts/verify_spatial_models.py`
-melakukannya. Gunakan environment ML terpisah untuk menghindari konflik DLL/OpenMP.
+`base2` di mesin pengembangan, urutan pemuatan pustaka native dapat memicu konflik DLL/OpenMP.
+Verifikasi notebook 2 November 2026 berhasil dengan NumPy dimuat sebelum PyTorch;
+gunakan environment ML terpisah dan jangan menonaktifkan pemeriksaan duplikasi OpenMP.
 
 Perintah verifikasi lengkap dari root, setelah environment menunjuk stack lokal terisolasi:
 

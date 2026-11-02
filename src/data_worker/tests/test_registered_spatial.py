@@ -170,14 +170,21 @@ def test_registry_rejects_corrupt_cached_artifact(tmp_path, monkeypatch):
 
 
 @pytest.mark.parametrize('target,package', [('pm25','stgnn'),('no2','lightgbm')])
-def test_notebook_uses_shared_training_api(target,package,monkeypatch):
+def test_notebook_uses_shared_training_api(target,package,monkeypatch,tmp_path):
     import importlib
     module=importlib.import_module(f'spatial_model.models.{package}.train')
     calls=[]
     monkeypatch.setattr(module,'train',lambda *args,**kwargs:calls.append((args,kwargs)) or Path('bundle'))
     root=Path(__file__).resolve().parents[3]
     notebook=json.loads((root/f'notebooks/spatial_model/train_{package}.ipynb').read_text(encoding='utf-8'))
-    scope=dict(SNAPSHOT=root/'docs/experiments/ds-v0.3.0',OUTPUT=Path('out'))
-    exec(''.join(notebook['cells'][2]['source']),scope)
-    assert calls[0][0]==(scope['SNAPSHOT'],scope['OUTPUT'])
-    assert calls[0][1]['seed']==42
+    train_cell=next(cell for cell in notebook['cells'] if cell['id']=='train')
+    scope=dict(SNAPSHOT=root/'docs/experiments/ds-v0.3.0',RUN_ROOT=tmp_path/'run',
+               TARGET=target,PROTOCOL='loso',selected_folds=[0,1],SEED=42,
+               RUN_TRAINING=True,RESUME=False,EPOCHS=1,DEVICE='cpu',BATCH_SIZE=8,THREADS=2)
+    exec(''.join(train_cell['source']),scope)
+    assert len(calls)==2
+    for fold,(args,kwargs) in enumerate(calls):
+        assert args==(scope['SNAPSHOT'],scope['RUN_ROOT']/f'fold-{fold}')
+        assert kwargs['seed']==42 and kwargs['target']==target
+        assert kwargs['protocol']=='loso' and kwargs['fold']==fold
+        assert kwargs['evaluate_test'] is False
