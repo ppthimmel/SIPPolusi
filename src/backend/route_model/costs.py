@@ -56,6 +56,7 @@ def weighted_cost(time_s: float, exposure: float, time_ref: float, exposure_ref:
     """Return the dimensionless weighted time and exposure objective."""
     alpha = _nonnegative(alpha, "alpha")
     beta = _nonnegative(beta, "beta")
+    # Keep this tolerance in sync with planner.validation.PREFERENCE_TOLERANCE.
     if alpha > 1 or beta > 1 or abs(alpha + beta - 1) > 1e-6:
         raise ValueError("alpha and beta must be in [0, 1] and sum to 1")
     return alpha * normalize(time_s, time_ref) + beta * normalize(exposure, exposure_ref)

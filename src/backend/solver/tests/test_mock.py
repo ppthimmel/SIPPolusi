@@ -1,18 +1,23 @@
 """The mock solver: deterministic, preference-aware, fault injection."""
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import datetime, timezone
+import math
+import random
 from types import SimpleNamespace
 
 import pytest
 
-from solver.mock import MockSolver
 from solver.cancel import CancelToken
-from solver.mock import _routes
+from solver.mock import MockSolver, _routes
 from solver.paths import shortest_path
 from solver.orchestrator import solve_route_request
+from route_model.costs import edge_exposure, route_totals, weighted_cost
+from planner.models import Preference
 
 from .conftest import FakePollutionRepository, node_id, request_body, weight
+from .biggrid import grid_input
 
 
 async def solve(solver, osm_repo, pollution_repo, settings, solver_settings, body=None):
@@ -70,3 +75,63 @@ def test_weighted_cost_matches_manual_two_route_example(monkeypatch, alpha, beta
     assert result.recommended == expected
     assert sum(observed[1][:2]) == pytest.approx(fast_cost)
     assert sum(observed[1][2:]) == pytest.approx(clean_cost)
+
+
+@pytest.mark.parametrize("value", [None, -1, float("nan"), float("inf"), True])
+@pytest.mark.parametrize("field", ["travel_time_s", "exposure_index"])
+def test_invalid_edge_values_rejected_before_search(value, field):
+    """Reject invalid edge values even if the route would not traverse them."""
+    si = grid_input(2, reachable=True)
+    si.edges[-1] = replace(si.edges[-1], **{field: value})
+    with pytest.raises(ValueError):
+        _routes(CancelToken(), si)
+
+
+def test_zero_exposure_reference_uses_one_as_denominator():
+    """Keep zero-reference exposure costs finite and select the zero route."""
+    si = grid_input(2, reachable=True)
+    si.preference = Preference(0, 1)
+    si.edges = [replace(edge, exposure_index=0 if i in (0, 2) else 2)
+                for i, edge in enumerate(si.edges)]
+    result = _routes(CancelToken(), si)
+    assert result.comparison == (1, 3)
+    assert result.recommended == (1, 3)
+
+
+def test_zero_time_reference_uses_one_as_denominator():
+    """Allow zero total time without dividing by zero."""
+    si = grid_input(2, reachable=True)
+    si.edges = [replace(edge, travel_time_s=0.0) for edge in si.edges]
+    result = _routes(CancelToken(), si)
+    assert result.comparison and result.recommended
+
+
+@pytest.mark.parametrize("alpha", [0, .2, .5, .8, 1])
+@pytest.mark.parametrize("seed", range(5))
+def test_optimized_objective_matches_validated_formula(alpha, seed):
+    """Match minimum weighted costs from the original validated formula."""
+    rng = random.Random(seed)
+    si = grid_input(5, reachable=True)
+    si.preference = Preference(alpha, 1 - alpha)
+    si.edges = [replace(edge, travel_time_s=rng.uniform(1, 100),
+                        exposure_index=rng.choice([0.0, 0.1, 1.0, 10.0])) for edge in si.edges]
+    result = _routes(CancelToken(), si)
+    by_id = {edge.edge_id: edge for edge in si.edges}
+    t_ref, e_ref = route_totals((by_id[i].travel_time_s, by_id[i].exposure_index) for i in result.comparison)
+    def cost(edge):
+        """Return the independently validated normalized edge cost."""
+        return weighted_cost(edge.travel_time_s, edge_exposure(edge.travel_time_s, edge.exposure_index),
+                             t_ref, e_ref, alpha, 1 - alpha)
+    expected = shortest_path(si, cost)
+    assert math.fsum(cost(by_id[i]) for i in result.recommended) == pytest.approx(
+        math.fsum(cost(by_id[i]) for i in expected))
+
+
+def test_edge_validation_respects_cancellation():
+    """Stop edge validation promptly after cancellation."""
+    from solver.cancel import Cancelled
+
+    token = CancelToken()
+    token.cancel()
+    with pytest.raises(Cancelled):
+        _routes(token, grid_input(2, reachable=True))

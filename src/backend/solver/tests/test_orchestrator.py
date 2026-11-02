@@ -4,6 +4,7 @@ Fallback behaviour (TI-SE-07) is tested in test_fallback.py."""
 from __future__ import annotations
 
 import asyncio
+from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 
 import pytest
@@ -12,11 +13,18 @@ from osm.errors import NoRouteFound
 from solver.config import SolverSettings
 from solver.contract import RouteServiceUnavailable, SolverReply
 from solver.mock import MockSolver
-from solver.orchestrator import solve_route_request
+from solver.orchestrator import route_metrics, solve_route_request
 
+from .biggrid import grid_input
 from .conftest import request_body
 
 FAST = SolverSettings(_env_file=None, budget_ms=400, response_margin_ms=0, grace_ms=50, fallback="none")
+
+
+def test_travel_time_rounding_is_stable():
+    """Round summed edge minutes consistently across Python versions."""
+    edge = replace(grid_input(2, reachable=True).edges[0], travel_time_s=84.615)
+    assert route_metrics([(edge, True)] * 6).travel_time_min == 8.462
 
 
 async def solve(solver, osm_repo, pollution_repo, settings, solver_settings=FAST, body=None, received_at=None):

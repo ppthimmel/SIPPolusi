@@ -31,6 +31,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import math
 import time
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
@@ -135,7 +136,8 @@ def route_metrics(path: list[tuple[PlannedEdge, bool]]) -> RouteMetrics:
     else:
         confidence = sum(e.confidence_score for e in edges) / len(edges)
     return RouteMetrics(
-        travel_time_min=round(sum(minutes), 3),
+        # fsum keeps the API's rounding stable across Python versions.
+        travel_time_min=round(math.fsum(minutes), 3),
         distance_m=round(sum(e.length_m for e in edges), 2),
         exposure_index_min=round(total_exposure, 4),
         exposure_ug_min_m3=round(sum(c * m for c, m in known), 3) if len(known) == len(edges) else None,
