@@ -13,7 +13,7 @@ from src.backend.route_model.training_env import (
 
 try:
     import numpy as np
-except ImportError:  # numpy is optional for the backend suite
+except ImportError:  # From requirements-test.txt; CI's check_junit rejects this skip
     np = None
 
 
