@@ -172,6 +172,22 @@ class TwoRouteTests(unittest.TestCase):
             returns.append(info["episode"]["return"])
         self.assertEqual([round(x, 9) for x in returns], [-4.0, -4.0, -4.0])
 
+    def test_failure_settlement_is_determined_by_the_observation(self):
+        # The final reward cancels accumulated costs and penalties, so a value
+        # function can only predict it if the observation carries all of them.
+        for illegal in (0, 1, 3):
+            env = self.env(illegal_action_penalty=0.1, failure_return=4.0)
+            obs, _ = env.reset(preference=(0.5, 0.5))
+            for _ in range(illegal):
+                obs, *_ = env.step(99)
+            obs, *_ = env.step(action_for(obs, 12))
+            self.assertEqual(obs["illegal_actions"], illegal)
+            *_, info = env.step(action_for(obs, 25))
+            penalties = 0.1 * obs["illegal_actions"]
+            self.assertAlmostEqual(info["reward_vector"][0], -4.0 + obs["time_ratio"] + penalties)
+            self.assertAlmostEqual(info["reward_vector"][1], -4.0 + obs["exposure_ratio"] + penalties)
+            self.assertAlmostEqual(info["episode"]["return"], -4.0)
+
     def test_step_limit_scales_with_reference(self):
         _, info = self.env(max_steps=100, max_steps_factor=3).reset(preference=(1, 0))
         self.assertEqual(info["step_limit"], 6)

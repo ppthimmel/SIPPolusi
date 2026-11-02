@@ -56,6 +56,7 @@ T so far, E so far, step count, α, β)`. The observation is a plain dictionary:
 | `preference` | `[α, β]` |
 | `time_ratio`, `exposure_ratio` | `T/T_ref` and `E/E_ref` accumulated so far |
 | `steps`, `steps_left` | Steps taken, and steps remaining before truncation |
+| `illegal_actions` | Illegal actions so far in this episode |
 | `distance_to_goal_m` | Geodesic distance from `node` to `destination` |
 | `actions[i]` | `edge_id`, `neighbor`, `forward`, `time_ratio` (`t_e/T_ref`), `exposure_ratio` (`I_e·t_e/E_ref`), `distance_to_goal_m` of the neighbor, `visited` |
 | `action_mask[i]` | Whether action `i` is legal |
@@ -149,9 +150,10 @@ cost accumulated so far, which made failing early cheaper than searching longer:
 walking into the nearest cul-de-sac scored about −2.2, while searching up to the
 step limit scored about −5. With a fixed failure return, all failures score the
 same (unit test `test_failing_early_is_not_cheaper_than_failing_late`). The final
-step's reward depends on the accumulated cost, but that cost is part of the
-observation (`time_ratio`, `exposure_ratio`), so the reward stays Markov in the
-observation.
+step's reward depends on the accumulated cost and penalties, but all of them are
+part of the observation (`time_ratio`, `exposure_ratio`, `illegal_actions`), so the
+reward stays Markov in the observation (unit test
+`test_failure_settlement_is_determined_by_the_observation`).
 
 **Training risk:** a successful route whose weighted cost exceeds `failure_return`
 still scores worse than failing. With the default of 4.0, any route within four

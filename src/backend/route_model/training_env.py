@@ -459,6 +459,7 @@ class RouteEnv:
             "exposure_ratio": self.exposure_total / self._exposure_scale,
             "steps": self.steps,
             "steps_left": self.step_limit - self.steps,
+            "illegal_actions": self.illegal_actions,
             "distance_to_goal_m": distance_m(self.router.coords[self.node], goal),
             "actions": [{"edge_id": edge_id, "neighbor": neighbor, "forward": forward,
                          "time_ratio": seconds / self.reference_time,
