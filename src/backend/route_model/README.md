@@ -156,6 +156,10 @@ reachability) as a reinforcement learning environment for the MORL policy.
 State, action, reward, splits and logging are specified in
 [TRAINING_ENV.md](TRAINING_ENV.md).
 
+## MORL policy
+
+[`morl/`](morl/README.md) holds the multi-policy MORL set of TI-AI-09 (PIC B).
+
 ## Verification
 
 ```shell
