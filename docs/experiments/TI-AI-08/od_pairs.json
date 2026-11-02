@@ -1,0 +1,419 @@
+{
+  "env_version": "route-env-1",
+  "graph_version": "jakarta-20261005",
+  "split_spec": {
+    "block_deg": 0.02,
+    "fractions": [
+      0.7,
+      0.15,
+      0.15
+    ],
+    "seed": 42
+  },
+  "sampling": {
+    "seed": 42,
+    "min_distance_m": 500,
+    "max_distance_m": 3000,
+    "candidate_origins": {
+      "train": 162440,
+      "val": 52608,
+      "test": 33354
+    },
+    "candidate_destinations": {
+      "train": 162408,
+      "val": 52609,
+      "test": 33352
+    },
+    "splits": {
+      "train": {
+        "pairs": 40,
+        "attempts": 916,
+        "rejected": {
+          "distance": 876,
+          "unreachable": 0,
+          "duplicate": 0
+        }
+      },
+      "val": {
+        "pairs": 10,
+        "attempts": 215,
+        "rejected": {
+          "distance": 204,
+          "unreachable": 1,
+          "duplicate": 0
+        }
+      },
+      "test": {
+        "pairs": 10,
+        "attempts": 112,
+        "rejected": {
+          "distance": 102,
+          "unreachable": 0,
+          "duplicate": 0
+        }
+      }
+    }
+  },
+  "pairs": [
+    {
+      "od_id": "train-00000",
+      "start": 3724976694,
+      "end": 10972923800,
+      "split": "train"
+    },
+    {
+      "od_id": "train-00001",
+      "start": 7047422324,
+      "end": 13643749170,
+      "split": "train"
+    },
+    {
+      "od_id": "train-00002",
+      "start": 5507592500,
+      "end": 9568548588,
+      "split": "train"
+    },
+    {
+      "od_id": "train-00003",
+      "start": 5100784735,
+      "end": 13397491730,
+      "split": "train"
+    },
+    {
+      "od_id": "train-00004",
+      "start": 4859392208,
+      "end": 11009674399,
+      "split": "train"
+    },
+    {
+      "od_id": "train-00005",
+      "start": 361384064,
+      "end": 6621732447,
+      "split": "train"
+    },
+    {
+      "od_id": "train-00006",
+      "start": 4967050736,
+      "end": 6330719484,
+      "split": "train"
+    },
+    {
+      "od_id": "train-00007",
+      "start": 6546771801,
+      "end": 9584990704,
+      "split": "train"
+    },
+    {
+      "od_id": "train-00008",
+      "start": 8434705079,
+      "end": 191505992,
+      "split": "train"
+    },
+    {
+      "od_id": "train-00009",
+      "start": 5372144911,
+      "end": 4854939369,
+      "split": "train"
+    },
+    {
+      "od_id": "train-00010",
+      "start": 9028255472,
+      "end": 313316467,
+      "split": "train"
+    },
+    {
+      "od_id": "train-00011",
+      "start": 9009436573,
+      "end": 329967948,
+      "split": "train"
+    },
+    {
+      "od_id": "train-00012",
+      "start": 6887698296,
+      "end": 1682867868,
+      "split": "train"
+    },
+    {
+      "od_id": "train-00013",
+      "start": 5490065588,
+      "end": 13456501616,
+      "split": "train"
+    },
+    {
+      "od_id": "train-00014",
+      "start": 400882420,
+      "end": 1174160067,
+      "split": "train"
+    },
+    {
+      "od_id": "train-00015",
+      "start": 4789662111,
+      "end": 9152187484,
+      "split": "train"
+    },
+    {
+      "od_id": "train-00016",
+      "start": 361383423,
+      "end": 7838414834,
+      "split": "train"
+    },
+    {
+      "od_id": "train-00017",
+      "start": 7114348730,
+      "end": 9625973682,
+      "split": "train"
+    },
+    {
+      "od_id": "train-00018",
+      "start": 5479737486,
+      "end": 11239985162,
+      "split": "train"
+    },
+    {
+      "od_id": "train-00019",
+      "start": 9570633896,
+      "end": 4822654951,
+      "split": "train"
+    },
+    {
+      "od_id": "train-00020",
+      "start": 353679541,
+      "end": 4789734081,
+      "split": "train"
+    },
+    {
+      "od_id": "train-00021",
+      "start": 352580465,
+      "end": 13913219144,
+      "split": "train"
+    },
+    {
+      "od_id": "train-00022",
+      "start": 5423932862,
+      "end": 8776284139,
+      "split": "train"
+    },
+    {
+      "od_id": "train-00023",
+      "start": 347509526,
+      "end": 12728679712,
+      "split": "train"
+    },
+    {
+      "od_id": "train-00024",
+      "start": 13452998374,
+      "end": 6315610193,
+      "split": "train"
+    },
+    {
+      "od_id": "train-00025",
+      "start": 8509710914,
+      "end": 6773529240,
+      "split": "train"
+    },
+    {
+      "od_id": "train-00026",
+      "start": 11209842758,
+      "end": 6320046648,
+      "split": "train"
+    },
+    {
+      "od_id": "train-00027",
+      "start": 7642080287,
+      "end": 5662716761,
+      "split": "train"
+    },
+    {
+      "od_id": "train-00028",
+      "start": 1712825038,
+      "end": 1135130749,
+      "split": "train"
+    },
+    {
+      "od_id": "train-00029",
+      "start": 5487896423,
+      "end": 5042346925,
+      "split": "train"
+    },
+    {
+      "od_id": "train-00030",
+      "start": 316556642,
+      "end": 9462729405,
+      "split": "train"
+    },
+    {
+      "od_id": "train-00031",
+      "start": 12723688574,
+      "end": 8511307109,
+      "split": "train"
+    },
+    {
+      "od_id": "train-00032",
+      "start": 6334700050,
+      "end": 13661990139,
+      "split": "train"
+    },
+    {
+      "od_id": "train-00033",
+      "start": 1709453597,
+      "end": 5506872538,
+      "split": "train"
+    },
+    {
+      "od_id": "train-00034",
+      "start": 355816743,
+      "end": 6333123653,
+      "split": "train"
+    },
+    {
+      "od_id": "train-00035",
+      "start": 331985715,
+      "end": 7237831694,
+      "split": "train"
+    },
+    {
+      "od_id": "train-00036",
+      "start": 4519465018,
+      "end": 5495730945,
+      "split": "train"
+    },
+    {
+      "od_id": "train-00037",
+      "start": 1719120421,
+      "end": 9682116879,
+      "split": "train"
+    },
+    {
+      "od_id": "train-00038",
+      "start": 8797458053,
+      "end": 9033818098,
+      "split": "train"
+    },
+    {
+      "od_id": "train-00039",
+      "start": 13721252299,
+      "end": 7613187117,
+      "split": "train"
+    },
+    {
+      "od_id": "val-00000",
+      "start": 5504750001,
+      "end": 5504454329,
+      "split": "val"
+    },
+    {
+      "od_id": "val-00001",
+      "start": 4118356140,
+      "end": 4982519730,
+      "split": "val"
+    },
+    {
+      "od_id": "val-00002",
+      "start": 13737905108,
+      "end": 8435413665,
+      "split": "val"
+    },
+    {
+      "od_id": "val-00003",
+      "start": 9039497286,
+      "end": 5479863104,
+      "split": "val"
+    },
+    {
+      "od_id": "val-00004",
+      "start": 6308597050,
+      "end": 5112424276,
+      "split": "val"
+    },
+    {
+      "od_id": "val-00005",
+      "start": 6583230834,
+      "end": 4989641694,
+      "split": "val"
+    },
+    {
+      "od_id": "val-00006",
+      "start": 390981462,
+      "end": 5097408183,
+      "split": "val"
+    },
+    {
+      "od_id": "val-00007",
+      "start": 4445310775,
+      "end": 4896333753,
+      "split": "val"
+    },
+    {
+      "od_id": "val-00008",
+      "start": 6978661148,
+      "end": 12698843202,
+      "split": "val"
+    },
+    {
+      "od_id": "val-00009",
+      "start": 7122348063,
+      "end": 4918287656,
+      "split": "val"
+    },
+    {
+      "od_id": "test-00000",
+      "start": 8509839968,
+      "end": 7036433277,
+      "split": "test"
+    },
+    {
+      "od_id": "test-00001",
+      "start": 344385529,
+      "end": 6407359210,
+      "split": "test"
+    },
+    {
+      "od_id": "test-00002",
+      "start": 9013614956,
+      "end": 13603090915,
+      "split": "test"
+    },
+    {
+      "od_id": "test-00003",
+      "start": 5055939434,
+      "end": 5019650904,
+      "split": "test"
+    },
+    {
+      "od_id": "test-00004",
+      "start": 6773677599,
+      "end": 325035606,
+      "split": "test"
+    },
+    {
+      "od_id": "test-00005",
+      "start": 5504303418,
+      "end": 1709590389,
+      "split": "test"
+    },
+    {
+      "od_id": "test-00006",
+      "start": 386003217,
+      "end": 10747739971,
+      "split": "test"
+    },
+    {
+      "od_id": "test-00007",
+      "start": 5033751245,
+      "end": 4916415123,
+      "split": "test"
+    },
+    {
+      "od_id": "test-00008",
+      "start": 8519576015,
+      "end": 8505927217,
+      "split": "test"
+    },
+    {
+      "od_id": "test-00009",
+      "start": 3241249086,
+      "end": 340340383,
+      "split": "test"
+    }
+  ]
+}
