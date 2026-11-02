@@ -19,10 +19,15 @@ def verify_snapshot(root):
         if not path.is_relative_to(root):
             raise ValueError(f"Snapshot path outside root: {name}")
         actual = stgnn_hash(path)
-        # Git may check text out as CRLF on Windows. Accept only this text-only
-        # conversion; Parquet and other binary inputs must match byte for byte.
+        # Frozen text may have been hashed with LF or CRLF, and Git can change
+        # either on checkout. Preserve the frozen digest; binary inputs must
+        # still match byte for byte.
         if actual != digest and path.suffix in (".md", ".json", ".toml"):
-            actual = hashlib.sha256(path.read_bytes().replace(b"\r\n", b"\n")).hexdigest()
+            lf = path.read_bytes().replace(b"\r\n", b"\n")
+            for candidate in (lf, lf.replace(b"\n", b"\r\n")):
+                actual = hashlib.sha256(candidate).hexdigest()
+                if actual == digest:
+                    break
         if actual != digest:
             raise ValueError(f"Snapshot checksum mismatch: {name}")
         hashes[name] = digest
