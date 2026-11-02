@@ -134,7 +134,11 @@ sumber, versi dan alasan fallback per polutan; identitas cache mengikat input, m
 Confidence bersifat provisional dan dibatasi 0,39 sampai kalibrasi tersedia.
 
 Setiap penulisan cache wajib menyimpan trace di PostgreSQL: `inference_run`,
-`grid_prediction`, dan `edge_cell`, dengan tautan `EdgeWeight.trace_run_id`. Writer menolak
+`grid_prediction`, dan potongan ruas–sel, dengan tautan `EdgeWeight.trace_run_id`. Potongan hanya
+bergantung pada graf dan grid, jadi disimpan sekali per isi (`edge_cell_set`, dikenali
+`pieces_sha256` manifest, dan `edge_cell_piece`) dan dirujuk `inference_run.edge_cell_set_id`;
+run lama masih memakai `edge_cell`. `model_metadata` per ruas disimpan sekali per nilai berbeda
+dalam satu run (`edge_metadata`). Writer menolak
 trace yang hilang atau tidak merekonstruksi konsentrasi, indeks paparan, dan confidence ruas.
 Cache dan trace di-commit dalam satu transaksi; kegagalan membatalkan keduanya. Run ID
 immutable mengikat versi model, fingerprint input, graf/grid, versi format trace, dan kebijakan

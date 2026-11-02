@@ -45,7 +45,8 @@ Setiap **penulisan cache baru melalui Worker** wajib menyimpan:
 |---|---|
 | `pollution.inference_run` | Run ID immutable, awal/akhir window, versi graf dan model, metadata per polutan, fingerprint input, GridSpec, konfigurasi, dan checksum trace |
 | `pollution.grid_prediction` | Sel, koordinat, nilai PM2.5/NO₂, confidence, dan sumber per polutan |
-| `pollution.edge_cell` | Pasangan ruas–sel dan panjang potongan dalam meter |
+| `pollution.edge_cell_set`, `pollution.edge_cell_piece` | Pasangan ruas–sel dan panjang potongan dalam meter, disimpan sekali per isi (`pieces_sha256`) dan dirujuk `inference_run.edge_cell_set_id`; run sebelum November 2026 memakai `pollution.edge_cell` |
+| `pollution.edge_metadata` | Setiap `model_metadata` per ruas yang berbeda dalam satu run, dirujuk `edge_pollution.metadata_id` |
 | `pollution.edge_pollution.trace_run_id` | Tautan dari EdgeWeight ke run sumbernya |
 
 Writer menolak trace yang hilang atau tidak merekonstruksi nilai ruas. Seluruh trace dan

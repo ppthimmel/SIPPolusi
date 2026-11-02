@@ -68,9 +68,9 @@ def _step_downscale_inference(time_window: TimeWindow, config: Config) -> dict:
     """Registered PM2.5 correction/NO2 LightGBM, per-pollutant IDW fallback, then cache.
 
     Aktif hanya bila DOWNSCALE_WRITE_CACHE=1, karena setiap time window menulis
-    sekitar 372 ribu baris (±92 MB) ke pollution.edge_pollution. Setelah
-    penulisan, hanya DOWNSCALE_KEEP_WINDOWS time window complete terakhir
-    (bawaan 6) yang dipertahankan. SPATIAL_ARTIFACT_DIR (opsional) menerima
+    sekitar 372 ribu baris ke pollution.edge_pollution (±215 MB per time window
+    termasuk jejak sel grid). Setelah penulisan, hanya DOWNSCALE_KEEP_WINDOWS
+    time window complete terakhir (bawaan 6) yang dipertahankan. SPATIAL_ARTIFACT_DIR (opsional) menerima
     artefak penelusuran per run.
     """
     if os.environ.get("DOWNSCALE_WRITE_CACHE") != "1":

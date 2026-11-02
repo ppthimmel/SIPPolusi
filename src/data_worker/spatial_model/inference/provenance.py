@@ -78,6 +78,41 @@ class InferenceTrace:
         return grid, pieces, manifest
 
 
+def _first(row):
+    return next(iter(row.values())) if isinstance(row, dict) else row[0]
+
+
+def _nullable(value):
+    if pd.isna(value):
+        return None
+    return value.item() if isinstance(value, np.generic) else value
+
+
+def _edge_cell_set(conn, pieces, pieces_sha256, schema):
+    """ID of the stored mapping with these pieces, writing it if this is its first run.
+
+    Every run on the same road graph and grid has the same pieces, so they are
+    stored once (575k rows on Railway) instead of once per run.
+    """
+    table = _table(schema, "edge_cell_set")
+    row = conn.execute(sql.SQL("""INSERT INTO {} (pieces_sha256, piece_count) VALUES (%s, %s)
+        ON CONFLICT (pieces_sha256) DO NOTHING RETURNING set_id""").format(table),
+        (pieces_sha256, len(pieces))).fetchone()
+    if row is None:
+        row = conn.execute(sql.SQL("SELECT set_id, piece_count FROM {} WHERE pieces_sha256 = %s").format(table),
+                           (pieces_sha256,)).fetchone()
+        set_id, count = (row["set_id"], row["piece_count"]) if isinstance(row, dict) else row
+        if count != len(pieces):
+            raise ValueError("Stored road-cell pieces with this hash have a different row count")
+        return set_id
+    set_id = _first(row)
+    with conn.cursor().copy(sql.SQL("COPY {} (set_id, edge_id, cell_id, length_m) FROM STDIN").format(
+            _table(schema, "edge_cell_piece"))) as copy:
+        for piece in pieces.itertuples(index=False, name=None):
+            copy.write_row([set_id, *(_nullable(v) for v in piece)])
+    return set_id
+
+
 def write_trace(conn, trace, prepared, window, graph_version, model_version, schema):
     """Called inside the cache transaction, after serializing writers for this window."""
     grid, pieces, manifest = prepared
@@ -85,28 +120,36 @@ def write_trace(conn, trace, prepared, window, graph_version, model_version, sch
                     graph_version=graph_version, model_version=model_version)
     digest = hashlib.sha256(_json(manifest).encode()).hexdigest()
     table = _table(schema, "inference_run")
-    inserted = conn.execute(sql.SQL("""INSERT INTO {} (run_id, time_window_start, manifest, trace_sha256)
-        VALUES (%s, %s, %s::jsonb, %s) ON CONFLICT (run_id) DO NOTHING RETURNING run_id""").format(table),
-        (trace.run_id, window.start, _json(manifest), digest)).fetchone()
-    if inserted is None:
-        old = conn.execute(sql.SQL("SELECT trace_sha256 FROM {} WHERE run_id = %s").format(table),
-                           (trace.run_id,)).fetchone()
-        old_hash = old["trace_sha256"] if isinstance(old, dict) else old[0]
-        if old_hash != digest:
+    old = conn.execute(sql.SQL("SELECT trace_sha256 FROM {} WHERE run_id = %s").format(table),
+                       (trace.run_id,)).fetchone()
+    if old is not None:
+        if _first(old) != digest:
             raise ValueError("Immutable inference run ID already has different lineage")
         return
-    def nullable(value):
-        if pd.isna(value):
-            return None
-        return value.item() if isinstance(value, np.generic) else value
+    set_id = _edge_cell_set(conn, pieces, manifest["pieces_sha256"], schema)
+    conn.execute(sql.SQL("""INSERT INTO {} (run_id, time_window_start, manifest, trace_sha256, edge_cell_set_id)
+        VALUES (%s, %s, %s::jsonb, %s, %s)""").format(table),
+        (trace.run_id, window.start, _json(manifest), digest, set_id))
     with conn.cursor().copy(sql.SQL("COPY {} (run_id, {}) FROM STDIN").format(
             _table(schema, "grid_prediction"), sql.SQL(", ").join(map(sql.Identifier, GRID_COLUMNS)))) as copy:
         for row in grid.itertuples(index=False, name=None):
-            copy.write_row([trace.run_id, *(nullable(v) for v in row)])
-    with conn.cursor().copy(sql.SQL("COPY {} (run_id, edge_id, cell_id, length_m) FROM STDIN").format(
-            _table(schema, "edge_cell"))) as copy:
-        for row in pieces.itertuples(index=False, name=None):
-            copy.write_row([trace.run_id, *(nullable(v) for v in row)])
+            copy.write_row([trace.run_id, *(_nullable(v) for v in row)])
+
+
+def write_edge_metadata(conn, run_id, model_metadata, schema):
+    """metadata_id for each edge's model_metadata, storing each distinct value once.
+
+    Edges differ only where they cross cells of different sources, so a run has
+    a handful of distinct values for its 372k edges.
+    """
+    keys = [json.dumps(m, sort_keys=True) for m in model_metadata]
+    table = _table(schema, "edge_metadata")
+    ids = {}
+    for key in sorted(set(keys)):
+        ids[key] = _first(conn.execute(sql.SQL("""INSERT INTO {} (run_id, model_metadata) VALUES (%s, %s::jsonb)
+            ON CONFLICT (run_id, model_metadata) DO UPDATE SET model_metadata = EXCLUDED.model_metadata
+            RETURNING metadata_id""").format(table), (run_id, key)).fetchone())
+    return [ids[k] for k in keys]
 
 
 def read_edge_trace(conn, edge_id, window_start, schema="pollution"):
@@ -120,9 +163,18 @@ def read_edge_trace(conn, edge_id, window_start, schema="pollution"):
     if row is None:
         return None
     run_id, manifest, digest = (row[k] for k in ("run_id", "manifest", "trace_sha256")) if isinstance(row, dict) else row
-    cur = conn.execute(sql.SQL("""SELECT c.edge_id, c.length_m, g.* FROM {pieces} c
-        JOIN {grid} g USING (run_id, cell_id) WHERE c.run_id = %s AND c.edge_id = %s ORDER BY c.cell_id""").format(
-            pieces=_table(schema, "edge_cell"), grid=_table(schema, "grid_prediction")), (run_id, edge_id))
+    # Shared pieces of the run's mapping, or edge_cell for runs written before it (edge_cell_set_id NULL).
+    cur = conn.execute(sql.SQL("""SELECT c.edge_id, c.length_m, g.* FROM {run} r
+        JOIN {piece} c ON c.set_id = r.edge_cell_set_id
+        JOIN {grid} g ON g.run_id = r.run_id AND g.cell_id = c.cell_id
+        WHERE r.run_id = %(run)s AND c.edge_id = %(edge)s
+        UNION ALL
+        SELECT c.edge_id, c.length_m, g.* FROM {legacy} c JOIN {grid} g USING (run_id, cell_id)
+        WHERE c.run_id = %(run)s AND c.edge_id = %(edge)s
+        ORDER BY cell_id""").format(
+            run=_table(schema, "inference_run"), piece=_table(schema, "edge_cell_piece"),
+            grid=_table(schema, "grid_prediction"), legacy=_table(schema, "edge_cell")),
+        {"run": run_id, "edge": edge_id})
     names = [column.name for column in cur.description]
     cells = [r if isinstance(r, dict) else dict(zip(names, r)) for r in cur.fetchall()]
     return dict(run_id=run_id, manifest=manifest, trace_sha256=digest, cells=cells)

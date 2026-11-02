@@ -61,9 +61,9 @@ class FakeOsm:
 
 def test_query_without_lineage_differs_only_by_lineage_columns():
     full, lean = repo_module._SQL_WEIGHTS, repo_module._SQL_WEIGHTS_WITHOUT_LINEAGE
-    assert "p.written_at, p.model_metadata, p.trace_run_id" in full
-    assert all(column not in lean for column in repo_module._LINEAGE_COLUMNS)
-    assert full.replace(", p.written_at, p.model_metadata, p.trace_run_id", "") == lean
+    assert repo_module._LINEAGE in full and repo_module._JOIN_MODEL_METADATA in full
+    assert all(column not in lean for column in ("written_at", "model_metadata", "trace_run_id", "edge_metadata"))
+    assert full.replace(repo_module._LINEAGE, "").replace(repo_module._JOIN_MODEL_METADATA, "") == lean
 
 
 async def test_route_read_leaves_lineage_out_and_keeps_every_other_field():

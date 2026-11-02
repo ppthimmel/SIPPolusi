@@ -17,10 +17,12 @@ from sqlalchemy import (
     Double,
     ForeignKey,
     ForeignKeyConstraint,
+    Identity,
     Index,
     Integer,
     MetaData,
     Text,
+    UniqueConstraint,
     func,
     text,
 )
@@ -53,7 +55,10 @@ class EdgePollution(PollutionBase):
     confidence_score: Mapped[float | None] = mapped_column(REAL)
     background_source: Mapped[str | None] = mapped_column(Text)
     estimation_source: Mapped[str | None] = mapped_column(Text)
+    # Rows written before metadata_id existed keep their own copy here; newer rows
+    # leave it '{}' and point at the run's shared value through metadata_id.
     model_metadata: Mapped[dict] = mapped_column(JSONB, server_default=text("'{}'::jsonb"), nullable=False)
+    metadata_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("pollution.edge_metadata.metadata_id"))
     trace_run_id: Mapped[str | None] = mapped_column(Text, ForeignKey("pollution.inference_run.run_id"))
     graph_version: Mapped[str | None] = mapped_column(Text)
     model_version: Mapped[str | None] = mapped_column(Text)
@@ -81,7 +86,38 @@ class InferenceRun(PollutionBase):
         ForeignKey("pollution.pollution_window.time_window_start", ondelete="CASCADE"), nullable=False)
     manifest: Mapped[dict] = mapped_column(JSONB, nullable=False)
     trace_sha256: Mapped[str] = mapped_column(Text, nullable=False)
+    # NULL for runs whose road-cell pieces are in the legacy edge_cell table.
+    edge_cell_set_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("pollution.edge_cell_set.set_id"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class EdgeMetadata(PollutionBase):
+    """The distinct per-edge model_metadata values of one run, stored once each."""
+    __tablename__ = "edge_metadata"
+    __table_args__ = (UniqueConstraint("run_id", "model_metadata", name="edge_metadata_run_value_key"),)
+    metadata_id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    run_id: Mapped[str] = mapped_column(Text, ForeignKey("pollution.inference_run.run_id", ondelete="CASCADE"),
+                                        nullable=False)
+    model_metadata: Mapped[dict] = mapped_column(JSONB, nullable=False)
+
+
+class EdgeCellSet(PollutionBase):
+    """One road-to-grid mapping, identified by the pieces_sha256 in the run manifest."""
+    __tablename__ = "edge_cell_set"
+    set_id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    pieces_sha256: Mapped[str] = mapped_column(Text, nullable=False, unique=True)
+    piece_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class EdgeCellPiece(PollutionBase):
+    __tablename__ = "edge_cell_piece"
+    __table_args__ = (CheckConstraint("length_m > 0", name="ck_edge_cell_piece_length"),)
+    set_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("pollution.edge_cell_set.set_id", ondelete="CASCADE"),
+                                        primary_key=True)
+    edge_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    cell_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    length_m: Mapped[float] = mapped_column(Double, nullable=False)
 
 
 class GridPrediction(PollutionBase):
@@ -98,6 +134,8 @@ class GridPrediction(PollutionBase):
 
 
 class EdgeCell(PollutionBase):
+    """Legacy road-cell pieces, one copy per run. No longer written (see EdgeCellPiece)
+    and read only for runs with edge_cell_set_id NULL; empties as their windows are pruned."""
     __tablename__ = "edge_cell"
     __table_args__ = (
         ForeignKeyConstraint(["run_id", "cell_id"], ["pollution.grid_prediction.run_id", "pollution.grid_prediction.cell_id"], ondelete="CASCADE"),

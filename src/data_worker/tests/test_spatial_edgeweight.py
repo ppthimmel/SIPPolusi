@@ -354,7 +354,76 @@ def test_retensi_cache_hanya_menyimpan_time_window_terakhir(cache_db):
         cache.prune_pollution_windows(conn, keep_windows=0, pollution_schema=s["pollution"])
     traced = conn.execute(f'SELECT DISTINCT time_window_start FROM "{s["pollution"]}".inference_run ORDER BY 1').fetchall()
     assert [r[0] for r in traced] == starts[2:]
-    assert conn.execute(f'SELECT count(*) FROM "{s["pollution"]}".edge_cell').fetchone()[0] == 10
+    # All four runs had the same road-cell pieces: one stored copy, kept while a run uses it.
+    count = lambda table: conn.execute(f'SELECT count(*) FROM "{s["pollution"]}".{table}').fetchone()[0]
+    assert (count("edge_cell_set"), count("edge_cell_piece"), count("edge_cell")) == (1, 5, 0)
+    assert cache.prune_pollution_windows(conn, keep_windows=1, pollution_schema=s["pollution"]) == 1
+    assert (count("edge_cell_set"), count("edge_cell_piece")) == (1, 5)
+    # Once no remaining run uses the pieces, pruning removes them too.
+    conn.execute(f'UPDATE "{s["pollution"]}".pollution_window SET status = %s WHERE time_window_start = %s',
+                 ("complete", writing))
+    assert cache.prune_pollution_windows(conn, keep_windows=1, pollution_schema=s["pollution"]) == 1
+    assert (count("inference_run"), count("edge_cell_set"), count("edge_cell_piece")) == (0, 0, 0)
+
+
+def test_model_metadata_disimpan_sekali_per_nilai_dan_terbaca_per_ruas(cache_db):
+    """Ruas yang melintasi sel bersumber lain punya model_metadata sendiri; nilainya tetap per ruas."""
+    from spatial_model.inference import cache
+
+    conn, s = cache_db
+    p = s["pollution"]
+    weights = _synthetic_weights(3, start_id=1)
+    model = {"source": "idw", "model_version": "m-1", "fallback_reason": "resolve_registry:LookupError"}
+    weights["model_metadata"] = [{"pm25": {**model, "cell_sources": ["idw"]}},
+                                 {"pm25": {**model, "source": "mixed", "cell_sources": ["idw", "stgnn"]}},
+                                 {"pm25": {**model, "cell_sources": ["idw"]}}]
+    for _ in range(2):  # Menulis ulang time window yang sama memakai nilai tersimpan run itu.
+        _write_cache(conn, weights, WINDOW, "g-test", "idw-p2-k8", pollution_schema=p, osm_schema=s["osm"])
+        assert conn.execute(f'SELECT count(*) FROM "{p}".edge_metadata').fetchone()[0] == 2
+    assert conn.execute(f"""SELECT bool_and(model_metadata = '{{}}'::jsonb AND metadata_id IS NOT NULL)
+                            FROM "{p}".edge_pollution""").fetchone()[0]
+    read, _ = cache.read_pollution_weight(conn, BBox(106, -7, 107, -6), WINDOW, pollution_schema=p)
+    assert [w.edge_id for w in read] == [1, 2, 3]
+    assert [w.model_metadata for w in read] == list(weights.model_metadata)
+
+
+def test_baris_dan_run_lama_tetap_terbaca(cache_db):
+    """Run sebelum penyimpanan bersama: model_metadata per baris dan potongan di edge_cell."""
+    from spatial_model.inference import cache
+    from spatial_model.inference.provenance import read_edge_trace
+
+    conn, s = cache_db
+    p = s["pollution"]
+    _run(conn=conn, pollution_schema=p, osm_schema=s["osm"])
+    box = BBox(106, -7, 107, -6)
+    before, _ = cache.read_pollution_weight(conn, box, WINDOW, pollution_schema=p)
+    traces = {w.edge_id: read_edge_trace(conn, w.edge_id, WINDOW.start, p) for w in before}
+    assert all(w.model_metadata for w in before) and all(t["cells"] for t in traces.values())
+    with conn.transaction():
+        conn.execute(f"""INSERT INTO "{p}".edge_cell (run_id, edge_id, cell_id, length_m)
+                         SELECT r.run_id, c.edge_id, c.cell_id, c.length_m FROM "{p}".inference_run r
+                         JOIN "{p}".edge_cell_piece c ON c.set_id = r.edge_cell_set_id""")
+        conn.execute(f'UPDATE "{p}".inference_run SET edge_cell_set_id = NULL')
+        conn.execute(f'DELETE FROM "{p}".edge_cell_set')
+        conn.execute(f"""UPDATE "{p}".edge_pollution e SET model_metadata = m.model_metadata, metadata_id = NULL
+                         FROM "{p}".edge_metadata m WHERE m.metadata_id = e.metadata_id""")
+        conn.execute(f'DELETE FROM "{p}".edge_metadata')
+    assert conn.execute(f'SELECT count(*) FROM "{p}".edge_cell_piece').fetchone()[0] == 0
+    after, _ = cache.read_pollution_weight(conn, box, WINDOW, pollution_schema=p)
+    assert after == before
+    assert {w.edge_id: read_edge_trace(conn, w.edge_id, WINDOW.start, p) for w in after} == traces
+
+
+def test_potongan_ruas_sel_dengan_hash_sama_harus_sama_jumlahnya(cache_db):
+    conn, s = cache_db
+    weights = _synthetic_weights(2)
+    trace = _synthetic_trace(weights, WINDOW)
+    digest = trace.prepare(weights.assign(model_metadata=[{}, {}]))[2]["pieces_sha256"]
+    conn.execute(f'INSERT INTO "{s["pollution"]}".edge_cell_set (pieces_sha256, piece_count) VALUES (%s, 3)',
+                 (digest,))
+    with pytest.raises(ValueError, match="different row count"):
+        _write_cache(conn, weights, WINDOW, "g-test", "idw-p2-k8", pollution_schema=s["pollution"],
+                     osm_schema=s["osm"])
 
 
 def test_cache_writer_requires_trace_and_rejects_inconsistent_values():
