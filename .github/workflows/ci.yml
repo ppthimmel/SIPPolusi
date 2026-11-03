@@ -125,6 +125,11 @@ jobs:
         run: |
           pip install -r src/backend/requirements-test.txt
           pip install -r src/backend/osm/requirements-dev.txt
+      - name: Install PyTorch (CPU, for route_model.morl)
+        # Its own step and index: given several indexes, pip takes the highest version
+        # across all of them, which exposes every package to dependency confusion. The
+        # CPU build avoids gigabytes of CUDA wheels; the pin matches the trained set.
+        run: pip install --index-url https://download.pytorch.org/whl/cpu torch==2.15.0
       - name: Backend API (src/backend/tests)
         # From the repo root: test_baseline imports src.backend.route_model.
         run: python -m pytest src/backend/tests -ra --junitxml="$REPORTS/backend.xml"

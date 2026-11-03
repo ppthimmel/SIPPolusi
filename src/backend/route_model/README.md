@@ -156,10 +156,15 @@ reachability) as a reinforcement learning environment for the MORL policy.
 State, action, reward, splits and logging are specified in
 [TRAINING_ENV.md](TRAINING_ENV.md).
 
+## MORL policy
+
+[`morl/`](morl/README.md) holds the multi-policy MORL set of TI-AI-09 (PIC B).
+
 ## Verification
 
 ```shell
 python -m pip install -r src/backend/requirements-test.txt
+python -m pip install --index-url https://download.pytorch.org/whl/cpu torch==2.15.0
 python -m unittest discover -s src/backend/tests -v
 python -m src.backend.route_model.verify_jakarta --output docs/experiments/TI-AI-07/jakarta-baseline.json
 ```
