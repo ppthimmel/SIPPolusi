@@ -1,0 +1,67 @@
+{
+  "purpose": "NO2 LightGBM LOSO (14 folds, pooled) with the system training code: maintained configs/lightgbm.json against the previous hyperparameters",
+  "dataset": "ds-v0.3.0",
+  "base_revision": "a970a3f",
+  "python": "3.12.10",
+  "lightgbm": "4.6.0",
+  "command": "cd src/data_worker && python ../../docs/experiments/TI-AI-05/no2_lightgbm_config_check.py ../../docs/experiments/ds-v0.3.0 <new output dir>",
+  "reference": "model-comparison-ds-v0.3.0 results/summary_loso_no2.csv, 'LightGBM direct, all features': val 28.9208, test 27.4289",
+  "maintained": {
+    "hp": {
+      "n_estimators": 150,
+      "learning_rate": 0.02,
+      "num_leaves": 63,
+      "min_child_samples": 50,
+      "subsample": 0.6,
+      "colsample_bytree": 0.4,
+      "reg_lambda": 50,
+      "min_split_gain": 0
+    },
+    "target": "direct",
+    "val": {
+      "rows": 853,
+      "stations": 13,
+      "rmse": 28.9208,
+      "bias": -0.2915
+    },
+    "test": {
+      "rows": 604,
+      "stations": 13,
+      "rmse": 27.4289,
+      "bias": 1.6647
+    }
+  },
+  "previous": {
+    "hp": {
+      "n_estimators": 150,
+      "learning_rate": 0.02,
+      "num_leaves": 7,
+      "min_child_samples": 400,
+      "subsample": 1.0,
+      "colsample_bytree": 0.4,
+      "reg_lambda": 1,
+      "min_split_gain": 1.0
+    },
+    "target": "direct",
+    "val": {
+      "rows": 853,
+      "stations": 13,
+      "rmse": 30.2273,
+      "bias": 0.143
+    },
+    "test": {
+      "rows": 604,
+      "stations": 13,
+      "rmse": 28.952,
+      "bias": 2.1822
+    }
+  },
+  "test_comparison": {
+    "rmse_difference_maintained_minus_previous": -1.5231,
+    "station_bootstrap_95ci": [
+      -3.2,
+      0.18
+    ],
+    "stations_better_with_maintained": "7/13"
+  }
+}

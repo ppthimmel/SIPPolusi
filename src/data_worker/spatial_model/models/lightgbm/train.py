@@ -31,6 +31,8 @@ def train(snapshot, output, *, seed=DEFAULT_SEED, fold=None, evaluate_test=True,
         raise ValueError("The validation-selected configuration uses seed 42")
     p = Panel(target, snapshot)
     config = load_model_config("lightgbm")
+    # Per-target overrides: NO2 uses the hyperparameters of the model selected for it.
+    settings = config | config.get("targets", {}).get(target, {})
     columns = CORE + [c for group in feature_groups(target).values() for c in group]
     allowed = np.ones(len(p.group), dtype=bool)
     held = None
@@ -52,7 +54,7 @@ def train(snapshot, output, *, seed=DEFAULT_SEED, fold=None, evaluate_test=True,
     valid = np.isfinite(encoded)
     if not valid.any():
         raise ValueError("No eligible training labels")
-    model = make_model(config["hp"], seed=seed)
+    model = make_model(settings["hp"], seed=seed)
     # Own contiguous arrays avoid views into nullable/read-only Parquet buffers.
     training = d.loc[valid, columns].astype("float64").copy()
     target_values = np.array(encoded[valid], dtype="float32", order="C", copy=True)
@@ -60,11 +62,11 @@ def train(snapshot, output, *, seed=DEFAULT_SEED, fold=None, evaluate_test=True,
     output = Path(output)
     output.mkdir(parents=True, exist_ok=False)
     model.booster_.save_model(str(output / "model.txt"))
-    metadata = dict(model_family="lightgbm", protocol=protocol, configuration=config, training_config=dict(config["hp"], threads=model.n_jobs), target=target, dataset="ds-v0.3.0", unit="ug/m3", seed=seed,
-                    columns=columns, target_transform=config["target"], hyperparameters=config["hp"],
+    metadata = dict(model_family="lightgbm", protocol=protocol, configuration=config, training_config=dict(settings["hp"], threads=model.n_jobs), target=target, dataset="ds-v0.3.0", unit="ug/m3", seed=seed,
+                    columns=columns, target_transform=config["target"], hyperparameters=settings["hp"],
                     snapshot_hashes=verify_snapshot(Path(snapshot)),
                     sensor_stations=p.stations.loc[allowed, "uuid"].tolist(), fold=fold,
-                    selection=config["selection"] if target == "no2" else "Reused configuration; not newly tuned for PM2.5", hyperparameter_origin=config["hyperparameter_origin"],
+                    selection=config["selection"] if target == "no2" else "Reused configuration; not newly tuned for PM2.5", hyperparameter_origin=settings["hyperparameter_origin"],
                     skipped_training_labels=int((~valid).sum()), training_labels=int(valid.sum()))
     (output / "metadata.json").write_text(json.dumps(metadata, indent=2))
     if protocol != "serving":

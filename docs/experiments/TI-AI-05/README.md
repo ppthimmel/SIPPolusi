@@ -52,6 +52,13 @@ interpolator yang disetel. Perbandingan fitur lengkap antararsitektur tidak mema
 NO₂ LightGBM memprediksi konsentrasi langsung; keuntungan terutama terkait fitur geometri sensor dan
 perlu verifikasi bias LCS sebelum klaim generalisasi grid. Confidence masih provisional.
 
+Angka LightGBM NO₂ 27,429 berasal dari model terpilih `lgbm_allfeat_direct`. Sebelumnya
+`configs/lightgbm.json` melatih NO₂ dengan hyperparameter model lain (`lgbm_allfeat_tuned`), dan model
+gabungan itu belum pernah dievaluasi: LOSO val 30,23, test 28,95. Kini NO₂ memakai hyperparameter model
+terpilih (`targets.no2`), dan kode training sistem mereproduksi angka laporan tepat (val 28,92, test
+27,43). Bukti: [`no2_lightgbm_config_check.json`](no2_lightgbm_config_check.json), dari
+[`no2_lightgbm_config_check.py`](no2_lightgbm_config_check.py).
+
 ## Bukti grid-ke-ruas historis
 
 
