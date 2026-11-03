@@ -35,7 +35,7 @@ Setiap model diunggah sebagai paket dengan `package.json` (format dan kompatibil
 [TI-AI-11](../../docs/experiments/TI-AI-11/README.md)). Perintah:
 
 ```bash
-python -m spatial_model.training package <bundle> --graph-version jakarta-20261005
+python -m spatial_model.training package <bundle> [--grid-spec-id <id>]
 python -m spatial_model.training register <bundle>
 python -m spatial_model.training register-route <direktori paket route>
 ```
