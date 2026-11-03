@@ -34,13 +34,13 @@ Status: fixes and fresh controlled verification recorded; 64/64 E2E checks pass;
 |---|---|
 | `npm test` in `src/frontend` | PASS: 9 files, 117 tests |
 | `npm run build` in `src/frontend` | PASS; Vite warns about a JS chunk above 500 kB |
-| `D:/Github/SIPPolusi/.venv-spatial/Scripts/python.exe -m pytest src/backend/tests -q --tb=short` | PASS: 147 tests after WIN-01/WIN-02; [output](backend-tests.txt) |
+| `python -m pytest src/backend/tests -q --tb=short` | PASS: 147 tests after WIN-01/WIN-02; [output](backend-tests.txt) |
 | OSM suite with disposable PostGIS | 122 passed, 15 skipped: imported real-graph tests require separate `DATABASE_URL`; [output](osm-tests.txt) |
 | Pollution suite with disposable PostGIS | 42 passed, no skips; [output](pollution-tests.txt) |
 | Planner suite with disposable PostGIS | 38 passed, no skips; [output](planner-tests.txt) |
 | Solver suite with disposable PostGIS | 237 passed, no skips; includes cache-flow cases and corrected connection-refusal test; [output](solver-tests.txt) |
 | Complete controlled E2E run | 64/64 passed after timeout correction; [results](hasil/results.json), [versions](hasil/versions.json), [run output](e2e-run.txt) |
-| `docker info` | PASS after Docker Desktop started: Engine 25.0.3; all E2E images built successfully |
+| `docker info` | PASS after Docker Desktop started: Engine 25.0.3; Prior controlled E2E stack built and executed; no full build log is claimed |
 
 ## Acceptance and remaining work
 
@@ -65,13 +65,11 @@ The original [61/63 baseline](hasil/before-timeout-fix/results.json) is preserve
   timeouts map to `database_unavailable`. The new acquisition regression failed
   before the change (observed `query_timeout`) and passes afterward. The separate
   client-query regression still requires `query_timeout`.
-- Stopped Route Model: a stopped Docker container can time out rather than
-  refuse TCP. No production solver classification was changed. The deterministic
-  `solver/tests/test_http.py::test_failures_are_classified` cases require
-  `ConnectError` to map to `solver_unreachable` and `ReadTimeout` to
-  `solver_timeout`. The stopped-container check now requires a baseline route,
-  `preference_applied=false`, an explicit unavailable/timeout reason, elapsed
-  time below 10 seconds, and the no-false-success invariant.
+- Stopped Route Model: connection refusal and connect timeout map to
+  `solver_unreachable`; read/write/pool timeouts map to `solver_timeout`.
+  Connection establishment has a shorter timeout than the overall request so
+  the outer deadline does not mask this distinction. The stopped-container E2E
+  requires `model_unavailable`, bounded baseline fallback, and no false success.
 
 Fresh database-backed suites: OSM 122 passed/15 real-graph skips, pollution
 42 passed, planner 38 passed, solver 237 passed. The full E2E rerun passes 64/64 checks. The database-outage assertion still
@@ -126,3 +124,29 @@ these explicit limitations. Local controlled reproducibility is demonstrated;
 production security, live acquisition and learned-model behavior are not.
 Issue closure should reference the integrated revision and retain these
 limitations. The remote issue has not been closed by this local change.
+
+## PR review correction
+
+ConnectTimeout now maps to solver_unreachable, with a connect budget of at most
+five seconds and half the request timeout so the outer solve deadline cannot
+mask connection failure. Read/write/pool timeouts remain solver_timeout; pool
+contention does not establish a remote outage. The new ConnectTimeout regression
+failed before the fix. Stopped-container E2E again requires model_unavailable.
+Captured test logs retain original machine paths as raw evidence; commands in
+this report are portable (use python3 where needed).
+
+### Verification of the review revision
+
+`python -m pytest src/backend/osm/tests/test_db.py src/backend/solver/tests -q`
+passes 247 tests, with six database-dependent skips; see [review-tests.txt](review-tests.txt).
+The ConnectTimeout case failed before the production fix and passes afterward.
+PoolTimeout remains solver_timeout by design: local pool contention is not proof
+of an unreachable remote service. The transport regression also checks that the
+connection timeout is shorter than the read timeout. The Windows-only integration
+budget exception preserves the tighter 2.5 s bound on other platforms.
+
+The archived 64/64 E2E result is from the prior revision, not this review fix.
+The strict rerun was attempted but blocked before build by Docker Engine returning
+HTTP 500 on its named-pipe API, still present after launching Docker Desktop.
+Rerun the complete matrix after Engine recovery before merging. The incomplete
+rebuild log has been removed; it is not evidence of a full E2E build.

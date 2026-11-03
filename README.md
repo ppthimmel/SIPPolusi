@@ -104,6 +104,8 @@ npm run dev
 
 Set `BACKEND_URL=http://localhost:8081` in `src/frontend/.env` for this workflow.
 The default `http://localhost:8000` is for the mock API workflow below.
+An empty database returns `503 cache_empty` until the Data Worker has populated
+the graph and pollution cache; use the fixture workflow in the runbook for a controlled demo.
 
 ### Frontend against the real API
 

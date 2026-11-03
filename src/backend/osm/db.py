@@ -137,6 +137,8 @@ class OsmDatabase:
         except asyncpg.QueryCanceledError as exc:
             raise CacheUnavailable("Kueri basis data cache melewati statement_timeout.",
                                    CacheUnavailable.QUERY_TIMEOUT) from exc
+        # Acquisition/reconnection can time out because the database is unreachable
+        # or because all pool connections are busy; neither is a query timeout.
         except _UNAVAILABLE_ERRORS as exc:
             raise CacheUnavailable(f"Basis data cache tidak tersedia ({type(exc).__name__}).",
                                    CacheUnavailable.DATABASE_UNAVAILABLE) from exc

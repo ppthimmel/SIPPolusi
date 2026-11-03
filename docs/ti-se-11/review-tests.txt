@@ -1,0 +1,23 @@
+...................................................ssssss............... [ 28%]
+........................................................................ [ 56%]
+........................................................................ [ 85%]
+.....................................                                    [100%]
+============================== warnings summary ===============================
+..\.venv-spatial\Lib\site-packages\fastapi\testclient.py:1
+  D:\Github\SIPPolusi\.venv-spatial\Lib\site-packages\fastapi\testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+src\backend\pollution\tests\test_cache_flow.py:26
+  D:\Github\SIPPolusi\TI-SE-11\src\backend\pollution\tests\test_cache_flow.py:26: PytestUnknownMarkWarning: Unknown pytest.mark.cacheflow - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    pytestmark = pytest.mark.cacheflow
+
+src\backend\planner\tests\test_flow.py:14
+  D:\Github\SIPPolusi\TI-SE-11\src\backend\planner\tests\test_flow.py:14: PytestUnknownMarkWarning: Unknown pytest.mark.cacheflow - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    pytestmark = pytest.mark.cacheflow
+
+src\backend\solver\tests\test_flow.py:16
+  D:\Github\SIPPolusi\TI-SE-11\src\backend\solver\tests\test_flow.py:16: PytestUnknownMarkWarning: Unknown pytest.mark.cacheflow - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    pytestmark = pytest.mark.cacheflow
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+247 passed, 6 skipped, 4 warnings in 17.31s

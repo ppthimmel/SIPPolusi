@@ -336,11 +336,9 @@ def scenario_model_failures():
     compose("stop", "route_model")
     r = route()
     meta = r["json"]["metadata"] if r["status"] == 200 else {}
-    # Docker may time out resolving/connecting to a stopped container instead of refusing TCP.
-    # Deterministic transport tests separately pin ConnectError and ReadTimeout classifications.
     check(s, "layanan model mati: fallback baseline bertanda dalam batas waktu", r["status"] == 200 and
           meta.get("route_source") == "baseline" and meta.get("preference_applied") is False and
-          meta.get("fallback_reason") in {"model_unavailable", "model_timeout"} and r["elapsed_s"] < 10,
+          meta.get("fallback_reason") == "model_unavailable" and r["elapsed_s"] < 10,
           {"status": r["status"], "fallback_reason": meta.get("fallback_reason"), "elapsed_s": r["elapsed_s"]})
     no_false_success(s, r)
     compose("start", "route_model")

@@ -25,6 +25,8 @@ Python 3.9+ for the standard-library E2E runner, available ports 18090, 18080,
 18001, 18100 and 55433. Run from the repository root. Docker must be able to
 pull base images and install build dependencies on the first build.
 
+Use `python3` instead of `python` on systems where that is the Python 3 command.
+
 ```sh
 docker info
 docker compose -f tests/e2e/docker-compose.yml --profile tools build
@@ -82,7 +84,8 @@ use `none` to propagate solver failure. A running mock is not trained-model evid
 
 For Vite against the real API, start `postgres cache_api gateway`, set
 `BACKEND_URL=http://localhost:8081` in `src/frontend/.env`, then run `npm ci`
-and `npm run dev` from `src/frontend`. For mock UI development, use port 8000
+and `npm run dev` from `src/frontend`. An empty cache returns `503 cache_empty`
+until the Worker populates it; use the fixture stack for a controlled demo. For mock UI development, use port 8000
 and `npm run mock` in a separate terminal. No `minio-init` service exists;
 MinIO creates the configured buckets via `MINIO_DEFAULT_BUCKETS`.
 
