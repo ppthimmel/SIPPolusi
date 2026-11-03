@@ -1,0 +1,18 @@
+FROM python:3.11-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+RUN apt-get update && apt-get install -y --no-install-recommends libgomp1 locales \
+    && sed -i 's/# en_US ISO-8859-1/en_US ISO-8859-1/' /etc/locale.gen \
+    && locale-gen && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /workspace/src/data_worker
+COPY requirements.txt requirements-dev.txt /tmp/requirements/
+# Install the CPU wheel first; the remaining dependencies come from PyPI.
+RUN pip install --no-cache-dir --no-deps torch --index-url https://download.pytorch.org/whl/cpu \
+    && pip install --no-cache-dir -r /tmp/requirements/requirements-dev.txt
+RUN apt-get update && apt-get install -y --no-install-recommends git libexpat1 \
+    && rm -rf /var/lib/apt/lists/*
+
+CMD ["python", "-m", "pytest", "tests", "-p", "no:cacheprovider", "-ra"]

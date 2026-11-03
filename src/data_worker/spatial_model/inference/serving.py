@@ -12,9 +12,23 @@ import pandas as pd
 from spatial_model.artifacts.bundles import validate_bundle
 
 
-def load_model(directory, target):
+def check_package(directory, runtime=None):
+    """Verify package.json when present and compare its contract with the runtime's.
+
+    Raises PackageIncompatible for another contract major version or graph. A bundle with no
+    package.json (made before TI-AI-11) loads, flagged as unpackaged.
+    """
+    from spatial_model.artifacts.model_package import PACKAGE_FILE, Compatibility, require_compatible, validate_package
+    if not (Path(directory) / PACKAGE_FILE).is_file():
+        return Compatibility("flagged", ["Bundle has no package.json (unpackaged)"])
+    manifest = validate_package(directory, "spatial_downscaling")
+    return require_compatible(manifest, runtime) if runtime else Compatibility()
+
+
+def load_model(directory, target, runtime=None):
     directory = Path(directory)
     manifest = validate_bundle(directory, target)
+    compatibility = check_package(directory, runtime)
     expected_family = "stgnn" if target == "pm25" else "lightgbm"
     if manifest.get("model_family", expected_family) != expected_family:
         raise ValueError("Research model family is incompatible with the production target pairing")
@@ -35,13 +49,14 @@ def load_model(directory, target):
         model = STGNN(ModelConfig(**config))
         model.load_state_dict(artifact["state_dict"])
         model.eval()
-        return SimpleNamespace(model=model, preprocessing=preprocessing, metadata=artifact["metadata"], manifest=manifest)
+        return SimpleNamespace(model=model, preprocessing=preprocessing, metadata=artifact["metadata"], manifest=manifest,
+                               compatibility=compatibility)
     import lightgbm as lgb
     metadata = json.loads((directory / "metadata.json").read_text())
     model = lgb.Booster(model_file=str(directory / "model.txt"))
     if model.feature_name() != metadata["columns"]:
         raise ValueError("LightGBM feature order mismatch")
-    return SimpleNamespace(model=model, metadata=metadata, manifest=manifest)
+    return SimpleNamespace(model=model, metadata=metadata, manifest=manifest, compatibility=compatibility)
 
 
 class GridInputs:
