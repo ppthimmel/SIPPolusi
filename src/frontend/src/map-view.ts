@@ -8,10 +8,12 @@ import {
   STUDY_AREA,
 } from "./config";
 import { EXPOSURE_STOPS, NO_DATA_COLOR, allLowConfidence, layerRatio } from "./exposure";
+import { circle } from "./nav-geometry";
 import type { BBox, ExposureSurface, HeatLayer, Point, RouteResponse, SurfaceFeature } from "./types";
 
 const ROUTE_SOURCE = "routes";
 const HEAT_SOURCE = "heat";
+const ACCURACY_SOURCE = "position-accuracy";
 const HATCH_IMAGE = "hatch";
 
 const ROUTE_GREEN = "#0b6b50";
@@ -60,10 +62,13 @@ export class MapView {
   private surface: SurfaceFeature[] = [];
   private heatLayer: HeatLayer = "combined";
   private popup: maplibregl.Popup | null = null;
+  private user: maplibregl.Marker | null = null;
 
   onPointMoved: (which: "origin" | "destination", p: Point) => void = () => {};
   onClick: (click: SegmentClick, event: maplibregl.MapMouseEvent) => void = () => {};
   onViewChange: () => void = () => {};
+  /** The user moved the map by hand (drag, pinch, wheel), as opposed to the camera following them. */
+  onUserCamera: () => void = () => {};
 
   constructor(container: HTMLElement) {
     this.map = new maplibregl.Map({
@@ -110,6 +115,10 @@ export class MapView {
     });
     this.map.on("moveend", () => this.onViewChange());
     this.map.on("click", (e) => this.handleClick(e));
+    // Camera moves started by easeTo/flyTo carry no originalEvent; those by a hand do.
+    this.map.on("movestart", (e) => {
+      if ((e as { originalEvent?: Event }).originalEvent) this.onUserCamera();
+    });
   }
 
   private initLayers(): void {
@@ -118,6 +127,7 @@ export class MapView {
 
     m.addSource(HEAT_SOURCE, { type: "geojson", data: emptyCollection() });
     m.addSource(ROUTE_SOURCE, { type: "geojson", data: emptyCollection() });
+    m.addSource(ACCURACY_SOURCE, { type: "geojson", data: emptyCollection() });
 
     const isLine: maplibregl.ExpressionSpecification = ["in", ["geometry-type"], ["literal", ["LineString", "MultiLineString"]]] as unknown as maplibregl.ExpressionSpecification;
     const isArea: maplibregl.ExpressionSpecification = ["in", ["geometry-type"], ["literal", ["Polygon", "MultiPolygon"]]] as unknown as maplibregl.ExpressionSpecification;
@@ -182,6 +192,14 @@ export class MapView {
       layout: { "line-join": "round", "line-cap": "round" },
       paint: { "line-color": ROUTE_GREEN, "line-width": 6 },
     });
+
+    // How far off the shown position may be (TI-SE-13), above the routes.
+    m.addLayer({
+      id: "position-accuracy",
+      type: "fill",
+      source: ACCURACY_SOURCE,
+      paint: { "fill-color": "#1a73e8", "fill-opacity": 0.12, "fill-outline-color": "#1a73e8" },
+    });
   }
 
   // --------------------------------------------------------------- markers
@@ -240,6 +258,60 @@ export class MapView {
   async clearRoutes(): Promise<void> {
     await this.ready;
     this.routeSource().setData(emptyCollection());
+  }
+
+  // ------------------------------------------------------------ navigation
+
+  /** Only the route being followed, drawn as the recommended line (TI-SE-13). */
+  async showNavRoute(coordinates: [number, number][]): Promise<void> {
+    await this.ready;
+    this.routeSource().setData({
+      type: "FeatureCollection",
+      features: [{ type: "Feature", geometry: { type: "LineString", coordinates }, properties: { role: "recommended" } }],
+    });
+  }
+
+  /** The user's position, its heading (null: no arrow) and accuracy; null removes them. */
+  async setUser(p: Point | null, headingDeg: number | null = null, accuracyM: number | null = null): Promise<void> {
+    if (!p) {
+      this.user?.remove();
+      this.user = null;
+    } else {
+      if (!this.user) {
+        const el = document.createElement("div");
+        el.className = "marker-user";
+        el.setAttribute("role", "img");
+        el.setAttribute("aria-label", "Posisi Anda");
+        el.append(Object.assign(document.createElement("div"), { className: "marker-user-heading" }));
+        // rotationAlignment "map": the arrow keeps pointing the same way if the map is rotated.
+        this.user = new maplibregl.Marker({ element: el, rotationAlignment: "map" }).setLngLat([p.lon, p.lat]).addTo(this.map);
+      }
+      this.user.setLngLat([p.lon, p.lat]).setRotation(headingDeg ?? 0);
+      this.user.getElement().classList.toggle("has-heading", headingDeg !== null);
+    }
+    await this.ready;
+    const ring = p && accuracyM && Number.isFinite(accuracyM) && accuracyM > 10 ? circle(p, accuracyM) : null;
+    (this.map.getSource(ACCURACY_SOURCE) as maplibregl.GeoJSONSource).setData(
+      ring
+        ? { type: "FeatureCollection", features: [{ type: "Feature", geometry: { type: "Polygon", coordinates: [ring] }, properties: {} }] }
+        : emptyCollection(),
+    );
+  }
+
+  /** Keeps `p` in the visible part of the map (above the bottom sheet on phones). */
+  follow(p: Point, inset: { bottom: number }, zoom?: number): void {
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    this.map.easeTo({
+      center: [p.lon, p.lat],
+      zoom: zoom ?? this.map.getZoom(),
+      padding: { top: 0, left: 0, right: 0, bottom: inset.bottom },
+      duration: reduce ? 0 : 600,
+    });
+  }
+
+  /** Clears the padding follow() leaves on the camera. */
+  resetPadding(): void {
+    this.map.setPadding({ top: 0, left: 0, right: 0, bottom: 0 });
   }
 
   // --------------------------------------------------------------- heatmap

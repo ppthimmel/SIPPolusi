@@ -95,6 +95,7 @@
                 </div>
                 <button type="button" class="icon-btn swap-btn" id="swap-btn" aria-label="Tukar asal dan tujuan"></button>
               </div>
+              <button type="button" class="link-btn" id="use-location">Gunakan lokasi saya sebagai asal</button>
               <p class="hint" id="pick-hint" aria-live="polite"></p>
               <p class="place-notice" id="place-notice"></p>
 
@@ -136,6 +137,9 @@
 
           <!-- Result view: comparison (Gambar 3.1b / 3.4) -->
           <section id="result-view" hidden aria-labelledby="result-title"></section>
+
+          <!-- Navigation view: GPS tracking along the chosen route (TI-SE-13) -->
+          <section id="nav-view" hidden aria-label="Navigasi"></section>
         </div>
 
         <footer class="disclaimer" id="disclaimer" role="note"></footer>

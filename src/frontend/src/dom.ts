@@ -46,6 +46,14 @@ const ICONS = {
   bike: '<circle cx="6" cy="16" r="3.5"/><circle cx="18" cy="16" r="3.5"/><path d="M6 16l4-8h5l3 8M10 8l4 8M9 5h3"/>',
   route: '<circle cx="6" cy="19" r="2"/><path d="M8 19h8a4 4 0 000-8H8a4 4 0 010-8h8"/>',
   pin: '<path d="M12 21s7-6.2 7-11a7 7 0 10-14 0c0 4.8 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/>',
+  navigate: '<path d="M12 2l7 19-7-4-7 4z"/>',
+  straight: '<path d="M12 21V4M6 10l6-6 6 6"/>',
+  turn_left: '<path d="M17 21v-8a4 4 0 00-4-4H5M9 5L5 9l4 4"/>',
+  turn_right: '<path d="M7 21v-8a4 4 0 014-4h8M15 5l4 4-4 4"/>',
+  slight_left: '<path d="M14 21v-7L8 6M7 11V5h6"/>',
+  slight_right: '<path d="M10 21v-7l6-8M17 11V5h-6"/>',
+  uturn: '<path d="M8 21V9a5 5 0 0110 0v4M14 9l4 4 4-4"/>',
+  flag: '<path d="M5 21V4M5 4h11l-2 4 2 4H5"/>',
 } as const;
 
 export type IconName = keyof typeof ICONS;

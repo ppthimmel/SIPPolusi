@@ -19,10 +19,21 @@ import { confidenceBadge, renderResult } from "./results-view";
 import { fmtCoord, fmtNumber, fmtWib } from "./format";
 import { Legend } from "./legend";
 import { MapView, type SegmentClick } from "./map-view";
+import { NavView, type NavMessage } from "./nav-view";
+import { NavigationSession, type Fix } from "./navigation";
 import { PlaceCombobox } from "./place-combobox";
 import { PlaceSearch, PointNamer } from "./place-search";
+import {
+  DevicePosition,
+  describePositionProblem,
+  isFatal,
+  positionProblem,
+  problemFromCode,
+  type PositionProblem,
+  type PositionSource,
+} from "./position";
 import { SurfaceRefresher } from "./surface-refresher";
-import type { HeatLayer, Mode, Place, Point } from "./types";
+import type { HeatLayer, Mode, Place, Point, RouteRequest, RouteResponse, RouteResult } from "./types";
 import { buildRouteRequest, parseCoordinateText, preferenceFromSlider, validatePoint, validateTrip } from "./validation";
 
 // Presentation layer (PF-01, PF-02, PF-09 – PF-12, PNF-07, PNF-08): trip form,
@@ -40,6 +51,7 @@ type Which = "origin" | "destination";
 const panel = $("panel");
 const formView = $("form-view");
 const resultView = $("result-view");
+const navViewEl = $("nav-view");
 const tripForm = $<HTMLFormElement>("trip-form");
 const submitBtn = $<HTMLButtonElement>("submit-btn");
 const cancelBtn = $<HTMLButtonElement>("cancel-btn");
@@ -75,6 +87,8 @@ const state = {
   /** Error the Backend attached to one point (e.g. point_not_on_network). */
   serverError: { origin: null, destination: null } as Record<Which, string | null>,
   pick: "origin" as Which | null,
+  /** The route search on screen, kept so navigation can return to it. */
+  result: null as { response: RouteResponse; request: RouteRequest; places: Record<Which, string | null> } | null,
   busy: false,
   controller: null as AbortController | null,
   waitUntil: 0,
@@ -318,6 +332,7 @@ function segmentCard(f: NonNullable<SegmentClick["feature"]>, at: Point): HTMLEl
 
 function useSegment(which: Which, at: Point): void {
   mapView.closePopup();
+  if (nav.session) endNavigation();
   showFormView();
   state.pick = null;
   setPoint(which, at);
@@ -327,6 +342,27 @@ function useSegment(which: Which, at: Point): void {
 function showFormView(): void {
   formView.hidden = false;
   resultView.hidden = true;
+  navViewEl.hidden = true;
+}
+
+/** Height of the bottom sheet over the map on phones; 0 beside it on wider screens. */
+function panelInset(): { bottom: number } {
+  return { bottom: window.matchMedia("(max-width: 899px)").matches ? panel.offsetHeight + 16 : 0 };
+}
+
+/** Renders state.result into the result panel and returns its heading. */
+function showResultView(notice: { title: string; text: string } | null = null): HTMLElement | null {
+  const r = state.result;
+  if (!r) return null;
+  formView.hidden = true;
+  navViewEl.hidden = true;
+  resultView.hidden = false;
+  return renderResult(resultView, {
+    ...r,
+    onBack: backToForm,
+    onNavigate: (role) => void startNavigation(role),
+    notice,
+  });
 }
 
 function clearStatus(): void {
@@ -370,6 +406,7 @@ function applyServerField(field: ErrorField, message: string): void {
 /** Removes the previous result from panel, legend and map. The map part is queued
  *  behind the map's load; nothing here waits for the basemap. */
 function dropResult(): void {
+  state.result = null;
   legend.setRoutes(null);
   resultView.hidden = true;
   clear(resultView);
@@ -400,15 +437,13 @@ async function submit(): Promise<void> {
     if (state.controller !== controller) return;
     state.busy = false;
     clearStatus();
-    formView.hidden = true;
-    resultView.hidden = false;
-    const title = renderResult(resultView, { response, request, places: { ...state.labels }, onBack: backToForm });
+    state.result = { response, request, places: { ...state.labels } };
+    const title = showResultView()!;
     legend.setRoutes({
       fallback: response.recommended.routeSource === "baseline",
       hasComparison: compareRoutes(response).kind !== "none" && compareRoutes(response).kind !== "identical",
     });
-    const narrow = window.matchMedia("(max-width: 899px)").matches;
-    void mapView.showRoutes(response, { bottom: narrow ? panel.offsetHeight + 16 : 0 });
+    void mapView.showRoutes(response, panelInset());
     title.focus({ preventScroll: true });
     refreshForm();
     // Exposure surface is requested once the route is displayed (Tabel 3.4).
@@ -526,29 +561,290 @@ legend.onRetry = () => scheduleSurface(true);
 mapView.onViewChange = () => scheduleSurface();
 
 // ------------------------------------------------------------------ geolocate
-$("locate-btn").addEventListener("click", () => {
+const insideStudyArea = (p: Point) =>
+  p.lat >= STUDY_AREA.minLat && p.lat <= STUDY_AREA.maxLat && p.lon >= STUDY_AREA.minLon && p.lon <= STUDY_AREA.maxLon;
+
+/** "Lokasi saya" on the map and "Gunakan lokasi saya sebagai asal" on the form. */
+function useMyLocation(): void {
   clearStatus();
   const say = (text: string) => {
     showFormView();
     clear(formStatus);
     formStatus.append(h("p", { class: "status-note" }, text));
   };
-  if (!navigator.geolocation) return say("Peramban ini tidak mendukung lokasi.");
+  const problem = positionProblem();
+  if (problem) return say(`${describePositionProblem(problem)} Pilih titik asal di peta.`);
   navigator.geolocation.getCurrentPosition(
     (pos) => {
       const p = { lat: pos.coords.latitude, lon: pos.coords.longitude };
-      const a = STUDY_AREA;
-      if (p.lat < a.minLat || p.lat > a.maxLat || p.lon < a.minLon || p.lon > a.maxLon) {
+      if (!insideStudyArea(p)) {
         say("Lokasi Anda berada di luar wilayah studi (Jakarta), jadi tidak dipakai sebagai titik asal.");
         return;
       }
       state.pick = state.points.destination ? null : "destination";
       setPoint("origin", p, { fly: true });
     },
-    () => say("Lokasi tidak dapat diakses. Pilih titik asal di peta."),
-    { enableHighAccuracy: false, timeout: 10_000, maximumAge: 60_000 },
+    (err) => say(`${describePositionProblem(problemFromCode(err.code))} Pilih titik asal di peta.`),
+    { enableHighAccuracy: true, timeout: 10_000, maximumAge: 60_000 },
   );
+}
+
+$("locate-btn").addEventListener("click", () => {
+  // While navigating, the same button brings the camera back to the user.
+  if (nav.session) return recenter();
+  useMyLocation();
 });
+$("use-location").addEventListener("click", useMyLocation);
+
+// ---------------------------------------------------------------- navigation
+// TI-SE-13. Positions are handled on this device only. The one time a position leaves it
+// is the origin of a new route after leaving the route (POST body, never logged or stored
+// by the Backend); nothing is kept once navigation ends (PNF-06, RI-09).
+
+/** Development only: `?simulasi=normal|keluar|lemah|tolak|tanpa-gps` replaces the GPS. */
+const SIMULATION = import.meta.env.DEV ? new URLSearchParams(location.search) : null;
+
+const nav = {
+  session: null as NavigationSession | null,
+  source: null as PositionSource | null,
+  view: null as NavView | null,
+  role: "recommended" as RouteResult["role"],
+  controller: null as AbortController | null,
+  following: true,
+  firstFix: true,
+  /** Replaces the status message until `clearOn` happens. */
+  message: null as { view: NavMessage; clearOn: "fix" | "on_route" | number } | null,
+  wakeLock: null as WakeLockSentinel | null,
+};
+
+async function positionSource(): Promise<PositionSource> {
+  const scenario = SIMULATION?.get("simulasi") ?? null;
+  if (import.meta.env.DEV && scenario) {
+    const sim = await import("./position-sim");
+    if (sim.isSimScenario(scenario)) {
+      const speed = Number(SIMULATION?.get("kecepatan")) || undefined;
+      return new sim.SimulatedPosition(() => nav.session!.routeLine, scenario, speed);
+    }
+  }
+  return new DevicePosition();
+}
+
+function navRoute(response: RouteResponse): RouteResult {
+  return nav.role === "comparison" && response.comparison ? response.comparison : response.recommended;
+}
+
+async function startNavigation(role: RouteResult["role"]): Promise<void> {
+  const r = state.result;
+  if (!r || nav.session) return;
+  const problem = positionProblem();
+  if (problem) {
+    showResultView({ title: "Navigasi tidak dapat dimulai", text: `${describePositionProblem(problem)} Rute tetap ditampilkan.` })?.focus();
+    return;
+  }
+  nav.role = role;
+  const route = navRoute(r.response);
+  const session = new NavigationSession(route, r.request.destination);
+  nav.session = session;
+  nav.following = true;
+  nav.firstFix = true;
+  nav.message = null;
+  nav.view = new NavView(navViewEl, { onEnd: () => endNavigation(), onRecenter: recenter });
+  mapView.closePopup();
+  formView.hidden = true;
+  resultView.hidden = true;
+  navViewEl.hidden = false;
+  void mapView.showNavRoute(route.coordinates);
+  setLocateLabel(true);
+  renderNav();
+  nav.view.title.focus({ preventScroll: true });
+  void keepScreenOn(true);
+
+  const source = await positionSource();
+  if (nav.session !== session) return; // ended while the simulator loaded
+  nav.source = source;
+  source.start(onFix, onPositionProblem);
+}
+
+/** Ends navigation and returns to the route result. `notice` says why, when it was not the user. */
+function endNavigation(notice: { title: string; text: string } | null = null): void {
+  nav.source?.stop();
+  nav.source = null;
+  nav.controller?.abort();
+  nav.controller = null;
+  nav.session = null;
+  nav.view = null;
+  nav.message = null;
+  void keepScreenOn(false);
+  void mapView.setUser(null);
+  mapView.resetPadding();
+  setLocateLabel(false);
+  clear(navViewEl);
+  const title = showResultView(notice);
+  if (state.result) void mapView.showRoutes(state.result.response, panelInset());
+  title?.focus({ preventScroll: true });
+}
+
+function onFix(fix: Fix): void {
+  const session = nav.session;
+  if (!session || session.isArrived) return;
+  const snap = session.update(fix);
+  const m = nav.message;
+  if (m && (m.clearOn === "fix" || (m.clearOn === "on_route" && snap.status === "tracking"))) nav.message = null;
+
+  void mapView.setUser(snap.shown, snap.headingDeg, fix.accuracyM);
+  if (nav.following && snap.shown) mapView.follow(snap.shown, panelInset(), nav.firstFix ? 17 : undefined);
+  nav.firstFix = false;
+
+  if (snap.status === "arrived") {
+    // Tracking stops at once; the panel says so until the user closes it.
+    nav.source?.stop();
+    nav.source = null;
+    nav.controller?.abort();
+    void keepScreenOn(false);
+  } else if (snap.status !== "off_route" && nav.controller) {
+    // Back on the route before the new one arrived: it is no longer needed.
+    nav.controller.abort();
+  } else if (session.rerouteDue(Date.now())) {
+    void reroute(session, fix);
+  }
+  renderNav();
+}
+
+/** A new route from the current position, at most once per NAV_LIMITS.rerouteIntervalS. */
+async function reroute(session: NavigationSession, from: Point): Promise<void> {
+  const r = state.result;
+  if (!r) return;
+  if (!insideStudyArea(from)) {
+    const wait = session.rerouteFailed(Date.now());
+    setNavMessage(
+      { kind: "error", title: "Rute baru tidak dapat dihitung", text: `Anda berada di luar wilayah studi (Jakarta). Dicoba lagi dalam ${wait} detik.` },
+      "on_route",
+    );
+    return;
+  }
+  session.rerouteStarted();
+  const controller = new AbortController();
+  nav.controller = controller;
+  setNavMessage({ kind: "warn", title: "Anda keluar dari rute", text: "Mencari rute baru dari posisi Anda…" }, "on_route");
+  try {
+    const response = await submitRouteRequest({ ...r.request, origin: { lat: from.lat, lon: from.lon } }, controller.signal);
+    if (nav.session !== session) return;
+    const route = navRoute(response);
+    session.replaceRoute(route, Date.now());
+    nav.source?.routeChanged?.();
+    void mapView.showNavRoute(route.coordinates);
+    setNavMessage({ kind: "info", title: "Rute diperbarui", text: "Rute baru dihitung dari posisi Anda." }, Date.now() + 6_000);
+  } catch (err) {
+    if (nav.session !== session) return;
+    if (err instanceof ApiError && err.kind === "aborted") {
+      session.rerouteCancelled();
+      nav.message = null;
+    } else {
+      // The title only: the messages of the route form ("Tidak ada hasil yang ditampilkan")
+      // are not true here, where the previous route stays on the map.
+      const view = describeRouteError(err);
+      const wait = session.rerouteFailed(Date.now(), view.waitSec);
+      setNavMessage(
+        {
+          kind: "error",
+          title: "Rute baru belum didapat",
+          text: `${view.title}. Rute sebelumnya tetap ditampilkan; dicoba lagi dalam ${wait} detik bila Anda masih di luar rute.`,
+        },
+        "on_route",
+      );
+    }
+  } finally {
+    if (nav.controller === controller) nav.controller = null;
+    renderNav();
+  }
+}
+
+function onPositionProblem(problem: PositionProblem): void {
+  if (!nav.session) return;
+  if (isFatal(problem)) {
+    const started = nav.session.snapshot.status !== "waiting";
+    endNavigation({
+      title: started ? "Navigasi dihentikan" : "Navigasi tidak dapat dimulai",
+      text: `${describePositionProblem(problem)} Rute tetap ditampilkan.`,
+    });
+    return;
+  }
+  // Unavailable or timed out: the watch keeps trying, and the next fix clears this.
+  setNavMessage(
+    {
+      kind: "warn",
+      title: problem === "timeout" ? "Sinyal GPS lemah" : "GPS tidak tersedia",
+      text: `${describePositionProblem(problem)} Pelacakan terus mencoba; rute tetap di peta.`,
+    },
+    "fix",
+  );
+  renderNav();
+}
+
+function setNavMessage(view: NavMessage, clearOn: "fix" | "on_route" | number): void {
+  nav.message = { view, clearOn };
+  if (typeof clearOn === "number") {
+    window.setTimeout(() => {
+      if (nav.message?.view === view) {
+        nav.message = null;
+        renderNav();
+      }
+    }, clearOn - Date.now());
+  }
+}
+
+function setLocateLabel(navigating: boolean): void {
+  const label = navigating ? "Ikuti posisi saya" : "Pakai lokasi saya sebagai titik asal";
+  $("locate-btn").setAttribute("aria-label", label);
+  $("locate-btn").title = navigating ? "Ikuti posisi" : "Lokasi saya";
+}
+
+function recenter(): void {
+  nav.following = true;
+  const p = nav.session?.snapshot.shown;
+  if (p) mapView.follow(p, panelInset());
+  renderNav();
+}
+
+function renderNav(): void {
+  const r = state.result;
+  if (!nav.session || !nav.view || !r) return;
+  nav.view.render({
+    snapshot: nav.session.snapshot,
+    destination: r.places.destination ?? fmtCoord(r.request.destination),
+    message: nav.message?.view ?? null,
+    following: nav.following,
+  });
+}
+
+/** Keeps the screen on while navigating, where the browser allows it. */
+async function keepScreenOn(on: boolean): Promise<void> {
+  try {
+    if (!on) {
+      const lock = nav.wakeLock;
+      nav.wakeLock = null;
+      await lock?.release();
+    } else if (!nav.wakeLock && "wakeLock" in navigator) {
+      nav.wakeLock = await navigator.wakeLock.request("screen");
+    }
+  } catch {
+    nav.wakeLock = null; // refused or unsupported: navigation works without it
+  }
+}
+document.addEventListener("visibilitychange", () => {
+  // The browser releases the lock when the page is hidden.
+  if (document.visibilityState === "visible" && nav.session && !nav.session.isArrived) {
+    nav.wakeLock = null;
+    void keepScreenOn(true);
+  }
+});
+
+mapView.onUserCamera = () => {
+  if (nav.session && nav.following) {
+    nav.following = false;
+    renderNav();
+  }
+};
 
 // ------------------------------------------------------------- bottom sheet
 const sheetHandle = $("sheet-handle");
