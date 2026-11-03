@@ -28,9 +28,11 @@ export function timeoutMs(value: string | undefined, fallback: number): number {
 export const GEOCODE_TIMEOUT_MS = 7_000;
 export const GEOCODE_DEBOUNCE_MS = 300;
 export const GEOCODE_MIN_CHARS = 3;
-/** Shown under the suggestions: where the text goes, and the source of the places (ODbL). */
+/** Always on the form, because a map click or "Lokasi saya" sends the point without ever opening
+ *  the suggestion list (PNF-06): what is sent and where, and the source of the places (ODbL). */
 export const GEOCODE_NOTE =
-  "Teks yang diketik dikirim ke layanan pencarian lokasi dan tidak disimpan SIPPolusi. Data tempat © OpenStreetMap.";
+  "Nama yang diketik dan titik yang dipilih (klik peta atau lokasi Anda) dikirim ke layanan pencarian lokasi " +
+  "untuk mencari nama tempat, dan tidak disimpan SIPPolusi. Data tempat © OpenStreetMap.";
 
 /** Debounce for pan/zoom before GET /v1/exposure-surface (Tabel 3.4). */
 export const SURFACE_DEBOUNCE_MS = 500;

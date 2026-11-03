@@ -93,7 +93,7 @@ services:
       ROUTE_SOLVER_PROVIDER: ${E2E_SOLVER:-http}
       ROUTE_SOLVER_URL: http://route_model:8100
       ROUTE_SOLVER_FALLBACK: ${E2E_FALLBACK:-baseline}
-      API_GEOCODING_URL: http://photon:2322
+      API_GEOCODING_URL: ${E2E_GEOCODING_URL:-http://photon:2322}
       LOG_FORMAT: json  # as on Railway (RAILWAY_ENVIRONMENT_NAME switches it on there)
     ports: ["127.0.0.1:18001:8000"]
     depends_on: { db: { condition: service_healthy } }

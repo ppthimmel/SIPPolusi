@@ -120,13 +120,15 @@ button:disabled { cursor: not-allowed; }
   box-shadow: 0 8px 24px rgba(23, 33, 30, 0.18);
 }
 .place-menu[hidden], .place-menu [hidden] { display: none; }
+/* The bottom sheet is short: the field being typed in has to stay in view above the list. */
+@media (max-width: 899px) { .place-menu { max-height: 220px; } }
 .place-menu ul { list-style: none; margin: 0; padding: 4px; }
 .place-option { display: grid; gap: 2px; min-height: 44px; align-content: center; padding: 6px 10px; border-radius: 8px; cursor: pointer; }
 .place-option:hover, .place-option[aria-selected="true"] { background: var(--green-soft); }
 .place-name { font-weight: 600; }
 .place-description { font-size: 13px; color: var(--muted); }
 .place-status { margin: 0; padding: 12px 14px; font-size: 14px; }
-.place-note { margin: 0; padding: 8px 14px; font-size: 12px; line-height: 1.4; color: var(--muted); border-top: 1px solid var(--line); }
+.place-notice { margin: 8px 0 0; font-size: 12px; line-height: 1.4; color: var(--muted); }
 
 .pick-btn, .icon-btn, .map-btn {
   display: inline-grid; place-items: center; min-width: 44px; min-height: 44px; border-radius: 10px;

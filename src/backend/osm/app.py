@@ -101,6 +101,15 @@ def create_app(
             app.state.route_solver = solver or make_solver(app.state.solver_settings)
             yield
 
+    @asynccontextmanager
+    async def lifespan_with_geocoder(app: FastAPI) -> AsyncIterator[None]:
+        async with lifespan(app):
+            try:
+                yield
+            finally:
+                if app.state.geocoder is not None:
+                    await app.state.geocoder.aclose()
+
     app = FastAPI(
         title="SIPPolusi Backend - Cache API",
         description="Read-only access to the OSM Cache DB (schema osm, Jakarta road graph) and the "
@@ -108,7 +117,7 @@ def create_app(
                     "Road data © OpenStreetMap contributors, ODbL "
                     "(https://www.openstreetmap.org/copyright).",
         version="1.2.0",
-        lifespan=lifespan,
+        lifespan=lifespan_with_geocoder,
     )
     app.state.api_settings = api_settings
     app.state.geocoder = make_geocoder(api_settings)

@@ -85,7 +85,7 @@ def test_search_returns_named_places_in_the_study_area(client_for):
 def test_search_drops_duplicates_unusable_features_and_anything_outside_the_area(client_for):
     client, _ = client_for(collection(MONAS, MONAS, BANDUNG, feature(), {"type": "Feature"}, "x",
                                       feature("Tanpa koordinat", lon="106"), feature("Ragunan", lon=106.82, lat=-6.3)))
-    assert [p["name"] for p in client.post(SEARCH, json={"query": "nasional"}).json()["results"]] == ["Monumen Nasional", "Ragunan"]
+    assert [p["name"] for p in client.post(SEARCH, json={"query": "nasional"}).json()["results"]] == ["Monumen Nasional"]
 
 
 def test_at_most_five_results(client_for):
@@ -127,11 +127,81 @@ def test_similar_names_are_kept_when_no_exact_place_exists_anywhere(client_for):
     assert [p["name"] for p in body["results"]] == ["Monumen Nasional"] and not body["outside_study_area"]
 
 
-def test_full_matches_come_first_and_generic_street_words_are_ignored(client_for):
-    client, _ = client_for(collection(feature("Hotel Sudirman Baru", lon=106.82, lat=-6.21), feature("Taman Sari"),
-                                      feature("Toko", street="Jalan Jenderal Sudirman", lon=106.82, lat=-6.22)),)
-    names = [p["name"] for p in client.post(SEARCH, json={"query": "jl sudirman"}).json()["results"]]
-    assert names == ["Hotel Sudirman Baru", "Toko", "Taman Sari"]
+def tagged(name, key, value, **props):
+    return feature(name, osm_key=key, osm_value=value, district="Gambir", city="Jakarta", **props)
+
+
+def names_for(client_for, query, *features):
+    client, _ = client_for(collection(*features))
+    return [p["name"] for p in client.post(SEARCH, json={"query": query}).json()["results"]]
+
+
+def test_the_landmark_comes_before_stops_and_parks_of_the_same_name(client_for):
+    # The order of the real provider for "monas" (docs/ti-se-12-geocoding.md).
+    assert names_for(client_for, "monas", *[tagged(f"Monas {i}", "highway", "bus_stop") for i in (1, 2, 3)],
+                     tagged("Monas Barat", "leisure", "park"), tagged("Monas Timur", "leisure", "park"),
+                     tagged("Monas Selatan", "leisure", "park"), tagged("Monas Utara", "leisure", "park"),
+                     tagged("Taman Monas", "leisure", "park"), tagged("Monumen Nasional", "historic", "monument"),
+                     )[:2] == ["Monumen Nasional", "Monas Barat"]
+
+
+def test_a_station_mapped_under_its_bare_name_answers_stasiun(client_for):
+    assert names_for(client_for, "stasiun manggarai", tagged("Plaza Stasiun Manggarai", "highway", "bus_stop"),
+                     tagged("Manggarai", "railway", "station"))[0] == "Manggarai"
+
+
+def test_stops_are_ranked_low_but_can_be_found(client_for):
+    stop = tagged("Harmoni", "highway", "bus_stop")
+    school = tagged("Sekolah Harmoni", "amenity", "school")
+    assert names_for(client_for, "harmoni", stop, school) == ["Sekolah Harmoni", "Harmoni"]
+    assert names_for(client_for, "harmoni", stop) == ["Harmoni"]
+    assert names_for(client_for, "halte harmoni", tagged("Halte Harmoni", "building", "transportation"),
+                     tagged("Toko Harmoni", "shop", "convenience"))[0] == "Halte Harmoni"
+
+
+def test_a_query_naming_a_street_puts_streets_first(client_for):
+    station = tagged("Sudirman", "railway", "station")
+    road = feature("Jalan Jenderal Sudirman", osm_key="highway", osm_value="primary", type="street", district="Setiabudi")
+    assert names_for(client_for, "sudirman", road, station)[0] == "Sudirman"
+    assert names_for(client_for, "jl sudirman", station, road)[0] == "Jalan Jenderal Sudirman"
+
+
+def test_loose_matches_are_dropped_beside_a_full_match_but_not_alone(client_for):
+    heritage = tagged("Kota Tua Jakarta", "historic", "heritage")
+    school = tagged("SMA Negeri 5 Bekasi", "amenity", "school")
+    assert names_for(client_for, "kota tua", school, heritage) == ["Kota Tua Jakarta"]
+    client, _ = client_for(collection(school), collection())  # nothing better anywhere: a possible typo
+    assert [p["name"] for p in client.post(SEARCH, json={"query": "sma negri"}).json()["results"]] == ["SMA Negeri 5 Bekasi"]
+
+
+def test_one_entry_per_name_and_area(client_for):
+    def segment(district):
+        return feature("Jalan Sudirman", osm_key="highway", osm_value="primary", type="street", district=district)
+    client, _ = client_for(collection(segment("Setiabudi"), segment("Setiabudi"), segment("Tanah Abang")))
+    assert [p["description"] for p in client.post(SEARCH, json={"query": "jalan sudirman"}).json()["results"]] == [
+        "Setiabudi", "Tanah Abang"]
+    client, _ = client_for(collection(tagged("Blok M", "railway", "station", street="A"),
+                                      tagged("blok m", "railway", "stop", street="B")))
+    assert [p["description"] for p in client.post(SEARCH, json={"query": "blok m"}).json()["results"]] == ["A, Gambir, Jakarta"]
+
+
+def test_a_word_inside_another_word_is_not_a_match(client_for):
+    school = tagged("SMA Negeri 5", "amenity", "school", street="Jalan Patuan", state="Kota Bekasi")
+    heritage = tagged("Kota Tua Jakarta", "historic", "heritage")
+    assert names_for(client_for, "kota tua", school, heritage) == ["Kota Tua Jakarta"]
+
+
+def test_a_word_still_being_typed_is_a_match(client_for):
+    assert names_for(client_for, "stasiun mangg", tagged("Manggarai", "railway", "station")) == ["Manggarai"]
+    client, photon = client_for(collection(tagged("Monumen Nasional", "historic", "monument")))
+    client.post(SEARCH, json={"query": "monumen nasi"})
+    assert len(photon.requests) == 1
+
+
+def test_more_candidates_are_asked_for_than_are_shown(client_for):
+    client, photon = client_for(collection(MONAS))
+    client.post(SEARCH, json={"query": "monumen"})
+    assert photon.requests[0].url.params["limit"] == "50"
 
 
 def test_reverse_names_the_nearest_place(client_for):
@@ -185,6 +255,17 @@ def test_without_a_url_nothing_is_sent_anywhere(make_client):
         assert client.app.state.geocoder is None
         for path, body in ((SEARCH, {"query": "monas"}), (REVERSE, {"lat": LAT, "lon": LON})):
             assert error(client.post(path, json=body), 503, "geocoding_unavailable")["reason"] == "not_configured"
+
+
+def test_one_client_serves_all_calls_and_the_lifespan_closes_it(make_client):
+    with make_client(geocoding_url="http://photon.test") as client:
+        geocoder = client.app.state.geocoder
+        geocoder._transport = httpx.MockTransport(Photon(collection(MONAS)))
+        client.post(SEARCH, json={"query": "monumen"})
+        first = geocoder._client
+        client.post(SEARCH, json={"query": "monumen"})
+        assert first is geocoder._client and not first.is_closed
+    assert first.is_closed and geocoder._client is None
 
 
 def test_the_url_setting_makes_the_geocoder():

@@ -92,6 +92,7 @@ const legend = new Legend($("legend"));
 
 // -------------------------------------------------------------------- static
 $("disclaimer").textContent = DISCLAIMER;
+$("place-notice").textContent = GEOCODE_NOTE;
 $("mode-walk-label").append(icon("walk"), " Jalan kaki");
 $("mode-bike-label").append(icon("bike"), " Sepeda");
 $("swap-btn").append(icon("swap", 20));
@@ -213,7 +214,6 @@ for (const w of ["origin", "destination"] as const) {
   );
   searches[w] = new PlaceSearch(searchPlaces, (view) => combobox.render(view), GEOCODE_DEBOUNCE_MS, GEOCODE_MIN_CHARS);
   namers[w] = new PointNamer(reversePlace, (place, p) => showPointName(w, place, p));
-  $(`menu-${w}`).querySelector(".place-note")!.textContent = GEOCODE_NOTE;
 }
 
 for (const w of ["origin", "destination"] as const) {

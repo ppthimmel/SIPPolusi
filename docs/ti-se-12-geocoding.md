@@ -33,11 +33,16 @@ Kebijakan dibaca 3 November 2026 dan dapat berubah:
 
 ### Cara memenuhi kebijakan penggunaan
 
-- **Atribusi.** Data tempat © OpenStreetMap contributors, ODbL. Tertulis di bawah daftar saran dan di peta.
+- **Atribusi.** Data tempat © OpenStreetMap contributors, ODbL. Tertulis di formulir dan di peta.
 - **Identitas.** Permintaan ke penyedia membawa `User-Agent` SIPPolusi.
 - **Beban.** Frontend menunggu 300 ms setelah ketikan terakhir, mulai dari 3 karakter, dan membatalkan
   permintaan lama. Gateway membatasi 60 per menit per alamat IP (burst 10) dan 5 per detik untuk seluruh
-  pengguna (burst 10), karena semua pengguna sampai ke penyedia dari satu alamat.
+  pengguna (burst 10), karena semua pengguna sampai ke penyedia dari satu alamat. Backend memakai satu klien
+  HTTP dengan koneksi yang dipertahankan 30 detik, sehingga jabat tangan TLS tidak berulang: satu panggilan ke
+  server publik turun dari ±1.100 ms menjadi ±300 ms, kecuali panggilan pertama.
+- **Panggilan kedua.** Pencarian tanpa hasil yang memuat semua kata memanggil penyedia sekali lagi tanpa bbox
+  (lihat "Pembatasan ke wilayah studi"). Salah ketik jadi menggandakan lalu lintas ke penyedia dan mengirim teks
+  yang sama dua kali; batas 5 per detik tetap berlaku di depan keduanya.
 - **Pengalihan.** Bila server publik membatasi atau berubah, cukup ganti `API_GEOCODING_URL`.
 
 ## Data lokasi (PNF-06, RI-09)
@@ -51,9 +56,10 @@ Kebijakan dibaca 3 November 2026 dan dapat berubah:
 | Alamat pengguna | Tidak diteruskan ke penyedia; penyedia hanya melihat alamat server |
 | Titik di luar wilayah | Ditolak 422 tanpa diteruskan ke penyedia |
 
-**Yang perlu diketahui:** dengan server publik, teks pencarian dan titik yang diklik diterima pihak ketiga, di
-luar kendali SIPPolusi, dan berlaku kebijakan mereka. Pengguna diberi tahu lewat catatan di bawah daftar saran.
-Photon sendiri menghilangkan pengiriman ini.
+**Yang perlu diketahui:** dengan server publik, teks pencarian dan titik yang dipilih (klik peta, geser penanda,
+atau "Lokasi saya") diterima pihak ketiga, di luar kendali SIPPolusi, dan berlaku kebijakan mereka. Pengguna diberi
+tahu lewat catatan yang selalu tampil di formulir, di bawah kedua kolom, karena klik peta tidak pernah membuka daftar
+saran. Photon sendiri menghilangkan pengiriman ini.
 
 ## Pembatasan ke wilayah studi
 
@@ -61,8 +67,9 @@ Hasil dibatasi ke bbox `OSM_STUDY_AREA_BBOX` lewat parameter `bbox` dan diperiks
 memilih saran tidak berakhir dengan `outside_study_area`.
 
 Photon mencocokkan secara longgar: teks acak tetap mendapat hasil, dan `gedung sate bandung` di dalam bbox
-menghasilkan gedung lain di Jakarta. Karena itu hasil yang memuat semua kata pencarian didahulukan. Bila tidak
-ada, satu panggilan tambahan tanpa bbox memeriksa apakah tempat itu ada di luar wilayah:
+menghasilkan gedung lain di Jakarta. Karena itu setiap kata pencarian harus mengawali kata pada nama atau alamat
+tempat agar dianggap cocok. Bila tidak ada yang cocok, satu panggilan tambahan tanpa bbox memeriksa apakah tempat
+itu ada di luar wilayah:
 
 | Hasil di wilayah studi | Tempat yang cocok di luar wilayah | Jawaban |
 |---|---|---|
@@ -71,19 +78,63 @@ ada, satu panggilan tambahan tanpa bbox memeriksa apakah tempat itu ada di luar 
 | Hanya mirip | Tidak ada | Hasil yang mirip, berguna untuk salah ketik |
 | Tidak ada | Tidak ada | Kosong, `outside_study_area: false` |
 
-Batasan yang diketahui: nama kota di luar wilayah yang juga muncul pada tempat di Jakarta, misalnya
-`bandung` dan tempat bernama "Warung Bandung", menampilkan tempat di Jakarta tersebut.
+Batasan yang diketahui:
+
+- Nama kota di luar wilayah yang juga muncul pada tempat di Jakarta, misalnya `bandung` dan tempat bernama
+  "Warung Bandung", menampilkan tempat di Jakarta tersebut.
+- Wilayah studi berupa bbox, sehingga tempat di Depok, Tangerang, dan Bekasi di dalam bbox ikut ditawarkan
+  (`ui depok`). Ini sama dengan wilayah yang dilayani rute saat ini.
+
+## Urutan saran
+
+Urutan bawaan Photon mengutamakan kemiripan nama, bukan tempat yang dimaksud. Untuk `monas`, ia memberi tiga halte
+dan lima taman sebelum monumennya di urutan ke-9. Karena itu backend meminta 50 kandidat, lalu:
+
+1. **Mengurutkan** menurut jenis OpenStreetMap: tujuan utama (`historic`, `tourism`, `place`, `aeroway`, stasiun,
+   mal, stadion, rumah sakit, universitas), lalu tempat lain, lalu tempat kecil (halte, peron, parkir, simpang tol,
+   sungai). Dalam tiap kelompok, yang memuat semua kata didahulukan.
+2. **Membuang** hasil longgar dari jenis lain bila sudah ada yang cocok penuh.
+3. **Menggabungkan** hasil dengan nama dan area yang sama, misalnya stasiun dan perhentiannya, atau ruas jalan
+   sekecamatan.
+4. **Memotong** ke 5 saran.
+
+Pengecualian: kueri berawalan `jalan`, `jl`, atau `jln` mendahulukan jalan, dan kueri dengan kata `halte`, `busway`,
+atau `transjakarta` tidak menurunkan halte. Halte tetap dapat ditemukan lewat namanya bila tidak ada yang lebih baik.
+
+Contoh dari 21 kueri yang diperiksa terhadap jawaban server publik, 3 November 2026:
+
+| Kueri | Sebelum | Sesudah |
+|---|---|---|
+| `monas` | Monas 1, Monas 2, Monas 3, Monas Barat, Monas Timur | **Monumen Nasional**, Monas Barat, Monas Timur, Monas Selatan, Monas Utara |
+| `stasiun manggarai` | Plaza Stasiun Manggarai, Timur Stasiun Manggarai, Stasiun LRT Manggarai, Manggarai | **Manggarai**, Stasiun LRT Manggarai, Plaza Stasiun Manggarai, Timur Stasiun Manggarai |
+| `ragunan` | Ragunan dan empat halte | Ragunan, **Kebun Binatang Ragunan**, Ragunan Park & Ride, Ragunan Zoo Animal Welfare Center, Taman Anggrek Ragunan |
+| `gelora bung karno` | Empat halte, lalu stadion | **Stadion Utama Gelora Bung Karno**, Istana Olahraga, Lapangan Tenis, Stadion Madya, Hutan Kota |
+| `plaza indonesia` | Halte Plaza Indonesia lebih dulu | **Plaza Indonesia** (mal), Plaza Senayan, Plaza Semanggi, Lippo Plaza Kramatjati, Ratu Plaza |
+| `jalan sudirman` | Stasiun lebih dulu, ruas berulang | **Jalan Jenderal Sudirman** per kecamatan |
+| `halte monas` | | Halte Monumen Nasional |
+
+Batasan aturan ini:
+
+- Peringkat bergantung pada tag OpenStreetMap, jadi tempat yang tagnya tidak lazim bisa turun.
+- Kata yang masih diketik dapat memberi hasil yang kurang tepat: `mona` memberi "MOJA" lebih dulu, dan monumen baru
+  muncul pada `monas`.
+- Kecocokan juga dihitung dari alamat: `kota tua` masih menampilkan "SMA Negeri 5 Bekasi" di urutan terakhir karena
+  beralamat di Bojong Tua, Kota Bekasi.
+- Singkatan bergantung pada data: `rs cipto` tidak menemukan RSCM, sedangkan `rumah sakit cipto` menemukannya.
 
 ## Keadaan yang diuji
 
-"Unit" = Vitest atau pytest. "Browser" = kolom asli di peramban terhadap mock (`npm run mock`, skenario `geo_*`).
+"Unit" = Vitest atau pytest. "Browser" = kolom asli di peramban, terhadap mock (`npm run mock`, skenario `geo_*`) dan
+terhadap stack Docker dengan server Photon publik (`E2E_GEOCODING_URL=https://photon.komoot.io`).
 "E2E" = E2E-12 pada stack Docker dengan `tests/e2e/photon_stub.py` (73/73 pemeriksaan matriks lulus, 3 November 2026).
 
 | Keadaan | Hasil | Diuji |
 |---|---|---|
 | Ketik nama, pilih saran dengan klik atau Enter | Titik terisi dan peta menuju ke sana; tombol Cari rute aktif tanpa mengetik koordinat | Browser, [01](ti-se-12/01-saran-tempat.jpg) |
 | Klik peta | Koordinat tampil dulu, lalu diganti nama tempat | Browser, E2E, [02](ti-se-12/02-nama-dan-klik-peta.jpg) |
-| Hasil rute | Kepala hasil memakai nama: "Monumen Nasional → Bundaran Hotel Indonesia" | Browser, [03](ti-se-12/03-hasil-rute-dengan-nama.jpg) |
+| Pemberitahuan pengiriman data | Selalu tampil di formulir, sebelum ada ketikan atau klik; menyebut teks, klik peta, dan lokasi | Unit, Browser, [02](ti-se-12/02-nama-dan-klik-peta.jpg) |
+| Tempat umum dengan Photon sungguhan | Tujuan utama di atas halte; lihat "Urutan saran" | Unit, Browser, [01](ti-se-12/01-saran-tempat.jpg) |
+| Hasil rute | Kepala hasil memakai nama: "Monumen Nasional → Monas Timur" | Browser, [03](ti-se-12/03-hasil-rute-dengan-nama.jpg) |
 | Tempat hanya ada di luar wilayah | Pesan "berada di luar wilayah studi" | Unit, Browser, E2E, [04](ti-se-12/04-di-luar-wilayah.jpg) |
 | Tidak ditemukan | Pesan dengan saran peta dan koordinat | Unit, Browser, E2E, [05](ti-se-12/05-tidak-ditemukan.jpg) |
 | Penyedia mati, timeout, atau jawaban rusak | 503; pesan "sedang tidak tersedia"; form tetap utuh; rute tetap dilayani | Unit, Browser, E2E, [06](ti-se-12/06-layanan-tidak-tersedia.jpg) |
@@ -96,7 +147,7 @@ Batasan yang diketahui: nama kota di luar wilayah yang juga muncul pada tempat d
 | Ketik `lat, lon` saat layanan mati | Titik terisi tanpa memanggil pencarian | Browser |
 | Teks tanpa memilih saran, lalu pindah kolom | Daftar tertutup; pesan di kolom; tombol nonaktif | Browser |
 | Keyboard | Panah memilih, Enter mengambil, Escape menutup; `aria-activedescendant` mengikuti | Browser |
-| Tampilan ponsel (375 × 812) | Daftar tidak melebar keluar layar; target sentuh ≥ 44 px | Browser, [07](ti-se-12/07-ponsel.jpg) |
+| Tampilan ponsel (375 × 812) | Kolom yang diketik dan daftar saran terlihat bersamaan; tidak melebar keluar layar; target sentuh ≥ 44 px | Browser, [07](ti-se-12/07-ponsel.jpg) |
 | Isi log | Tanpa teks pencarian dan koordinat, termasuk saat penyedia gagal | Unit, E2E |
 | Metode, ukuran body, dan batas laju di gateway | 405, 413, 429 dengan `Retry-After`; batas bersama seluruh pengguna | `src/gateway/tests/run.sh` |
 
@@ -106,8 +157,7 @@ Respons nyata melalui kode backend ke Photon publik disimpan di
 ## Yang belum dibuktikan
 
 - **Rekaman alur** belum dibuat; tangkapan layar di atas mencakup alur utama dan keadaan galat.
-- **Rantai lengkap dengan penyedia sungguhan** belum diuji di peramban. Peramban diuji terhadap mock dan terhadap
-  stack lengkap dengan `photon_stub.py`; penyedia sungguhan diuji terhadap kode backend.
 - **Railway** belum diatur: `API_GEOCODING_URL` harus diisi di layanan Cache API agar pencarian aktif.
 - **Photon sendiri** belum dicoba.
 - **Pembaca layar sungguhan** belum dicoba; yang dipenuhi adalah pola ARIA combobox dan `role="status"`.
+- **Ponsel sungguhan dengan papan ketik terbuka** belum dicoba; tampilan ponsel diuji dengan emulasi tanpa papan ketik.

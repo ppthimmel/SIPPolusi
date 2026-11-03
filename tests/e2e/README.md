@@ -56,7 +56,7 @@ Selama stack berjalan:
 | E2E-09 | Versi graf tidak cocok | 503 `cache_empty`, bukan paparan nol |
 | E2E-10 | Kontrak API publik | Koleksi `public_api.smoke` (17 kasus) lewat gateway |
 | E2E-11 | Log aman | Tanpa DSN, kata sandi, atau koordinat |
-| E2E-12 | Pencarian lokasi (TI-SE-12), dengan `photon_stub.py` | Hasil di wilayah studi, luar wilayah dan tidak ditemukan dibedakan, penyedia mati tidak mengganggu rute, log tanpa teks pencarian dan koordinat |
+| E2E-12 | Pencarian lokasi (TI-SE-12), dengan `photon_stub.py`; `E2E_GEOCODING_URL` mengganti penyedia untuk mencoba server sungguhan di peramban | Hasil di wilayah studi, luar wilayah dan tidak ditemukan dibedakan, penyedia mati tidak mengganggu rute, log tanpa teks pencarian dan koordinat |
 
 Pemeriksaan `no_false_success` dijalankan pada setiap respons rute: respons 200 wajib punya
 paparan > 0, dan setiap kegagalan wajib berupa galat terstruktur non-200.

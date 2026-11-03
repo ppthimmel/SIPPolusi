@@ -1,22 +1,10 @@
 {
   "results": [
     {
-      "name": "Monas 1",
-      "description": "Jalan Medan Merdeka Barat, Gambir, Jakarta",
-      "lat": -6.1725384,
-      "lon": 106.823196
-    },
-    {
-      "name": "Monas 2",
-      "description": "Jalan Medan Merdeka Barat, Gambir, Jakarta",
-      "lat": -6.1760933,
-      "lon": 106.8231213
-    },
-    {
-      "name": "Monas 3",
-      "description": "Jalan Medan Merdeka Barat, Gambir, Jakarta",
-      "lat": -6.1792545,
-      "lon": 106.8230523
+      "name": "Monumen Nasional",
+      "description": "Jalan Medan Merdeka Utara, Gambir, Jakarta",
+      "lat": -6.1754024,
+      "lon": 106.8271692
     },
     {
       "name": "Monas Barat",
@@ -29,6 +17,18 @@
       "description": "Gambir, Jakarta",
       "lat": -6.1755515,
       "lon": 106.8293712
+    },
+    {
+      "name": "Monas Selatan",
+      "description": "Gambir, Jakarta",
+      "lat": -6.1780578,
+      "lon": 106.8274441
+    },
+    {
+      "name": "Monas Utara",
+      "description": "Gambir, Jakarta",
+      "lat": -6.1728785,
+      "lon": 106.8269041
     }
   ],
   "outside_study_area": false
