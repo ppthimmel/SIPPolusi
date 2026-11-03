@@ -1,2 +1,5 @@
 # Shell scripts run inside Linux containers; CRLF breaks the shebang.
 *.sh text eol=lf
+
+# Frozen E2E fixture checksums require identical bytes on Windows and Linux.
+/tests/e2e/fixture/*.csv text eol=lf

@@ -414,7 +414,7 @@ class Run:
             stream.write(json.dumps(record, allow_nan=False) + "\n")
 
     def save(self):
-        self.manifest["artifacts"] = sorted(str(p.relative_to(self.dir)) for p in self.dir.rglob("*")
+        self.manifest["artifacts"] = sorted(p.relative_to(self.dir).as_posix() for p in self.dir.rglob("*")
                                             if p.is_file() and p.name != "manifest.json")
         path = self.dir / "manifest.json"
         temporary = path.with_suffix(".tmp")

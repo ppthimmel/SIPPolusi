@@ -61,6 +61,11 @@ Credentials repeated across services (Postgres user/password inside
 
 ## Running everything locally
 
+For architecture, configuration boundaries, reproducible fixture-based startup,
+health checks and troubleshooting, see the [technical runbook](docs/software/technical-runbook.md).
+Current stabilization evidence and remaining verification gaps are recorded in
+[TI-SE-11](docs/ti-se-11/VERIFICATION.md).
+
 ```bash
 docker compose up --build
 ```
@@ -77,7 +82,7 @@ Grafana).
 | API Gateway (NGINX) | http://localhost:8081      |
 | Backend API      | http://localhost:8000         |
 | Model Registry (MLflow UI) | http://localhost:5000 |
-| MinIO console    | http://localhost:9001 (minioadmin/minioadmin) |
+| MinIO console    | http://localhost:9001 (credentials from `src/minio/.env`) |
 | Prometheus       | http://localhost:9090         |
 | Grafana          | http://localhost:3000 (admin/admin) |
 
@@ -88,7 +93,7 @@ docker compose down -v
 ```
 
 For frontend-only iteration with hot reload, run the backend via Compose
-(`docker compose up postgres minio minio-init model_registry backend`) and
+(`docker compose up postgres cache_api gateway`) and
 the frontend separately:
 
 ```bash
@@ -97,7 +102,8 @@ npm install
 npm run dev
 ```
 
-`vite.config.ts` proxies `/v1/*` requests to `http://localhost:8000`.
+Set `BACKEND_URL=http://localhost:8081` in `src/frontend/.env` for this workflow.
+The default `http://localhost:8000` is for the mock API workflow below.
 
 ### Frontend against the real API
 

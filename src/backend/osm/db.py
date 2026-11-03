@@ -125,6 +125,9 @@ class OsmDatabase:
             async with pool.acquire(timeout=self._settings.connect_timeout_s) as conn:
                 try:
                     yield conn
+                except (TimeoutError, asyncio.TimeoutError) as exc:
+                    raise CacheUnavailable("Kueri basis data cache melewati batas waktu klien (OSM_COMMAND_TIMEOUT_S).",
+                                           CacheUnavailable.QUERY_TIMEOUT) from exc
                 except (asyncpg.InvalidSchemaNameError, asyncpg.UndefinedTableError) as exc:
                     # Decided here, while the connection is still ours (see _cache_empty_error).
                     empty = await self._cache_empty_error(conn, exc)
@@ -133,9 +136,6 @@ class OsmDatabase:
                     raise empty from exc
         except asyncpg.QueryCanceledError as exc:
             raise CacheUnavailable("Kueri basis data cache melewati statement_timeout.",
-                                   CacheUnavailable.QUERY_TIMEOUT) from exc
-        except (TimeoutError, asyncio.TimeoutError) as exc:
-            raise CacheUnavailable("Kueri basis data cache melewati batas waktu klien (OSM_COMMAND_TIMEOUT_S).",
                                    CacheUnavailable.QUERY_TIMEOUT) from exc
         except _UNAVAILABLE_ERRORS as exc:
             raise CacheUnavailable(f"Basis data cache tidak tersedia ({type(exc).__name__}).",

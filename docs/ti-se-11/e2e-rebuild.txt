@@ -1,0 +1,71 @@
+2026/11/03 15:34:02 http2: server: error reading preface from client //./pipe/docker_engine: file has already been closed
+2026/11/03 15:34:02 http2: server: error reading preface from client //./pipe/docker_engine: file has already been closed
+#0 building with "default" instance using docker driver
+
+#1 [cache_api internal] load build definition from Dockerfile
+#1 transferring dockerfile: 3.34kB done
+#1 DONE 0.0s
+
+#2 [route_model internal] load build definition from Dockerfile
+#2 transferring dockerfile: 3.34kB 0.0s done
+#2 DONE 0.0s
+
+#3 [route_model internal] load metadata for docker.io/library/python:3.11-slim
+#3 DONE 0.0s
+
+#4 [route_model base 1/4] FROM docker.io/library/python:3.11-slim
+#4 DONE 0.0s
+
+#5 [route_model internal] load build context
+#5 transferring context: 33B
+#5 transferring context: 9.25kB 0.0s done
+#5 DONE 0.0s
+
+#6 [cache_api internal] load build context
+#6 transferring context: 9.25kB 0.0s done
+#6 DONE 0.0s
+
+#7 [route_model base 2/4] WORKDIR /app
+#7 CACHED
+
+#8 [route_model base 3/4] COPY osm/requirements.txt osm/requirements.txt
+#8 CACHED
+
+#9 [route_model base 4/4] RUN pip install -r osm/requirements.txt
+#9 CACHED
+
+#10 [route_model runtime 1/8] COPY osm/*.py osm/
+#10 DONE 0.0s
+
+#11 [route_model runtime 2/8] COPY pollution/*.py pollution/
+#11 DONE 0.0s
+
+#12 [route_model runtime 3/8] COPY planner/*.py planner/
+#12 DONE 0.0s
+
+#13 [route_model runtime 4/8] COPY solver/*.py solver/
+#13 DONE 0.0s
+
+#14 [route_model runtime 5/8] COPY public_api/*.py public_api/
+#14 DONE 0.0s
+
+#15 [route_model runtime 6/8] COPY route_model/*.py route_model/
+#15 DONE 0.0s
+
+#16 [route_model runtime 7/8] COPY log_config.py telemetry.py ./
+#16 DONE 0.0s
+
+#17 [route_model runtime 8/8] RUN useradd --create-home --uid 10001 app
+#17 DONE 0.4s
+
+#18 [route_model] exporting to image
+#18 exporting layers 0.1s done
+#18 writing image sha256:5d54f14ddf05f3133fb8261c07497f7ba7ec37239e024f42fd6512471aa89740 done
+#18 naming to docker.io/library/sippolusi-e2e-route_model 0.0s done
+#18 DONE 0.2s
+
+#19 [cache_api] exporting to image
+#19 exporting layers 0.1s done
+#19 writing image sha256:be986865c2867511e0186b9a6c0278db9be359c7380bfcd0403f1d069347b0ca done
+#19 naming to docker.io/library/sippolusi-e2e-cache_api 0.0s done
+#19 DONE 0.2s
