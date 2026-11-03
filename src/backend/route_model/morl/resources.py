@@ -7,9 +7,11 @@ history goes to metrics.jsonl on disk.
 """
 from __future__ import annotations
 
+import ctypes
 import os
 import shutil
 import subprocess
+import time
 from collections import deque
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -44,11 +46,56 @@ class ResourceLimits:
         return asdict(self)
 
 
+def _windows_rss_bytes() -> int:
+    """The process's working set, from PROCESS_MEMORY_COUNTERS (Windows has no ps or /proc)."""
+    class Counters(ctypes.Structure):
+        _fields_ = [("cb", ctypes.c_ulong), ("page_faults", ctypes.c_ulong),
+                    *((name, ctypes.c_size_t) for name in (
+                        "peak_working_set", "working_set", "peak_paged_pool", "paged_pool",
+                        "peak_nonpaged_pool", "nonpaged_pool", "pagefile", "peak_pagefile"))]
+
+    kernel32 = ctypes.WinDLL("kernel32")
+    kernel32.GetCurrentProcess.restype = ctypes.c_void_p
+    psapi = ctypes.WinDLL("psapi")
+    psapi.GetProcessMemoryInfo.argtypes = [ctypes.c_void_p, ctypes.POINTER(Counters), ctypes.c_ulong]
+    counters = Counters(cb=ctypes.sizeof(Counters))
+    if not psapi.GetProcessMemoryInfo(kernel32.GetCurrentProcess(), ctypes.byref(counters), counters.cb):
+        raise ctypes.WinError()
+    return counters.working_set
+
+
 def current_rss_bytes() -> int:
     """Resident memory now (getrusage only reports the peak)."""
+    if os.name == "nt":
+        import ctypes
+        from ctypes import wintypes
+
+        class ProcessMemoryCounters(ctypes.Structure):
+            _fields_ = [("cb", wintypes.DWORD), ("PageFaultCount", wintypes.DWORD)] + [
+                (name, ctypes.c_size_t) for name in (
+                    "PeakWorkingSetSize", "WorkingSetSize", "QuotaPeakPagedPoolUsage",
+                    "QuotaPagedPoolUsage", "QuotaPeakNonPagedPoolUsage",
+                    "QuotaNonPagedPoolUsage", "PagefileUsage", "PeakPagefileUsage",
+                )
+            ]
+
+        kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        psapi = ctypes.WinDLL("psapi", use_last_error=True)
+        kernel32.GetCurrentProcess.restype = wintypes.HANDLE
+        psapi.GetProcessMemoryInfo.argtypes = [
+            wintypes.HANDLE, ctypes.POINTER(ProcessMemoryCounters), wintypes.DWORD,
+        ]
+        psapi.GetProcessMemoryInfo.restype = wintypes.BOOL
+        counters = ProcessMemoryCounters()
+        counters.cb = ctypes.sizeof(counters)
+        if not psapi.GetProcessMemoryInfo(kernel32.GetCurrentProcess(), ctypes.byref(counters), counters.cb):
+            raise ctypes.WinError(ctypes.get_last_error())
+        return counters.WorkingSetSize
     statm = Path("/proc/self/statm")
     if statm.exists():
         return int(statm.read_text().split()[1]) * os.sysconf("SC_PAGE_SIZE")
+    if os.name == "nt":
+        return _windows_rss_bytes()
     output = subprocess.run(["ps", "-o", "rss=", "-p", str(os.getpid())], capture_output=True, text=True, check=True)
     return int(output.stdout.strip()) * 1024
 
@@ -116,6 +163,23 @@ class ResourceGuard:
         if last - first > limit and middle - first > limit / 4 and last - middle > limit / 4:
             return last - first
         return None
+
+
+def replace_file(temporary, path, attempts: int = 8) -> None:
+    """Move a finished file over `path`, retrying while Windows holds the target open.
+
+    Antivirus and search indexers open a file just after it is written, and until they
+    let go os.replace raises PermissionError. A manifest is rewritten often, so without
+    this a long run on Windows eventually dies on bookkeeping.
+    """
+    for attempt in range(attempts):
+        try:
+            Path(temporary).replace(path)
+            return
+        except PermissionError:
+            if attempt == attempts - 1:
+                raise
+            time.sleep(0.05 * 2 ** attempt)
 
 
 def prune_checkpoints(folder, keep: int) -> None:

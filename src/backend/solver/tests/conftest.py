@@ -42,6 +42,10 @@ def mock_service_transport(fault: str | None = None) -> httpx.MockTransport:
             return httpx.Response(200, json={"route_source": "policy"})
         if fault == "timeout":
             raise httpx.ReadTimeout("slow", request=request)
+        if fault == "connect_timeout":
+            raise httpx.ConnectTimeout("connect stalled", request=request)
+        if fault == "pool_timeout":
+            raise httpx.PoolTimeout("pool busy", request=request)
         if fault == "unreachable":
             raise httpx.ConnectError("refused", request=request)
         edges = {e["id"]: e for e in body["edges"]}

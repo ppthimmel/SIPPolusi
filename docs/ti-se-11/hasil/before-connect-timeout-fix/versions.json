@@ -1,0 +1,58 @@
+{
+  "git_commit": "7d446fc",
+  "git_branch": "TI-SE-11",
+  "git_dirty": true,
+  "components": {
+    "data_worker": "7d446fc 2026-11-03 Merge pull request #70 from ppthimmel/TI-SE-01",
+    "cache_api": "7d446fc 2026-11-03 Merge pull request #70 from ppthimmel/TI-SE-01",
+    "gateway": "9ee84d3 2026-10-27 TI-SE-10: uji integrasi end-to-end Worker sampai frontend (#65)",
+    "frontend": "9ee84d3 2026-10-27 TI-SE-10: uji integrasi end-to-end Worker sampai frontend (#65)"
+  },
+  "images": {
+    "db": {
+      "image": "postgis/postgis:18-3.6",
+      "id": "sha256:4bcf45999358"
+    },
+    "worker": {
+      "image": "sippolusi-e2e-worker",
+      "id": "sha256:71f7dbaf52ab"
+    },
+    "spku_portal": {
+      "image": "python:3.11-slim",
+      "id": "sha256:de8d79606bef"
+    },
+    "route_model": {
+      "image": "sippolusi-e2e-route_model",
+      "id": "sha256:5d54f14ddf05"
+    },
+    "cache_api": {
+      "image": "sippolusi-e2e-cache_api",
+      "id": "sha256:be986865c286"
+    },
+    "gateway": {
+      "image": "sippolusi-e2e-gateway",
+      "id": "sha256:af59d11c1c4e"
+    },
+    "frontend": {
+      "image": "sippolusi-e2e-frontend",
+      "id": "sha256:adf9f1dd4aee"
+    }
+  },
+  "dataset": {
+    "dataset_version": "c9503fc53769",
+    "graph_version": "jakarta-20261005",
+    "osm_timestamp": "2026-10-05T09:50:56+00:00",
+    "bbox": [
+      106.8,
+      -6.2,
+      106.845,
+      -6.155
+    ],
+    "ground_truth_windows": [
+      "2026-10-26T12:00Z",
+      "2026-10-26T13:00Z",
+      "2026-10-26T14:00Z"
+    ]
+  },
+  "postgres": "PostgreSQL 18.6 (Debian 18.6-1.pgdg13+2) on x86_64-pc-linux-"
+}

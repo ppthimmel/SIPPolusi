@@ -1,5 +1,7 @@
 # TI-AI-09 multi-policy MORL (PIC B)
 
+The scalarized approach (PIC A) is reported in [`scalarized/`](scalarized/README.md).
+
 Five independent policies, one per `alpha` (0, 0.25, 0.5, 0.75, 1; `beta = 1 - alpha`),
 trained with PPO on environment `route-env-1`, graph `jakarta-20261005`, bike mode. Code:
 [`route_model/morl`](../../../src/backend/route_model/morl/README.md). Set

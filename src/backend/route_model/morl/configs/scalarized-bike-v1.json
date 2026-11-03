@@ -1,0 +1,19 @@
+{
+  "name": "scalarized-bike-v1",
+  "algorithm": "ppo-scalarized-1",
+  "mode": "bike",
+  "seed": 42,
+  "preference": {"train": "alpha ~ U[0, 1], beta = 1 - alpha",
+                 "selection_alphas": [0.0, 0.25, 0.5, 0.75, 1.0],
+                 "report_alphas": [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]},
+  "model": {"hidden_dim": 64, "graph_layers": 3, "ego_hops": 4, "ego_max_nodes": 64, "preference_dim": 16, "fourier": 4},
+  "env": {"max_steps": 400, "max_steps_factor": 3.0, "failure_return": 4.0, "illegal_action_penalty": 0.1},
+  "od": {"split_seed": 42, "seed": 42, "train_pairs": 2000, "val_pairs": 150, "min_distance_m": 500.0, "max_distance_m": 3000.0},
+  "warm_start": {"teacher": "weighted", "episodes": 400, "epochs": 4, "minibatch_size": 256, "learning_rate": 0.001},
+  "ppo": {"actors": 16, "rollout_steps": 128, "learning_rate": 0.0001, "gamma": 1.0, "gae_lambda": 0.95,
+          "clip": 0.1, "epochs": 4, "minibatch_size": 256, "value_coef": 0.5, "entropy_coef": 0.001, "max_grad_norm": 0.5, "critic_warmup_updates": 20},
+  "schedule": {"max_updates": 300, "eval_every": 30, "early_stop_patience": 5, "eval_batch": 64},
+  "augmentation": {"probability": 0.75, "max_log_std": 0.5, "min_wavelength_m": 1000.0, "max_wavelength_m": 4000.0, "components": 4},
+  "resources": {"max_rss_gb": 12.0, "growth_window_updates": 150, "growth_limit_mb": 512.0, "min_free_disk_gb": 2.0, "keep_checkpoints": 3},
+  "threads": 6
+}

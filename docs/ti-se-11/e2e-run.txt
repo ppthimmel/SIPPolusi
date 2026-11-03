@@ -1,0 +1,78 @@
+== menyiapkan stack bersih
+{"dataset_version": "c9503fc53769", "graph_version": "jakarta-20261005", "road_edge": 21987, "road_node": 17334, "station": 129, "observation": 705}
+E2E-01 cache kosong
+  PASS  POST /v1/routes -> 503 cache_unavailable/cache_empty
+  PASS  kegagalan tidak tampil sebagai sukses (status bukan 200, galat terstruktur)
+  PASS  GET /v1/exposure-surface -> 503 cache_empty
+  PASS  /health: database ok, belum ada time window
+  PASS  /health/ready: siap (graf ada) dengan polusi dilaporkan kosong
+E2E-02 sukses Worker -> frontend
+  PASS  siklus Worker berhasil (exit 0, tanpa langkah gagal)
+  PASS  fetch_ground_truth menjelajahi portal (tiruan) dengan status ok
+  PASS  inferensi menulis window complete; tiap polutan fallback IDW bertanda (Model Registry tidak dikonfigurasi)
+  PASS  cache: window 12:00 complete, model sama dengan laporan Worker
+  PASS  cache: semua ruas punya estimasi, tidak ada nilai nol
+  PASS  cache: setiap baris menyimpan run_id Worker (trace_run_id -> inference_run)
+  PASS  POST /v1/routes lewat gateway -> 200 GeoJSON
+  PASS  versi konsisten: time window, model downscaling, dan graf sama dengan cache
+  PASS  rute dari model (stub IRouteSolve) dengan label policy
+  PASS  metadata.estimation menyebut sumber estimasi dan polutan fallback yang dicatat Worker
+  PASS  tidak ada paparan nol pada rute 200
+  PASS  korelasi: X-Request-ID = metadata.request_id = log gateway = log Cache API
+  PASS  log Cache API berformat JSON dengan correlation_id = X-Request-ID
+  PASS  missing_edge_count di respons sesuai cakupan Worker (100 %)
+  PASS  heatmap per ruas 200 dari window yang sama, tanpa nilai nol
+  PASS  frontend tersaji dan meneruskan /v1/* ke gateway
+E2E-03 window baru dan idempotensi
+  PASS  Worker menulis window 13:00
+  PASS  API langsung memakai window terbaru 13:00
+  PASS  heatmap: ETag window lama tidak lagi cocok (200 data baru, bukan 304)
+  PASS  heatmap: revalidasi tanpa perubahan -> 304
+  PASS  Worker idempoten: window 13:00 yang sudah complete dilewati
+E2E-04 sumber data tidak tersedia
+  PASS  portal SPKU mati: fetch_ground_truth berstatus failed, bukan ok
+  PASS  Worker menandai siklus gagal (exit 1) pada pengambilan data dan inferensi
+  PASS  tidak ada window 15:00 yang ditulis
+  PASS  API tetap memakai window complete terakhir (13:00), bukan nilai kosong
+  PASS  tidak ada paparan nol pada rute 200
+  PASS  data_stale mengikuti umur window (> 3 jam setelah berakhir)
+E2E-05 window sedang ditulis
+  PASS  window berstatus writing tidak terbaca; API tetap 13:00
+  PASS  setelah Worker selesai, window 14:00 langsung dipakai
+E2E-06 inferensi rute gagal, fallback aktif
+  PASS  model slow: 200 rute tercepat bertanda baseline, fallback_reason model_timeout
+  PASS  tidak ada paparan nol pada rute 200
+  PASS  model slow: log mencatat outcome=fallback dan penyebab solver_timeout
+  PASS  model error: 200 rute tercepat bertanda baseline, fallback_reason model_error
+  PASS  tidak ada paparan nol pada rute 200
+  PASS  model error: log mencatat outcome=fallback dan penyebab solver_error
+  PASS  model mislabel: 200 rute tercepat bertanda baseline, fallback_reason model_invalid_response
+  PASS  tidak ada paparan nol pada rute 200
+  PASS  model mislabel: log mencatat outcome=fallback dan penyebab invalid_solver_response
+  PASS  model no_route: 200 rute tercepat bertanda baseline, fallback_reason model_no_route
+  PASS  tidak ada paparan nol pada rute 200
+  PASS  model no_route: log mencatat outcome=fallback dan penyebab solver_no_route
+  PASS  layanan model mati: fallback baseline bertanda dalam batas waktu
+  PASS  tidak ada paparan nol pada rute 200
+E2E-07 inferensi timeout, fallback mati
+  PASS  503 route_service_unavailable/solver_timeout dalam batas 10 s gateway
+  PASS  kegagalan tidak tampil sebagai sukses (status bukan 200, galat terstruktur)
+  PASS  model menyatakan tidak ada rute: 503 solver_no_route, bukan 422
+E2E-08 API dan basis data gagal
+  PASS  Cache API mati: gateway 502 upstream_unavailable (JSON seragam)
+  PASS  lewat frontend: 502 yang sama diteruskan
+  PASS  basis data mati: 503 cache_unavailable/database_unavailable
+  PASS  /health melaporkan degraded saat basis data mati
+  PASS  /health/ready 503 saat basis data mati, /health/live tetap 200
+  PASS  kegagalan tidak tampil sebagai sukses (status bukan 200, galat terstruktur)
+  PASS  pulih otomatis setelah basis data kembali
+E2E-09 versi graf dan cache tidak cocok
+  PASS  estimasi dari graf lain diabaikan: 503 cache_empty, bukan paparan nol
+  PASS  kegagalan tidak tampil sebagai sukses (status bukan 200, galat terstruktur)
+  PASS  kembali normal setelah versi cocok
+E2E-10 kontrak API publik lewat gateway
+  PASS  koleksi uji (17 kasus: validasi, 413, 422, heatmap) lulus
+E2E-11 log aman
+  PASS  log semua layanan tanpa DSN/kata sandi
+  PASS  log Cache API dan gateway tanpa koordinat perjalanan (PNF-06)
+== 64/64 pemeriksaan lulus; hasil di tests\e2e\out
