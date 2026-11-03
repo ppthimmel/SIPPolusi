@@ -25,6 +25,8 @@ Finished members are kept, and an unfinished one continues from its `last.pt`; a
 member is reproducible but not bit-identical to an uninterrupted run. On a GPU server,
 add `--device cuda`. Training and test data stay out of git: `runs/` is ignored.
 
+Results, evidence and limitations: [`docs/experiments/TI-AI-09`](../../../../docs/experiments/TI-AI-09/README.md).
+
 ## Modules
 
 | File | Role |
@@ -37,6 +39,7 @@ add `--device cuda`. Training and test data stay out of git: `runs/` is ignored.
 | `infer.py` | Checkpoint format, member selection, greedy route decoding, exact optimum for comparison |
 | `augment.py` | Training-only perturbation of exposure fields |
 | `resources.py` | Memory, disk and thread limits |
+| `verify_set.py` | Checks a trained set from its files: checksums, identical routes after reload, inference time |
 
 ## Choices the results depend on
 

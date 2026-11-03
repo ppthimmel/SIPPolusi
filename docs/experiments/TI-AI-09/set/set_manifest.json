@@ -1,0 +1,280 @@
+{
+  "set_id": "20261102T145533Z-multi-policy-bike-v1-201e7d41",
+  "experiment": "morl-route-policy",
+  "approach": "multi-policy",
+  "status": "completed",
+  "stop_reason": "All 5 members finished",
+  "started_at": "2026-11-02T14:55:33+00:00",
+  "finished_at": "2026-11-02T16:31:34+00:00",
+  "algorithm": "ppo-fixed-preference-1",
+  "feature_version": "ego-3",
+  "device": "cpu",
+  "selection_rule": "nearest alpha; on a tie the lower alpha",
+  "config_sha256": "201e7d41a588bfbbda6fbc2b36e9edeaf0cdd324e4cde9b3f9a2f82d256fae2d",
+  "config": {
+    "name": "multi-policy-bike-v1",
+    "mode": "bike",
+    "seed": 42,
+    "policy_set": {
+      "alphas": [
+        0.0,
+        0.25,
+        0.5,
+        0.75,
+        1.0
+      ],
+      "evaluation_alphas": [
+        0.0,
+        0.1,
+        0.2,
+        0.3,
+        0.4,
+        0.5,
+        0.6,
+        0.7,
+        0.8,
+        0.9,
+        1.0
+      ]
+    },
+    "model": {
+      "hidden_dim": 64,
+      "graph_layers": 3,
+      "ego_hops": 4,
+      "ego_max_nodes": 64
+    },
+    "env": {
+      "max_steps": 400,
+      "max_steps_factor": 3.0,
+      "failure_return": 4.0,
+      "illegal_action_penalty": 0.1
+    },
+    "od": {
+      "split_seed": 42,
+      "seed": 42,
+      "train_pairs": 2000,
+      "val_pairs": 150,
+      "min_distance_m": 500.0,
+      "max_distance_m": 3000.0
+    },
+    "warm_start": {
+      "teacher": "weighted",
+      "episodes": 400,
+      "epochs": 4,
+      "minibatch_size": 256,
+      "learning_rate": 0.001
+    },
+    "ppo": {
+      "actors": 16,
+      "rollout_steps": 128,
+      "learning_rate": 0.0001,
+      "gamma": 1.0,
+      "gae_lambda": 0.95,
+      "clip": 0.1,
+      "epochs": 4,
+      "minibatch_size": 256,
+      "value_coef": 0.5,
+      "entropy_coef": 0.001,
+      "max_grad_norm": 0.5,
+      "critic_warmup_updates": 20
+    },
+    "schedule": {
+      "max_updates": 200,
+      "eval_every": 20,
+      "early_stop_patience": 5,
+      "eval_batch": 32
+    },
+    "augmentation": {
+      "probability": 0.75,
+      "max_log_std": 0.5,
+      "min_wavelength_m": 1000.0,
+      "max_wavelength_m": 4000.0,
+      "components": 4
+    },
+    "resources": {
+      "max_rss_gb": 16.0,
+      "growth_window_updates": 150,
+      "growth_limit_mb": 512.0,
+      "min_free_disk_gb": 2.0,
+      "keep_checkpoints": 3
+    },
+    "threads": 6
+  },
+  "code": {
+    "commit": "7c0df735597738b13b639f247a1f29a938eecb1a",
+    "branch": "feat/TI-AI-09",
+    "dirty": false
+  },
+  "members": [
+    {
+      "alpha": 0.0,
+      "status": "completed",
+      "run_dir": "members/20261102T145538Z-multi-policy-bike-v1-a0-77926aea",
+      "run_id": "20261102T145538Z-multi-policy-bike-v1-a0-77926aea",
+      "stop_reason": "Reached max_updates = 200",
+      "seed": 42,
+      "progress": {
+        "updates": 200,
+        "env_steps": 409600,
+        "episodes": 5404
+      },
+      "best": {
+        "update": 120,
+        "checkpoint": "checkpoints/best.pt",
+        "sha256": "de93a585b4df673ba7005ee10c372f3ca7a133b0275cd56d6492a35e88e3a340",
+        "val_mean_return": -1.025270690526461,
+        "val_success_rate": 0.9933333333333333
+      },
+      "evaluation": {
+        "reload_check": {
+          "od_pairs": 150,
+          "identical": true,
+          "routes_reached": 149
+        },
+        "mean_return": -1.025270690526461,
+        "success_rate": 0.9933333333333333,
+        "mean_optimality_gap": 0.007065765098572297
+      }
+    },
+    {
+      "alpha": 0.25,
+      "status": "early_stopped",
+      "run_dir": "members/20261102T151419Z-multi-policy-bike-v1-a0.25-e484f5cf",
+      "run_id": "20261102T151419Z-multi-policy-bike-v1-a0.25-e484f5cf",
+      "stop_reason": "No validation improvement in 5 evaluations",
+      "seed": 43,
+      "progress": {
+        "updates": 160,
+        "env_steps": 327680,
+        "episodes": 4405
+      },
+      "best": {
+        "update": 60,
+        "checkpoint": "checkpoints/best.pt",
+        "sha256": "c7181b3d576c1e87482777f384eb063e5eb9d625da2a7e1bc27c2e1aa5f745ba",
+        "val_mean_return": -1.0449354107662943,
+        "val_success_rate": 0.9866666666666667
+      },
+      "evaluation": {
+        "reload_check": {
+          "od_pairs": 150,
+          "identical": true,
+          "routes_reached": 148
+        },
+        "mean_return": -1.0449354107662943,
+        "success_rate": 0.9866666666666667,
+        "mean_optimality_gap": 0.0055689387138171285
+      }
+    },
+    {
+      "alpha": 0.5,
+      "status": "completed",
+      "run_dir": "members/20261102T152936Z-multi-policy-bike-v1-a0.5-b1980561",
+      "run_id": "20261102T152936Z-multi-policy-bike-v1-a0.5-b1980561",
+      "stop_reason": "Reached max_updates = 200",
+      "seed": 44,
+      "progress": {
+        "updates": 200,
+        "env_steps": 409600,
+        "episodes": 5788
+      },
+      "best": {
+        "update": 160,
+        "checkpoint": "checkpoints/best.pt",
+        "sha256": "1ca67248a5f321b1631e8ce51344dcf48a3577d4ea842c81bcf2029d557a2dc6",
+        "val_mean_return": -1.045818535032151,
+        "val_success_rate": 0.9866666666666667
+      },
+      "evaluation": {
+        "reload_check": {
+          "od_pairs": 150,
+          "identical": true,
+          "routes_reached": 148
+        },
+        "mean_return": -1.045818535032151,
+        "success_rate": 0.9866666666666667,
+        "mean_optimality_gap": 0.006036239546832927
+      }
+    },
+    {
+      "alpha": 0.75,
+      "status": "completed",
+      "run_dir": "members/20261102T154810Z-multi-policy-bike-v1-a0.75-6d4c2622",
+      "run_id": "20261102T154810Z-multi-policy-bike-v1-a0.75-6d4c2622",
+      "stop_reason": "Reached max_updates = 200",
+      "seed": 45,
+      "progress": {
+        "updates": 200,
+        "env_steps": 409600,
+        "episodes": 5515
+      },
+      "best": {
+        "update": 120,
+        "checkpoint": "checkpoints/best.pt",
+        "sha256": "c1775e2386907d9ca3ae9144facd444950f031a4b4d2240527336e17d055383b",
+        "val_mean_return": -1.044883242768685,
+        "val_success_rate": 0.9866666666666667
+      },
+      "evaluation": {
+        "reload_check": {
+          "od_pairs": 150,
+          "identical": true,
+          "routes_reached": 148
+        },
+        "mean_return": -1.044883242768685,
+        "success_rate": 0.9866666666666667,
+        "mean_optimality_gap": 0.004958749239752736
+      }
+    },
+    {
+      "alpha": 1.0,
+      "status": "completed",
+      "run_dir": "members/20261102T160611Z-multi-policy-bike-v1-a1-8da0fdf1",
+      "run_id": "20261102T160611Z-multi-policy-bike-v1-a1-8da0fdf1",
+      "stop_reason": "Reached max_updates = 200",
+      "seed": 46,
+      "progress": {
+        "updates": 200,
+        "env_steps": 409600,
+        "episodes": 5637
+      },
+      "best": {
+        "update": 120,
+        "checkpoint": "checkpoints/best.pt",
+        "sha256": "dc3cb0ab4971330c08b49a49a257480b9fff8e7df299b5d6773aad0ed7e665b9",
+        "val_mean_return": -1.0468945734880888,
+        "val_success_rate": 0.9866666666666667
+      },
+      "evaluation": {
+        "reload_check": {
+          "od_pairs": 150,
+          "identical": true,
+          "routes_reached": 148
+        },
+        "mean_return": -1.0468945734880888,
+        "success_rate": 0.9866666666666667,
+        "mean_optimality_gap": 0.0069877434000900915
+      }
+    }
+  ],
+  "data": {
+    "graph_version": "jakarta-20261005",
+    "mode": "bike",
+    "od_pairs_sha256": "9de274351a35cb3a22c7937fb9593a2a4e4cb16ca95e5c1783d96158dd82d152",
+    "od_pairs": {
+      "train": 2000,
+      "val": 150
+    },
+    "test_split_loaded": false
+  },
+  "evaluation": {
+    "mean_return": -1.0419610463657025,
+    "success_rate": 0.9878787878787879,
+    "mean_optimality_gap": 0.0061039131141132534,
+    "reload_check": {
+      "routes": 750,
+      "identical": true,
+      "routes_reached": 741
+    }
+  }
+}

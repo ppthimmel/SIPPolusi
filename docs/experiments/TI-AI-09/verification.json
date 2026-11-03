@@ -1,0 +1,24 @@
+{
+  "set_id": "20261102T145533Z-multi-policy-bike-v1-201e7d41",
+  "code_commit": "7c0df735597738b13b639f247a1f29a938eecb1a",
+  "checkpoints_match_manifest": {
+    "0": true,
+    "0.25": true,
+    "0.5": true,
+    "0.75": true,
+    "1": true
+  },
+  "reload": {
+    "routes": 750,
+    "identical": true,
+    "reached": 741,
+    "failures": {
+      "dead_end": 9
+    }
+  },
+  "route_seconds_cpu": {
+    "median": 0.074,
+    "p95": 0.201,
+    "max": 0.467
+  }
+}

@@ -1,0 +1,68 @@
+{
+  "name": "multi-policy-bike-v1-a0",
+  "mode": "bike",
+  "seed": 42,
+  "model": {
+    "hidden_dim": 64,
+    "graph_layers": 3,
+    "ego_hops": 4,
+    "ego_max_nodes": 64
+  },
+  "env": {
+    "max_steps": 400,
+    "max_steps_factor": 3.0,
+    "failure_return": 4.0,
+    "illegal_action_penalty": 0.1
+  },
+  "od": {
+    "split_seed": 42,
+    "seed": 42,
+    "train_pairs": 2000,
+    "val_pairs": 150,
+    "min_distance_m": 500.0,
+    "max_distance_m": 3000.0
+  },
+  "warm_start": {
+    "teacher": "weighted",
+    "episodes": 400,
+    "epochs": 4,
+    "minibatch_size": 256,
+    "learning_rate": 0.001
+  },
+  "ppo": {
+    "actors": 16,
+    "rollout_steps": 128,
+    "learning_rate": 0.0001,
+    "gamma": 1.0,
+    "gae_lambda": 0.95,
+    "clip": 0.1,
+    "epochs": 4,
+    "minibatch_size": 256,
+    "value_coef": 0.5,
+    "entropy_coef": 0.001,
+    "max_grad_norm": 0.5,
+    "critic_warmup_updates": 20
+  },
+  "schedule": {
+    "max_updates": 200,
+    "eval_every": 20,
+    "early_stop_patience": 5,
+    "eval_batch": 32
+  },
+  "augmentation": {
+    "probability": 0.75,
+    "max_log_std": 0.5,
+    "min_wavelength_m": 1000.0,
+    "max_wavelength_m": 4000.0,
+    "components": 4
+  },
+  "resources": {
+    "max_rss_gb": 16.0,
+    "growth_window_updates": 150,
+    "growth_limit_mb": 512.0,
+    "min_free_disk_gb": 2.0,
+    "keep_checkpoints": 3
+  },
+  "threads": 6,
+  "alpha": 0.0
+}

@@ -1,0 +1,218 @@
+{
+  "set_id": "20261102T141332Z-multi-policy-bike-v1-5d59ef90",
+  "experiment": "morl-route-policy",
+  "approach": "multi-policy",
+  "status": "stopped",
+  "stop_reason": "Member alpha=0.5: Memory growth: RSS rose 644 MB in 50 updates (limit 512.0 MB)",
+  "started_at": "2026-11-02T14:13:32+00:00",
+  "finished_at": "2026-11-02T14:51:56+00:00",
+  "algorithm": "ppo-fixed-preference-1",
+  "feature_version": "ego-3",
+  "device": "cpu",
+  "selection_rule": "nearest alpha; on a tie the lower alpha",
+  "config_sha256": "5d59ef90270740e7f1315dd2e729ddcd7d626ed705ddb87ec2fce758f4f87e98",
+  "config": {
+    "name": "multi-policy-bike-v1",
+    "mode": "bike",
+    "seed": 42,
+    "policy_set": {
+      "alphas": [
+        0.0,
+        0.25,
+        0.5,
+        0.75,
+        1.0
+      ],
+      "evaluation_alphas": [
+        0.0,
+        0.1,
+        0.2,
+        0.3,
+        0.4,
+        0.5,
+        0.6,
+        0.7,
+        0.8,
+        0.9,
+        1.0
+      ]
+    },
+    "model": {
+      "hidden_dim": 64,
+      "graph_layers": 3,
+      "ego_hops": 4,
+      "ego_max_nodes": 64
+    },
+    "env": {
+      "max_steps": 400,
+      "max_steps_factor": 3.0,
+      "failure_return": 4.0,
+      "illegal_action_penalty": 0.1
+    },
+    "od": {
+      "split_seed": 42,
+      "seed": 42,
+      "train_pairs": 2000,
+      "val_pairs": 60,
+      "min_distance_m": 500.0,
+      "max_distance_m": 3000.0
+    },
+    "warm_start": {
+      "teacher": "weighted",
+      "episodes": 400,
+      "epochs": 4,
+      "minibatch_size": 256,
+      "learning_rate": 0.001
+    },
+    "ppo": {
+      "actors": 16,
+      "rollout_steps": 128,
+      "learning_rate": 0.0001,
+      "gamma": 1.0,
+      "gae_lambda": 0.95,
+      "clip": 0.1,
+      "epochs": 4,
+      "minibatch_size": 256,
+      "value_coef": 0.5,
+      "entropy_coef": 0.001,
+      "max_grad_norm": 0.5,
+      "critic_warmup_updates": 20
+    },
+    "schedule": {
+      "max_updates": 200,
+      "eval_every": 20,
+      "early_stop_patience": 5,
+      "eval_batch": 32
+    },
+    "augmentation": {
+      "probability": 0.75,
+      "max_log_std": 0.5,
+      "min_wavelength_m": 1000.0,
+      "max_wavelength_m": 4000.0,
+      "components": 4
+    },
+    "resources": {
+      "max_rss_gb": 16.0,
+      "growth_window_updates": 50,
+      "growth_limit_mb": 512.0,
+      "min_free_disk_gb": 2.0,
+      "keep_checkpoints": 3
+    },
+    "threads": 6
+  },
+  "code": {
+    "commit": "95f0b6df63712a8517c6098b76182cf824c0318a",
+    "branch": "feat/TI-AI-09",
+    "dirty": false
+  },
+  "members": [
+    {
+      "alpha": 0.0,
+      "status": "completed",
+      "run_dir": "members/20261102T141338Z-multi-policy-bike-v1-a0-ec9108df",
+      "run_id": "20261102T141338Z-multi-policy-bike-v1-a0-ec9108df",
+      "stop_reason": "Reached max_updates = 200",
+      "seed": 42,
+      "progress": {
+        "updates": 200,
+        "env_steps": 409600,
+        "episodes": 5455
+      },
+      "best": {
+        "update": 140,
+        "checkpoint": "checkpoints/best.pt",
+        "sha256": "d1b97a16e97512313df665188d9f0a7bd3b9628160f1fcec7add710209e749c4",
+        "val_mean_return": -1.0052981176846265,
+        "val_success_rate": 1.0
+      },
+      "evaluation": {
+        "reload_check": {
+          "od_pairs": 60,
+          "identical": true,
+          "routes_reached": 60
+        },
+        "mean_return": -1.0052981176846265,
+        "success_rate": 1.0,
+        "mean_optimality_gap": 0.007906779136531258
+      }
+    },
+    {
+      "alpha": 0.25,
+      "status": "early_stopped",
+      "run_dir": "members/20261102T142933Z-multi-policy-bike-v1-a0.25-3ca85aa7",
+      "run_id": "20261102T142933Z-multi-policy-bike-v1-a0.25-3ca85aa7",
+      "stop_reason": "No validation improvement in 5 evaluations",
+      "seed": 43,
+      "progress": {
+        "updates": 100,
+        "env_steps": 204800,
+        "episodes": 2782
+      },
+      "best": {
+        "update": 0,
+        "checkpoint": "checkpoints/best.pt",
+        "sha256": "127b91f0e827f6a7299a42541c09d2677a24114549d579fe554aa80041b04c1b",
+        "val_mean_return": -1.0527452576234342,
+        "val_success_rate": 0.9833333333333333
+      },
+      "evaluation": {
+        "reload_check": {
+          "od_pairs": 60,
+          "identical": true,
+          "routes_reached": 59
+        },
+        "mean_return": -1.0527452576234342,
+        "success_rate": 0.9833333333333333,
+        "mean_optimality_gap": 0.003483248812144527
+      }
+    },
+    {
+      "alpha": 0.5,
+      "status": "stopped",
+      "run_dir": "members/20261102T143831Z-multi-policy-bike-v1-a0.5-14822dc2",
+      "run_id": "20261102T143831Z-multi-policy-bike-v1-a0.5-14822dc2",
+      "stop_reason": "Memory growth: RSS rose 644 MB in 50 updates (limit 512.0 MB)",
+      "seed": 44,
+      "progress": {
+        "updates": 165,
+        "env_steps": 337920,
+        "episodes": 4488
+      },
+      "best": {
+        "update": 160,
+        "checkpoint": "checkpoints/best.pt",
+        "sha256": "b9948958830f6262cd0fa97be7f226dc9781835de0ad04d73b6fd3aff8763805",
+        "val_mean_return": -1.0066093402769372,
+        "val_success_rate": 1.0
+      },
+      "evaluation": {
+        "reload_check": {
+          "od_pairs": 60,
+          "identical": true,
+          "routes_reached": 60
+        },
+        "mean_return": -1.0066093402769372,
+        "success_rate": 1.0,
+        "mean_optimality_gap": 0.00670609423063804
+      }
+    },
+    {
+      "alpha": 0.75,
+      "status": "pending"
+    },
+    {
+      "alpha": 1.0,
+      "status": "pending"
+    }
+  ],
+  "data": {
+    "graph_version": "jakarta-20261005",
+    "mode": "bike",
+    "od_pairs_sha256": "941bbf4cce770181a11dafe48ca60dc15aa147eb1b7c8cfad8ea842cb016496b",
+    "od_pairs": {
+      "train": 2000,
+      "val": 60
+    },
+    "test_split_loaded": false
+  }
+}

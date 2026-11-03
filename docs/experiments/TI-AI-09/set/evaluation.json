@@ -1,0 +1,283 @@
+{
+  "split": "val",
+  "selection_rule": "nearest alpha; on a tie the lower alpha",
+  "served_by": {
+    "0": [
+      0.0,
+      0.1
+    ],
+    "0.25": [
+      0.2,
+      0.3
+    ],
+    "0.5": [
+      0.4,
+      0.5,
+      0.6
+    ],
+    "0.75": [
+      0.7,
+      0.8
+    ],
+    "1": [
+      0.9,
+      1.0
+    ]
+  },
+  "summary": {
+    "episodes": 1650,
+    "mean_return": -1.0419610463657025,
+    "success_rate": 0.9878787878787879,
+    "outcomes": {
+      "reached": 1630,
+      "dead_end": 20,
+      "truncated": 0
+    },
+    "mean_steps": 70.11151515151515,
+    "by_alpha": {
+      "0": {
+        "episodes": 150,
+        "success_rate": 0.9933333333333333,
+        "mean_return": -1.025270690526461,
+        "time_ratio": 1.0075377662133504,
+        "exposure_ratio": 1.0053060642883835,
+        "weighted_cost": 1.0053060642883835,
+        "oracle_time_ratio": 1.0023394173086146,
+        "oracle_exposure_ratio": 0.9983242355778795
+      },
+      "0.1": {
+        "episodes": 150,
+        "success_rate": 0.9933333333333333,
+        "mean_return": -1.0254923729176744,
+        "time_ratio": 1.0075377662133504,
+        "exposure_ratio": 1.0053060642883835,
+        "weighted_cost": 1.0055292344808802,
+        "oracle_time_ratio": 1.0023168441673305,
+        "oracle_exposure_ratio": 0.998324883644085
+      },
+      "0.2": {
+        "episodes": 150,
+        "success_rate": 0.9866666666666667,
+        "mean_return": -1.04482420795132,
+        "time_ratio": 1.00669268884214,
+        "exposure_ratio": 1.0044385777277924,
+        "weighted_cost": 1.004889399950662,
+        "oracle_time_ratio": 1.001527279472803,
+        "oracle_exposure_ratio": 0.9984283380217431
+      },
+      "0.3": {
+        "episodes": 150,
+        "success_rate": 0.9866666666666667,
+        "mean_return": -1.0450466135812688,
+        "time_ratio": 1.00669268884214,
+        "exposure_ratio": 1.0044385777277924,
+        "weighted_cost": 1.0051148110620964,
+        "oracle_time_ratio": 1.001527279472803,
+        "oracle_exposure_ratio": 0.9984283380217431
+      },
+      "0.4": {
+        "episodes": 150,
+        "success_rate": 0.9866666666666667,
+        "mean_return": -1.045599219075729,
+        "time_ratio": 1.007008562311749,
+        "exposure_ratio": 1.0047857654561243,
+        "weighted_cost": 1.005674884198374,
+        "oracle_time_ratio": 1.0011195199002876,
+        "oracle_exposure_ratio": 0.9986618847384886
+      },
+      "0.5": {
+        "episodes": 150,
+        "success_rate": 0.9866666666666667,
+        "mean_return": -1.045818535032151,
+        "time_ratio": 1.007008562311749,
+        "exposure_ratio": 1.0047857654561243,
+        "weighted_cost": 1.0058971638839367,
+        "oracle_time_ratio": 1.0005220402815687,
+        "oracle_exposure_ratio": 0.9992049154856335
+      },
+      "0.6": {
+        "episodes": 150,
+        "success_rate": 0.9866666666666667,
+        "mean_return": -1.0460378509885726,
+        "time_ratio": 1.007008562311749,
+        "exposure_ratio": 1.0047857654561243,
+        "weighted_cost": 1.0061194435694991,
+        "oracle_time_ratio": 1.0001459077058465,
+        "oracle_exposure_ratio": 0.9996532532350815
+      },
+      "0.7": {
+        "episodes": 150,
+        "success_rate": 0.9866666666666667,
+        "mean_return": -1.0448413618747663,
+        "time_ratio": 1.0051614667955522,
+        "exposure_ratio": 1.0043125297566606,
+        "weighted_cost": 1.0049067856838847,
+        "oracle_time_ratio": 1.0000572226871351,
+        "oracle_exposure_ratio": 0.9997910100126061
+      },
+      "0.8": {
+        "episodes": 150,
+        "success_rate": 0.9866666666666667,
+        "mean_return": -1.0449251236626036,
+        "time_ratio": 1.0051614667955522,
+        "exposure_ratio": 1.0043125297566606,
+        "weighted_cost": 1.0049916793877738,
+        "oracle_time_ratio": 1.000011159166944,
+        "oracle_exposure_ratio": 0.9999432237609345
+      },
+      "0.9": {
+        "episodes": 150,
+        "success_rate": 0.9866666666666667,
+        "mean_return": -1.0468209609240937,
+        "time_ratio": 1.00698774340009,
+        "exposure_ratio": 1.0062416701163563,
+        "weighted_cost": 1.0069131360717167,
+        "oracle_time_ratio": 1.0000001194941417,
+        "oracle_exposure_ratio": 0.9999989063665587
+      },
+      "1": {
+        "episodes": 150,
+        "success_rate": 0.9866666666666667,
+        "mean_return": -1.0468945734880888,
+        "time_ratio": 1.00698774340009,
+        "exposure_ratio": 1.0062416701163563,
+        "weighted_cost": 1.00698774340009,
+        "oracle_time_ratio": 1.0,
+        "oracle_exposure_ratio": 1.0
+      }
+    },
+    "mean_optimality_gap": 0.0061039131141132534
+  },
+  "reload_check": {
+    "routes": 750,
+    "identical": true,
+    "routes_reached": 741
+  },
+  "perturbed_fields": {
+    "note": "Synthetic perturbation of the validation fields; not used to select any checkpoint.",
+    "summary": {
+      "episodes": 1650,
+      "mean_return": -1.0382287867586735,
+      "success_rate": 0.9878787878787879,
+      "outcomes": {
+        "reached": 1630,
+        "dead_end": 20,
+        "truncated": 0
+      },
+      "mean_steps": 70.86424242424242,
+      "by_alpha": {
+        "0": {
+          "episodes": 150,
+          "success_rate": 0.9933333333333333,
+          "mean_return": -1.0085704783345797,
+          "time_ratio": 1.0229024344044035,
+          "exposure_ratio": 0.988493770135483,
+          "weighted_cost": 0.988493770135483,
+          "oracle_time_ratio": 1.0246701500084092,
+          "oracle_exposure_ratio": 0.9809641145571425
+        },
+        "0.1": {
+          "episodes": 150,
+          "success_rate": 0.9933333333333333,
+          "mean_return": -1.011988405651959,
+          "time_ratio": 1.0229024344044035,
+          "exposure_ratio": 0.988493770135483,
+          "weighted_cost": 0.991934636562375,
+          "oracle_time_ratio": 1.019029996927333,
+          "oracle_exposure_ratio": 0.9811394913655295
+        },
+        "0.2": {
+          "episodes": 150,
+          "success_rate": 0.9866666666666667,
+          "mean_return": -1.036681759066724,
+          "time_ratio": 1.014399417485078,
+          "exposure_ratio": 0.9921962930950196,
+          "weighted_cost": 0.9966369179730313,
+          "oracle_time_ratio": 1.012920816597834,
+          "oracle_exposure_ratio": 0.98225366958314
+        },
+        "0.3": {
+          "episodes": 150,
+          "success_rate": 0.9866666666666667,
+          "mean_return": -1.0388724673398764,
+          "time_ratio": 1.014399417485078,
+          "exposure_ratio": 0.9921962930950196,
+          "weighted_cost": 0.9988572304120371,
+          "oracle_time_ratio": 1.0104557385787456,
+          "oracle_exposure_ratio": 0.983058703618611
+        },
+        "0.4": {
+          "episodes": 150,
+          "success_rate": 0.9866666666666667,
+          "mean_return": -1.044831824421869,
+          "time_ratio": 1.0129696473158638,
+          "exposure_ratio": 0.9995154340335722,
+          "weighted_cost": 1.0048971193464888,
+          "oracle_time_ratio": 1.0096788919308581,
+          "oracle_exposure_ratio": 0.9834456678283431
+        },
+        "0.5": {
+          "episodes": 150,
+          "success_rate": 0.9866666666666667,
+          "mean_return": -1.046159306799055,
+          "time_ratio": 1.0129696473158638,
+          "exposure_ratio": 0.9995154340335722,
+          "weighted_cost": 1.006242540674718,
+          "oracle_time_ratio": 1.0048935552115843,
+          "oracle_exposure_ratio": 0.9871892544083348
+        },
+        "0.6": {
+          "episodes": 150,
+          "success_rate": 0.9866666666666667,
+          "mean_return": -1.0474867891762414,
+          "time_ratio": 1.0129696473158638,
+          "exposure_ratio": 0.9995154340335722,
+          "weighted_cost": 1.007587962002947,
+          "oracle_time_ratio": 1.0040557677886743,
+          "oracle_exposure_ratio": 0.9882978186186034
+        },
+        "0.7": {
+          "episodes": 150,
+          "success_rate": 0.9866666666666667,
+          "mean_return": -1.045062654014044,
+          "time_ratio": 1.0073753992571262,
+          "exposure_ratio": 0.9998942959249615,
+          "weighted_cost": 1.005131068257477,
+          "oracle_time_ratio": 1.0014757374023566,
+          "oracle_exposure_ratio": 0.9929841461982852
+        },
+        "0.8": {
+          "episodes": 150,
+          "success_rate": 0.9866666666666667,
+          "mean_return": -1.0458007895428174,
+          "time_ratio": 1.0073753992571262,
+          "exposure_ratio": 0.9998942959249615,
+          "weighted_cost": 1.0058791785906933,
+          "oracle_time_ratio": 1.0004657867426645,
+          "oracle_exposure_ratio": 0.9956106270872241
+        },
+        "0.9": {
+          "episodes": 150,
+          "success_rate": 0.9866666666666667,
+          "mean_return": -1.0473257257991748,
+          "time_ratio": 1.007841000877433,
+          "exposure_ratio": 1.0036782130406883,
+          "weighted_cost": 1.0074247220937584,
+          "oracle_time_ratio": 1.0001421571920064,
+          "oracle_exposure_ratio": 0.9975602534807695
+        },
+        "1": {
+          "episodes": 150,
+          "success_rate": 0.9866666666666667,
+          "mean_return": -1.047736454199067,
+          "time_ratio": 1.007841000877433,
+          "exposure_ratio": 1.0036782130406883,
+          "weighted_cost": 1.007841000877433,
+          "oracle_time_ratio": 1.0,
+          "oracle_exposure_ratio": 1.0
+        }
+      },
+      "mean_optimality_gap": 0.008248394825827284
+    }
+  }
+}
