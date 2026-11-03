@@ -95,7 +95,9 @@ def resolve(target, selector="production", cache_dir=None):
 def promote(target, version):
     from spatial_model.inference.serving import load_model
     root, identity = resolve(target, str(version))
-    load_model(root, target)
+    model = load_model(root, target)
+    if model.metadata.get("fold") is not None:
+        raise ValueError("Cannot promote a LOSO fold checkpoint to production")
     name = os.environ.get(f"SPATIAL_{target.upper()}_MODEL", NAMES[target])
     client().set_registered_model_alias(name, "production", str(version))
     return identity

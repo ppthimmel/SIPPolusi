@@ -42,6 +42,11 @@ evaluation cells. Evaluation never refits preprocessing. Set `RUN_EVALUATION=Fal
 to read previously saved reports only. Evaluation overwrites reports for requested
 splits under each checkpoint's `evaluation/` directory.
 
+Incomplete runs can be inspected with all folds selected: missing completed bundles
+are skipped during reuse/evaluation and retained in the coverage report. Existing
+bundles must still match the chosen settings. Example plots use only reports marked
+`available`, and `coverage.csv` is saved even when every selected fold is missing.
+
 For interrupted ST-GNN training, set the same `RUN_ROOT`, `RUN_TRAINING=True`, and
 `RESUME=True`, with the same target, protocol, fold, seed, batch size, threads,
 device and configuration. It restores weights, optimizer, scheduler, and RNG state.
@@ -91,7 +96,9 @@ fits. NO₂ serving is fitted separately via LightGBM `protocol="serving", fold=
 which does not produce LOSO evaluation claims.
 
 Registration/promotion flags default to false. The shared `register()` API rejects
-research target/model pairings and LOSO fold checkpoints before accessing MLflow. Publishing requires an explicit
+research target/model pairings and LOSO fold checkpoints before accessing MLflow.
+Promotion also rejects LOSO checkpoints already present in the registry, before
+updating the production alias. Publishing requires an explicit
 bundle path and externally configured MLflow/MinIO environment variables; never
 put credentials into the notebook. No registry is needed for training/evaluation.
 
