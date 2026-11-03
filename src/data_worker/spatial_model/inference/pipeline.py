@@ -88,7 +88,7 @@ def run_downscale_inference(
     from spatial_model.inference.runtime import infer_registered
     grid, model_metadata, resolved_version, input_fingerprint = infer_registered(
         time_window, ground_truth, spec, settings, inputs=inputs, resolver=resolver, versions=model_versions,
-        runtime_contract=runtime_contract(graph_version, spec))
+        runtime_contract=runtime_contract(spec))
     from .provenance import TRACE_VERSION, CONFIDENCE_POLICY
     policy_identity = json.dumps(dict(graph=graph_version, trace_version=TRACE_VERSION,
                                       confidence=CONFIDENCE_POLICY), sort_keys=True)

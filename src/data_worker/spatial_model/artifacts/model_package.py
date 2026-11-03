@@ -21,7 +21,10 @@ PACKAGE_FILE = "package.json"
 KINDS = ("spatial_downscaling", "route_policy")
 REQUIRED_KEYS = ("package_format", "model_kind", "model_id", "model_version", "created_at", "contract",
                  "lineage", "environment", "inference", "evaluation", "artifacts")
-CONTRACT_KEYS = ("data_contracts_version", "graph_version")
+CONTRACT_KEYS = ("data_contracts_version",)
+# The route policy's features and actions are edge ids of one road graph. The spatial model
+# predicts per grid cell and is aggregated onto whichever graph is active, so it has no graph.
+GRAPH_BOUND_KINDS = ("route_policy",)
 
 _SEMVER = re.compile(r"^(\d+)\.(\d+)\.(\d+)$")
 _TEXT_SUFFIXES = {".json", ".toml", ".txt", ".md", ".csv", ".yml", ".yaml", ".ini", ".cfg", ".env", ".py"}
@@ -95,9 +98,11 @@ def build_package(root, *, model_kind, model_id, model_version, contract, lineag
     root = Path(root)
     if model_kind not in KINDS:
         raise PackageError(f"Unknown model kind: {model_kind!r}")
-    missing = [key for key in CONTRACT_KEYS if not contract.get(key)]
+    required = CONTRACT_KEYS + (("graph_version",) if model_kind in GRAPH_BOUND_KINDS else ())
+    missing = [key for key in required if not contract.get(key)]
     if missing or not _SEMVER.match(str(contract.get("data_contracts_version", ""))):
-        raise PackageError(f"contract needs a semantic data_contracts_version and graph_version ({missing or 'version'})")
+        raise PackageError(f"contract needs a semantic data_contracts_version" +
+                           (" and graph_version" if "graph_version" in required else "") + f" ({missing or 'version'})")
     found = scan_for_secrets(root)
     if found:
         raise PackageError("Package would carry credentials or sensitive files: " + "; ".join(found))
@@ -157,9 +162,10 @@ def package_digest(root) -> str:
 def check_compatibility(manifest, runtime) -> Compatibility:
     """Compare what the package was built for with what the runtime provides.
 
-    runtime: data_contracts_version, graph_version and optionally grid_spec_id,
-    upstream_model ({name, version, bundle_sha256} of the spatial model now in production).
-    Rejected: another contract major version, or another graph (edge ids would not match).
+    runtime: data_contracts_version, and for a route policy graph_version; optionally
+    grid_spec_id, upstream_model ({name, version, bundle_sha256} of the spatial model now in production).
+    Rejected: another contract major version; for a route policy also another graph (edge ids
+    would not match). A spatial model is not bound to the road graph, so graph_version is ignored for it.
     Flagged: a newer or older minor/patch contract, another grid spec, another upstream model.
     """
     result = Compatibility()
@@ -181,8 +187,8 @@ def check_compatibility(manifest, runtime) -> Compatibility:
         reject(f"Contract major version differs: package {built['data_contracts_version']}, runtime {runtime['data_contracts_version']}")
     elif have.groups() != want.groups():
         flag(f"Contract version differs: package {built['data_contracts_version']}, runtime {runtime['data_contracts_version']}")
-    if built.get("graph_version") != runtime["graph_version"]:
-        reject(f"Graph version differs: package {built.get('graph_version')!r}, runtime {runtime['graph_version']!r}")
+    if manifest["model_kind"] in GRAPH_BOUND_KINDS and built.get("graph_version") != runtime.get("graph_version"):
+        reject(f"Graph version differs: package {built.get('graph_version')!r}, runtime {runtime.get('graph_version')!r}")
     if runtime.get("grid_spec_id") and built.get("grid_spec_id") and built["grid_spec_id"] != runtime["grid_spec_id"]:
         flag(f"Grid spec differs: package {built['grid_spec_id']}, runtime {runtime['grid_spec_id']}")
     expected_upstream, current = manifest["lineage"].get("upstream_model"), runtime.get("upstream_model")

@@ -2,7 +2,7 @@
 
     python scripts/verify_model_packages.py route --set docs/experiments/TI-AI-09/set \\
         --out docs/experiments/TI-AI-11/route_smoke_test.json
-    python scripts/verify_model_packages.py spatial --bundle <bundle dir> --graph-version jakarta-20261005
+    python scripts/verify_model_packages.py spatial --bundle <bundle dir>
 
 `route` builds the package in a temporary directory, then loads the original set and the
 package, each in its own fresh interpreter (-I), and compares the edge sequence of every
@@ -77,7 +77,8 @@ def route(args):
 
     with tempfile.TemporaryDirectory() as tmp:
         package_dir = Path(tmp) / "package"
-        manifest = package_policy_set(args.set, package_dir, data_contracts_version=CONTRACT_VERSION)
+        manifest = package_policy_set(args.set, package_dir, data_contracts_version=CONTRACT_VERSION,
+                                      decision=args.decision)
         original, packaged = Path(tmp) / "original.json", Path(tmp) / "package.json"
         run_worker("set", args.set, original, args.pairs, CONTRACT_VERSION)
         run_worker("package", package_dir, packaged, args.pairs, CONTRACT_VERSION)
@@ -104,7 +105,7 @@ def spatial(args):
     from spatial_model.inference.serving import load_model
     manifest = verify_package(args.bundle, args.target)
     target = manifest["lineage"]["target"]
-    loaded = load_model(args.bundle, target, runtime_contract(args.graph_version))
+    loaded = load_model(args.bundle, target, runtime_contract())
     result = {"result": "pass", "target": target, "model_version": manifest["model_version"],
               "compatibility": loaded.compatibility.as_dict(), "files": len(manifest["artifacts"])}
     print(json.dumps(result, indent=2))
@@ -118,6 +119,7 @@ def main():
     p.add_argument("--set", type=Path, required=True)
     p.add_argument("--out", type=Path, required=True)
     p.add_argument("--pairs", type=int, default=20)
+    p.add_argument("--decision", help="evaluation outcome of this set, recorded in package.json (none if unevaluated)")
     p = sub.add_parser("route-worker")
     p.add_argument("--kind", choices=("set", "package"), required=True)
     p.add_argument("--model-dir", required=True)
@@ -127,7 +129,6 @@ def main():
     p = sub.add_parser("spatial")
     p.add_argument("--bundle", type=Path, required=True)
     p.add_argument("--target", choices=("pm25", "no2"))
-    p.add_argument("--graph-version", required=True)
     args = parser.parse_args()
     if args.command == "route-worker":
         sys.path.insert(0, str(ROOT))

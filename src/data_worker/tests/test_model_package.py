@@ -9,7 +9,6 @@ from spatial_model.artifacts.model_package import PACKAGE_FILE, PackageError, Pa
 from spatial_model.artifacts.packaging import DATA_CONTRACTS_VERSION, package_bundle, runtime_contract, verify_package
 from spatial_model.inference.serving import check_package
 
-GRAPH = "jakarta-20261005"
 
 
 @pytest.fixture
@@ -30,9 +29,9 @@ def bundle(tmp_path):
 
 
 def test_package_wraps_a_valid_bundle(bundle):
-    manifest = package_bundle(bundle, graph_version=GRAPH, grid_spec_id="g1")
+    manifest = package_bundle(bundle, grid_spec_id="g1")
     assert manifest["model_kind"] == "spatial_downscaling" and manifest["model_id"] == "spatial-downscaling-no2"
-    assert manifest["contract"] == {"data_contracts_version": DATA_CONTRACTS_VERSION, "graph_version": GRAPH,
+    assert manifest["contract"] == {"data_contracts_version": DATA_CONTRACTS_VERSION,
                                     "grid_spec_id": "g1", "feature_matrix_version": "ds-v0.3.0"}
     assert manifest["lineage"]["code_revision"] == "abc123" and manifest["lineage"]["upstream_model"] is None
     assert manifest["evaluation"]["headline_metrics"] == {"test": {"rmse": 27.4, "r2": 0.7}}
@@ -42,12 +41,12 @@ def test_package_wraps_a_valid_bundle(bundle):
 
 def test_bundle_still_validates_with_a_package_inside(bundle):
     from spatial_model.artifacts.bundles import validate_bundle
-    package_bundle(bundle, graph_version=GRAPH)
+    package_bundle(bundle)
     assert validate_bundle(bundle, "no2")["target"] == "no2"
 
 
 def test_altered_or_extra_file_fails_verification(bundle):
-    package_bundle(bundle, graph_version=GRAPH)
+    package_bundle(bundle)
     (bundle / "model.txt").write_text("swapped")
     with pytest.raises(ValueError, match="integrity failure: model.txt"):
         verify_package(bundle)
@@ -61,7 +60,7 @@ def test_altered_or_extra_file_fails_verification(bundle):
 def test_an_invalid_bundle_is_not_packaged(bundle):
     (bundle / "model.txt").write_text("swapped")
     with pytest.raises(ValueError, match="integrity"):
-        package_bundle(bundle, graph_version=GRAPH)
+        package_bundle(bundle)
     assert not (bundle / PACKAGE_FILE).exists()
 
 
@@ -71,23 +70,30 @@ def test_credentials_in_the_bundle_block_packaging(bundle):
     hashes["hashes"]["metadata.json"] = digest(bundle / "metadata.json")
     (bundle / "bundle.json").write_text(json.dumps(hashes))
     with pytest.raises(PackageError, match="credentials"):
-        package_bundle(bundle, graph_version=GRAPH)
+        package_bundle(bundle)
 
 
 def test_check_package_compatible_flagged_and_rejected(bundle):
-    package_bundle(bundle, graph_version=GRAPH, grid_spec_id="g1")
-    assert check_package(bundle, runtime_contract(GRAPH)).status == "compatible"
+    package_bundle(bundle, grid_spec_id="g1")
+    assert check_package(bundle, runtime_contract()).status == "compatible"
     assert check_package(bundle).status == "compatible"
-    minor = {**runtime_contract(GRAPH), "data_contracts_version": "1.9.0"}
+    minor = {**runtime_contract(), "data_contracts_version": "1.9.0"}
     assert check_package(bundle, minor).status == "flagged"
-    with pytest.raises(PackageIncompatible, match="Graph version differs"):
-        check_package(bundle, runtime_contract("jakarta-other"))
+    assert check_package(bundle, {**runtime_contract(), "grid_spec_id": "g2"}).status == "flagged"
     with pytest.raises(PackageIncompatible, match="major version"):
-        check_package(bundle, {**runtime_contract(GRAPH), "data_contracts_version": "2.0.0"})
+        check_package(bundle, {**runtime_contract(), "data_contracts_version": "2.0.0"})
+
+
+def test_a_spatial_package_loads_on_a_different_road_graph(bundle):
+    """The spatial model predicts per grid cell; a new OSM graph must not take it out of service."""
+    package_bundle(bundle)
+    for graph in ("jakarta-20261005", "jakarta-20270101"):
+        runtime = {**runtime_contract(), "graph_version": graph}
+        assert check_package(bundle, runtime).status == "compatible"
 
 
 def test_bundle_without_package_loads_flagged_as_unpackaged(bundle):
-    result = check_package(bundle, runtime_contract(GRAPH))
+    result = check_package(bundle, runtime_contract())
     assert result.status == "flagged" and "unpackaged" in result.reasons[0]
 
 
@@ -100,7 +106,7 @@ def test_incompatible_package_falls_back_to_idw_with_a_clear_reason(bundle, monk
     from spatial_model.inference import serving
     from spatial_model.inference.runtime import infer_registered
 
-    package_bundle(bundle, graph_version=GRAPH)
+    package_bundle(bundle, grid_spec_id="not-this-grid")
     spec = GridSpec.from_bbox((106.8, -6.2, 106.801, -6.199))
     gt = pd.DataFrame(dict(station_id=["s", "s"], lon=[106.8] * 2, lat=[-6.2] * 2, pollutant=["pm25", "no2"], value=[10., 20.]))
     start = pd.Timestamp("2026-09-29T12:00Z").to_pydatetime()
@@ -113,7 +119,7 @@ def test_incompatible_package_falls_back_to_idw_with_a_clear_reason(bundle, monk
         return infer_registered(window, gt, spec, {"power": 2, "neighbors": 8}, inputs=inputs,
                                 resolver=lambda target, selector: (bundle, f"{target}:1"), runtime_contract=runtime)[1]
 
-    meta = run(runtime_contract("jakarta-other", spec))
+    meta = run({"data_contracts_version": "2.0.0"})
     assert meta["no2"]["source"] == "idw"
     assert meta["no2"]["fallback_reason"] == "load_bundle:PackageIncompatible"
     assert meta["no2"]["requested_model_version"] == "no2:1"

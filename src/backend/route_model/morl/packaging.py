@@ -17,6 +17,9 @@ from .infer import load_policy
 from .features import FEATURE_VERSION
 
 MODEL_ID = "morl-route-policy"
+#: Says which loader a registered version needs; model_id alone does not. A single
+#: preference-conditioned policy (load_scalarized_policy) would be another family.
+POLICY_FAMILY = "fixed_preference_set"
 _SET_FILES = ("set_manifest.json", "od_pairs.json", "evaluation.json")
 _MEMBER_FILES = ("manifest.json", "config.json", "evaluation.json")
 
@@ -29,11 +32,13 @@ def runtime_contract(graph_version, data_contracts_version, upstream_model=None)
     return runtime
 
 
-def package_policy_set(set_dir, out, *, data_contracts_version, upstream_model=None) -> dict:
+def package_policy_set(set_dir, out, *, data_contracts_version, upstream_model=None, decision=None) -> dict:
     """Copy the selected checkpoints and manifests of set_dir into out and write out/package.json.
 
     upstream_model: {name, version, bundle_sha256} of the spatial model whose exposure fields the
     set was trained on, when known. It is recorded; a different one in production only flags.
+    decision: the evaluation outcome for THIS set (for example the TI-AI-10 outcome and its
+    consequence). Recorded as given; None when the set has not been evaluated. Never inherited.
     """
     set_dir, out = Path(set_dir), Path(out)
     manifest = json.loads((set_dir / "set_manifest.json").read_text(encoding="utf-8"))
@@ -83,11 +88,12 @@ def package_policy_set(set_dir, out, *, data_contracts_version, upstream_model=N
                  "upstream_model": upstream_model},
         environment={"python": first["versions"]["python"],
                      "libraries": {k: v for k, v in first["versions"].items() if k != "python"}},
-        inference={"entrypoint": "route_model.morl.infer.load_policy_set", "device": "cpu",
+        inference={"entrypoint": "route_model.morl.packaging.load_packaged_policy_set", "policy_family": POLICY_FAMILY,
+                   "device": "cpu",
                    "alphas": [m["alpha"] for m in manifest["members"]], "selection_rule": manifest["selection_rule"],
                    "fallback": "A* route when the policy returns PolicyFailure"},
         evaluation={"validation": manifest.get("evaluation"), "protocol": "docs/experiments/TI-AI-10/README.md",
-                    "decision": "conditional_candidate: deploy with the A* fallback, no exposure-reduction claim"})
+                    "decision": decision})
 
 
 def load_packaged_policy_set(package_dir, runtime, device="cpu"):
@@ -110,4 +116,4 @@ def load_packaged_policy_set(package_dir, runtime, device="cpu"):
     return policies, package, compatibility
 
 
-__all__ = ["MODEL_ID", "runtime_contract", "package_policy_set", "load_packaged_policy_set", "package_digest", "PACKAGE_FILE"]
+__all__ = ["MODEL_ID", "POLICY_FAMILY", "runtime_contract", "package_policy_set", "load_packaged_policy_set", "package_digest", "PACKAGE_FILE"]

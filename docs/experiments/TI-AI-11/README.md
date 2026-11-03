@@ -9,7 +9,7 @@ environment it needs, and its evaluation. A loader verifies all of it before the
 | `model_kind` / `model_id` | `spatial_downscaling` / `spatial-downscaling-pm25`, `spatial-downscaling-no2` | `route_policy` / `morl-route-policy` |
 | Package contents | the `export_bundle` bundle (`bundle.json`, `best.pt` or `model.txt` + `metadata.json`, `stations.parquet`, metrics) + `package.json` | `set_manifest.json`, `od_pairs.json`, each member's selected `best.pt`, `manifest.json`, `config.json`, `evaluation.json` + `package.json` |
 | Made by | `spatial_model.artifacts.packaging.package_bundle` | `route_model.morl.packaging.package_policy_set` |
-| Loaded by | `spatial_model.inference.serving.load_model(dir, target, runtime_contract)` | `route_model.morl.packaging.load_packaged_policy_set(dir, runtime_contract)` |
+| Loaded by | `spatial_model.inference.serving.load_model(dir, target, runtime_contract)` | `route_model.morl.packaging.load_packaged_policy_set(dir, runtime_contract)` (`policy_family: fixed_preference_set`) |
 | Registry name | `spatial-downscaling-pm25`, `spatial-downscaling-no2` | `morl-route-policy` |
 
 The shared code is `model_package.py`. The backend and the Data Worker are separate containers, so
@@ -20,10 +20,11 @@ a test fails if the copies differ. Edit one and copy it over the other.
 
 ```
 package_format, model_kind, model_id, model_version, created_at
-contract:    data_contracts_version, graph_version, [grid_spec_id, feature_matrix_version | feature_version, mode]
+contract:    data_contracts_version, [grid_spec_id, feature_matrix_version]            (spatial: no graph version)
+             data_contracts_version, graph_version, feature_version, mode             (route policy)
 lineage:     dataset, snapshot/graph/field hashes, code_revision, config hashes, upstream_model (route -> spatial)
 environment: python, libraries (pinned versions)
-inference:   entrypoint, device, inputs/outputs, fallback
+inference:   entrypoint, policy_family (route), device, inputs/outputs, fallback
 evaluation:  headline metrics, protocol, decision
 artifacts:   { relative path: sha256 }   # every file, including inner manifests
 ```
@@ -43,7 +44,7 @@ policies, package, compatibility = load_packaged_policy_set(
 # Spatial model (Data Worker): the pipeline does this on every run
 from spatial_model.artifacts.packaging import runtime_contract
 from spatial_model.inference.serving import load_model
-loaded = load_model(bundle_dir, "pm25", runtime_contract(graph_version, grid_spec))
+loaded = load_model(bundle_dir, "pm25", runtime_contract(grid_spec))
 loaded.compatibility  # compatible | flagged | rejected is raised
 ```
 
@@ -55,10 +56,11 @@ loaded.compatibility  # compatible | flagged | rejected is raised
 
 | Package built for | Runtime provides | Result |
 |---|---|---|
-| same contract, same graph | same | compatible |
+| same contract (and, for a route policy, same graph) | same | compatible |
 | contract 1.x.y | 1.a.b (a.b differs) | **flagged**: loads, status recorded |
 | contract 1.x.y | 2.x.y or another major | **rejected** (`PackageIncompatible`) |
-| graph `jakarta-A` | graph `jakarta-B` | **rejected**: edge ids would not match |
+| route policy on graph `jakarta-A` | graph `jakarta-B` | **rejected**: its actions are edge ids of one graph |
+| spatial model, any graph | any graph | **compatible**: it predicts per grid cell; the Worker aggregates onto whichever graph is active, so a new OSM graph does not take it out of service |
 | grid spec A | grid spec B | flagged |
 | route policy on spatial model X | spatial model Y in production | flagged |
 | unknown `package_format`, changed file, unlisted file, path outside the package | any | rejected (`PackageError`) |
@@ -73,8 +75,8 @@ In the backend a loader error is raised to the caller, which already falls back 
 ## Verification
 
 ```bash
-python scripts/verify_model_packages.py route --set docs/experiments/TI-AI-09/set --out docs/experiments/TI-AI-11/route_smoke_test.json
-python scripts/verify_model_packages.py spatial --bundle <bundle dir> --graph-version jakarta-20261005
+python scripts/verify_model_packages.py route --set docs/experiments/TI-AI-09/set --out docs/experiments/TI-AI-11/route_smoke_test.json --decision "<TI-AI-10 outcome of this set>"
+python scripts/verify_model_packages.py spatial --bundle <bundle dir>
 python -m pytest src/backend/tests/test_model_package.py        # from the repo root
 python -m pytest tests/test_model_package.py                     # from src/data_worker
 ```
@@ -92,6 +94,16 @@ Limits of this evidence:
 - No spatial serving model was available, so the spatial reload against a reference run
   (criteria 1 and 4 for that model) is **pending**. The code path is covered with a hand-made
   bundle in `tests/test_model_package.py`.
+
+## Decision field and policy families
+
+`evaluation.decision` is passed in for the set being packaged (`--decision`); it is never inherited, and is `null`
+for a set that has not been evaluated. The example carries the TI-AI-10 outcome of the committed set.
+`inference.policy_family` tells the backend which loader a registered version needs. The committed set is
+`fixed_preference_set` (`load_packaged_policy_set`). The scalarized policy on `dev` (TI-AI-09 PIC A,
+`load_scalarized_policy`) is a different family and has no packager yet; `package_policy_set` refuses it because
+it has no `set_manifest.json`. If TI-AI-12 picks it, the follow-up is `package_conditioned_policy` and a second
+`policy_family` value.
 
 ## Registry (MLflow)
 

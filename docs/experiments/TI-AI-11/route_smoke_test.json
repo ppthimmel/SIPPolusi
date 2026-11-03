@@ -15,7 +15,7 @@
     "model_id": "morl-route-policy",
     "model_version": "20261102T145533Z-multi-policy-bike-v1-201e7d41",
     "files": 23,
-    "bytes": 2078049
+    "bytes": 2078119
   },
   "environment": {
     "python": "3.15.1",

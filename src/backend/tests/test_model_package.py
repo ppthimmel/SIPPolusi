@@ -109,11 +109,14 @@ class PackageManifestTest(unittest.TestCase):
         (self.root / "model.bin").write_bytes(b"w")
         for contract in ({"data_contracts_version": "1.0.0"}, {"data_contracts_version": "one", "graph_version": "g"}):
             with self.assertRaisesRegex(PackageError, "contract"):
-                package(self.root, contract=contract)
+                package(self.root, contract=contract)  # a route policy needs its graph version
+        manifest = package(self.root, model_kind="spatial_downscaling", contract={"data_contracts_version": "1.0.0"})
+        self.assertNotIn("graph_version", manifest["contract"])
 
 
 class CompatibilityTest(unittest.TestCase):
-    manifest = {"contract": dict(CONTRACT, grid_spec_id="g1"), "lineage": {"upstream_model": {"bundle_sha256": "a"}}}
+    manifest = {"model_kind": "route_policy", "contract": dict(CONTRACT, grid_spec_id="g1"),
+                "lineage": {"upstream_model": {"bundle_sha256": "a"}}}
 
     def check(self, **runtime):
         return check_compatibility(self.manifest, {**CONTRACT, **runtime})
@@ -128,6 +131,18 @@ class CompatibilityTest(unittest.TestCase):
         with self.assertRaises(PackageIncompatible) as caught:
             require_compatible(self.manifest, {**CONTRACT, "graph_version": "other"})
         self.assertIn("Graph version differs", str(caught.exception))
+
+    def test_a_spatial_model_is_not_bound_to_the_road_graph(self):
+        spatial = {"model_kind": "spatial_downscaling", "lineage": {},
+                   "contract": {"data_contracts_version": "1.0.0", "grid_spec_id": "g1"}}
+        for graph in ("jakarta-20261005", "jakarta-20270101", None):
+            runtime = {"data_contracts_version": "1.0.0", "grid_spec_id": "g1"}
+            if graph:
+                runtime["graph_version"] = graph
+            self.assertEqual(check_compatibility(spatial, runtime).status, "compatible", graph)
+        self.assertEqual(check_compatibility(spatial, {"data_contracts_version": "2.0.0"}).status, "rejected")
+        self.assertEqual(check_compatibility(spatial, {"data_contracts_version": "1.0.0", "grid_spec_id": "g2"}).status,
+                         "flagged")
 
     def test_minor_drift_grid_and_upstream_are_flagged_not_rejected(self):
         for change in ({"data_contracts_version": "1.1.0"}, {"grid_spec_id": "g2"},
@@ -197,6 +212,16 @@ class RoutePackageTest(unittest.TestCase):
         for alpha, model in original.items():
             for name, value in model.state_dict().items():
                 self.assertTrue(torch.equal(value, packaged[alpha].state_dict()[name]))
+
+    def test_the_package_names_its_loader_family_and_takes_the_decision_as_given(self):
+        make_set(self.set_dir)
+        manifest = package_policy_set(self.set_dir, self.out, data_contracts_version="1.0.0")
+        self.assertEqual(manifest["inference"]["entrypoint"], "route_model.morl.packaging.load_packaged_policy_set")
+        self.assertEqual(manifest["inference"]["policy_family"], "fixed_preference_set")
+        self.assertIsNone(manifest["evaluation"]["decision"])
+        second = Path(self.tmp.name) / "second"
+        manifest = package_policy_set(self.set_dir, second, data_contracts_version="1.0.0", decision="candidate: x")
+        self.assertEqual(manifest["evaluation"]["decision"], "candidate: x")
 
     def test_only_selected_checkpoints_are_packaged(self):
         make_set(self.set_dir)

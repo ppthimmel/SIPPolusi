@@ -39,3 +39,12 @@ python -m spatial_model.training package <bundle> --graph-version jakarta-202610
 python -m spatial_model.training register <bundle>
 python -m spatial_model.training register-route <direktori paket route>
 ```
+
+**Tanpa autentikasi.** Dengan `--serve-artifacts`, siapa pun yang bisa menjangkau server MLflow dapat mengunggah,
+mengunduh, dan menghapus artefak di *bucket* lewat server ini; MLflow tidak memakai autentikasi secara bawaan.
+Ini hanya dapat diterima selama `model_registry` tidak punya domain publik di Railway dan hanya dijangkau lewat
+*private networking* (`modelregistry.railway.internal`). Periksa hal ini sebelum mengatur variabel di atas.
+
+`register_route_package` / `resolve_route_package` berada di Data Worker. Backend adalah kontainer terpisah dan tidak
+dapat mengimpornya, jadi TI-SE-07 membutuhkan *resolve* di sisi backend (unduh dari *registry* lalu
+`load_packaged_policy_set`).

@@ -30,7 +30,7 @@
     "graph_version": "jakarta-20261005",
     "mode": "bike"
   },
-  "created_at": "2026-11-03T12:38:33+00:00",
+  "created_at": "2026-11-03T13:54:10+00:00",
   "environment": {
     "libraries": {
       "numpy": "2.5.4",
@@ -39,7 +39,7 @@
     "python": "3.14.3"
   },
   "evaluation": {
-    "decision": "conditional_candidate: deploy with the A* fallback, no exposure-reduction claim",
+    "decision": "conditional_candidate (TI-AI-10): deploy with the A* fallback, no exposure-reduction claim",
     "protocol": "docs/experiments/TI-AI-10/README.md",
     "validation": {
       "mean_optimality_gap": 0.0061039131141132534,
@@ -61,8 +61,9 @@
       1.0
     ],
     "device": "cpu",
-    "entrypoint": "route_model.morl.infer.load_policy_set",
+    "entrypoint": "route_model.morl.packaging.load_packaged_policy_set",
     "fallback": "A* route when the policy returns PolicyFailure",
+    "policy_family": "fixed_preference_set",
     "selection_rule": "nearest alpha; on a tie the lower alpha"
   },
   "lineage": {

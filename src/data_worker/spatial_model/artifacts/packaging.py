@@ -18,9 +18,12 @@ _INFERENCE = {
 }
 
 
-def runtime_contract(graph_version, spec=None, upstream_model=None) -> dict:
-    """What this Worker run provides; compared with the package's contract at load time."""
-    runtime = {"data_contracts_version": DATA_CONTRACTS_VERSION, "graph_version": graph_version}
+def runtime_contract(spec=None, upstream_model=None) -> dict:
+    """What this Worker run provides; compared with the package's contract at load time.
+
+    No graph version: the spatial model predicts per grid cell and is not bound to the road graph.
+    """
+    runtime = {"data_contracts_version": DATA_CONTRACTS_VERSION}
     if spec is not None:
         from spatial_model.inference.aggregate import grid_spec_id
         runtime["grid_spec_id"] = grid_spec_id(spec)
@@ -29,7 +32,7 @@ def runtime_contract(graph_version, spec=None, upstream_model=None) -> dict:
     return runtime
 
 
-def package_bundle(bundle, *, graph_version, grid_spec_id=None, feature_matrix_version=None,
+def package_bundle(bundle, *, grid_spec_id=None, feature_matrix_version=None,
                    data_contracts_version=DATA_CONTRACTS_VERSION) -> dict:
     """Write package.json into a bundle made by export_bundle, after validating the bundle."""
     bundle = Path(bundle)
@@ -44,7 +47,7 @@ def package_bundle(bundle, *, graph_version, grid_spec_id=None, feature_matrix_v
     return build_package(
         bundle, model_kind="spatial_downscaling", model_id=f"spatial-downscaling-{target}",
         model_version=f"{manifest['dataset']}-{package_bundle_hash(bundle)[:12]}",
-        contract={"data_contracts_version": data_contracts_version, "graph_version": graph_version,
+        contract={"data_contracts_version": data_contracts_version,
                   "grid_spec_id": grid_spec_id, "feature_matrix_version": feature_matrix_version or manifest["dataset"]},
         lineage={"dataset_id": manifest["dataset"], "snapshot_hashes": manifest["snapshot_hashes"],
                  "code_revision": manifest["code_revision"], "config_hashes": manifest["config_hashes"],
