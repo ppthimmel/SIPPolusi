@@ -174,5 +174,9 @@
     "python": "3.14.3",
     "torch": "2.15.0",
     "threads": 1
+  },
+  "summaries_rebuilt_from": {
+    "file": "scenarios.jsonl.gz",
+    "uncompressed_sha256": "b37d79f5fe77d11084c68420ac5d71c4b19fb174a4ee477bee75b4fe4a4463ab"
   }
 }

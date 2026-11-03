@@ -23,13 +23,23 @@
       "target_reduction_pct": 4.0,
       "median_added_time_pct": 0.099,
       "target_added_time_pct": 20.0,
-      "passed": false
+      "passed": false,
+      "optimal": {
+        "median_exposure_reduction_pct": -0.0,
+        "median_added_time_pct": 0.0,
+        "reachable": false
+      }
     },
     "eai05": {
       "fulfilled_rate": 0.545,
       "shifted_rate": 0.08,
       "target": 0.8,
-      "passed": false
+      "passed": false,
+      "optimal": {
+        "fulfilled_rate": 1.0,
+        "shifted_rate": 0.24,
+        "reachable": true
+      }
     }
   }
 }

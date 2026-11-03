@@ -8,13 +8,20 @@ docs/experiments/TI-AI-10/PROTOCOL.md defines the scenarios, metrics and decisio
 Each scenario holds an OD pair and a time window fixed, so every method sees the same
 graph, exposure table and references. `--split test` refuses to run on a tree with
 uncommitted changes, so the commit in the output proves the criteria came first.
+
+    python -m src.backend.route_model.morl.evaluate_candidate --rebuild --out docs/experiments/TI-AI-10/results
+
+recomputes summary.json and decision.json from the recorded routes and criteria. It reads
+no field and runs no policy, so the test split is not read again.
 """
 from __future__ import annotations
 
 import argparse
 import copy
 import datetime as dt
+import gzip
 import hashlib
+import io
 import json
 import math
 import platform
@@ -36,6 +43,7 @@ from .resources import thread_limit
 from .train import ROOT, build_envs, config_digest, git_state
 
 BOOTSTRAP_SAMPLES = 1000
+SCENARIOS = "scenarios.jsonl.gz"
 
 
 class DirtyTree(RuntimeError):
@@ -149,13 +157,13 @@ def direction_counts(records) -> dict:
                                  and r["policy"]["time_s"] > r["fastest"]["time_s"] for r in differ)}
 
 
-def preference_fulfilment(records) -> dict:
+def preference_fulfilment(records, method="policy") -> dict:
     """EAI-05. An OD pair is fulfilled when moving from alpha 1 to alpha 0 does not raise exposure
     and does not shorten the time. Identical routes satisfy this without showing any
     response, so they are counted apart: `shifted` is what demonstrates one."""
     by_od = {}
     for record in records:
-        by_od.setdefault(record["od_id"], {})[record["alpha"]] = record["policy"]
+        by_od.setdefault(record["od_id"], {})[record["alpha"]] = record[method]
     usable = fulfilled = shifted = 0
     for routes in by_od.values():
         time_first, clean_first = routes.get(1.0), routes.get(0.0)
@@ -204,6 +212,7 @@ def summarize(records, budget_ms) -> dict:
         "fastest_search_ms": {"median": statistics.median(fastest_ms), "p95": fastest_ms[int(len(fastest_ms) * 0.95)],
                               "max": fastest_ms[-1]},
         "by_alpha": by_alpha, "preference": preference_fulfilment(records),
+        "preference_optimal": preference_fulfilment(records, "optimal"),
     }
 
 
@@ -222,16 +231,26 @@ def decide(summary, criteria) -> dict:
     }
     reduction = -exposure_change["median"] if exposure_change else None
     fulfilled = summary["preference"]["fulfilled_rate"]
+    # The optimum on the same scenarios: whether these fields allow each target at all. It never changes `passed`.
+    best_reduction, best_time = -default["optimal"]["exposure"]["median"], default["optimal"]["time"]["median"]
+    best_preference = summary["preference_optimal"]
     research = {
         "eai04": {"median_exposure_reduction_pct": reduction,
                   "target_reduction_pct": criteria["eai04_median_exposure_reduction_min_pct"],
                   "median_added_time_pct": time_change["median"] if time_change else None,
                   "target_added_time_pct": criteria["eai04_median_added_time_max_pct"],
                   "passed": reduction is not None and reduction >= criteria["eai04_median_exposure_reduction_min_pct"]
-                  and time_change["median"] <= criteria["eai04_median_added_time_max_pct"]},
+                  and time_change["median"] <= criteria["eai04_median_added_time_max_pct"],
+                  "optimal": {"median_exposure_reduction_pct": best_reduction, "median_added_time_pct": best_time,
+                              "reachable": best_reduction >= criteria["eai04_median_exposure_reduction_min_pct"]
+                              and best_time <= criteria["eai04_median_added_time_max_pct"]}},
         "eai05": {"fulfilled_rate": fulfilled, "shifted_rate": summary["preference"]["shifted_rate"],
                   "target": criteria["eai05_fulfilled_min"],
-                  "passed": fulfilled is not None and fulfilled >= criteria["eai05_fulfilled_min"]},
+                  "passed": fulfilled is not None and fulfilled >= criteria["eai05_fulfilled_min"],
+                  "optimal": {"fulfilled_rate": best_preference["fulfilled_rate"],
+                              "shifted_rate": best_preference["shifted_rate"],
+                              "reachable": best_preference["fulfilled_rate"] is not None
+                              and best_preference["fulfilled_rate"] >= criteria["eai05_fulfilled_min"]}},
     }
     technical = all(g["passed"] for g in gates.values())
     targets = all(t["passed"] for t in research.values())
@@ -240,6 +259,21 @@ def decide(summary, criteria) -> dict:
 
 
 # ------------------------------------------------------------------ run
+
+def scenario_writer(out):
+    # mtime=0, so the same records always give the same bytes.
+    return io.TextIOWrapper(gzip.GzipFile(Path(out) / SCENARIOS, "wb", mtime=0), encoding="utf-8", newline="\n")
+
+
+def read_scenarios(out) -> list[dict]:
+    with gzip.open(Path(out) / SCENARIOS, "rt", encoding="utf-8") as stream:
+        return [json.loads(line) for line in stream]
+
+
+def write_results(out, **payloads):
+    for name, payload in payloads.items():
+        (Path(out) / f"{name}.json").write_text(json.dumps(payload, indent=2, allow_nan=False), encoding="utf-8")
+
 
 def sample_scenarios(router, config, split_seed, split):
     """Per stratum, OD pairs of `split` and a rotating time window, so each window is covered."""
@@ -273,7 +307,7 @@ def run(config, fields_dir, out, *, split, graph_dir=DEFAULT_GRAPH, router=None,
     out.mkdir(parents=True, exist_ok=True)
     summaries, primary = {}, next(s["name"] for s in config["strata"] if s["primary"])
     wall = time.perf_counter()
-    with (out / "scenarios.jsonl").open("w", encoding="utf-8") as stream:
+    with scenario_writer(out) as stream:
         for name, (pairs, _) in strata.items():
             # One RouteEnv per window: the exposure table every method reads, missing edges at the median.
             envs, fields = build_envs(router, fields_dir, pairs, env_config, split, set_config["seed"])
@@ -309,11 +343,28 @@ def run(config, fields_dir, out, *, split, graph_dir=DEFAULT_GRAPH, router=None,
             for name, (pairs, stats) in strata.items()},
         "versions": {"python": platform.python_version(), "torch": torch.__version__, "threads": torch.get_num_threads()},
     }
-    for name, payload in (("manifest", manifest), ("summary", summaries), ("decision", decision)):
-        (out / f"{name}.json").write_text(json.dumps(payload, indent=2, allow_nan=False), encoding="utf-8")
+    write_results(out, manifest=manifest, summary=summaries, decision=decision)
     (out / "scenario_od_pairs.json").write_text(json.dumps(
         {name: [vars(p) for p in pairs] for name, (pairs, _) in strata.items()}, indent=2), encoding="utf-8")
     write_candidate(out, set_manifest, set_dir, decision, config, state)
+    return {"manifest": manifest, "summary": summaries, "decision": decision}
+
+
+def rebuild_summaries(out) -> dict:
+    """summary.json and decision.json again, from the recorded routes under the recorded criteria."""
+    out = Path(out)
+    manifest = json.loads((out / "manifest.json").read_text(encoding="utf-8"))
+    config = manifest["config"]
+    groups = {}
+    for record in read_scenarios(out):
+        groups.setdefault(record["stratum"], {}).setdefault(record["fields"], []).append(record)
+    summaries = {name: {kind: summarize(records, config["criteria"]["inference_budget_ms"])
+                        for kind, records in kinds.items()} for name, kinds in groups.items()}
+    primary = next(s["name"] for s in config["strata"] if s["primary"])
+    decision = decide(summaries[primary]["real"], config["criteria"])
+    manifest["summaries_rebuilt_from"] = {"file": SCENARIOS, "uncompressed_sha256": hashlib.sha256(
+        gzip.decompress((out / SCENARIOS).read_bytes())).hexdigest()}
+    write_results(out, manifest=manifest, summary=summaries, decision=decision)
     return {"manifest": manifest, "summary": summaries, "decision": decision}
 
 
@@ -345,15 +396,21 @@ def write_candidate(out, set_manifest, set_dir, decision, config, state):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--config", required=True, type=Path)
-    parser.add_argument("--fields", required=True, type=Path)
+    parser.add_argument("--config", type=Path)
+    parser.add_argument("--fields", type=Path)
     parser.add_argument("--out", required=True, type=Path)
+    parser.add_argument("--rebuild", action="store_true", help="only recompute the summaries from the routes in --out")
     parser.add_argument("--graph-dir", type=Path, default=DEFAULT_GRAPH)
     parser.add_argument("--split", choices=("val", "test"), default="test",
                         help="val only checks the pipeline, on pairs sampled from the validation blocks")
     args = parser.parse_args()
-    config = json.loads(args.config.read_text(encoding="utf-8"))
-    result = run(config, args.fields, args.out, split=args.split, graph_dir=args.graph_dir)
+    if args.rebuild:
+        result = rebuild_summaries(args.out)
+    elif args.config and args.fields:
+        config = json.loads(args.config.read_text(encoding="utf-8"))
+        result = run(config, args.fields, args.out, split=args.split, graph_dir=args.graph_dir)
+    else:
+        parser.error("--config and --fields are required unless --rebuild is given")
     print(json.dumps(result["decision"], indent=2))
 
 

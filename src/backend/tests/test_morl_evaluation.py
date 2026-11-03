@@ -1,5 +1,7 @@
 """TI-AI-10: paired route evaluation, failure handling and the decision rule."""
+import gzip
 import json
+import shutil
 import tempfile
 import unittest
 from pathlib import Path
@@ -125,6 +127,13 @@ class SummaryTests(unittest.TestCase):
         self.assertEqual((result["od_pairs"], result["usable"], result["fulfilled"], result["shifted"]), (4, 3, 2, 1))
         self.assertAlmostEqual(result["fulfilled_rate"], 2 / 3)
 
+    def test_the_preference_can_be_measured_on_the_optimum_too(self):
+        rows = [record("a", 0.0, route(110.0, 110.0, "wrong"), optimal=route(110.0, 90.0, "clean")),
+                record("a", 1.0, route(100.0, 100.0, "fast"), optimal=route(100.0, 100.0, "fast"))]
+        summary = evaluation.summarize(rows, 4500)
+        self.assertEqual((summary["preference"]["fulfilled"], summary["preference"]["shifted"]), (0, 0))
+        self.assertEqual((summary["preference_optimal"]["fulfilled"], summary["preference_optimal"]["shifted"]), (1, 1))
+
 
 def passing_summary():
     good = route(105.0, 90.0, "clean")
@@ -151,6 +160,28 @@ class DecisionTests(unittest.TestCase):
         self.assertFalse(decision["research_targets"]["eai04"]["passed"])
         self.assertTrue(decision["research_targets"]["eai05"]["passed"])   # identical routes fulfil it...
         self.assertEqual(decision["research_targets"]["eai05"]["shifted_rate"], 0.0)  # ...and this shows it means little
+
+    def test_the_optimum_shows_what_is_reachable_but_never_decides(self):
+        # The policy misses EAI-05 although the optimum could reach it: a shortfall of the policy.
+        rows = []
+        for i in range(30):
+            rows += [record(f"od{i}", 0.0, route(110.0, 110.0, "wrong"), optimal=route(110.0, 90.0, "clean")),
+                     record(f"od{i}", 0.5, route(100.0, 100.0, "fast"), optimal=route(105.0, 90.0, "clean")),
+                     record(f"od{i}", 1.0, route(100.0, 100.0, "fast"))]
+        decision = self.decide(rows)
+        eai04, eai05 = decision["research_targets"]["eai04"], decision["research_targets"]["eai05"]
+        self.assertFalse(eai05["passed"])
+        self.assertTrue(eai05["optimal"]["reachable"])
+        self.assertEqual(eai05["optimal"]["fulfilled_rate"], 1.0)
+        self.assertFalse(eai04["passed"])
+        self.assertTrue(eai04["optimal"]["reachable"])
+        self.assertAlmostEqual(eai04["optimal"]["median_exposure_reduction_pct"], 10.0)
+        self.assertEqual(decision["outcome"], "conditional_candidate")
+
+        # The policy passes although the optimum, here the fastest route itself, does not: still a candidate.
+        decision = self.decide(passing_summary())
+        self.assertFalse(decision["research_targets"]["eai04"]["optimal"]["reachable"])
+        self.assertEqual(decision["outcome"], "candidate")
 
     def test_too_much_added_time_misses_eai04(self):
         slow = route(125.0, 90.0, "clean")
@@ -202,7 +233,7 @@ class RunTests(unittest.TestCase):
 
     def test_the_run_leaves_everything_later_tasks_need(self):
         self.run_evaluation()
-        for name in ("manifest.json", "summary.json", "decision.json", "candidate.json", "scenarios.jsonl",
+        for name in ("manifest.json", "summary.json", "decision.json", "candidate.json", evaluation.SCENARIOS,
                      "scenario_od_pairs.json"):
             self.assertTrue((self.out / name).exists(), name)
         manifest = json.loads((self.out / "manifest.json").read_text(encoding="utf-8"))
@@ -219,7 +250,7 @@ class RunTests(unittest.TestCase):
     def test_real_and_perturbed_results_are_kept_apart_and_only_real_decides(self):
         result = self.run_evaluation()
         self.assertEqual(set(result["summary"]["s"]), {"real", "perturbed"})
-        rows = [json.loads(line) for line in (self.out / "scenarios.jsonl").read_text(encoding="utf-8").splitlines()]
+        rows = evaluation.read_scenarios(self.out)
         self.assertEqual({r["fields"] for r in rows}, {"real", "perturbed"})
         self.assertEqual(len(rows), 6)  # one OD pair x three alphas x two kinds of field
         expected = evaluation.decide(result["summary"]["s"]["real"], CRITERIA)
@@ -227,10 +258,33 @@ class RunTests(unittest.TestCase):
 
     def test_policy_and_baseline_read_one_exposure_table_per_scenario(self):
         self.run_evaluation()
-        rows = [json.loads(line) for line in (self.out / "scenarios.jsonl").read_text(encoding="utf-8").splitlines()]
+        rows = evaluation.read_scenarios(self.out)
         real = [r for r in rows if r["fields"] == "real"]
         self.assertEqual({r["window"] for r in real}, {"2026-09-29T00:00:00Z"})
         self.assertEqual({r["fastest"]["exposure"] for r in real}, {80.0})  # 4 x 20 s, from the same table
+
+    def test_rebuilding_needs_only_the_recorded_routes_and_changes_no_result(self):
+        result = self.run_evaluation()
+        shutil.rmtree(self.fields)
+        shutil.rmtree(self.set_run.dir)
+        rebuilt = evaluation.rebuild_summaries(self.out)
+        self.assertEqual(rebuilt["summary"], result["summary"])
+        self.assertEqual(rebuilt["decision"], result["decision"])
+        self.assertEqual(json.loads((self.out / "decision.json").read_text(encoding="utf-8")), result["decision"])
+        manifest = json.loads((self.out / "manifest.json").read_text(encoding="utf-8"))
+        self.assertEqual(manifest["code"]["commit"], "abc")  # the run that produced the routes stays on record
+        self.assertEqual(manifest["summaries_rebuilt_from"]["file"], evaluation.SCENARIOS)
+
+    def test_the_same_records_give_the_same_compressed_bytes(self):
+        files = []
+        for name in ("a", "b"):
+            folder = self.out / name
+            folder.mkdir(parents=True)
+            with evaluation.scenario_writer(folder) as stream:
+                stream.write('{"alpha": 0.5}\n')
+            files.append((folder / evaluation.SCENARIOS).read_bytes())
+        self.assertEqual(files[0], files[1])
+        self.assertEqual(gzip.decompress(files[0]), b'{"alpha": 0.5}\n')
 
 
 if __name__ == "__main__":
