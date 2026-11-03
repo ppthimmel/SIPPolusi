@@ -36,7 +36,7 @@ Selama stack berjalan:
 | `fixture/load_fixture.py` | Memeriksa checksum, membuat skema dari kode pemiliknya, lalu memuat data (jalan di image Data Worker) |
 | `spku_portal.py` | Portal SPKU tiruan: menyajikan stasiun dan observasi fixture dalam format halaman portal asli, sehingga `fetch_ground_truth` menjalankan jalur pengambilan sebenarnya. Data yang disajikan sama dengan yang sudah dimuat, jadi dataset tidak berubah. `E2E_SPKU_MODE=down` membuat setiap permintaan 503 (E2E-04) |
 | `route_model_stub.py` | Stub Route Model (kontrak IRouteSolve) dengan mode yang dapat diganti saat berjalan |
-| `run_e2e.py` | Matriks skenario E2E-01 sampai E2E-11; menulis `out/results.json`, `out/versions.json`, `out/correlation.txt`, dan laporan Worker |
+| `run_e2e.py` | Matriks skenario E2E-01 sampai E2E-12; menulis `out/results.json`, `out/versions.json`, `out/correlation.txt`, dan laporan Worker |
 | `report.py` | Membuat `docs/ti-se-10/MATRIKS.md` dan menyalin bukti ke `docs/ti-se-10/hasil/` |
 
 `out/` (termasuk artefak parquet Worker ±23 MB) tidak di-commit.
@@ -56,6 +56,7 @@ Selama stack berjalan:
 | E2E-09 | Versi graf tidak cocok | 503 `cache_empty`, bukan paparan nol |
 | E2E-10 | Kontrak API publik | Koleksi `public_api.smoke` (17 kasus) lewat gateway |
 | E2E-11 | Log aman | Tanpa DSN, kata sandi, atau koordinat |
+| E2E-12 | Pencarian lokasi (TI-SE-12), dengan `photon_stub.py`; `E2E_GEOCODING_URL` mengganti penyedia untuk mencoba server sungguhan di peramban | Hasil di wilayah studi, luar wilayah dan tidak ditemukan dibedakan, penyedia mati tidak mengganggu rute, log tanpa teks pencarian dan koordinat |
 
 Pemeriksaan `no_false_success` dijalankan pada setiap respons rute: respons 200 wajib punya
 paparan > 0, dan setiap kegagalan wajib berupa galat terstruktur non-200.

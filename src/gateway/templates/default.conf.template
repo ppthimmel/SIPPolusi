@@ -2,7 +2,8 @@
 # below) after docker-entrypoint.d/10-validate-env.sh has checked them:
 #   PORT                   listen port; Railway injects it
 #   CACHE_API_UPSTREAM     scheme://host:port of the Cache API, which serves the
-#                          public API (POST /v1/routes, GET /v1/exposure-surface)
+#                          public API (POST /v1/routes, GET /v1/exposure-surface,
+#                          POST /v1/geocode/search and /reverse)
 #   NGINX_LOCAL_RESOLVERS  DNS servers from /etc/resolv.conf (image entrypoint)
 
 # Client address. Railway's edge sets X-Real-IP to the caller's address on every
@@ -56,11 +57,18 @@ map $remote_addr $rate_limit_key {
 #   POST /v1/routes             20 per minute (one per 3 s), burst 5
 #   GET  /v1/exposure-surface   60 per minute (one per 1 s), burst 10 (Tabel 3.15
 #                               gives no burst; 10 covers a few quick pans)
+#   POST /v1/geocode/*          60 per minute, burst 10 (TI-SE-12, not in Tabel 3.15):
+#                               typing pauses after the Frontend's debounce; and at
+#                               most 5 per second, burst 10, over all users, because
+#                               they all reach the geocoding provider from one address
 # The limit applies per public address, so users behind one NAT (a campus or
 # office network) share a bucket; that is what Tabel 3.15 specifies.
 # 10 MB per zone holds tens of thousands of keys.
 limit_req_zone $rate_limit_key zone=routes:10m rate=20r/m;
 limit_req_zone $rate_limit_key zone=exposure_surface:10m rate=60r/m;
+limit_req_zone $rate_limit_key zone=geocode:10m rate=60r/m;
+# One key for every request ($server_port is never empty, and an empty key is not counted).
+limit_req_zone $server_port zone=geocode_all:1m rate=5r/s;
 limit_req_status 429;
 # Rejections are logged at info, below error_log's warn, so a refused client's
 # address does not reach stderr; the access log still records each 429.
@@ -74,8 +82,10 @@ map $uri $retry_after_s {
 
 # Allow header of a 405 from a public path (see the locations below).
 map $uri $allowed_methods {
-    /v1/routes  "POST, OPTIONS";
-    default     "GET, OPTIONS";
+    /v1/routes           "POST, OPTIONS";
+    /v1/geocode/search   "POST, OPTIONS";
+    /v1/geocode/reverse  "POST, OPTIONS";
+    default              "GET, OPTIONS";
 }
 
 # One JSON object per request on stdout. Railway reads "level"; 5xx are
@@ -190,8 +200,8 @@ server {
     # /v1/osm/x/../../routes matches "= /v1/routes" and must not reach the
     # Cache API in its raw form.
 
-    # The public API is exactly the two endpoints the Frontend calls (TI-SE-08,
-    # IRouteQuery and IExposureSurface), both served by the Cache API
+    # The public API is exactly the endpoints the Frontend calls (TI-SE-08 IRouteQuery
+    # and IExposureSurface, TI-SE-12 geocoding), all served by the Cache API
     # (src/backend/osm/Dockerfile). Exact matches only: the Cache API's
     # /v1/routes/* inspection endpoints and its internal /v1/osm/* and
     # /v1/pollution/* reads stay on the private network, as does the backend.
@@ -220,6 +230,32 @@ server {
         limit_req zone=exposure_surface burst=10 nodelay;
         set $cache_api_upstream ${CACHE_API_UPSTREAM};
         proxy_pass $cache_api_upstream/v1/exposure-surface$is_args$args;
+    }
+
+    # Search text and coordinates travel in the body, which no log here records (PNF-06).
+    # A query is at most 200 characters, so 2 KiB holds any accepted body, in memory.
+    location = /v1/geocode/search {
+        if ($request_method !~ ^(POST|OPTIONS)$) {
+            return 405;
+        }
+        limit_req zone=geocode burst=10 nodelay;
+        limit_req zone=geocode_all burst=10 nodelay;
+        client_max_body_size 2k;
+        client_body_buffer_size 2k;
+        set $cache_api_upstream ${CACHE_API_UPSTREAM};
+        proxy_pass $cache_api_upstream/v1/geocode/search$is_args$args;
+    }
+
+    location = /v1/geocode/reverse {
+        if ($request_method !~ ^(POST|OPTIONS)$) {
+            return 405;
+        }
+        limit_req zone=geocode burst=10 nodelay;
+        limit_req zone=geocode_all burst=10 nodelay;
+        client_max_body_size 2k;
+        client_body_buffer_size 2k;
+        set $cache_api_upstream ${CACHE_API_UPSTREAM};
+        proxy_pass $cache_api_upstream/v1/geocode/reverse$is_args$args;
     }
 
     # Nothing else is exposed through the public entry point.

@@ -21,7 +21,7 @@ di Cache API, diteruskan API Gateway) dan antarmuka sudah diuji terhadapnya (lih
 | Nama jalan | `properties.name` pada fitur exposure-surface (opsional). | Backend tidak mengirim nama jalan; label nama tidak tampil. |
 | Alasan fallback | `policy_timeout`, `policy_error`, `invalid_route` (contoh Kode 3.2). | **Disesuaikan**: Backend mengirim `model_timeout`, `model_unavailable`, `model_error`, `model_invalid_response`, `model_no_route`, `policy_unavailable`. Semua kini punya teks sendiri. |
 | Versi data jalan | Tidak ditampilkan. | **Ditambahkan**: `metadata.graph_version` tampil sebagai "Versi data jalan (OpenStreetMap)". |
-| Asal/tujuan | Dipilih di peta, diseret, atau diketik sebagai `lat, lon`. Pencarian nama tempat (geocoding) tidak ada di kontrak, jadi belum ada. | Tetap. |
+| Asal/tujuan | Dipilih di peta, diseret, atau diketik sebagai `lat, lon`. Pencarian nama tempat (geocoding) tidak ada di kontrak, jadi belum ada. | Ditambahkan oleh TI-SE-12, lihat [`ti-se-12-geocoding.md`](ti-se-12-geocoding.md). |
 
 ## Keadaan yang diuji
 

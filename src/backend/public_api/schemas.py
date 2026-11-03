@@ -6,9 +6,9 @@ contract tests fail when a response carries a field documented nowhere.
 """
 from __future__ import annotations
 
-from typing import Literal
+from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator
 
 from osm.models import Mode
 from osm.schemas import LonLat
@@ -232,3 +232,43 @@ class SurfaceFeatureCollection(BaseModel):
     type: Literal["FeatureCollection"]
     features: list[EdgeSurfaceFeature] | list[CellSurfaceFeature]
     metadata: SurfaceMetadata
+
+
+# ------------------------------------------------------------------ POST /v1/geocode/* (TI-SE-12)
+
+class GeocodeSearchRequest(BaseModel):
+    model_config = _STRICT
+
+    query: Annotated[str, StringConstraints(strip_whitespace=True, min_length=2, max_length=200)] = Field(
+        description="Nama tempat atau alamat; tidak dicatat di log dan tidak disimpan (PNF-06)")
+
+
+class GeocodeReverseRequest(BaseModel):
+    model_config = _STRICT
+
+    lat: float = Field(ge=-90, le=90, description="Lintang WGS 84; tidak dicatat di log dan tidak disimpan (PNF-06)")
+    lon: float = Field(ge=-180, le=180, description="Bujur WGS 84; tidak dicatat di log dan tidak disimpan (PNF-06)")
+
+
+class Place(BaseModel):
+    model_config = _STRICT
+
+    name: str = Field(description="Nama tempat yang dapat dibaca")
+    description: str = Field(description="Jalan, kecamatan, dan kota; kosong bila tidak diketahui")
+    lat: float = Field(description="Lintang WGS 84, di dalam wilayah studi")
+    lon: float = Field(description="Bujur WGS 84, di dalam wilayah studi")
+
+
+class GeocodeSearchResponse(BaseModel):
+    model_config = _STRICT
+
+    results: list[Place] = Field(max_length=5, description="Tempat di dalam wilayah studi, paling relevan lebih dulu")
+    outside_study_area: bool = Field(description="true bila tidak ada hasil di wilayah studi tetapi tempat itu "
+                                                 "ditemukan di luar wilayah; false bila tidak ditemukan sama sekali")
+
+
+class GeocodeReverseResponse(BaseModel):
+    model_config = _STRICT
+
+    place: Place | None = Field(description="Tempat terdekat dalam radius 500 m, null bila tidak ada")
+

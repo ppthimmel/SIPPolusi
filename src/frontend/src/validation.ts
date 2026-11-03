@@ -17,7 +17,7 @@ export function parseCoordinateText(text: string): Point | null {
 
 /** Error text for a point the user entered, or null when it is usable. */
 export function validatePoint(p: Point | null, label: "asal" | "tujuan"): string | null {
-  if (!p) return `Pilih titik ${label} di peta atau ketik koordinat "lat, lon".`;
+  if (!p) return `Cari nama tempat, pilih titik ${label} di peta, atau ketik koordinat "lat, lon".`;
   if (Math.abs(p.lat) > 90 || Math.abs(p.lon) > 180) {
     return `Koordinat titik ${label} di luar rentang yang valid.`;
   }

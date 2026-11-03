@@ -1,7 +1,9 @@
-"""Public API (TI-SE-08), the two paths the API Gateway routes to the Cache API:
+"""Public API (TI-SE-08, TI-SE-12), the paths the API Gateway routes to the Cache API:
 
     POST /v1/routes             IRouteQuery: RouteRequest (Kode 3.1) -> GeoJSON (Kode 3.2)
     GET  /v1/exposure-surface   IExposureSurface: bbox, zoom -> GeoJSON of edges or grid cells
+    POST /v1/geocode/search     place name -> places in the study area
+    POST /v1/geocode/reverse    point -> nearest named place
 
 Errors use the uniform schema {"error": {"code", "message", "request_id"[, "reason"]}}
 with the codes of Tabel 3.16. 429, 502 and 504 come from the API Gateway and are
@@ -14,6 +16,7 @@ from typing import Annotated, Any, Literal
 from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import JSONResponse, Response
 
+from osm.errors import OutsideStudyArea
 from osm.router import Repo as OsmRepo
 from osm.router import Settings as OsmSettingsDep
 from osm.router import _ex
@@ -23,6 +26,7 @@ from solver.geojson import build_geojson_response
 from solver.router import Solver, SolverConfig, solve_from_request
 
 from .config import ApiSettings
+from .geocoding import require_geocoder
 from .openapi_examples import (
     CELL_SURFACE_EXAMPLE,
     EDGE_SURFACE_EXAMPLE,
@@ -30,7 +34,15 @@ from .openapi_examples import (
     ROUTE_EXAMPLE,
     error_example,
 )
-from .schemas import ErrorResponse, RouteFeatureCollection, SurfaceFeatureCollection
+from .schemas import (
+    ErrorResponse,
+    GeocodeReverseRequest,
+    GeocodeReverseResponse,
+    GeocodeSearchRequest,
+    GeocodeSearchResponse,
+    RouteFeatureCollection,
+    SurfaceFeatureCollection,
+)
 from .surface import (
     CACHE_CONTROL,
     etag_matches,
@@ -67,7 +79,8 @@ def _errors(description: str, *examples: tuple[str, dict[str, Any]]) -> dict[str
 _GATEWAY_RESPONSES: dict[int | str, dict[str, Any]] = {
     429: _errors("Dari API Gateway: rate limit terlampaui; header Retry-After menyatakan detik tunggu "
                  "(Tabel 3.15): 20 per menit per alamat IP (burst 5) untuk /v1/routes, "
-                 "60 per menit (burst 10) untuk /v1/exposure-surface.",
+                 "60 per menit (burst 10) untuk /v1/exposure-surface dan /v1/geocode/*, ditambah "
+                 "5 per detik (burst 10) untuk seluruh pengguna /v1/geocode/*.",
                  ("rate_limited", error_example("rate_limited", "Terlalu banyak permintaan. Coba lagi dalam 3 detik."))),
     500: _errors("Galat internal yang tidak terduga",
                  ("internal_error", error_example("internal_error", "Terjadi galat internal pada server."))),
@@ -156,8 +169,42 @@ SURFACE_RESPONSES: dict[int | str, dict[str, Any]] = {
 }
 
 
+_GEOCODE_UNAVAILABLE = _errors(
+    "Layanan pencarian lokasi belum dikonfigurasi, tidak merespons, atau bermasalah. Formulir rute tetap dapat "
+    "dipakai lewat klik peta dan koordinat",
+    ("not_configured", error_example("geocoding_unavailable", "Pencarian lokasi belum dikonfigurasi di server.",
+                                     "not_configured")),
+    ("provider_timeout", error_example("geocoding_unavailable", "Layanan pencarian lokasi tidak merespons tepat waktu.",
+                                       "provider_timeout")),
+    ("provider_error", error_example("geocoding_unavailable", "Layanan pencarian lokasi sedang bermasalah.",
+                                     "provider_error")),
+)
+_NO_STORE = {"Cache-Control": {"description": "no-store: berisi data lokasi (PNF-06)", "schema": {"type": "string"}}}
+
+GEOCODE_SEARCH_RESPONSES: dict[int | str, dict[str, Any]] = {
+    200: {"model": GeocodeSearchResponse, "headers": {**_REQUEST_ID_HEADER, **_NO_STORE},
+          "description": "Tempat di dalam wilayah studi. Hasil kosong dibedakan dengan outside_study_area."},
+    400: _errors("query kosong, lebih dari 200 karakter, atau JSON rusak",
+                 ("query_pendek", error_example("invalid_request", "query: String should have at least 2 characters"))),
+    503: _GEOCODE_UNAVAILABLE,
+    **_GATEWAY_RESPONSES,
+}
+
+GEOCODE_REVERSE_RESPONSES: dict[int | str, dict[str, Any]] = {
+    200: {"model": GeocodeReverseResponse, "headers": {**_REQUEST_ID_HEADER, **_NO_STORE},
+          "description": "Tempat terdekat, atau place null bila tidak ada yang bernama dalam radius 500 m."},
+    400: _errors("lat atau lon di luar rentang, atau JSON rusak",
+                 ("lat", error_example("invalid_request", "lat: Input should be less than or equal to 90"))),
+    422: _errors("Titik di luar wilayah studi; tidak diteruskan ke penyedia",
+                 ("outside_study_area", error_example("outside_study_area", "Titik berada di luar wilayah studi (DKI Jakarta)."))),
+    503: _GEOCODE_UNAVAILABLE,
+    **_GATEWAY_RESPONSES,
+}
+
 # Response documentation per operation, also used by openapi.restore_response_examples.
-DOCUMENTED_RESPONSES = {("/v1/routes", "post"): ROUTE_RESPONSES, ("/v1/exposure-surface", "get"): SURFACE_RESPONSES}
+DOCUMENTED_RESPONSES = {("/v1/routes", "post"): ROUTE_RESPONSES, ("/v1/exposure-surface", "get"): SURFACE_RESPONSES,
+                        ("/v1/geocode/search", "post"): GEOCODE_SEARCH_RESPONSES,
+                        ("/v1/geocode/reverse", "post"): GEOCODE_REVERSE_RESPONSES}
 
 
 @router.post(
@@ -227,3 +274,38 @@ async def exposure_surface(request: Request, osm: OsmRepo, pollution: PollutionR
     body = await get_exposure_surface(bbox=box, grid=grid, zoom=zoom, layer=pollutant, source=source,
                                       pollution=pollution)
     return GeoJSONResponse(body, headers=headers)
+
+
+@router.post(
+    "/v1/geocode/search",
+    summary="Cari tempat di wilayah studi dari nama atau alamat",
+    responses=GEOCODE_SEARCH_RESPONSES,
+    operation_id="searchPlaces",
+)
+async def geocode_search(request: Request, settings: OsmSettingsDep, body: GeocodeSearchRequest):
+    """Saran tempat untuk kolom asal dan tujuan.
+
+    POST agar teks pencarian berada di body, bukan di baris permintaan yang tercatat di log
+    (PNF-06). Teks hanya diteruskan ke penyedia geocoding dan tidak disimpan."""
+    geocoder = require_geocoder(request.app.state.geocoder)
+    found = await geocoder.search(body.query, settings.study_area)
+    return JSONResponse(found, headers={"Cache-Control": "no-store"})
+
+
+@router.post(
+    "/v1/geocode/reverse",
+    summary="Nama tempat terdekat dari sebuah titik",
+    responses=GEOCODE_REVERSE_RESPONSES,
+    operation_id="reversePlace",
+)
+async def geocode_reverse(request: Request, settings: OsmSettingsDep, body: GeocodeReverseRequest):
+    """Nama yang ditampilkan untuk titik hasil klik peta.
+
+    Titik di luar wilayah studi ditolak tanpa diteruskan ke penyedia geocoding."""
+    area = settings.study_area
+    if not (area.min_lon <= body.lon <= area.max_lon and area.min_lat <= body.lat <= area.max_lat):
+        raise OutsideStudyArea("Titik berada di luar wilayah studi (DKI Jakarta).")
+    geocoder = require_geocoder(request.app.state.geocoder)
+    place = await geocoder.reverse(body.lat, body.lon, area)
+    return JSONResponse({"place": place}, headers={"Cache-Control": "no-store"})
+

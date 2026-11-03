@@ -7,7 +7,8 @@
 //   curl "localhost:8000/__mock/scenario"      # lists scenarios and current state
 //
 // Route scenarios apply to POST /v1/routes, "heat_*" scenarios to GET
-// /v1/exposure-surface. Both are independent and stay set until changed.
+// /v1/exposure-surface, "geo_*" scenarios to POST /v1/geocode/*. They are
+// independent and stay set until changed.
 import { createServer } from "node:http";
 
 const PORT = Number(process.env.PORT ?? 8000);
@@ -43,8 +44,26 @@ const HEAT_SCENARIOS = {
   heat_empty: "FeatureCollection kosong",
 };
 
+const GEO_SCENARIOS = {
+  geo_ok: "Pencarian normal: tempat contoh yang namanya cocok; bandung hanya di luar wilayah",
+  geo_slow: "Respons setelah 2 detik",
+  geo_unavailable: "503 geocoding_unavailable pada pencarian dan nama titik",
+  geo_rate_limited: "429 rate_limited, Retry-After: 1",
+  geo_gateway_html: "502 dengan badan HTML (bukan JSON)",
+  geo_bad_shape: "200 yang tidak sesuai kontrak",
+  geo_timeout: "Tidak merespons selama 20 detik (klien menyerah di 7 detik)",
+};
+const PLACES = [
+  { name: "Monumen Nasional", description: "Jalan Medan Merdeka Utara, Gambir, Jakarta", lat: -6.1754024, lon: 106.8271692 },
+  { name: "Monas 1", description: "Jalan Medan Merdeka Barat, Gambir, Jakarta", lat: -6.1725384, lon: 106.823196 },
+  { name: "Bundaran Hotel Indonesia", description: "Jalan M.H. Thamrin, Menteng, Jakarta", lat: -6.195, lon: 106.823 },
+  { name: "Stasiun Manggarai", description: "Jalan Manggarai Utara, Tebet, Jakarta", lat: -6.2099, lon: 106.8502 },
+  { name: "Taman Margasatwa Ragunan", description: "Jalan Harsono RM, Pasar Minggu, Jakarta", lat: -6.3125, lon: 106.8201 },
+];
+
 let routeScenario = "ok";
 let heatScenario = "heat_ok";
+let geoScenario = "geo_ok";
 
 const DISCLAIMER =
   "Estimasi konsentrasi polutan merupakan keluaran model dari data satelit dan sensor darat, bukan pengukuran langsung. Bukan rekomendasi medis.";
@@ -266,6 +285,31 @@ async function handleSurface(url, res) {
   send(res, 200, buildSurface(bbox, zoom, s === "heat_stale"), { "Content-Type": "application/geo+json" });
 }
 
+async function handleGeocode(req, res, path) {
+  const raw = await new Promise((resolve) => {
+    let b = "";
+    req.on("data", (c) => (b += c));
+    req.on("end", () => resolve(b));
+  });
+  const s = geoScenario;
+  // Without the text or the point: this is what the real services log (PNF-06).
+  console.log(`POST ${path} [${s}]`);
+  if (s === "geo_slow") await sleep(2_000);
+  if (s === "geo_timeout") await sleep(20_000);
+  if (s === "geo_unavailable") return error(res, 503, "geocoding_unavailable", "Layanan pencarian lokasi sedang bermasalah.");
+  if (s === "geo_rate_limited") return send(res, 429, { error: { code: "rate_limited", message: "Terlalu banyak permintaan. Coba lagi dalam 1 detik.", request_id: "mock" } }, { "Retry-After": "1" });
+  if (s === "geo_gateway_html") return send(res, 502, "<html><body>Bad Gateway</body></html>", { "Content-Type": "text/html" });
+  if (s === "geo_bad_shape") return send(res, 200, { status: "placeholder" });
+  const body = JSON.parse(raw);
+  if (path.endsWith("/reverse")) {
+    const nearest = PLACES.find((p) => haversine([p.lon, p.lat], [body.lon, body.lat]) <= 500);
+    return send(res, 200, { place: nearest ?? null }, { "Cache-Control": "no-store" });
+  }
+  const query = String(body.query).toLowerCase();
+  const results = PLACES.filter((p) => p.name.toLowerCase().includes(query));
+  send(res, 200, { results, outside_study_area: !results.length && query.includes("bandung") }, { "Cache-Control": "no-store" });
+}
+
 // ------------------------------------------------------------------ server
 createServer(async (req, res) => {
   const url = new URL(req.url, `http://${req.headers.host}`);
@@ -275,13 +319,15 @@ createServer(async (req, res) => {
       if (name) {
         if (name in ROUTE_SCENARIOS) routeScenario = name;
         else if (name in HEAT_SCENARIOS) heatScenario = name;
+        else if (name in GEO_SCENARIOS) geoScenario = name;
         else return send(res, 404, { error: `unknown scenario ${name}` });
       }
-      return send(res, 200, { current: { routes: routeScenario, heat: heatScenario }, routes: ROUTE_SCENARIOS, heat: HEAT_SCENARIOS });
+      return send(res, 200, { current: { routes: routeScenario, heat: heatScenario, geo: geoScenario }, routes: ROUTE_SCENARIOS, heat: HEAT_SCENARIOS, geo: GEO_SCENARIOS });
     }
     if (url.pathname === "/health") return send(res, 200, { status: "ok", service: "mock-backend" });
     if (url.pathname === "/v1/routes" && req.method === "POST") return await handleRoutes(req, res);
     if (url.pathname === "/v1/exposure-surface" && req.method === "GET") return await handleSurface(url, res);
+    if ((url.pathname === "/v1/geocode/search" || url.pathname === "/v1/geocode/reverse") && req.method === "POST") return await handleGeocode(req, res, url.pathname);
     error(res, 404, "not_found", "Tidak ada endpoint ini pada mock.");
   } catch (e) {
     console.error(e);

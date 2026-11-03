@@ -30,6 +30,7 @@ from starlette.middleware.gzip import GZipMiddleware
 from log_config import configure_logging
 from planner.router import router as planner_router
 from public_api.config import ApiSettings, get_api_settings
+from public_api.geocoding import make_geocoder
 from public_api.limits import BodySizeLimit
 from public_api.openapi import install_openapi
 from public_api.router import router as public_router
@@ -100,6 +101,15 @@ def create_app(
             app.state.route_solver = solver or make_solver(app.state.solver_settings)
             yield
 
+    @asynccontextmanager
+    async def lifespan_with_geocoder(app: FastAPI) -> AsyncIterator[None]:
+        async with lifespan(app):
+            try:
+                yield
+            finally:
+                if app.state.geocoder is not None:
+                    await app.state.geocoder.aclose()
+
     app = FastAPI(
         title="SIPPolusi Backend - Cache API",
         description="Read-only access to the OSM Cache DB (schema osm, Jakarta road graph) and the "
@@ -107,9 +117,10 @@ def create_app(
                     "Road data © OpenStreetMap contributors, ODbL "
                     "(https://www.openstreetmap.org/copyright).",
         version="1.2.0",
-        lifespan=lifespan,
+        lifespan=lifespan_with_geocoder,
     )
     app.state.api_settings = api_settings
+    app.state.geocoder = make_geocoder(api_settings)
     install_error_handling(app)
     # Added later = further out: oversized bodies are refused before anything reads them.
     app.add_middleware(GZipMiddleware, minimum_size=1024)
