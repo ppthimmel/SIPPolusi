@@ -1,0 +1,5884 @@
+{
+  "trained-range": {
+    "real": {
+      "scenarios": 2200,
+      "od_pairs": 200,
+      "windows": [
+        "2026-09-29T00:00:00Z",
+        "2026-09-29T07:00:00Z",
+        "2026-09-29T14:00:00Z",
+        "2026-09-29T21:00:00Z",
+        "2026-09-30T04:00:00Z",
+        "2026-09-30T11:00:00Z",
+        "2026-09-30T18:00:00Z"
+      ],
+      "alphas": [
+        0.0,
+        0.1,
+        0.2,
+        0.3,
+        0.4,
+        0.5,
+        0.6,
+        0.7,
+        0.8,
+        0.9,
+        1.0
+      ],
+      "decoded_routes": 1000,
+      "reached_routes": 1000,
+      "failures": {},
+      "success_rate": 1.0,
+      "route_validity": 1.0,
+      "inference_ms": {
+        "median": 50.3,
+        "p95": 134.69,
+        "max": 299.94,
+        "over_budget": 0
+      },
+      "fastest_search_ms": {
+        "median": 1.05,
+        "p95": 3.03,
+        "max": 5.14
+      },
+      "by_alpha": {
+        "0": {
+          "member": 0.0,
+          "scenarios": 200,
+          "reached": 200,
+          "success_rate": 1.0,
+          "policy": {
+            "time": {
+              "n": 200,
+              "median": 0.1198,
+              "q1": 0.0,
+              "q3": 0.7039,
+              "min": 0.0,
+              "max": 17.376,
+              "median_ci95": [
+                0.0205,
+                0.3227
+              ]
+            },
+            "exposure": {
+              "n": 200,
+              "median": 0.0016,
+              "q1": 0.0,
+              "q3": 0.5318,
+              "min": -10.3592,
+              "max": 6.2328,
+              "median_ci95": [
+                0.0,
+                0.1043
+              ]
+            },
+            "length": {
+              "n": 200,
+              "median": 0.1198,
+              "q1": 0.0,
+              "q3": 0.7039,
+              "min": 0.0,
+              "max": 17.376,
+              "median_ci95": [
+                0.0205,
+                0.3227
+              ]
+            }
+          },
+          "policy_with_fallback": {
+            "time": {
+              "n": 200,
+              "median": 0.1198,
+              "q1": 0.0,
+              "q3": 0.7039,
+              "min": 0.0,
+              "max": 17.376,
+              "median_ci95": [
+                0.0205,
+                0.3227
+              ]
+            },
+            "exposure": {
+              "n": 200,
+              "median": 0.0016,
+              "q1": 0.0,
+              "q3": 0.5318,
+              "min": -10.3592,
+              "max": 6.2328,
+              "median_ci95": [
+                0.0,
+                0.1043
+              ]
+            },
+            "length": {
+              "n": 200,
+              "median": 0.1198,
+              "q1": 0.0,
+              "q3": 0.7039,
+              "min": 0.0,
+              "max": 17.376,
+              "median_ci95": [
+                0.0205,
+                0.3227
+              ]
+            }
+          },
+          "optimal": {
+            "time": {
+              "n": 200,
+              "median": 0.0,
+              "q1": 0.0,
+              "q3": 0.0,
+              "min": 0.0,
+              "max": 19.5255,
+              "median_ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "exposure": {
+              "n": 200,
+              "median": 0.0,
+              "q1": 0.0,
+              "q3": 0.0,
+              "min": -10.4593,
+              "max": 0.0,
+              "median_ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "length": {
+              "n": 200,
+              "median": 0.0,
+              "q1": 0.0,
+              "q3": 0.0,
+              "min": 0.0,
+              "max": 19.5255,
+              "median_ci95": [
+                0.0,
+                0.0
+              ]
+            }
+          },
+          "against_fastest": {
+            "same_as_fastest": 83,
+            "different": 117,
+            "less_exposure": 17,
+            "more_exposure": 100,
+            "less_exposure_and_slower_or_equal": 17,
+            "worse_on_both": 100
+          }
+        },
+        "0.1": {
+          "member": 0.0,
+          "scenarios": 200,
+          "reached": 200,
+          "success_rate": 1.0,
+          "policy": {
+            "time": {
+              "n": 200,
+              "median": 0.1198,
+              "q1": 0.0,
+              "q3": 0.7039,
+              "min": 0.0,
+              "max": 17.376,
+              "median_ci95": [
+                0.0205,
+                0.3227
+              ]
+            },
+            "exposure": {
+              "n": 200,
+              "median": 0.0016,
+              "q1": 0.0,
+              "q3": 0.5318,
+              "min": -10.3592,
+              "max": 6.2328,
+              "median_ci95": [
+                0.0,
+                0.1043
+              ]
+            },
+            "length": {
+              "n": 200,
+              "median": 0.1198,
+              "q1": 0.0,
+              "q3": 0.7039,
+              "min": 0.0,
+              "max": 17.376,
+              "median_ci95": [
+                0.0205,
+                0.3227
+              ]
+            }
+          },
+          "policy_with_fallback": {
+            "time": {
+              "n": 200,
+              "median": 0.1198,
+              "q1": 0.0,
+              "q3": 0.7039,
+              "min": 0.0,
+              "max": 17.376,
+              "median_ci95": [
+                0.0205,
+                0.3227
+              ]
+            },
+            "exposure": {
+              "n": 200,
+              "median": 0.0016,
+              "q1": 0.0,
+              "q3": 0.5318,
+              "min": -10.3592,
+              "max": 6.2328,
+              "median_ci95": [
+                0.0,
+                0.1043
+              ]
+            },
+            "length": {
+              "n": 200,
+              "median": 0.1198,
+              "q1": 0.0,
+              "q3": 0.7039,
+              "min": 0.0,
+              "max": 17.376,
+              "median_ci95": [
+                0.0205,
+                0.3227
+              ]
+            }
+          },
+          "optimal": {
+            "time": {
+              "n": 200,
+              "median": 0.0,
+              "q1": 0.0,
+              "q3": 0.0,
+              "min": 0.0,
+              "max": 19.5255,
+              "median_ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "exposure": {
+              "n": 200,
+              "median": 0.0,
+              "q1": 0.0,
+              "q3": 0.0,
+              "min": -10.4593,
+              "max": 0.0,
+              "median_ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "length": {
+              "n": 200,
+              "median": 0.0,
+              "q1": 0.0,
+              "q3": 0.0,
+              "min": 0.0,
+              "max": 19.5255,
+              "median_ci95": [
+                0.0,
+                0.0
+              ]
+            }
+          },
+          "against_fastest": {
+            "same_as_fastest": 83,
+            "different": 117,
+            "less_exposure": 17,
+            "more_exposure": 100,
+            "less_exposure_and_slower_or_equal": 17,
+            "worse_on_both": 100
+          }
+        },
+        "0.2": {
+          "member": 0.25,
+          "scenarios": 200,
+          "reached": 200,
+          "success_rate": 1.0,
+          "policy": {
+            "time": {
+              "n": 200,
+              "median": 0.1612,
+              "q1": 0.0,
+              "q3": 0.8171,
+              "min": 0.0,
+              "max": 19.818,
+              "median_ci95": [
+                0.0253,
+                0.3386
+              ]
+            },
+            "exposure": {
+              "n": 200,
+              "median": 0.0,
+              "q1": 0.0,
+              "q3": 0.597,
+              "min": -10.4593,
+              "max": 7.2859,
+              "median_ci95": [
+                0.0,
+                0.0886
+              ]
+            },
+            "length": {
+              "n": 200,
+              "median": 0.1612,
+              "q1": 0.0,
+              "q3": 0.8171,
+              "min": 0.0,
+              "max": 19.818,
+              "median_ci95": [
+                0.0253,
+                0.3386
+              ]
+            }
+          },
+          "policy_with_fallback": {
+            "time": {
+              "n": 200,
+              "median": 0.1612,
+              "q1": 0.0,
+              "q3": 0.8171,
+              "min": 0.0,
+              "max": 19.818,
+              "median_ci95": [
+                0.0253,
+                0.3386
+              ]
+            },
+            "exposure": {
+              "n": 200,
+              "median": 0.0,
+              "q1": 0.0,
+              "q3": 0.597,
+              "min": -10.4593,
+              "max": 7.2859,
+              "median_ci95": [
+                0.0,
+                0.0886
+              ]
+            },
+            "length": {
+              "n": 200,
+              "median": 0.1612,
+              "q1": 0.0,
+              "q3": 0.8171,
+              "min": 0.0,
+              "max": 19.818,
+              "median_ci95": [
+                0.0253,
+                0.3386
+              ]
+            }
+          },
+          "optimal": {
+            "time": {
+              "n": 200,
+              "median": 0.0,
+              "q1": 0.0,
+              "q3": 0.0,
+              "min": 0.0,
+              "max": 11.1682,
+              "median_ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "exposure": {
+              "n": 200,
+              "median": 0.0,
+              "q1": 0.0,
+              "q3": 0.0,
+              "min": -10.4593,
+              "max": 0.0,
+              "median_ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "length": {
+              "n": 200,
+              "median": 0.0,
+              "q1": 0.0,
+              "q3": 0.0,
+              "min": 0.0,
+              "max": 11.1682,
+              "median_ci95": [
+                0.0,
+                0.0
+              ]
+            }
+          },
+          "against_fastest": {
+            "same_as_fastest": 82,
+            "different": 118,
+            "less_exposure": 19,
+            "more_exposure": 99,
+            "less_exposure_and_slower_or_equal": 19,
+            "worse_on_both": 99
+          }
+        },
+        "0.3": {
+          "member": 0.25,
+          "scenarios": 200,
+          "reached": 200,
+          "success_rate": 1.0,
+          "policy": {
+            "time": {
+              "n": 200,
+              "median": 0.1612,
+              "q1": 0.0,
+              "q3": 0.8171,
+              "min": 0.0,
+              "max": 19.818,
+              "median_ci95": [
+                0.0253,
+                0.3386
+              ]
+            },
+            "exposure": {
+              "n": 200,
+              "median": 0.0,
+              "q1": 0.0,
+              "q3": 0.597,
+              "min": -10.4593,
+              "max": 7.2859,
+              "median_ci95": [
+                0.0,
+                0.0886
+              ]
+            },
+            "length": {
+              "n": 200,
+              "median": 0.1612,
+              "q1": 0.0,
+              "q3": 0.8171,
+              "min": 0.0,
+              "max": 19.818,
+              "median_ci95": [
+                0.0253,
+                0.3386
+              ]
+            }
+          },
+          "policy_with_fallback": {
+            "time": {
+              "n": 200,
+              "median": 0.1612,
+              "q1": 0.0,
+              "q3": 0.8171,
+              "min": 0.0,
+              "max": 19.818,
+              "median_ci95": [
+                0.0253,
+                0.3386
+              ]
+            },
+            "exposure": {
+              "n": 200,
+              "median": 0.0,
+              "q1": 0.0,
+              "q3": 0.597,
+              "min": -10.4593,
+              "max": 7.2859,
+              "median_ci95": [
+                0.0,
+                0.0886
+              ]
+            },
+            "length": {
+              "n": 200,
+              "median": 0.1612,
+              "q1": 0.0,
+              "q3": 0.8171,
+              "min": 0.0,
+              "max": 19.818,
+              "median_ci95": [
+                0.0253,
+                0.3386
+              ]
+            }
+          },
+          "optimal": {
+            "time": {
+              "n": 200,
+              "median": 0.0,
+              "q1": 0.0,
+              "q3": 0.0,
+              "min": 0.0,
+              "max": 11.1682,
+              "median_ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "exposure": {
+              "n": 200,
+              "median": 0.0,
+              "q1": 0.0,
+              "q3": 0.0,
+              "min": -10.4593,
+              "max": 0.0,
+              "median_ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "length": {
+              "n": 200,
+              "median": 0.0,
+              "q1": 0.0,
+              "q3": 0.0,
+              "min": 0.0,
+              "max": 11.1682,
+              "median_ci95": [
+                0.0,
+                0.0
+              ]
+            }
+          },
+          "against_fastest": {
+            "same_as_fastest": 82,
+            "different": 118,
+            "less_exposure": 19,
+            "more_exposure": 99,
+            "less_exposure_and_slower_or_equal": 19,
+            "worse_on_both": 99
+          }
+        },
+        "0.4": {
+          "member": 0.5,
+          "scenarios": 200,
+          "reached": 200,
+          "success_rate": 1.0,
+          "policy": {
+            "time": {
+              "n": 200,
+              "median": 0.099,
+              "q1": 0.0,
+              "q3": 0.7184,
+              "min": 0.0,
+              "max": 11.1682,
+              "median_ci95": [
+                0.0,
+                0.2336
+              ]
+            },
+            "exposure": {
+              "n": 200,
+              "median": 0.0,
+              "q1": 0.0,
+              "q3": 0.523,
+              "min": -10.4593,
+              "max": 5.5281,
+              "median_ci95": [
+                0.0,
+                0.0779
+              ]
+            },
+            "length": {
+              "n": 200,
+              "median": 0.099,
+              "q1": 0.0,
+              "q3": 0.7184,
+              "min": 0.0,
+              "max": 11.1682,
+              "median_ci95": [
+                0.0,
+                0.2336
+              ]
+            }
+          },
+          "policy_with_fallback": {
+            "time": {
+              "n": 200,
+              "median": 0.099,
+              "q1": 0.0,
+              "q3": 0.7184,
+              "min": 0.0,
+              "max": 11.1682,
+              "median_ci95": [
+                0.0,
+                0.2336
+              ]
+            },
+            "exposure": {
+              "n": 200,
+              "median": 0.0,
+              "q1": 0.0,
+              "q3": 0.523,
+              "min": -10.4593,
+              "max": 5.5281,
+              "median_ci95": [
+                0.0,
+                0.0779
+              ]
+            },
+            "length": {
+              "n": 200,
+              "median": 0.099,
+              "q1": 0.0,
+              "q3": 0.7184,
+              "min": 0.0,
+              "max": 11.1682,
+              "median_ci95": [
+                0.0,
+                0.2336
+              ]
+            }
+          },
+          "optimal": {
+            "time": {
+              "n": 200,
+              "median": 0.0,
+              "q1": 0.0,
+              "q3": 0.0,
+              "min": 0.0,
+              "max": 11.1682,
+              "median_ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "exposure": {
+              "n": 200,
+              "median": 0.0,
+              "q1": 0.0,
+              "q3": 0.0,
+              "min": -10.4593,
+              "max": 0.0,
+              "median_ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "length": {
+              "n": 200,
+              "median": 0.0,
+              "q1": 0.0,
+              "q3": 0.0,
+              "min": 0.0,
+              "max": 11.1682,
+              "median_ci95": [
+                0.0,
+                0.0
+              ]
+            }
+          },
+          "against_fastest": {
+            "same_as_fastest": 90,
+            "different": 110,
+            "less_exposure": 18,
+            "more_exposure": 92,
+            "less_exposure_and_slower_or_equal": 18,
+            "worse_on_both": 92
+          }
+        },
+        "0.5": {
+          "member": 0.5,
+          "scenarios": 200,
+          "reached": 200,
+          "success_rate": 1.0,
+          "policy": {
+            "time": {
+              "n": 200,
+              "median": 0.099,
+              "q1": 0.0,
+              "q3": 0.7184,
+              "min": 0.0,
+              "max": 11.1682,
+              "median_ci95": [
+                0.0,
+                0.2336
+              ]
+            },
+            "exposure": {
+              "n": 200,
+              "median": 0.0,
+              "q1": 0.0,
+              "q3": 0.523,
+              "min": -10.4593,
+              "max": 5.5281,
+              "median_ci95": [
+                0.0,
+                0.0779
+              ]
+            },
+            "length": {
+              "n": 200,
+              "median": 0.099,
+              "q1": 0.0,
+              "q3": 0.7184,
+              "min": 0.0,
+              "max": 11.1682,
+              "median_ci95": [
+                0.0,
+                0.2336
+              ]
+            }
+          },
+          "policy_with_fallback": {
+            "time": {
+              "n": 200,
+              "median": 0.099,
+              "q1": 0.0,
+              "q3": 0.7184,
+              "min": 0.0,
+              "max": 11.1682,
+              "median_ci95": [
+                0.0,
+                0.2336
+              ]
+            },
+            "exposure": {
+              "n": 200,
+              "median": 0.0,
+              "q1": 0.0,
+              "q3": 0.523,
+              "min": -10.4593,
+              "max": 5.5281,
+              "median_ci95": [
+                0.0,
+                0.0779
+              ]
+            },
+            "length": {
+              "n": 200,
+              "median": 0.099,
+              "q1": 0.0,
+              "q3": 0.7184,
+              "min": 0.0,
+              "max": 11.1682,
+              "median_ci95": [
+                0.0,
+                0.2336
+              ]
+            }
+          },
+          "optimal": {
+            "time": {
+              "n": 200,
+              "median": 0.0,
+              "q1": 0.0,
+              "q3": 0.0,
+              "min": 0.0,
+              "max": 3.6775,
+              "median_ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "exposure": {
+              "n": 200,
+              "median": 0.0,
+              "q1": 0.0,
+              "q3": 0.0,
+              "min": -10.3843,
+              "max": 0.0,
+              "median_ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "length": {
+              "n": 200,
+              "median": 0.0,
+              "q1": 0.0,
+              "q3": 0.0,
+              "min": 0.0,
+              "max": 3.6775,
+              "median_ci95": [
+                0.0,
+                0.0
+              ]
+            }
+          },
+          "against_fastest": {
+            "same_as_fastest": 90,
+            "different": 110,
+            "less_exposure": 18,
+            "more_exposure": 92,
+            "less_exposure_and_slower_or_equal": 18,
+            "worse_on_both": 92
+          }
+        },
+        "0.6": {
+          "member": 0.5,
+          "scenarios": 200,
+          "reached": 200,
+          "success_rate": 1.0,
+          "policy": {
+            "time": {
+              "n": 200,
+              "median": 0.099,
+              "q1": 0.0,
+              "q3": 0.7184,
+              "min": 0.0,
+              "max": 11.1682,
+              "median_ci95": [
+                0.0,
+                0.2336
+              ]
+            },
+            "exposure": {
+              "n": 200,
+              "median": 0.0,
+              "q1": 0.0,
+              "q3": 0.523,
+              "min": -10.4593,
+              "max": 5.5281,
+              "median_ci95": [
+                0.0,
+                0.0779
+              ]
+            },
+            "length": {
+              "n": 200,
+              "median": 0.099,
+              "q1": 0.0,
+              "q3": 0.7184,
+              "min": 0.0,
+              "max": 11.1682,
+              "median_ci95": [
+                0.0,
+                0.2336
+              ]
+            }
+          },
+          "policy_with_fallback": {
+            "time": {
+              "n": 200,
+              "median": 0.099,
+              "q1": 0.0,
+              "q3": 0.7184,
+              "min": 0.0,
+              "max": 11.1682,
+              "median_ci95": [
+                0.0,
+                0.2336
+              ]
+            },
+            "exposure": {
+              "n": 200,
+              "median": 0.0,
+              "q1": 0.0,
+              "q3": 0.523,
+              "min": -10.4593,
+              "max": 5.5281,
+              "median_ci95": [
+                0.0,
+                0.0779
+              ]
+            },
+            "length": {
+              "n": 200,
+              "median": 0.099,
+              "q1": 0.0,
+              "q3": 0.7184,
+              "min": 0.0,
+              "max": 11.1682,
+              "median_ci95": [
+                0.0,
+                0.2336
+              ]
+            }
+          },
+          "optimal": {
+            "time": {
+              "n": 200,
+              "median": 0.0,
+              "q1": 0.0,
+              "q3": 0.0,
+              "min": 0.0,
+              "max": 3.1415,
+              "median_ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "exposure": {
+              "n": 200,
+              "median": 0.0,
+              "q1": 0.0,
+              "q3": 0.0,
+              "min": -10.3843,
+              "max": 0.0,
+              "median_ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "length": {
+              "n": 200,
+              "median": 0.0,
+              "q1": 0.0,
+              "q3": 0.0,
+              "min": 0.0,
+              "max": 3.1415,
+              "median_ci95": [
+                0.0,
+                0.0
+              ]
+            }
+          },
+          "against_fastest": {
+            "same_as_fastest": 90,
+            "different": 110,
+            "less_exposure": 18,
+            "more_exposure": 92,
+            "less_exposure_and_slower_or_equal": 18,
+            "worse_on_both": 92
+          }
+        },
+        "0.7": {
+          "member": 0.75,
+          "scenarios": 200,
+          "reached": 200,
+          "success_rate": 1.0,
+          "policy": {
+            "time": {
+              "n": 200,
+              "median": 0.1094,
+              "q1": 0.0,
+              "q3": 0.6317,
+              "min": 0.0,
+              "max": 6.0765,
+              "median_ci95": [
+                0.0105,
+                0.2336
+              ]
+            },
+            "exposure": {
+              "n": 200,
+              "median": 0.0166,
+              "q1": 0.0,
+              "q3": 0.5423,
+              "min": -6.3252,
+              "max": 6.2328,
+              "median_ci95": [
+                0.0,
+                0.1449
+              ]
+            },
+            "length": {
+              "n": 200,
+              "median": 0.1094,
+              "q1": 0.0,
+              "q3": 0.6317,
+              "min": 0.0,
+              "max": 6.0765,
+              "median_ci95": [
+                0.0105,
+                0.2336
+              ]
+            }
+          },
+          "policy_with_fallback": {
+            "time": {
+              "n": 200,
+              "median": 0.1094,
+              "q1": 0.0,
+              "q3": 0.6317,
+              "min": 0.0,
+              "max": 6.0765,
+              "median_ci95": [
+                0.0105,
+                0.2336
+              ]
+            },
+            "exposure": {
+              "n": 200,
+              "median": 0.0166,
+              "q1": 0.0,
+              "q3": 0.5423,
+              "min": -6.3252,
+              "max": 6.2328,
+              "median_ci95": [
+                0.0,
+                0.1449
+              ]
+            },
+            "length": {
+              "n": 200,
+              "median": 0.1094,
+              "q1": 0.0,
+              "q3": 0.6317,
+              "min": 0.0,
+              "max": 6.0765,
+              "median_ci95": [
+                0.0105,
+                0.2336
+              ]
+            }
+          },
+          "optimal": {
+            "time": {
+              "n": 200,
+              "median": 0.0,
+              "q1": 0.0,
+              "q3": 0.0,
+              "min": 0.0,
+              "max": 3.0494,
+              "median_ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "exposure": {
+              "n": 200,
+              "median": 0.0,
+              "q1": 0.0,
+              "q3": 0.0,
+              "min": -10.2404,
+              "max": 0.0,
+              "median_ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "length": {
+              "n": 200,
+              "median": 0.0,
+              "q1": 0.0,
+              "q3": 0.0,
+              "min": 0.0,
+              "max": 3.0494,
+              "median_ci95": [
+                0.0,
+                0.0
+              ]
+            }
+          },
+          "against_fastest": {
+            "same_as_fastest": 84,
+            "different": 116,
+            "less_exposure": 15,
+            "more_exposure": 101,
+            "less_exposure_and_slower_or_equal": 15,
+            "worse_on_both": 101
+          }
+        },
+        "0.8": {
+          "member": 0.75,
+          "scenarios": 200,
+          "reached": 200,
+          "success_rate": 1.0,
+          "policy": {
+            "time": {
+              "n": 200,
+              "median": 0.1094,
+              "q1": 0.0,
+              "q3": 0.6317,
+              "min": 0.0,
+              "max": 6.0765,
+              "median_ci95": [
+                0.0105,
+                0.2336
+              ]
+            },
+            "exposure": {
+              "n": 200,
+              "median": 0.0166,
+              "q1": 0.0,
+              "q3": 0.5423,
+              "min": -6.3252,
+              "max": 6.2328,
+              "median_ci95": [
+                0.0,
+                0.1449
+              ]
+            },
+            "length": {
+              "n": 200,
+              "median": 0.1094,
+              "q1": 0.0,
+              "q3": 0.6317,
+              "min": 0.0,
+              "max": 6.0765,
+              "median_ci95": [
+                0.0105,
+                0.2336
+              ]
+            }
+          },
+          "policy_with_fallback": {
+            "time": {
+              "n": 200,
+              "median": 0.1094,
+              "q1": 0.0,
+              "q3": 0.6317,
+              "min": 0.0,
+              "max": 6.0765,
+              "median_ci95": [
+                0.0105,
+                0.2336
+              ]
+            },
+            "exposure": {
+              "n": 200,
+              "median": 0.0166,
+              "q1": 0.0,
+              "q3": 0.5423,
+              "min": -6.3252,
+              "max": 6.2328,
+              "median_ci95": [
+                0.0,
+                0.1449
+              ]
+            },
+            "length": {
+              "n": 200,
+              "median": 0.1094,
+              "q1": 0.0,
+              "q3": 0.6317,
+              "min": 0.0,
+              "max": 6.0765,
+              "median_ci95": [
+                0.0105,
+                0.2336
+              ]
+            }
+          },
+          "optimal": {
+            "time": {
+              "n": 200,
+              "median": 0.0,
+              "q1": 0.0,
+              "q3": 0.0,
+              "min": 0.0,
+              "max": 0.9435,
+              "median_ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "exposure": {
+              "n": 200,
+              "median": 0.0,
+              "q1": 0.0,
+              "q3": 0.0,
+              "min": -6.7048,
+              "max": 0.0,
+              "median_ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "length": {
+              "n": 200,
+              "median": 0.0,
+              "q1": 0.0,
+              "q3": 0.0,
+              "min": 0.0,
+              "max": 0.9435,
+              "median_ci95": [
+                0.0,
+                0.0
+              ]
+            }
+          },
+          "against_fastest": {
+            "same_as_fastest": 84,
+            "different": 116,
+            "less_exposure": 15,
+            "more_exposure": 101,
+            "less_exposure_and_slower_or_equal": 15,
+            "worse_on_both": 101
+          }
+        },
+        "0.9": {
+          "member": 1.0,
+          "scenarios": 200,
+          "reached": 200,
+          "success_rate": 1.0,
+          "policy": {
+            "time": {
+              "n": 200,
+              "median": 0.1012,
+              "q1": 0.0,
+              "q3": 0.6223,
+              "min": 0.0,
+              "max": 6.4987,
+              "median_ci95": [
+                0.0318,
+                0.2743
+              ]
+            },
+            "exposure": {
+              "n": 200,
+              "median": 0.0595,
+              "q1": 0.0,
+              "q3": 0.5557,
+              "min": -5.5947,
+              "max": 15.8917,
+              "median_ci95": [
+                0.0,
+                0.1792
+              ]
+            },
+            "length": {
+              "n": 200,
+              "median": 0.1012,
+              "q1": 0.0,
+              "q3": 0.6223,
+              "min": 0.0,
+              "max": 6.4987,
+              "median_ci95": [
+                0.0318,
+                0.2743
+              ]
+            }
+          },
+          "policy_with_fallback": {
+            "time": {
+              "n": 200,
+              "median": 0.1012,
+              "q1": 0.0,
+              "q3": 0.6223,
+              "min": 0.0,
+              "max": 6.4987,
+              "median_ci95": [
+                0.0318,
+                0.2743
+              ]
+            },
+            "exposure": {
+              "n": 200,
+              "median": 0.0595,
+              "q1": 0.0,
+              "q3": 0.5557,
+              "min": -5.5947,
+              "max": 15.8917,
+              "median_ci95": [
+                0.0,
+                0.1792
+              ]
+            },
+            "length": {
+              "n": 200,
+              "median": 0.1012,
+              "q1": 0.0,
+              "q3": 0.6223,
+              "min": 0.0,
+              "max": 6.4987,
+              "median_ci95": [
+                0.0318,
+                0.2743
+              ]
+            }
+          },
+          "optimal": {
+            "time": {
+              "n": 200,
+              "median": 0.0,
+              "q1": 0.0,
+              "q3": 0.0,
+              "min": 0.0,
+              "max": 0.6274,
+              "median_ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "exposure": {
+              "n": 200,
+              "median": 0.0,
+              "q1": 0.0,
+              "q3": 0.0,
+              "min": -6.7048,
+              "max": 0.0,
+              "median_ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "length": {
+              "n": 200,
+              "median": 0.0,
+              "q1": 0.0,
+              "q3": 0.0,
+              "min": 0.0,
+              "max": 0.6274,
+              "median_ci95": [
+                0.0,
+                0.0
+              ]
+            }
+          },
+          "against_fastest": {
+            "same_as_fastest": 82,
+            "different": 118,
+            "less_exposure": 9,
+            "more_exposure": 109,
+            "less_exposure_and_slower_or_equal": 9,
+            "worse_on_both": 109
+          }
+        },
+        "1": {
+          "member": 1.0,
+          "scenarios": 200,
+          "reached": 200,
+          "success_rate": 1.0,
+          "policy": {
+            "time": {
+              "n": 200,
+              "median": 0.1012,
+              "q1": 0.0,
+              "q3": 0.6223,
+              "min": 0.0,
+              "max": 6.4987,
+              "median_ci95": [
+                0.0318,
+                0.2743
+              ]
+            },
+            "exposure": {
+              "n": 200,
+              "median": 0.0595,
+              "q1": 0.0,
+              "q3": 0.5557,
+              "min": -5.5947,
+              "max": 15.8917,
+              "median_ci95": [
+                0.0,
+                0.1792
+              ]
+            },
+            "length": {
+              "n": 200,
+              "median": 0.1012,
+              "q1": 0.0,
+              "q3": 0.6223,
+              "min": 0.0,
+              "max": 6.4987,
+              "median_ci95": [
+                0.0318,
+                0.2743
+              ]
+            }
+          },
+          "policy_with_fallback": {
+            "time": {
+              "n": 200,
+              "median": 0.1012,
+              "q1": 0.0,
+              "q3": 0.6223,
+              "min": 0.0,
+              "max": 6.4987,
+              "median_ci95": [
+                0.0318,
+                0.2743
+              ]
+            },
+            "exposure": {
+              "n": 200,
+              "median": 0.0595,
+              "q1": 0.0,
+              "q3": 0.5557,
+              "min": -5.5947,
+              "max": 15.8917,
+              "median_ci95": [
+                0.0,
+                0.1792
+              ]
+            },
+            "length": {
+              "n": 200,
+              "median": 0.1012,
+              "q1": 0.0,
+              "q3": 0.6223,
+              "min": 0.0,
+              "max": 6.4987,
+              "median_ci95": [
+                0.0318,
+                0.2743
+              ]
+            }
+          },
+          "optimal": {
+            "time": {
+              "n": 200,
+              "median": 0.0,
+              "q1": 0.0,
+              "q3": 0.0,
+              "min": 0.0,
+              "max": 0.0,
+              "median_ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "exposure": {
+              "n": 200,
+              "median": 0.0,
+              "q1": 0.0,
+              "q3": 0.0,
+              "min": 0.0,
+              "max": 0.0,
+              "median_ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "length": {
+              "n": 200,
+              "median": 0.0,
+              "q1": 0.0,
+              "q3": 0.0,
+              "min": 0.0,
+              "max": 0.0,
+              "median_ci95": [
+                0.0,
+                0.0
+              ]
+            }
+          },
+          "against_fastest": {
+            "same_as_fastest": 82,
+            "different": 118,
+            "less_exposure": 9,
+            "more_exposure": 109,
+            "less_exposure_and_slower_or_equal": 9,
+            "worse_on_both": 109
+          }
+        }
+      },
+      "preference": {
+        "od_pairs": 200,
+        "usable": 200,
+        "fulfilled": 109,
+        "shifted": 16,
+        "fulfilled_rate": 0.545,
+        "shifted_rate": 0.08
+      },
+      "preference_optimal": {
+        "od_pairs": 200,
+        "usable": 200,
+        "fulfilled": 200,
+        "shifted": 48,
+        "fulfilled_rate": 1.0,
+        "shifted_rate": 0.24
+      }
+    },
+    "perturbed": {
+      "scenarios": 2200,
+      "od_pairs": 200,
+      "windows": [
+        "2026-09-29T00:00:00Z",
+        "2026-09-29T07:00:00Z",
+        "2026-09-29T14:00:00Z",
+        "2026-09-29T21:00:00Z",
+        "2026-09-30T04:00:00Z",
+        "2026-09-30T11:00:00Z",
+        "2026-09-30T18:00:00Z"
+      ],
+      "alphas": [
+        0.0,
+        0.1,
+        0.2,
+        0.3,
+        0.4,
+        0.5,
+        0.6,
+        0.7,
+        0.8,
+        0.9,
+        1.0
+      ],
+      "decoded_routes": 1000,
+      "reached_routes": 994,
+      "failures": {
+        "dead_end": 6
+      },
+      "success_rate": 0.994,
+      "route_validity": 1.0,
+      "inference_ms": {
+        "median": 54.07,
+        "p95": 156.39,
+        "max": 403.16,
+        "over_budget": 0
+      },
+      "fastest_search_ms": {
+        "median": 1.045,
+        "p95": 3.05,
+        "max": 5.32
+      },
+      "by_alpha": {
+        "0": {
+          "member": 0.0,
+          "scenarios": 200,
+          "reached": 198,
+          "success_rate": 0.99,
+          "policy": {
+            "time": {
+              "n": 198,
+              "median": 0.3701,
+              "q1": 0.0,
+              "q3": 1.2118,
+              "min": 0.0,
+              "max": 60.1133,
+              "median_ci95": [
+                0.1884,
+                0.5464
+              ]
+            },
+            "exposure": {
+              "n": 198,
+              "median": 0.0,
+              "q1": -0.0975,
+              "q3": 0.3092,
+              "min": -38.4433,
+              "max": 2.6842,
+              "median_ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "length": {
+              "n": 198,
+              "median": 0.3701,
+              "q1": 0.0,
+              "q3": 1.2118,
+              "min": 0.0,
+              "max": 60.1133,
+              "median_ci95": [
+                0.1884,
+                0.5464
+              ]
+            }
+          },
+          "policy_with_fallback": {
+            "time": {
+              "n": 200,
+              "median": 0.3489,
+              "q1": 0.0,
+              "q3": 1.1772,
+              "min": 0.0,
+              "max": 60.1133,
+              "median_ci95": [
+                0.1201,
+                0.5344
+              ]
+            },
+            "exposure": {
+              "n": 200,
+              "median": 0.0,
+              "q1": -0.0681,
+              "q3": 0.3072,
+              "min": -38.4433,
+              "max": 2.6842,
+              "median_ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "length": {
+              "n": 200,
+              "median": 0.3489,
+              "q1": 0.0,
+              "q3": 1.1772,
+              "min": 0.0,
+              "max": 60.1133,
+              "median_ci95": [
+                0.1201,
+                0.5344
+              ]
+            }
+          },
+          "optimal": {
+            "time": {
+              "n": 200,
+              "median": 0.0,
+              "q1": 0.0,
+              "q3": 0.9772,
+              "min": 0.0,
+              "max": 65.636,
+              "median_ci95": [
+                0.0,
+                0.0572
+              ]
+            },
+            "exposure": {
+              "n": 200,
+              "median": 0.0,
+              "q1": -1.0219,
+              "q3": 0.0,
+              "min": -39.1322,
+              "max": 0.0,
+              "median_ci95": [
+                -0.0636,
+                0.0
+              ]
+            },
+            "length": {
+              "n": 200,
+              "median": 0.0,
+              "q1": 0.0,
+              "q3": 0.9772,
+              "min": 0.0,
+              "max": 65.636,
+              "median_ci95": [
+                0.0,
+                0.0572
+              ]
+            }
+          },
+          "against_fastest": {
+            "same_as_fastest": 69,
+            "different": 129,
+            "less_exposure": 55,
+            "more_exposure": 74,
+            "less_exposure_and_slower_or_equal": 55,
+            "worse_on_both": 74
+          }
+        },
+        "0.1": {
+          "member": 0.0,
+          "scenarios": 200,
+          "reached": 198,
+          "success_rate": 0.99,
+          "policy": {
+            "time": {
+              "n": 198,
+              "median": 0.3701,
+              "q1": 0.0,
+              "q3": 1.2118,
+              "min": 0.0,
+              "max": 60.1133,
+              "median_ci95": [
+                0.1884,
+                0.5464
+              ]
+            },
+            "exposure": {
+              "n": 198,
+              "median": 0.0,
+              "q1": -0.0975,
+              "q3": 0.3092,
+              "min": -38.4433,
+              "max": 2.6842,
+              "median_ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "length": {
+              "n": 198,
+              "median": 0.3701,
+              "q1": 0.0,
+              "q3": 1.2118,
+              "min": 0.0,
+              "max": 60.1133,
+              "median_ci95": [
+                0.1884,
+                0.5464
+              ]
+            }
+          },
+          "policy_with_fallback": {
+            "time": {
+              "n": 200,
+              "median": 0.3489,
+              "q1": 0.0,
+              "q3": 1.1772,
+              "min": 0.0,
+              "max": 60.1133,
+              "median_ci95": [
+                0.1201,
+                0.5344
+              ]
+            },
+            "exposure": {
+              "n": 200,
+              "median": 0.0,
+              "q1": -0.0681,
+              "q3": 0.3072,
+              "min": -38.4433,
+              "max": 2.6842,
+              "median_ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "length": {
+              "n": 200,
+              "median": 0.3489,
+              "q1": 0.0,
+              "q3": 1.1772,
+              "min": 0.0,
+              "max": 60.1133,
+              "median_ci95": [
+                0.1201,
+                0.5344
+              ]
+            }
+          },
+          "optimal": {
+            "time": {
+              "n": 200,
+              "median": 0.0,
+              "q1": 0.0,
+              "q3": 0.5479,
+              "min": 0.0,
+              "max": 65.636,
+              "median_ci95": [
+                0.0,
+                0.0036
+              ]
+            },
+            "exposure": {
+              "n": 200,
+              "median": 0.0,
+              "q1": -0.8666,
+              "q3": 0.0,
+              "min": -39.1322,
+              "max": 0.0,
+              "median_ci95": [
+                -0.0243,
+                0.0
+              ]
+            },
+            "length": {
+              "n": 200,
+              "median": 0.0,
+              "q1": 0.0,
+              "q3": 0.5479,
+              "min": 0.0,
+              "max": 65.636,
+              "median_ci95": [
+                0.0,
+                0.0036
+              ]
+            }
+          },
+          "against_fastest": {
+            "same_as_fastest": 69,
+            "different": 129,
+            "less_exposure": 55,
+            "more_exposure": 74,
+            "less_exposure_and_slower_or_equal": 55,
+            "worse_on_both": 74
+          }
+        },
+        "0.2": {
+          "member": 0.25,
+          "scenarios": 200,
+          "reached": 198,
+          "success_rate": 0.99,
+          "policy": {
+            "time": {
+              "n": 198,
+              "median": 0.2837,
+              "q1": 0.0,
+              "q3": 1.304,
+              "min": 0.0,
+              "max": 57.1227,
+              "median_ci95": [
+                0.1374,
+                0.5139
+              ]
+            },
+            "exposure": {
+              "n": 198,
+              "median": 0.0,
+              "q1": 0.0,
+              "q3": 0.3211,
+              "min": -36.75,
+              "max": 7.2635,
+              "median_ci95": [
+                0.0,
+                0.0002
+              ]
+            },
+            "length": {
+              "n": 198,
+              "median": 0.2837,
+              "q1": 0.0,
+              "q3": 1.304,
+              "min": 0.0,
+              "max": 57.1227,
+              "median_ci95": [
+                0.1374,
+                0.5139
+              ]
+            }
+          },
+          "policy_with_fallback": {
+            "time": {
+              "n": 200,
+              "median": 0.2731,
+              "q1": 0.0,
+              "q3": 1.2793,
+              "min": 0.0,
+              "max": 57.1227,
+              "median_ci95": [
+                0.0972,
+                0.5124
+              ]
+            },
+            "exposure": {
+              "n": 200,
+              "median": 0.0,
+              "q1": 0.0,
+              "q3": 0.3197,
+              "min": -36.75,
+              "max": 7.2635,
+              "median_ci95": [
+                0.0,
+                0.0002
+              ]
+            },
+            "length": {
+              "n": 200,
+              "median": 0.2731,
+              "q1": 0.0,
+              "q3": 1.2793,
+              "min": 0.0,
+              "max": 57.1227,
+              "median_ci95": [
+                0.0972,
+                0.5124
+              ]
+            }
+          },
+          "optimal": {
+            "time": {
+              "n": 200,
+              "median": 0.0,
+              "q1": 0.0,
+              "q3": 0.2519,
+              "min": 0.0,
+              "max": 25.6971,
+              "median_ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "exposure": {
+              "n": 200,
+              "median": 0.0,
+              "q1": -0.6048,
+              "q3": 0.0,
+              "min": -39.1322,
+              "max": 0.0,
+              "median_ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "length": {
+              "n": 200,
+              "median": 0.0,
+              "q1": 0.0,
+              "q3": 0.2519,
+              "min": 0.0,
+              "max": 25.6971,
+              "median_ci95": [
+                0.0,
+                0.0
+              ]
+            }
+          },
+          "against_fastest": {
+            "same_as_fastest": 70,
+            "different": 128,
+            "less_exposure": 43,
+            "more_exposure": 85,
+            "less_exposure_and_slower_or_equal": 43,
+            "worse_on_both": 85
+          }
+        },
+        "0.3": {
+          "member": 0.25,
+          "scenarios": 200,
+          "reached": 198,
+          "success_rate": 0.99,
+          "policy": {
+            "time": {
+              "n": 198,
+              "median": 0.2837,
+              "q1": 0.0,
+              "q3": 1.304,
+              "min": 0.0,
+              "max": 57.1227,
+              "median_ci95": [
+                0.1374,
+                0.5139
+              ]
+            },
+            "exposure": {
+              "n": 198,
+              "median": 0.0,
+              "q1": 0.0,
+              "q3": 0.3211,
+              "min": -36.75,
+              "max": 7.2635,
+              "median_ci95": [
+                0.0,
+                0.0002
+              ]
+            },
+            "length": {
+              "n": 198,
+              "median": 0.2837,
+              "q1": 0.0,
+              "q3": 1.304,
+              "min": 0.0,
+              "max": 57.1227,
+              "median_ci95": [
+                0.1374,
+                0.5139
+              ]
+            }
+          },
+          "policy_with_fallback": {
+            "time": {
+              "n": 200,
+              "median": 0.2731,
+              "q1": 0.0,
+              "q3": 1.2793,
+              "min": 0.0,
+              "max": 57.1227,
+              "median_ci95": [
+                0.0972,
+                0.5124
+              ]
+            },
+            "exposure": {
+              "n": 200,
+              "median": 0.0,
+              "q1": 0.0,
+              "q3": 0.3197,
+              "min": -36.75,
+              "max": 7.2635,
+              "median_ci95": [
+                0.0,
+                0.0002
+              ]
+            },
+            "length": {
+              "n": 200,
+              "median": 0.2731,
+              "q1": 0.0,
+              "q3": 1.2793,
+              "min": 0.0,
+              "max": 57.1227,
+              "median_ci95": [
+                0.0972,
+                0.5124
+              ]
+            }
+          },
+          "optimal": {
+            "time": {
+              "n": 200,
+              "median": 0.0,
+              "q1": 0.0,
+              "q3": 0.1508,
+              "min": 0.0,
+              "max": 19.648,
+              "median_ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "exposure": {
+              "n": 200,
+              "median": 0.0,
+              "q1": -0.5026,
+              "q3": 0.0,
+              "min": -36.7765,
+              "max": 0.0,
+              "median_ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "length": {
+              "n": 200,
+              "median": 0.0,
+              "q1": 0.0,
+              "q3": 0.1508,
+              "min": 0.0,
+              "max": 19.648,
+              "median_ci95": [
+                0.0,
+                0.0
+              ]
+            }
+          },
+          "against_fastest": {
+            "same_as_fastest": 70,
+            "different": 128,
+            "less_exposure": 43,
+            "more_exposure": 85,
+            "less_exposure_and_slower_or_equal": 43,
+            "worse_on_both": 85
+          }
+        },
+        "0.4": {
+          "member": 0.5,
+          "scenarios": 200,
+          "reached": 200,
+          "success_rate": 1.0,
+          "policy": {
+            "time": {
+              "n": 200,
+              "median": 0.172,
+              "q1": 0.0,
+              "q3": 0.8738,
+              "min": 0.0,
+              "max": 26.9643,
+              "median_ci95": [
+                0.0051,
+                0.3049
+              ]
+            },
+            "exposure": {
+              "n": 200,
+              "median": 0.0,
+              "q1": 0.0,
+              "q3": 0.3725,
+              "min": -36.75,
+              "max": 3.8659,
+              "median_ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "length": {
+              "n": 200,
+              "median": 0.172,
+              "q1": 0.0,
+              "q3": 0.8738,
+              "min": 0.0,
+              "max": 26.9643,
+              "median_ci95": [
+                0.0051,
+                0.3049
+              ]
+            }
+          },
+          "policy_with_fallback": {
+            "time": {
+              "n": 200,
+              "median": 0.172,
+              "q1": 0.0,
+              "q3": 0.8738,
+              "min": 0.0,
+              "max": 26.9643,
+              "median_ci95": [
+                0.0051,
+                0.3049
+              ]
+            },
+            "exposure": {
+              "n": 200,
+              "median": 0.0,
+              "q1": 0.0,
+              "q3": 0.3725,
+              "min": -36.75,
+              "max": 3.8659,
+              "median_ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "length": {
+              "n": 200,
+              "median": 0.172,
+              "q1": 0.0,
+              "q3": 0.8738,
+              "min": 0.0,
+              "max": 26.9643,
+              "median_ci95": [
+                0.0051,
+                0.3049
+              ]
+            }
+          },
+          "optimal": {
+            "time": {
+              "n": 200,
+              "median": 0.0,
+              "q1": 0.0,
+              "q3": 0.075,
+              "min": 0.0,
+              "max": 15.4442,
+              "median_ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "exposure": {
+              "n": 200,
+              "median": 0.0,
+              "q1": -0.3275,
+              "q3": 0.0,
+              "min": -36.7765,
+              "max": 0.0,
+              "median_ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "length": {
+              "n": 200,
+              "median": 0.0,
+              "q1": 0.0,
+              "q3": 0.075,
+              "min": 0.0,
+              "max": 15.4442,
+              "median_ci95": [
+                0.0,
+                0.0
+              ]
+            }
+          },
+          "against_fastest": {
+            "same_as_fastest": 85,
+            "different": 115,
+            "less_exposure": 37,
+            "more_exposure": 78,
+            "less_exposure_and_slower_or_equal": 37,
+            "worse_on_both": 78
+          }
+        },
+        "0.5": {
+          "member": 0.5,
+          "scenarios": 200,
+          "reached": 200,
+          "success_rate": 1.0,
+          "policy": {
+            "time": {
+              "n": 200,
+              "median": 0.172,
+              "q1": 0.0,
+              "q3": 0.8738,
+              "min": 0.0,
+              "max": 26.9643,
+              "median_ci95": [
+                0.0051,
+                0.3049
+              ]
+            },
+            "exposure": {
+              "n": 200,
+              "median": 0.0,
+              "q1": 0.0,
+              "q3": 0.3725,
+              "min": -36.75,
+              "max": 3.8659,
+              "median_ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "length": {
+              "n": 200,
+              "median": 0.172,
+              "q1": 0.0,
+              "q3": 0.8738,
+              "min": 0.0,
+              "max": 26.9643,
+              "median_ci95": [
+                0.0051,
+                0.3049
+              ]
+            }
+          },
+          "policy_with_fallback": {
+            "time": {
+              "n": 200,
+              "median": 0.172,
+              "q1": 0.0,
+              "q3": 0.8738,
+              "min": 0.0,
+              "max": 26.9643,
+              "median_ci95": [
+                0.0051,
+                0.3049
+              ]
+            },
+            "exposure": {
+              "n": 200,
+              "median": 0.0,
+              "q1": 0.0,
+              "q3": 0.3725,
+              "min": -36.75,
+              "max": 3.8659,
+              "median_ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "length": {
+              "n": 200,
+              "median": 0.172,
+              "q1": 0.0,
+              "q3": 0.8738,
+              "min": 0.0,
+              "max": 26.9643,
+              "median_ci95": [
+                0.0051,
+                0.3049
+              ]
+            }
+          },
+          "optimal": {
+            "time": {
+              "n": 200,
+              "median": 0.0,
+              "q1": 0.0,
+              "q3": 0.0474,
+              "min": 0.0,
+              "max": 11.1682,
+              "median_ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "exposure": {
+              "n": 200,
+              "median": 0.0,
+              "q1": -0.1933,
+              "q3": 0.0,
+              "min": -36.7765,
+              "max": 0.0,
+              "median_ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "length": {
+              "n": 200,
+              "median": 0.0,
+              "q1": 0.0,
+              "q3": 0.0474,
+              "min": 0.0,
+              "max": 11.1682,
+              "median_ci95": [
+                0.0,
+                0.0
+              ]
+            }
+          },
+          "against_fastest": {
+            "same_as_fastest": 85,
+            "different": 115,
+            "less_exposure": 37,
+            "more_exposure": 78,
+            "less_exposure_and_slower_or_equal": 37,
+            "worse_on_both": 78
+          }
+        },
+        "0.6": {
+          "member": 0.5,
+          "scenarios": 200,
+          "reached": 200,
+          "success_rate": 1.0,
+          "policy": {
+            "time": {
+              "n": 200,
+              "median": 0.172,
+              "q1": 0.0,
+              "q3": 0.8738,
+              "min": 0.0,
+              "max": 26.9643,
+              "median_ci95": [
+                0.0051,
+                0.3049
+              ]
+            },
+            "exposure": {
+              "n": 200,
+              "median": 0.0,
+              "q1": 0.0,
+              "q3": 0.3725,
+              "min": -36.75,
+              "max": 3.8659,
+              "median_ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "length": {
+              "n": 200,
+              "median": 0.172,
+              "q1": 0.0,
+              "q3": 0.8738,
+              "min": 0.0,
+              "max": 26.9643,
+              "median_ci95": [
+                0.0051,
+                0.3049
+              ]
+            }
+          },
+          "policy_with_fallback": {
+            "time": {
+              "n": 200,
+              "median": 0.172,
+              "q1": 0.0,
+              "q3": 0.8738,
+              "min": 0.0,
+              "max": 26.9643,
+              "median_ci95": [
+                0.0051,
+                0.3049
+              ]
+            },
+            "exposure": {
+              "n": 200,
+              "median": 0.0,
+              "q1": 0.0,
+              "q3": 0.3725,
+              "min": -36.75,
+              "max": 3.8659,
+              "median_ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "length": {
+              "n": 200,
+              "median": 0.172,
+              "q1": 0.0,
+              "q3": 0.8738,
+              "min": 0.0,
+              "max": 26.9643,
+              "median_ci95": [
+                0.0051,
+                0.3049
+              ]
+            }
+          },
+          "optimal": {
+            "time": {
+              "n": 200,
+              "median": 0.0,
+              "q1": 0.0,
+              "q3": 0.0003,
+              "min": 0.0,
+              "max": 10.9236,
+              "median_ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "exposure": {
+              "n": 200,
+              "median": 0.0,
+              "q1": -0.0444,
+              "q3": 0.0,
+              "min": -36.7765,
+              "max": 0.0,
+              "median_ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "length": {
+              "n": 200,
+              "median": 0.0,
+              "q1": 0.0,
+              "q3": 0.0003,
+              "min": 0.0,
+              "max": 10.9236,
+              "median_ci95": [
+                0.0,
+                0.0
+              ]
+            }
+          },
+          "against_fastest": {
+            "same_as_fastest": 85,
+            "different": 115,
+            "less_exposure": 37,
+            "more_exposure": 78,
+            "less_exposure_and_slower_or_equal": 37,
+            "worse_on_both": 78
+          }
+        },
+        "0.7": {
+          "member": 0.75,
+          "scenarios": 200,
+          "reached": 198,
+          "success_rate": 0.99,
+          "policy": {
+            "time": {
+              "n": 198,
+              "median": 0.1469,
+              "q1": 0.0,
+              "q3": 0.6349,
+              "min": 0.0,
+              "max": 11.0205,
+              "median_ci95": [
+                0.0253,
+                0.2441
+              ]
+            },
+            "exposure": {
+              "n": 198,
+              "median": 0.0,
+              "q1": 0.0,
+              "q3": 0.3497,
+              "min": -36.4877,
+              "max": 3.7237,
+              "median_ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "length": {
+              "n": 198,
+              "median": 0.1469,
+              "q1": 0.0,
+              "q3": 0.6349,
+              "min": 0.0,
+              "max": 11.0205,
+              "median_ci95": [
+                0.0253,
+                0.2441
+              ]
+            }
+          },
+          "policy_with_fallback": {
+            "time": {
+              "n": 200,
+              "median": 0.1199,
+              "q1": 0.0,
+              "q3": 0.6317,
+              "min": 0.0,
+              "max": 11.0205,
+              "median_ci95": [
+                0.0105,
+                0.2375
+              ]
+            },
+            "exposure": {
+              "n": 200,
+              "median": 0.0,
+              "q1": 0.0,
+              "q3": 0.3447,
+              "min": -36.4877,
+              "max": 3.7237,
+              "median_ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "length": {
+              "n": 200,
+              "median": 0.1199,
+              "q1": 0.0,
+              "q3": 0.6317,
+              "min": 0.0,
+              "max": 11.0205,
+              "median_ci95": [
+                0.0105,
+                0.2375
+              ]
+            }
+          },
+          "optimal": {
+            "time": {
+              "n": 200,
+              "median": 0.0,
+              "q1": 0.0,
+              "q3": 0.0,
+              "min": 0.0,
+              "max": 10.9236,
+              "median_ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "exposure": {
+              "n": 200,
+              "median": 0.0,
+              "q1": 0.0,
+              "q3": 0.0,
+              "min": -36.7765,
+              "max": 0.0,
+              "median_ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "length": {
+              "n": 200,
+              "median": 0.0,
+              "q1": 0.0,
+              "q3": 0.0,
+              "min": 0.0,
+              "max": 10.9236,
+              "median_ci95": [
+                0.0,
+                0.0
+              ]
+            }
+          },
+          "against_fastest": {
+            "same_as_fastest": 80,
+            "different": 118,
+            "less_exposure": 34,
+            "more_exposure": 84,
+            "less_exposure_and_slower_or_equal": 34,
+            "worse_on_both": 84
+          }
+        },
+        "0.8": {
+          "member": 0.75,
+          "scenarios": 200,
+          "reached": 198,
+          "success_rate": 0.99,
+          "policy": {
+            "time": {
+              "n": 198,
+              "median": 0.1469,
+              "q1": 0.0,
+              "q3": 0.6349,
+              "min": 0.0,
+              "max": 11.0205,
+              "median_ci95": [
+                0.0253,
+                0.2441
+              ]
+            },
+            "exposure": {
+              "n": 198,
+              "median": 0.0,
+              "q1": 0.0,
+              "q3": 0.3497,
+              "min": -36.4877,
+              "max": 3.7237,
+              "median_ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "length": {
+              "n": 198,
+              "median": 0.1469,
+              "q1": 0.0,
+              "q3": 0.6349,
+              "min": 0.0,
+              "max": 11.0205,
+              "median_ci95": [
+                0.0253,
+                0.2441
+              ]
+            }
+          },
+          "policy_with_fallback": {
+            "time": {
+              "n": 200,
+              "median": 0.1199,
+              "q1": 0.0,
+              "q3": 0.6317,
+              "min": 0.0,
+              "max": 11.0205,
+              "median_ci95": [
+                0.0105,
+                0.2375
+              ]
+            },
+            "exposure": {
+              "n": 200,
+              "median": 0.0,
+              "q1": 0.0,
+              "q3": 0.3447,
+              "min": -36.4877,
+              "max": 3.7237,
+              "median_ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "length": {
+              "n": 200,
+              "median": 0.1199,
+              "q1": 0.0,
+              "q3": 0.6317,
+              "min": 0.0,
+              "max": 11.0205,
+              "median_ci95": [
+                0.0105,
+                0.2375
+              ]
+            }
+          },
+          "optimal": {
+            "time": {
+              "n": 200,
+              "median": 0.0,
+              "q1": 0.0,
+              "q3": 0.0,
+              "min": 0.0,
+              "max": 2.3063,
+              "median_ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "exposure": {
+              "n": 200,
+              "median": 0.0,
+              "q1": 0.0,
+              "q3": 0.0,
+              "min": -36.7765,
+              "max": 0.0,
+              "median_ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "length": {
+              "n": 200,
+              "median": 0.0,
+              "q1": 0.0,
+              "q3": 0.0,
+              "min": 0.0,
+              "max": 2.3063,
+              "median_ci95": [
+                0.0,
+                0.0
+              ]
+            }
+          },
+          "against_fastest": {
+            "same_as_fastest": 80,
+            "different": 118,
+            "less_exposure": 34,
+            "more_exposure": 84,
+            "less_exposure_and_slower_or_equal": 34,
+            "worse_on_both": 84
+          }
+        },
+        "0.9": {
+          "member": 1.0,
+          "scenarios": 200,
+          "reached": 200,
+          "success_rate": 1.0,
+          "policy": {
+            "time": {
+              "n": 200,
+              "median": 0.0966,
+              "q1": 0.0,
+              "q3": 0.7559,
+              "min": 0.0,
+              "max": 18.654,
+              "median_ci95": [
+                0.0026,
+                0.2482
+              ]
+            },
+            "exposure": {
+              "n": 200,
+              "median": 0.0,
+              "q1": 0.0,
+              "q3": 0.6073,
+              "min": -35.8225,
+              "max": 27.919,
+              "median_ci95": [
+                0.0,
+                0.014
+              ]
+            },
+            "length": {
+              "n": 200,
+              "median": 0.0966,
+              "q1": 0.0,
+              "q3": 0.7559,
+              "min": 0.0,
+              "max": 18.654,
+              "median_ci95": [
+                0.0026,
+                0.2482
+              ]
+            }
+          },
+          "policy_with_fallback": {
+            "time": {
+              "n": 200,
+              "median": 0.0966,
+              "q1": 0.0,
+              "q3": 0.7559,
+              "min": 0.0,
+              "max": 18.654,
+              "median_ci95": [
+                0.0026,
+                0.2482
+              ]
+            },
+            "exposure": {
+              "n": 200,
+              "median": 0.0,
+              "q1": 0.0,
+              "q3": 0.6073,
+              "min": -35.8225,
+              "max": 27.919,
+              "median_ci95": [
+                0.0,
+                0.014
+              ]
+            },
+            "length": {
+              "n": 200,
+              "median": 0.0966,
+              "q1": 0.0,
+              "q3": 0.7559,
+              "min": 0.0,
+              "max": 18.654,
+              "median_ci95": [
+                0.0026,
+                0.2482
+              ]
+            }
+          },
+          "optimal": {
+            "time": {
+              "n": 200,
+              "median": 0.0,
+              "q1": 0.0,
+              "q3": 0.0,
+              "min": 0.0,
+              "max": 2.3063,
+              "median_ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "exposure": {
+              "n": 200,
+              "median": 0.0,
+              "q1": 0.0,
+              "q3": 0.0,
+              "min": -36.7765,
+              "max": 0.0,
+              "median_ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "length": {
+              "n": 200,
+              "median": 0.0,
+              "q1": 0.0,
+              "q3": 0.0,
+              "min": 0.0,
+              "max": 2.3063,
+              "median_ci95": [
+                0.0,
+                0.0
+              ]
+            }
+          },
+          "against_fastest": {
+            "same_as_fastest": 86,
+            "different": 114,
+            "less_exposure": 27,
+            "more_exposure": 87,
+            "less_exposure_and_slower_or_equal": 27,
+            "worse_on_both": 87
+          }
+        },
+        "1": {
+          "member": 1.0,
+          "scenarios": 200,
+          "reached": 200,
+          "success_rate": 1.0,
+          "policy": {
+            "time": {
+              "n": 200,
+              "median": 0.0966,
+              "q1": 0.0,
+              "q3": 0.7559,
+              "min": 0.0,
+              "max": 18.654,
+              "median_ci95": [
+                0.0026,
+                0.2482
+              ]
+            },
+            "exposure": {
+              "n": 200,
+              "median": 0.0,
+              "q1": 0.0,
+              "q3": 0.6073,
+              "min": -35.8225,
+              "max": 27.919,
+              "median_ci95": [
+                0.0,
+                0.014
+              ]
+            },
+            "length": {
+              "n": 200,
+              "median": 0.0966,
+              "q1": 0.0,
+              "q3": 0.7559,
+              "min": 0.0,
+              "max": 18.654,
+              "median_ci95": [
+                0.0026,
+                0.2482
+              ]
+            }
+          },
+          "policy_with_fallback": {
+            "time": {
+              "n": 200,
+              "median": 0.0966,
+              "q1": 0.0,
+              "q3": 0.7559,
+              "min": 0.0,
+              "max": 18.654,
+              "median_ci95": [
+                0.0026,
+                0.2482
+              ]
+            },
+            "exposure": {
+              "n": 200,
+              "median": 0.0,
+              "q1": 0.0,
+              "q3": 0.6073,
+              "min": -35.8225,
+              "max": 27.919,
+              "median_ci95": [
+                0.0,
+                0.014
+              ]
+            },
+            "length": {
+              "n": 200,
+              "median": 0.0966,
+              "q1": 0.0,
+              "q3": 0.7559,
+              "min": 0.0,
+              "max": 18.654,
+              "median_ci95": [
+                0.0026,
+                0.2482
+              ]
+            }
+          },
+          "optimal": {
+            "time": {
+              "n": 200,
+              "median": 0.0,
+              "q1": 0.0,
+              "q3": 0.0,
+              "min": 0.0,
+              "max": 0.0,
+              "median_ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "exposure": {
+              "n": 200,
+              "median": 0.0,
+              "q1": 0.0,
+              "q3": 0.0,
+              "min": 0.0,
+              "max": 0.0,
+              "median_ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "length": {
+              "n": 200,
+              "median": 0.0,
+              "q1": 0.0,
+              "q3": 0.0,
+              "min": 0.0,
+              "max": 0.0,
+              "median_ci95": [
+                0.0,
+                0.0
+              ]
+            }
+          },
+          "against_fastest": {
+            "same_as_fastest": 86,
+            "different": 114,
+            "less_exposure": 27,
+            "more_exposure": 87,
+            "less_exposure_and_slower_or_equal": 27,
+            "worse_on_both": 87
+          }
+        }
+      },
+      "preference": {
+        "od_pairs": 200,
+        "usable": 198,
+        "fulfilled": 122,
+        "shifted": 38,
+        "fulfilled_rate": 0.6161616161616161,
+        "shifted_rate": 0.1919191919191919
+      },
+      "preference_optimal": {
+        "od_pairs": 200,
+        "usable": 200,
+        "fulfilled": 200,
+        "shifted": 93,
+        "fulfilled_rate": 1.0,
+        "shifted_rate": 0.465
+      }
+    }
+  },
+  "longer-trips": {
+    "real": {
+      "scenarios": 550,
+      "od_pairs": 50,
+      "windows": [
+        "2026-09-29T00:00:00Z",
+        "2026-09-29T07:00:00Z",
+        "2026-09-29T14:00:00Z",
+        "2026-09-29T21:00:00Z",
+        "2026-09-30T04:00:00Z",
+        "2026-09-30T11:00:00Z",
+        "2026-09-30T18:00:00Z"
+      ],
+      "alphas": [
+        0.0,
+        0.1,
+        0.2,
+        0.3,
+        0.4,
+        0.5,
+        0.6,
+        0.7,
+        0.8,
+        0.9,
+        1.0
+      ],
+      "decoded_routes": 250,
+      "reached_routes": 233,
+      "failures": {
+        "dead_end": 17
+      },
+      "success_rate": 0.932,
+      "route_validity": 1.0,
+      "inference_ms": {
+        "median": 291.815,
+        "p95": 547.99,
+        "max": 577.87,
+        "over_budget": 0
+      },
+      "fastest_search_ms": {
+        "median": 10.735,
+        "p95": 25.87,
+        "max": 28.85
+      },
+      "by_alpha": {
+        "0": {
+          "member": 0.0,
+          "scenarios": 50,
+          "reached": 44,
+          "success_rate": 0.88,
+          "policy": {
+            "time": {
+              "n": 44,
+              "median": 1.7608,
+              "q1": 0.4586,
+              "q3": 3.6734,
+              "min": 0.0,
+              "max": 19.2349,
+              "median_ci95": [
+                0.693,
+                2.4887
+              ]
+            },
+            "exposure": {
+              "n": 44,
+              "median": 0.3155,
+              "q1": -1.0065,
+              "q3": 0.9909,
+              "min": -14.8705,
+              "max": 4.071,
+              "median_ci95": [
+                0.0,
+                0.723
+              ]
+            },
+            "length": {
+              "n": 44,
+              "median": 1.7608,
+              "q1": 0.4586,
+              "q3": 3.6734,
+              "min": 0.0,
+              "max": 19.2349,
+              "median_ci95": [
+                0.693,
+                2.4887
+              ]
+            }
+          },
+          "policy_with_fallback": {
+            "time": {
+              "n": 50,
+              "median": 1.1587,
+              "q1": 0.1306,
+              "q3": 2.9727,
+              "min": 0.0,
+              "max": 19.2349,
+              "median_ci95": [
+                0.5739,
+                2.2323
+              ]
+            },
+            "exposure": {
+              "n": 50,
+              "median": 0.0304,
+              "q1": 0.0,
+              "q3": 0.8212,
+              "min": -14.8705,
+              "max": 4.071,
+              "median_ci95": [
+                0.0,
+                0.5941
+              ]
+            },
+            "length": {
+              "n": 50,
+              "median": 1.1587,
+              "q1": 0.1306,
+              "q3": 2.9727,
+              "min": 0.0,
+              "max": 19.2349,
+              "median_ci95": [
+                0.5739,
+                2.2323
+              ]
+            }
+          },
+          "optimal": {
+            "time": {
+              "n": 50,
+              "median": 0.5553,
+              "q1": 0.0,
+              "q3": 7.1202,
+              "min": 0.0,
+              "max": 17.9769,
+              "median_ci95": [
+                0.0,
+                4.1996
+              ]
+            },
+            "exposure": {
+              "n": 50,
+              "median": -0.2534,
+              "q1": -3.872,
+              "q3": 0.0,
+              "min": -18.2231,
+              "max": 0.0,
+              "median_ci95": [
+                -1.2887,
+                0.0
+              ]
+            },
+            "length": {
+              "n": 50,
+              "median": 0.5553,
+              "q1": 0.0,
+              "q3": 7.1202,
+              "min": 0.0,
+              "max": 17.9769,
+              "median_ci95": [
+                0.0,
+                4.1996
+              ]
+            }
+          },
+          "against_fastest": {
+            "same_as_fastest": 5,
+            "different": 39,
+            "less_exposure": 12,
+            "more_exposure": 27,
+            "less_exposure_and_slower_or_equal": 12,
+            "worse_on_both": 27
+          }
+        },
+        "0.1": {
+          "member": 0.0,
+          "scenarios": 50,
+          "reached": 44,
+          "success_rate": 0.88,
+          "policy": {
+            "time": {
+              "n": 44,
+              "median": 1.7608,
+              "q1": 0.4586,
+              "q3": 3.6734,
+              "min": 0.0,
+              "max": 19.2349,
+              "median_ci95": [
+                0.693,
+                2.4887
+              ]
+            },
+            "exposure": {
+              "n": 44,
+              "median": 0.3155,
+              "q1": -1.0065,
+              "q3": 0.9909,
+              "min": -14.8705,
+              "max": 4.071,
+              "median_ci95": [
+                0.0,
+                0.723
+              ]
+            },
+            "length": {
+              "n": 44,
+              "median": 1.7608,
+              "q1": 0.4586,
+              "q3": 3.6734,
+              "min": 0.0,
+              "max": 19.2349,
+              "median_ci95": [
+                0.693,
+                2.4887
+              ]
+            }
+          },
+          "policy_with_fallback": {
+            "time": {
+              "n": 50,
+              "median": 1.1587,
+              "q1": 0.1306,
+              "q3": 2.9727,
+              "min": 0.0,
+              "max": 19.2349,
+              "median_ci95": [
+                0.5739,
+                2.2323
+              ]
+            },
+            "exposure": {
+              "n": 50,
+              "median": 0.0304,
+              "q1": 0.0,
+              "q3": 0.8212,
+              "min": -14.8705,
+              "max": 4.071,
+              "median_ci95": [
+                0.0,
+                0.5941
+              ]
+            },
+            "length": {
+              "n": 50,
+              "median": 1.1587,
+              "q1": 0.1306,
+              "q3": 2.9727,
+              "min": 0.0,
+              "max": 19.2349,
+              "median_ci95": [
+                0.5739,
+                2.2323
+              ]
+            }
+          },
+          "optimal": {
+            "time": {
+              "n": 50,
+              "median": 0.1672,
+              "q1": 0.0,
+              "q3": 4.6399,
+              "min": 0.0,
+              "max": 17.9769,
+              "median_ci95": [
+                0.0,
+                1.7585
+              ]
+            },
+            "exposure": {
+              "n": 50,
+              "median": -0.2534,
+              "q1": -3.733,
+              "q3": 0.0,
+              "min": -18.2231,
+              "max": 0.0,
+              "median_ci95": [
+                -1.2887,
+                0.0
+              ]
+            },
+            "length": {
+              "n": 50,
+              "median": 0.1672,
+              "q1": 0.0,
+              "q3": 4.6399,
+              "min": 0.0,
+              "max": 17.9769,
+              "median_ci95": [
+                0.0,
+                1.7585
+              ]
+            }
+          },
+          "against_fastest": {
+            "same_as_fastest": 5,
+            "different": 39,
+            "less_exposure": 12,
+            "more_exposure": 27,
+            "less_exposure_and_slower_or_equal": 12,
+            "worse_on_both": 27
+          }
+        },
+        "0.2": {
+          "member": 0.25,
+          "scenarios": 50,
+          "reached": 48,
+          "success_rate": 0.96,
+          "policy": {
+            "time": {
+              "n": 48,
+              "median": 1.9144,
+              "q1": 0.8874,
+              "q3": 5.6048,
+              "min": 0.0,
+              "max": 18.2162,
+              "median_ci95": [
+                1.4433,
+                3.4079
+              ]
+            },
+            "exposure": {
+              "n": 48,
+              "median": 0.5586,
+              "q1": -0.0814,
+              "q3": 1.7757,
+              "min": -15.0146,
+              "max": 5.4637,
+              "median_ci95": [
+                0.0518,
+                1.1518
+              ]
+            },
+            "length": {
+              "n": 48,
+              "median": 1.9144,
+              "q1": 0.8874,
+              "q3": 5.6048,
+              "min": 0.0,
+              "max": 18.2162,
+              "median_ci95": [
+                1.4433,
+                3.4079
+              ]
+            }
+          },
+          "policy_with_fallback": {
+            "time": {
+              "n": 50,
+              "median": 1.7025,
+              "q1": 0.7538,
+              "q3": 5.4133,
+              "min": 0.0,
+              "max": 18.2162,
+              "median_ci95": [
+                1.358,
+                3.3474
+              ]
+            },
+            "exposure": {
+              "n": 50,
+              "median": 0.5293,
+              "q1": 0.0,
+              "q3": 1.7217,
+              "min": -15.0146,
+              "max": 5.4637,
+              "median_ci95": [
+                0.0,
+                1.129
+              ]
+            },
+            "length": {
+              "n": 50,
+              "median": 1.7025,
+              "q1": 0.7538,
+              "q3": 5.4133,
+              "min": 0.0,
+              "max": 18.2162,
+              "median_ci95": [
+                1.358,
+                3.3474
+              ]
+            }
+          },
+          "optimal": {
+            "time": {
+              "n": 50,
+              "median": 0.0167,
+              "q1": 0.0,
+              "q3": 3.2945,
+              "min": 0.0,
+              "max": 17.9769,
+              "median_ci95": [
+                0.0,
+                1.0141
+              ]
+            },
+            "exposure": {
+              "n": 50,
+              "median": -0.0414,
+              "q1": -3.733,
+              "q3": 0.0,
+              "min": -18.2231,
+              "max": 0.0,
+              "median_ci95": [
+                -1.2887,
+                0.0
+              ]
+            },
+            "length": {
+              "n": 50,
+              "median": 0.0167,
+              "q1": 0.0,
+              "q3": 3.2945,
+              "min": 0.0,
+              "max": 17.9769,
+              "median_ci95": [
+                0.0,
+                1.0141
+              ]
+            }
+          },
+          "against_fastest": {
+            "same_as_fastest": 5,
+            "different": 43,
+            "less_exposure": 12,
+            "more_exposure": 31,
+            "less_exposure_and_slower_or_equal": 12,
+            "worse_on_both": 31
+          }
+        },
+        "0.3": {
+          "member": 0.25,
+          "scenarios": 50,
+          "reached": 48,
+          "success_rate": 0.96,
+          "policy": {
+            "time": {
+              "n": 48,
+              "median": 1.9144,
+              "q1": 0.8874,
+              "q3": 5.6048,
+              "min": 0.0,
+              "max": 18.2162,
+              "median_ci95": [
+                1.4433,
+                3.4079
+              ]
+            },
+            "exposure": {
+              "n": 48,
+              "median": 0.5586,
+              "q1": -0.0814,
+              "q3": 1.7757,
+              "min": -15.0146,
+              "max": 5.4637,
+              "median_ci95": [
+                0.0518,
+                1.1518
+              ]
+            },
+            "length": {
+              "n": 48,
+              "median": 1.9144,
+              "q1": 0.8874,
+              "q3": 5.6048,
+              "min": 0.0,
+              "max": 18.2162,
+              "median_ci95": [
+                1.4433,
+                3.4079
+              ]
+            }
+          },
+          "policy_with_fallback": {
+            "time": {
+              "n": 50,
+              "median": 1.7025,
+              "q1": 0.7538,
+              "q3": 5.4133,
+              "min": 0.0,
+              "max": 18.2162,
+              "median_ci95": [
+                1.358,
+                3.3474
+              ]
+            },
+            "exposure": {
+              "n": 50,
+              "median": 0.5293,
+              "q1": 0.0,
+              "q3": 1.7217,
+              "min": -15.0146,
+              "max": 5.4637,
+              "median_ci95": [
+                0.0,
+                1.129
+              ]
+            },
+            "length": {
+              "n": 50,
+              "median": 1.7025,
+              "q1": 0.7538,
+              "q3": 5.4133,
+              "min": 0.0,
+              "max": 18.2162,
+              "median_ci95": [
+                1.358,
+                3.3474
+              ]
+            }
+          },
+          "optimal": {
+            "time": {
+              "n": 50,
+              "median": 0.0,
+              "q1": 0.0,
+              "q3": 1.6372,
+              "min": 0.0,
+              "max": 17.9769,
+              "median_ci95": [
+                0.0,
+                0.2034
+              ]
+            },
+            "exposure": {
+              "n": 50,
+              "median": 0.0,
+              "q1": -3.1896,
+              "q3": 0.0,
+              "min": -18.2231,
+              "max": 0.0,
+              "median_ci95": [
+                -0.5039,
+                0.0
+              ]
+            },
+            "length": {
+              "n": 50,
+              "median": 0.0,
+              "q1": 0.0,
+              "q3": 1.6372,
+              "min": 0.0,
+              "max": 17.9769,
+              "median_ci95": [
+                0.0,
+                0.2034
+              ]
+            }
+          },
+          "against_fastest": {
+            "same_as_fastest": 5,
+            "different": 43,
+            "less_exposure": 12,
+            "more_exposure": 31,
+            "less_exposure_and_slower_or_equal": 12,
+            "worse_on_both": 31
+          }
+        },
+        "0.4": {
+          "member": 0.5,
+          "scenarios": 50,
+          "reached": 46,
+          "success_rate": 0.92,
+          "policy": {
+            "time": {
+              "n": 46,
+              "median": 1.6269,
+              "q1": 0.7077,
+              "q3": 3.9389,
+              "min": 0.0,
+              "max": 24.4023,
+              "median_ci95": [
+                1.0256,
+                2.612
+              ]
+            },
+            "exposure": {
+              "n": 46,
+              "median": 0.9979,
+              "q1": 0.3135,
+              "q3": 2.5971,
+              "min": -15.214,
+              "max": 23.9208,
+              "median_ci95": [
+                0.4173,
+                1.7025
+              ]
+            },
+            "length": {
+              "n": 46,
+              "median": 1.6269,
+              "q1": 0.7077,
+              "q3": 3.9389,
+              "min": 0.0,
+              "max": 24.4023,
+              "median_ci95": [
+                1.0256,
+                2.612
+              ]
+            }
+          },
+          "policy_with_fallback": {
+            "time": {
+              "n": 50,
+              "median": 1.4292,
+              "q1": 0.4073,
+              "q3": 3.8307,
+              "min": 0.0,
+              "max": 24.4023,
+              "median_ci95": [
+                0.8973,
+                2.3731
+              ]
+            },
+            "exposure": {
+              "n": 50,
+              "median": 0.8217,
+              "q1": 0.1429,
+              "q3": 2.4264,
+              "min": -15.214,
+              "max": 23.9208,
+              "median_ci95": [
+                0.3803,
+                1.6002
+              ]
+            },
+            "length": {
+              "n": 50,
+              "median": 1.4292,
+              "q1": 0.4073,
+              "q3": 3.8307,
+              "min": 0.0,
+              "max": 24.4023,
+              "median_ci95": [
+                0.8973,
+                2.3731
+              ]
+            }
+          },
+          "optimal": {
+            "time": {
+              "n": 50,
+              "median": 0.0,
+              "q1": 0.0,
+              "q3": 0.3309,
+              "min": 0.0,
+              "max": 17.9436,
+              "median_ci95": [
+                0.0,
+                0.0137
+              ]
+            },
+            "exposure": {
+              "n": 50,
+              "median": 0.0,
+              "q1": -1.165,
+              "q3": 0.0,
+              "min": -18.2022,
+              "max": 0.0,
+              "median_ci95": [
+                -0.0283,
+                0.0
+              ]
+            },
+            "length": {
+              "n": 50,
+              "median": 0.0,
+              "q1": 0.0,
+              "q3": 0.3309,
+              "min": 0.0,
+              "max": 17.9436,
+              "median_ci95": [
+                0.0,
+                0.0137
+              ]
+            }
+          },
+          "against_fastest": {
+            "same_as_fastest": 1,
+            "different": 45,
+            "less_exposure": 6,
+            "more_exposure": 39,
+            "less_exposure_and_slower_or_equal": 6,
+            "worse_on_both": 39
+          }
+        },
+        "0.5": {
+          "member": 0.5,
+          "scenarios": 50,
+          "reached": 46,
+          "success_rate": 0.92,
+          "policy": {
+            "time": {
+              "n": 46,
+              "median": 1.6269,
+              "q1": 0.7077,
+              "q3": 3.9389,
+              "min": 0.0,
+              "max": 24.4023,
+              "median_ci95": [
+                1.0256,
+                2.612
+              ]
+            },
+            "exposure": {
+              "n": 46,
+              "median": 0.9979,
+              "q1": 0.3135,
+              "q3": 2.5971,
+              "min": -15.214,
+              "max": 23.9208,
+              "median_ci95": [
+                0.4173,
+                1.7025
+              ]
+            },
+            "length": {
+              "n": 46,
+              "median": 1.6269,
+              "q1": 0.7077,
+              "q3": 3.9389,
+              "min": 0.0,
+              "max": 24.4023,
+              "median_ci95": [
+                1.0256,
+                2.612
+              ]
+            }
+          },
+          "policy_with_fallback": {
+            "time": {
+              "n": 50,
+              "median": 1.4292,
+              "q1": 0.4073,
+              "q3": 3.8307,
+              "min": 0.0,
+              "max": 24.4023,
+              "median_ci95": [
+                0.8973,
+                2.3731
+              ]
+            },
+            "exposure": {
+              "n": 50,
+              "median": 0.8217,
+              "q1": 0.1429,
+              "q3": 2.4264,
+              "min": -15.214,
+              "max": 23.9208,
+              "median_ci95": [
+                0.3803,
+                1.6002
+              ]
+            },
+            "length": {
+              "n": 50,
+              "median": 1.4292,
+              "q1": 0.4073,
+              "q3": 3.8307,
+              "min": 0.0,
+              "max": 24.4023,
+              "median_ci95": [
+                0.8973,
+                2.3731
+              ]
+            }
+          },
+          "optimal": {
+            "time": {
+              "n": 50,
+              "median": 0.0,
+              "q1": 0.0,
+              "q3": 0.2682,
+              "min": 0.0,
+              "max": 17.9436,
+              "median_ci95": [
+                0.0,
+                0.0069
+              ]
+            },
+            "exposure": {
+              "n": 50,
+              "median": 0.0,
+              "q1": -0.8477,
+              "q3": 0.0,
+              "min": -18.2022,
+              "max": 0.0,
+              "median_ci95": [
+                -0.0141,
+                0.0
+              ]
+            },
+            "length": {
+              "n": 50,
+              "median": 0.0,
+              "q1": 0.0,
+              "q3": 0.2682,
+              "min": 0.0,
+              "max": 17.9436,
+              "median_ci95": [
+                0.0,
+                0.0069
+              ]
+            }
+          },
+          "against_fastest": {
+            "same_as_fastest": 1,
+            "different": 45,
+            "less_exposure": 6,
+            "more_exposure": 39,
+            "less_exposure_and_slower_or_equal": 6,
+            "worse_on_both": 39
+          }
+        },
+        "0.6": {
+          "member": 0.5,
+          "scenarios": 50,
+          "reached": 46,
+          "success_rate": 0.92,
+          "policy": {
+            "time": {
+              "n": 46,
+              "median": 1.6269,
+              "q1": 0.7077,
+              "q3": 3.9389,
+              "min": 0.0,
+              "max": 24.4023,
+              "median_ci95": [
+                1.0256,
+                2.612
+              ]
+            },
+            "exposure": {
+              "n": 46,
+              "median": 0.9979,
+              "q1": 0.3135,
+              "q3": 2.5971,
+              "min": -15.214,
+              "max": 23.9208,
+              "median_ci95": [
+                0.4173,
+                1.7025
+              ]
+            },
+            "length": {
+              "n": 46,
+              "median": 1.6269,
+              "q1": 0.7077,
+              "q3": 3.9389,
+              "min": 0.0,
+              "max": 24.4023,
+              "median_ci95": [
+                1.0256,
+                2.612
+              ]
+            }
+          },
+          "policy_with_fallback": {
+            "time": {
+              "n": 50,
+              "median": 1.4292,
+              "q1": 0.4073,
+              "q3": 3.8307,
+              "min": 0.0,
+              "max": 24.4023,
+              "median_ci95": [
+                0.8973,
+                2.3731
+              ]
+            },
+            "exposure": {
+              "n": 50,
+              "median": 0.8217,
+              "q1": 0.1429,
+              "q3": 2.4264,
+              "min": -15.214,
+              "max": 23.9208,
+              "median_ci95": [
+                0.3803,
+                1.6002
+              ]
+            },
+            "length": {
+              "n": 50,
+              "median": 1.4292,
+              "q1": 0.4073,
+              "q3": 3.8307,
+              "min": 0.0,
+              "max": 24.4023,
+              "median_ci95": [
+                0.8973,
+                2.3731
+              ]
+            }
+          },
+          "optimal": {
+            "time": {
+              "n": 50,
+              "median": 0.0,
+              "q1": 0.0,
+              "q3": 0.0143,
+              "min": 0.0,
+              "max": 4.9357,
+              "median_ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "exposure": {
+              "n": 50,
+              "median": 0.0,
+              "q1": -0.0687,
+              "q3": 0.0,
+              "min": -15.2945,
+              "max": 0.0,
+              "median_ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "length": {
+              "n": 50,
+              "median": 0.0,
+              "q1": 0.0,
+              "q3": 0.0143,
+              "min": 0.0,
+              "max": 4.9357,
+              "median_ci95": [
+                0.0,
+                0.0
+              ]
+            }
+          },
+          "against_fastest": {
+            "same_as_fastest": 1,
+            "different": 45,
+            "less_exposure": 6,
+            "more_exposure": 39,
+            "less_exposure_and_slower_or_equal": 6,
+            "worse_on_both": 39
+          }
+        },
+        "0.7": {
+          "member": 0.75,
+          "scenarios": 50,
+          "reached": 49,
+          "success_rate": 0.98,
+          "policy": {
+            "time": {
+              "n": 49,
+              "median": 1.1627,
+              "q1": 0.1995,
+              "q3": 2.1954,
+              "min": 0.0,
+              "max": 4.003,
+              "median_ci95": [
+                0.579,
+                1.282
+              ]
+            },
+            "exposure": {
+              "n": 49,
+              "median": 0.4953,
+              "q1": 0.0,
+              "q3": 1.4231,
+              "min": -15.2945,
+              "max": 4.3461,
+              "median_ci95": [
+                0.1968,
+                0.9227
+              ]
+            },
+            "length": {
+              "n": 49,
+              "median": 1.1627,
+              "q1": 0.1995,
+              "q3": 2.1954,
+              "min": 0.0,
+              "max": 4.003,
+              "median_ci95": [
+                0.579,
+                1.282
+              ]
+            }
+          },
+          "policy_with_fallback": {
+            "time": {
+              "n": 50,
+              "median": 1.1329,
+              "q1": 0.1684,
+              "q3": 2.1362,
+              "min": 0.0,
+              "max": 4.003,
+              "median_ci95": [
+                0.5264,
+                1.2732
+              ]
+            },
+            "exposure": {
+              "n": 50,
+              "median": 0.4898,
+              "q1": 0.0,
+              "q3": 1.3965,
+              "min": -15.2945,
+              "max": 4.3461,
+              "median_ci95": [
+                0.1607,
+                0.8516
+              ]
+            },
+            "length": {
+              "n": 50,
+              "median": 1.1329,
+              "q1": 0.1684,
+              "q3": 2.1362,
+              "min": 0.0,
+              "max": 4.003,
+              "median_ci95": [
+                0.5264,
+                1.2732
+              ]
+            }
+          },
+          "optimal": {
+            "time": {
+              "n": 50,
+              "median": 0.0,
+              "q1": 0.0,
+              "q3": 0.0,
+              "min": 0.0,
+              "max": 1.8722,
+              "median_ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "exposure": {
+              "n": 50,
+              "median": 0.0,
+              "q1": 0.0,
+              "q3": 0.0,
+              "min": -15.2945,
+              "max": 0.0,
+              "median_ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "length": {
+              "n": 50,
+              "median": 0.0,
+              "q1": 0.0,
+              "q3": 0.0,
+              "min": 0.0,
+              "max": 1.8722,
+              "median_ci95": [
+                0.0,
+                0.0
+              ]
+            }
+          },
+          "against_fastest": {
+            "same_as_fastest": 7,
+            "different": 42,
+            "less_exposure": 6,
+            "more_exposure": 36,
+            "less_exposure_and_slower_or_equal": 6,
+            "worse_on_both": 36
+          }
+        },
+        "0.8": {
+          "member": 0.75,
+          "scenarios": 50,
+          "reached": 49,
+          "success_rate": 0.98,
+          "policy": {
+            "time": {
+              "n": 49,
+              "median": 1.1627,
+              "q1": 0.1995,
+              "q3": 2.1954,
+              "min": 0.0,
+              "max": 4.003,
+              "median_ci95": [
+                0.579,
+                1.282
+              ]
+            },
+            "exposure": {
+              "n": 49,
+              "median": 0.4953,
+              "q1": 0.0,
+              "q3": 1.4231,
+              "min": -15.2945,
+              "max": 4.3461,
+              "median_ci95": [
+                0.1968,
+                0.9227
+              ]
+            },
+            "length": {
+              "n": 49,
+              "median": 1.1627,
+              "q1": 0.1995,
+              "q3": 2.1954,
+              "min": 0.0,
+              "max": 4.003,
+              "median_ci95": [
+                0.579,
+                1.282
+              ]
+            }
+          },
+          "policy_with_fallback": {
+            "time": {
+              "n": 50,
+              "median": 1.1329,
+              "q1": 0.1684,
+              "q3": 2.1362,
+              "min": 0.0,
+              "max": 4.003,
+              "median_ci95": [
+                0.5264,
+                1.2732
+              ]
+            },
+            "exposure": {
+              "n": 50,
+              "median": 0.4898,
+              "q1": 0.0,
+              "q3": 1.3965,
+              "min": -15.2945,
+              "max": 4.3461,
+              "median_ci95": [
+                0.1607,
+                0.8516
+              ]
+            },
+            "length": {
+              "n": 50,
+              "median": 1.1329,
+              "q1": 0.1684,
+              "q3": 2.1362,
+              "min": 0.0,
+              "max": 4.003,
+              "median_ci95": [
+                0.5264,
+                1.2732
+              ]
+            }
+          },
+          "optimal": {
+            "time": {
+              "n": 50,
+              "median": 0.0,
+              "q1": 0.0,
+              "q3": 0.0,
+              "min": 0.0,
+              "max": 1.8722,
+              "median_ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "exposure": {
+              "n": 50,
+              "median": 0.0,
+              "q1": 0.0,
+              "q3": 0.0,
+              "min": -15.2945,
+              "max": 0.0,
+              "median_ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "length": {
+              "n": 50,
+              "median": 0.0,
+              "q1": 0.0,
+              "q3": 0.0,
+              "min": 0.0,
+              "max": 1.8722,
+              "median_ci95": [
+                0.0,
+                0.0
+              ]
+            }
+          },
+          "against_fastest": {
+            "same_as_fastest": 7,
+            "different": 42,
+            "less_exposure": 6,
+            "more_exposure": 36,
+            "less_exposure_and_slower_or_equal": 6,
+            "worse_on_both": 36
+          }
+        },
+        "0.9": {
+          "member": 1.0,
+          "scenarios": 50,
+          "reached": 46,
+          "success_rate": 0.92,
+          "policy": {
+            "time": {
+              "n": 46,
+              "median": 1.4312,
+              "q1": 0.667,
+              "q3": 3.4366,
+              "min": 0.0,
+              "max": 15.6634,
+              "median_ci95": [
+                1.082,
+                2.8281
+              ]
+            },
+            "exposure": {
+              "n": 46,
+              "median": 1.3127,
+              "q1": 0.3685,
+              "q3": 3.2032,
+              "min": -5.8289,
+              "max": 17.268,
+              "median_ci95": [
+                0.6036,
+                2.3661
+              ]
+            },
+            "length": {
+              "n": 46,
+              "median": 1.4312,
+              "q1": 0.667,
+              "q3": 3.4366,
+              "min": 0.0,
+              "max": 15.6634,
+              "median_ci95": [
+                1.082,
+                2.8281
+              ]
+            }
+          },
+          "policy_with_fallback": {
+            "time": {
+              "n": 50,
+              "median": 1.3331,
+              "q1": 0.5178,
+              "q3": 3.3384,
+              "min": 0.0,
+              "max": 15.6634,
+              "median_ci95": [
+                0.8683,
+                2.5196
+              ]
+            },
+            "exposure": {
+              "n": 50,
+              "median": 1.049,
+              "q1": 0.0314,
+              "q3": 2.9152,
+              "min": -5.8289,
+              "max": 17.268,
+              "median_ci95": [
+                0.5036,
+                1.65
+              ]
+            },
+            "length": {
+              "n": 50,
+              "median": 1.3331,
+              "q1": 0.5178,
+              "q3": 3.3384,
+              "min": 0.0,
+              "max": 15.6634,
+              "median_ci95": [
+                0.8683,
+                2.5196
+              ]
+            }
+          },
+          "optimal": {
+            "time": {
+              "n": 50,
+              "median": 0.0,
+              "q1": 0.0,
+              "q3": 0.0,
+              "min": 0.0,
+              "max": 1.2732,
+              "median_ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "exposure": {
+              "n": 50,
+              "median": 0.0,
+              "q1": 0.0,
+              "q3": 0.0,
+              "min": -15.2945,
+              "max": 0.0,
+              "median_ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "length": {
+              "n": 50,
+              "median": 0.0,
+              "q1": 0.0,
+              "q3": 0.0,
+              "min": 0.0,
+              "max": 1.2732,
+              "median_ci95": [
+                0.0,
+                0.0
+              ]
+            }
+          },
+          "against_fastest": {
+            "same_as_fastest": 5,
+            "different": 41,
+            "less_exposure": 4,
+            "more_exposure": 37,
+            "less_exposure_and_slower_or_equal": 4,
+            "worse_on_both": 37
+          }
+        },
+        "1": {
+          "member": 1.0,
+          "scenarios": 50,
+          "reached": 46,
+          "success_rate": 0.92,
+          "policy": {
+            "time": {
+              "n": 46,
+              "median": 1.4312,
+              "q1": 0.667,
+              "q3": 3.4366,
+              "min": 0.0,
+              "max": 15.6634,
+              "median_ci95": [
+                1.082,
+                2.8281
+              ]
+            },
+            "exposure": {
+              "n": 46,
+              "median": 1.3127,
+              "q1": 0.3685,
+              "q3": 3.2032,
+              "min": -5.8289,
+              "max": 17.268,
+              "median_ci95": [
+                0.6036,
+                2.3661
+              ]
+            },
+            "length": {
+              "n": 46,
+              "median": 1.4312,
+              "q1": 0.667,
+              "q3": 3.4366,
+              "min": 0.0,
+              "max": 15.6634,
+              "median_ci95": [
+                1.082,
+                2.8281
+              ]
+            }
+          },
+          "policy_with_fallback": {
+            "time": {
+              "n": 50,
+              "median": 1.3331,
+              "q1": 0.5178,
+              "q3": 3.3384,
+              "min": 0.0,
+              "max": 15.6634,
+              "median_ci95": [
+                0.8683,
+                2.5196
+              ]
+            },
+            "exposure": {
+              "n": 50,
+              "median": 1.049,
+              "q1": 0.0314,
+              "q3": 2.9152,
+              "min": -5.8289,
+              "max": 17.268,
+              "median_ci95": [
+                0.5036,
+                1.65
+              ]
+            },
+            "length": {
+              "n": 50,
+              "median": 1.3331,
+              "q1": 0.5178,
+              "q3": 3.3384,
+              "min": 0.0,
+              "max": 15.6634,
+              "median_ci95": [
+                0.8683,
+                2.5196
+              ]
+            }
+          },
+          "optimal": {
+            "time": {
+              "n": 50,
+              "median": 0.0,
+              "q1": 0.0,
+              "q3": 0.0,
+              "min": 0.0,
+              "max": 0.0,
+              "median_ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "exposure": {
+              "n": 50,
+              "median": 0.0,
+              "q1": 0.0,
+              "q3": 0.0,
+              "min": 0.0,
+              "max": 0.0,
+              "median_ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "length": {
+              "n": 50,
+              "median": 0.0,
+              "q1": 0.0,
+              "q3": 0.0,
+              "min": 0.0,
+              "max": 0.0,
+              "median_ci95": [
+                0.0,
+                0.0
+              ]
+            }
+          },
+          "against_fastest": {
+            "same_as_fastest": 5,
+            "different": 41,
+            "less_exposure": 4,
+            "more_exposure": 37,
+            "less_exposure_and_slower_or_equal": 4,
+            "worse_on_both": 37
+          }
+        }
+      },
+      "preference": {
+        "od_pairs": 50,
+        "usable": 40,
+        "fulfilled": 12,
+        "shifted": 10,
+        "fulfilled_rate": 0.3,
+        "shifted_rate": 0.25
+      },
+      "preference_optimal": {
+        "od_pairs": 50,
+        "usable": 50,
+        "fulfilled": 50,
+        "shifted": 31,
+        "fulfilled_rate": 1.0,
+        "shifted_rate": 0.62
+      }
+    },
+    "perturbed": {
+      "scenarios": 550,
+      "od_pairs": 50,
+      "windows": [
+        "2026-09-29T00:00:00Z",
+        "2026-09-29T07:00:00Z",
+        "2026-09-29T14:00:00Z",
+        "2026-09-29T21:00:00Z",
+        "2026-09-30T04:00:00Z",
+        "2026-09-30T11:00:00Z",
+        "2026-09-30T18:00:00Z"
+      ],
+      "alphas": [
+        0.0,
+        0.1,
+        0.2,
+        0.3,
+        0.4,
+        0.5,
+        0.6,
+        0.7,
+        0.8,
+        0.9,
+        1.0
+      ],
+      "decoded_routes": 250,
+      "reached_routes": 230,
+      "failures": {
+        "dead_end": 20
+      },
+      "success_rate": 0.92,
+      "route_validity": 1.0,
+      "inference_ms": {
+        "median": 336.855,
+        "p95": 679.98,
+        "max": 917.73,
+        "over_budget": 0
+      },
+      "fastest_search_ms": {
+        "median": 10.58,
+        "p95": 26.01,
+        "max": 32.5
+      },
+      "by_alpha": {
+        "0": {
+          "member": 0.0,
+          "scenarios": 50,
+          "reached": 44,
+          "success_rate": 0.88,
+          "policy": {
+            "time": {
+              "n": 44,
+              "median": 4.1528,
+              "q1": 0.8154,
+              "q3": 7.4889,
+              "min": 0.0,
+              "max": 33.1677,
+              "median_ci95": [
+                1.8072,
+                5.6181
+              ]
+            },
+            "exposure": {
+              "n": 44,
+              "median": -3.2744,
+              "q1": -8.5353,
+              "q3": 0.3321,
+              "min": -27.8919,
+              "max": 2.6469,
+              "median_ci95": [
+                -6.1253,
+                0.0
+              ]
+            },
+            "length": {
+              "n": 44,
+              "median": 4.1528,
+              "q1": 0.8154,
+              "q3": 7.4889,
+              "min": 0.0,
+              "max": 33.1677,
+              "median_ci95": [
+                1.8072,
+                5.6181
+              ]
+            }
+          },
+          "policy_with_fallback": {
+            "time": {
+              "n": 50,
+              "median": 2.7585,
+              "q1": 0.4105,
+              "q3": 7.0456,
+              "min": 0.0,
+              "max": 33.1677,
+              "median_ci95": [
+                0.9459,
+                4.9223
+              ]
+            },
+            "exposure": {
+              "n": 50,
+              "median": -0.4314,
+              "q1": -7.7538,
+              "q3": 0.0733,
+              "min": -27.8919,
+              "max": 2.6469,
+              "median_ci95": [
+                -5.303,
+                0.0
+              ]
+            },
+            "length": {
+              "n": 50,
+              "median": 2.7585,
+              "q1": 0.4105,
+              "q3": 7.0456,
+              "min": 0.0,
+              "max": 33.1677,
+              "median_ci95": [
+                0.9459,
+                4.9223
+              ]
+            }
+          },
+          "optimal": {
+            "time": {
+              "n": 50,
+              "median": 4.2603,
+              "q1": 0.2697,
+              "q3": 8.5917,
+              "min": 0.0,
+              "max": 26.32,
+              "median_ci95": [
+                1.2983,
+                5.5791
+              ]
+            },
+            "exposure": {
+              "n": 50,
+              "median": -6.647,
+              "q1": -11.4251,
+              "q3": -0.2966,
+              "min": -39.7481,
+              "max": 0.0,
+              "median_ci95": [
+                -10.0142,
+                -1.7951
+              ]
+            },
+            "length": {
+              "n": 50,
+              "median": 4.2603,
+              "q1": 0.2697,
+              "q3": 8.5917,
+              "min": 0.0,
+              "max": 26.32,
+              "median_ci95": [
+                1.2983,
+                5.5791
+              ]
+            }
+          },
+          "against_fastest": {
+            "same_as_fastest": 3,
+            "different": 41,
+            "less_exposure": 26,
+            "more_exposure": 15,
+            "less_exposure_and_slower_or_equal": 26,
+            "worse_on_both": 15
+          }
+        },
+        "0.1": {
+          "member": 0.0,
+          "scenarios": 50,
+          "reached": 44,
+          "success_rate": 0.88,
+          "policy": {
+            "time": {
+              "n": 44,
+              "median": 4.1528,
+              "q1": 0.8154,
+              "q3": 7.4889,
+              "min": 0.0,
+              "max": 33.1677,
+              "median_ci95": [
+                1.8072,
+                5.6181
+              ]
+            },
+            "exposure": {
+              "n": 44,
+              "median": -3.2744,
+              "q1": -8.5353,
+              "q3": 0.3321,
+              "min": -27.8919,
+              "max": 2.6469,
+              "median_ci95": [
+                -6.1253,
+                0.0
+              ]
+            },
+            "length": {
+              "n": 44,
+              "median": 4.1528,
+              "q1": 0.8154,
+              "q3": 7.4889,
+              "min": 0.0,
+              "max": 33.1677,
+              "median_ci95": [
+                1.8072,
+                5.6181
+              ]
+            }
+          },
+          "policy_with_fallback": {
+            "time": {
+              "n": 50,
+              "median": 2.7585,
+              "q1": 0.4105,
+              "q3": 7.0456,
+              "min": 0.0,
+              "max": 33.1677,
+              "median_ci95": [
+                0.9459,
+                4.9223
+              ]
+            },
+            "exposure": {
+              "n": 50,
+              "median": -0.4314,
+              "q1": -7.7538,
+              "q3": 0.0733,
+              "min": -27.8919,
+              "max": 2.6469,
+              "median_ci95": [
+                -5.303,
+                0.0
+              ]
+            },
+            "length": {
+              "n": 50,
+              "median": 2.7585,
+              "q1": 0.4105,
+              "q3": 7.0456,
+              "min": 0.0,
+              "max": 33.1677,
+              "median_ci95": [
+                0.9459,
+                4.9223
+              ]
+            }
+          },
+          "optimal": {
+            "time": {
+              "n": 50,
+              "median": 4.0493,
+              "q1": 0.2323,
+              "q3": 8.3397,
+              "min": 0.0,
+              "max": 18.0871,
+              "median_ci95": [
+                1.2975,
+                5.1186
+              ]
+            },
+            "exposure": {
+              "n": 50,
+              "median": -6.647,
+              "q1": -11.4251,
+              "q3": -0.2966,
+              "min": -39.7481,
+              "max": 0.0,
+              "median_ci95": [
+                -9.8523,
+                -1.7951
+              ]
+            },
+            "length": {
+              "n": 50,
+              "median": 4.0493,
+              "q1": 0.2323,
+              "q3": 8.3397,
+              "min": 0.0,
+              "max": 18.0871,
+              "median_ci95": [
+                1.2975,
+                5.1186
+              ]
+            }
+          },
+          "against_fastest": {
+            "same_as_fastest": 3,
+            "different": 41,
+            "less_exposure": 26,
+            "more_exposure": 15,
+            "less_exposure_and_slower_or_equal": 26,
+            "worse_on_both": 15
+          }
+        },
+        "0.2": {
+          "member": 0.25,
+          "scenarios": 50,
+          "reached": 46,
+          "success_rate": 0.92,
+          "policy": {
+            "time": {
+              "n": 46,
+              "median": 4.4598,
+              "q1": 0.8242,
+              "q3": 9.3074,
+              "min": 0.0,
+              "max": 17.44,
+              "median_ci95": [
+                1.7075,
+                5.508
+              ]
+            },
+            "exposure": {
+              "n": 46,
+              "median": -0.4954,
+              "q1": -6.8474,
+              "q3": 0.7683,
+              "min": -25.5232,
+              "max": 6.2481,
+              "median_ci95": [
+                -4.5137,
+                0.2797
+              ]
+            },
+            "length": {
+              "n": 46,
+              "median": 4.4598,
+              "q1": 0.8242,
+              "q3": 9.3074,
+              "min": 0.0,
+              "max": 17.44,
+              "median_ci95": [
+                1.7075,
+                5.508
+              ]
+            }
+          },
+          "policy_with_fallback": {
+            "time": {
+              "n": 50,
+              "median": 4.2658,
+              "q1": 0.673,
+              "q3": 8.19,
+              "min": 0.0,
+              "max": 17.44,
+              "median_ci95": [
+                1.563,
+                5.2117
+              ]
+            },
+            "exposure": {
+              "n": 50,
+              "median": -0.1738,
+              "q1": -5.9952,
+              "q3": 0.5837,
+              "min": -25.5232,
+              "max": 6.2481,
+              "median_ci95": [
+                -2.5173,
+                0.1151
+              ]
+            },
+            "length": {
+              "n": 50,
+              "median": 4.2658,
+              "q1": 0.673,
+              "q3": 8.19,
+              "min": 0.0,
+              "max": 17.44,
+              "median_ci95": [
+                1.563,
+                5.2117
+              ]
+            }
+          },
+          "optimal": {
+            "time": {
+              "n": 50,
+              "median": 2.8998,
+              "q1": 0.0937,
+              "q3": 5.8846,
+              "min": 0.0,
+              "max": 18.0871,
+              "median_ci95": [
+                0.5325,
+                4.6283
+              ]
+            },
+            "exposure": {
+              "n": 50,
+              "median": -6.3871,
+              "q1": -11.4251,
+              "q3": -0.1331,
+              "min": -38.8354,
+              "max": 0.0,
+              "median_ci95": [
+                -9.457,
+                -1.1812
+              ]
+            },
+            "length": {
+              "n": 50,
+              "median": 2.8998,
+              "q1": 0.0937,
+              "q3": 5.8846,
+              "min": 0.0,
+              "max": 18.0871,
+              "median_ci95": [
+                0.5325,
+                4.6283
+              ]
+            }
+          },
+          "against_fastest": {
+            "same_as_fastest": 2,
+            "different": 44,
+            "less_exposure": 25,
+            "more_exposure": 19,
+            "less_exposure_and_slower_or_equal": 25,
+            "worse_on_both": 19
+          }
+        },
+        "0.3": {
+          "member": 0.25,
+          "scenarios": 50,
+          "reached": 46,
+          "success_rate": 0.92,
+          "policy": {
+            "time": {
+              "n": 46,
+              "median": 4.4598,
+              "q1": 0.8242,
+              "q3": 9.3074,
+              "min": 0.0,
+              "max": 17.44,
+              "median_ci95": [
+                1.7075,
+                5.508
+              ]
+            },
+            "exposure": {
+              "n": 46,
+              "median": -0.4954,
+              "q1": -6.8474,
+              "q3": 0.7683,
+              "min": -25.5232,
+              "max": 6.2481,
+              "median_ci95": [
+                -4.5137,
+                0.2797
+              ]
+            },
+            "length": {
+              "n": 46,
+              "median": 4.4598,
+              "q1": 0.8242,
+              "q3": 9.3074,
+              "min": 0.0,
+              "max": 17.44,
+              "median_ci95": [
+                1.7075,
+                5.508
+              ]
+            }
+          },
+          "policy_with_fallback": {
+            "time": {
+              "n": 50,
+              "median": 4.2658,
+              "q1": 0.673,
+              "q3": 8.19,
+              "min": 0.0,
+              "max": 17.44,
+              "median_ci95": [
+                1.563,
+                5.2117
+              ]
+            },
+            "exposure": {
+              "n": 50,
+              "median": -0.1738,
+              "q1": -5.9952,
+              "q3": 0.5837,
+              "min": -25.5232,
+              "max": 6.2481,
+              "median_ci95": [
+                -2.5173,
+                0.1151
+              ]
+            },
+            "length": {
+              "n": 50,
+              "median": 4.2658,
+              "q1": 0.673,
+              "q3": 8.19,
+              "min": 0.0,
+              "max": 17.44,
+              "median_ci95": [
+                1.563,
+                5.2117
+              ]
+            }
+          },
+          "optimal": {
+            "time": {
+              "n": 50,
+              "median": 2.2838,
+              "q1": 0.0033,
+              "q3": 5.0378,
+              "min": 0.0,
+              "max": 18.0871,
+              "median_ci95": [
+                0.2479,
+                4.1501
+              ]
+            },
+            "exposure": {
+              "n": 50,
+              "median": -5.9417,
+              "q1": -11.3458,
+              "q3": -0.0028,
+              "min": -38.373,
+              "max": 0.0,
+              "median_ci95": [
+                -9.051,
+                -0.5837
+              ]
+            },
+            "length": {
+              "n": 50,
+              "median": 2.2838,
+              "q1": 0.0033,
+              "q3": 5.0378,
+              "min": 0.0,
+              "max": 18.0871,
+              "median_ci95": [
+                0.2479,
+                4.1501
+              ]
+            }
+          },
+          "against_fastest": {
+            "same_as_fastest": 2,
+            "different": 44,
+            "less_exposure": 25,
+            "more_exposure": 19,
+            "less_exposure_and_slower_or_equal": 25,
+            "worse_on_both": 19
+          }
+        },
+        "0.4": {
+          "member": 0.5,
+          "scenarios": 50,
+          "reached": 44,
+          "success_rate": 0.88,
+          "policy": {
+            "time": {
+              "n": 44,
+              "median": 2.5873,
+              "q1": 1.3062,
+              "q3": 6.8701,
+              "min": 0.0,
+              "max": 23.8639,
+              "median_ci95": [
+                1.6046,
+                4.4957
+              ]
+            },
+            "exposure": {
+              "n": 44,
+              "median": 0.263,
+              "q1": -2.5605,
+              "q3": 2.2011,
+              "min": -24.373,
+              "max": 11.0852,
+              "median_ci95": [
+                -0.6881,
+                0.768
+              ]
+            },
+            "length": {
+              "n": 44,
+              "median": 2.5873,
+              "q1": 1.3062,
+              "q3": 6.8701,
+              "min": 0.0,
+              "max": 23.8639,
+              "median_ci95": [
+                1.6046,
+                4.4957
+              ]
+            }
+          },
+          "policy_with_fallback": {
+            "time": {
+              "n": 50,
+              "median": 2.3311,
+              "q1": 0.6843,
+              "q3": 5.801,
+              "min": 0.0,
+              "max": 23.8639,
+              "median_ci95": [
+                1.4033,
+                3.9561
+              ]
+            },
+            "exposure": {
+              "n": 50,
+              "median": 0.0,
+              "q1": -1.9351,
+              "q3": 1.6571,
+              "min": -24.373,
+              "max": 11.0852,
+              "median_ci95": [
+                -0.3874,
+                0.5547
+              ]
+            },
+            "length": {
+              "n": 50,
+              "median": 2.3311,
+              "q1": 0.6843,
+              "q3": 5.801,
+              "min": 0.0,
+              "max": 23.8639,
+              "median_ci95": [
+                1.4033,
+                3.9561
+              ]
+            }
+          },
+          "optimal": {
+            "time": {
+              "n": 50,
+              "median": 1.5944,
+              "q1": 0.0002,
+              "q3": 4.336,
+              "min": 0.0,
+              "max": 18.0871,
+              "median_ci95": [
+                0.2412,
+                3.4386
+              ]
+            },
+            "exposure": {
+              "n": 50,
+              "median": -3.8415,
+              "q1": -11.3458,
+              "q3": -0.0005,
+              "min": -38.373,
+              "max": 0.0,
+              "median_ci95": [
+                -8.4724,
+                -0.5837
+              ]
+            },
+            "length": {
+              "n": 50,
+              "median": 1.5944,
+              "q1": 0.0002,
+              "q3": 4.336,
+              "min": 0.0,
+              "max": 18.0871,
+              "median_ci95": [
+                0.2412,
+                3.4386
+              ]
+            }
+          },
+          "against_fastest": {
+            "same_as_fastest": 1,
+            "different": 43,
+            "less_exposure": 19,
+            "more_exposure": 24,
+            "less_exposure_and_slower_or_equal": 19,
+            "worse_on_both": 24
+          }
+        },
+        "0.5": {
+          "member": 0.5,
+          "scenarios": 50,
+          "reached": 44,
+          "success_rate": 0.88,
+          "policy": {
+            "time": {
+              "n": 44,
+              "median": 2.5873,
+              "q1": 1.3062,
+              "q3": 6.8701,
+              "min": 0.0,
+              "max": 23.8639,
+              "median_ci95": [
+                1.6046,
+                4.4957
+              ]
+            },
+            "exposure": {
+              "n": 44,
+              "median": 0.263,
+              "q1": -2.5605,
+              "q3": 2.2011,
+              "min": -24.373,
+              "max": 11.0852,
+              "median_ci95": [
+                -0.6881,
+                0.768
+              ]
+            },
+            "length": {
+              "n": 44,
+              "median": 2.5873,
+              "q1": 1.3062,
+              "q3": 6.8701,
+              "min": 0.0,
+              "max": 23.8639,
+              "median_ci95": [
+                1.6046,
+                4.4957
+              ]
+            }
+          },
+          "policy_with_fallback": {
+            "time": {
+              "n": 50,
+              "median": 2.3311,
+              "q1": 0.6843,
+              "q3": 5.801,
+              "min": 0.0,
+              "max": 23.8639,
+              "median_ci95": [
+                1.4033,
+                3.9561
+              ]
+            },
+            "exposure": {
+              "n": 50,
+              "median": 0.0,
+              "q1": -1.9351,
+              "q3": 1.6571,
+              "min": -24.373,
+              "max": 11.0852,
+              "median_ci95": [
+                -0.3874,
+                0.5547
+              ]
+            },
+            "length": {
+              "n": 50,
+              "median": 2.3311,
+              "q1": 0.6843,
+              "q3": 5.801,
+              "min": 0.0,
+              "max": 23.8639,
+              "median_ci95": [
+                1.4033,
+                3.9561
+              ]
+            }
+          },
+          "optimal": {
+            "time": {
+              "n": 50,
+              "median": 1.5944,
+              "q1": 0.0,
+              "q3": 4.2966,
+              "min": 0.0,
+              "max": 18.0871,
+              "median_ci95": [
+                0.1769,
+                3.4386
+              ]
+            },
+            "exposure": {
+              "n": 50,
+              "median": -3.7458,
+              "q1": -11.3458,
+              "q3": 0.0,
+              "min": -38.373,
+              "max": 0.0,
+              "median_ci95": [
+                -7.6582,
+                -0.5837
+              ]
+            },
+            "length": {
+              "n": 50,
+              "median": 1.5944,
+              "q1": 0.0,
+              "q3": 4.2966,
+              "min": 0.0,
+              "max": 18.0871,
+              "median_ci95": [
+                0.1769,
+                3.4386
+              ]
+            }
+          },
+          "against_fastest": {
+            "same_as_fastest": 1,
+            "different": 43,
+            "less_exposure": 19,
+            "more_exposure": 24,
+            "less_exposure_and_slower_or_equal": 19,
+            "worse_on_both": 24
+          }
+        },
+        "0.6": {
+          "member": 0.5,
+          "scenarios": 50,
+          "reached": 44,
+          "success_rate": 0.88,
+          "policy": {
+            "time": {
+              "n": 44,
+              "median": 2.5873,
+              "q1": 1.3062,
+              "q3": 6.8701,
+              "min": 0.0,
+              "max": 23.8639,
+              "median_ci95": [
+                1.6046,
+                4.4957
+              ]
+            },
+            "exposure": {
+              "n": 44,
+              "median": 0.263,
+              "q1": -2.5605,
+              "q3": 2.2011,
+              "min": -24.373,
+              "max": 11.0852,
+              "median_ci95": [
+                -0.6881,
+                0.768
+              ]
+            },
+            "length": {
+              "n": 44,
+              "median": 2.5873,
+              "q1": 1.3062,
+              "q3": 6.8701,
+              "min": 0.0,
+              "max": 23.8639,
+              "median_ci95": [
+                1.6046,
+                4.4957
+              ]
+            }
+          },
+          "policy_with_fallback": {
+            "time": {
+              "n": 50,
+              "median": 2.3311,
+              "q1": 0.6843,
+              "q3": 5.801,
+              "min": 0.0,
+              "max": 23.8639,
+              "median_ci95": [
+                1.4033,
+                3.9561
+              ]
+            },
+            "exposure": {
+              "n": 50,
+              "median": 0.0,
+              "q1": -1.9351,
+              "q3": 1.6571,
+              "min": -24.373,
+              "max": 11.0852,
+              "median_ci95": [
+                -0.3874,
+                0.5547
+              ]
+            },
+            "length": {
+              "n": 50,
+              "median": 2.3311,
+              "q1": 0.6843,
+              "q3": 5.801,
+              "min": 0.0,
+              "max": 23.8639,
+              "median_ci95": [
+                1.4033,
+                3.9561
+              ]
+            }
+          },
+          "optimal": {
+            "time": {
+              "n": 50,
+              "median": 0.1764,
+              "q1": 0.0,
+              "q3": 2.4575,
+              "min": 0.0,
+              "max": 10.4315,
+              "median_ci95": [
+                0.0,
+                1.5859
+              ]
+            },
+            "exposure": {
+              "n": 50,
+              "median": -0.7025,
+              "q1": -9.6035,
+              "q3": 0.0,
+              "min": -38.373,
+              "max": 0.0,
+              "median_ci95": [
+                -5.5358,
+                0.0
+              ]
+            },
+            "length": {
+              "n": 50,
+              "median": 0.1764,
+              "q1": 0.0,
+              "q3": 2.4575,
+              "min": 0.0,
+              "max": 10.4315,
+              "median_ci95": [
+                0.0,
+                1.5859
+              ]
+            }
+          },
+          "against_fastest": {
+            "same_as_fastest": 1,
+            "different": 43,
+            "less_exposure": 19,
+            "more_exposure": 24,
+            "less_exposure_and_slower_or_equal": 19,
+            "worse_on_both": 24
+          }
+        },
+        "0.7": {
+          "member": 0.75,
+          "scenarios": 50,
+          "reached": 48,
+          "success_rate": 0.96,
+          "policy": {
+            "time": {
+              "n": 48,
+              "median": 1.3101,
+              "q1": 0.3404,
+              "q3": 3.5528,
+              "min": 0.0,
+              "max": 8.2826,
+              "median_ci95": [
+                0.9211,
+                2.6101
+              ]
+            },
+            "exposure": {
+              "n": 48,
+              "median": 0.1198,
+              "q1": -1.3189,
+              "q3": 0.8707,
+              "min": -14.5992,
+              "max": 4.4665,
+              "median_ci95": [
+                -0.2963,
+                0.463
+              ]
+            },
+            "length": {
+              "n": 48,
+              "median": 1.3101,
+              "q1": 0.3404,
+              "q3": 3.5528,
+              "min": 0.0,
+              "max": 8.2826,
+              "median_ci95": [
+                0.9211,
+                2.6101
+              ]
+            }
+          },
+          "policy_with_fallback": {
+            "time": {
+              "n": 50,
+              "median": 1.2366,
+              "q1": 0.316,
+              "q3": 3.5112,
+              "min": 0.0,
+              "max": 8.2826,
+              "median_ci95": [
+                0.8354,
+                2.582
+              ]
+            },
+            "exposure": {
+              "n": 50,
+              "median": 0.0467,
+              "q1": -1.1656,
+              "q3": 0.8559,
+              "min": -14.5992,
+              "max": 4.4665,
+              "median_ci95": [
+                -0.1501,
+                0.3838
+              ]
+            },
+            "length": {
+              "n": 50,
+              "median": 1.2366,
+              "q1": 0.316,
+              "q3": 3.5112,
+              "min": 0.0,
+              "max": 8.2826,
+              "median_ci95": [
+                0.8354,
+                2.582
+              ]
+            }
+          },
+          "optimal": {
+            "time": {
+              "n": 50,
+              "median": 0.0004,
+              "q1": 0.0,
+              "q3": 1.2327,
+              "min": 0.0,
+              "max": 8.3119,
+              "median_ci95": [
+                0.0,
+                0.1984
+              ]
+            },
+            "exposure": {
+              "n": 50,
+              "median": -0.001,
+              "q1": -5.6585,
+              "q3": 0.0,
+              "min": -38.292,
+              "max": 0.0,
+              "median_ci95": [
+                -1.329,
+                0.0
+              ]
+            },
+            "length": {
+              "n": 50,
+              "median": 0.0004,
+              "q1": 0.0,
+              "q3": 1.2327,
+              "min": 0.0,
+              "max": 8.3119,
+              "median_ci95": [
+                0.0,
+                0.1984
+              ]
+            }
+          },
+          "against_fastest": {
+            "same_as_fastest": 5,
+            "different": 43,
+            "less_exposure": 18,
+            "more_exposure": 25,
+            "less_exposure_and_slower_or_equal": 18,
+            "worse_on_both": 25
+          }
+        },
+        "0.8": {
+          "member": 0.75,
+          "scenarios": 50,
+          "reached": 48,
+          "success_rate": 0.96,
+          "policy": {
+            "time": {
+              "n": 48,
+              "median": 1.3101,
+              "q1": 0.3404,
+              "q3": 3.5528,
+              "min": 0.0,
+              "max": 8.2826,
+              "median_ci95": [
+                0.9211,
+                2.6101
+              ]
+            },
+            "exposure": {
+              "n": 48,
+              "median": 0.1198,
+              "q1": -1.3189,
+              "q3": 0.8707,
+              "min": -14.5992,
+              "max": 4.4665,
+              "median_ci95": [
+                -0.2963,
+                0.463
+              ]
+            },
+            "length": {
+              "n": 48,
+              "median": 1.3101,
+              "q1": 0.3404,
+              "q3": 3.5528,
+              "min": 0.0,
+              "max": 8.2826,
+              "median_ci95": [
+                0.9211,
+                2.6101
+              ]
+            }
+          },
+          "policy_with_fallback": {
+            "time": {
+              "n": 50,
+              "median": 1.2366,
+              "q1": 0.316,
+              "q3": 3.5112,
+              "min": 0.0,
+              "max": 8.2826,
+              "median_ci95": [
+                0.8354,
+                2.582
+              ]
+            },
+            "exposure": {
+              "n": 50,
+              "median": 0.0467,
+              "q1": -1.1656,
+              "q3": 0.8559,
+              "min": -14.5992,
+              "max": 4.4665,
+              "median_ci95": [
+                -0.1501,
+                0.3838
+              ]
+            },
+            "length": {
+              "n": 50,
+              "median": 1.2366,
+              "q1": 0.316,
+              "q3": 3.5112,
+              "min": 0.0,
+              "max": 8.2826,
+              "median_ci95": [
+                0.8354,
+                2.582
+              ]
+            }
+          },
+          "optimal": {
+            "time": {
+              "n": 50,
+              "median": 0.0,
+              "q1": 0.0,
+              "q3": 0.3445,
+              "min": 0.0,
+              "max": 5.8008,
+              "median_ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "exposure": {
+              "n": 50,
+              "median": 0.0,
+              "q1": -2.2816,
+              "q3": 0.0,
+              "min": -30.6955,
+              "max": 0.0,
+              "median_ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "length": {
+              "n": 50,
+              "median": 0.0,
+              "q1": 0.0,
+              "q3": 0.3445,
+              "min": 0.0,
+              "max": 5.8008,
+              "median_ci95": [
+                0.0,
+                0.0
+              ]
+            }
+          },
+          "against_fastest": {
+            "same_as_fastest": 5,
+            "different": 43,
+            "less_exposure": 18,
+            "more_exposure": 25,
+            "less_exposure_and_slower_or_equal": 18,
+            "worse_on_both": 25
+          }
+        },
+        "0.9": {
+          "member": 1.0,
+          "scenarios": 50,
+          "reached": 48,
+          "success_rate": 0.96,
+          "policy": {
+            "time": {
+              "n": 48,
+              "median": 1.3777,
+              "q1": 0.822,
+              "q3": 3.9065,
+              "min": 0.0,
+              "max": 27.7022,
+              "median_ci95": [
+                1.0016,
+                2.8587
+              ]
+            },
+            "exposure": {
+              "n": 48,
+              "median": 0.962,
+              "q1": 0.0,
+              "q3": 3.3421,
+              "min": -11.7834,
+              "max": 16.6286,
+              "median_ci95": [
+                0.5306,
+                2.1821
+              ]
+            },
+            "length": {
+              "n": 48,
+              "median": 1.3777,
+              "q1": 0.822,
+              "q3": 3.9065,
+              "min": 0.0,
+              "max": 27.7022,
+              "median_ci95": [
+                1.0016,
+                2.8587
+              ]
+            }
+          },
+          "policy_with_fallback": {
+            "time": {
+              "n": 50,
+              "median": 1.2697,
+              "q1": 0.667,
+              "q3": 3.7824,
+              "min": 0.0,
+              "max": 27.7022,
+              "median_ci95": [
+                0.972,
+                2.1101
+              ]
+            },
+            "exposure": {
+              "n": 50,
+              "median": 0.8618,
+              "q1": 0.0,
+              "q3": 3.2916,
+              "min": -11.7834,
+              "max": 16.6286,
+              "median_ci95": [
+                0.3684,
+                1.5793
+              ]
+            },
+            "length": {
+              "n": 50,
+              "median": 1.2697,
+              "q1": 0.667,
+              "q3": 3.7824,
+              "min": 0.0,
+              "max": 27.7022,
+              "median_ci95": [
+                0.972,
+                2.1101
+              ]
+            }
+          },
+          "optimal": {
+            "time": {
+              "n": 50,
+              "median": 0.0,
+              "q1": 0.0,
+              "q3": 0.0002,
+              "min": 0.0,
+              "max": 1.8722,
+              "median_ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "exposure": {
+              "n": 50,
+              "median": 0.0,
+              "q1": -0.0377,
+              "q3": 0.0,
+              "min": -25.6884,
+              "max": 0.0,
+              "median_ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "length": {
+              "n": 50,
+              "median": 0.0,
+              "q1": 0.0,
+              "q3": 0.0002,
+              "min": 0.0,
+              "max": 1.8722,
+              "median_ci95": [
+                0.0,
+                0.0
+              ]
+            }
+          },
+          "against_fastest": {
+            "same_as_fastest": 5,
+            "different": 43,
+            "less_exposure": 8,
+            "more_exposure": 35,
+            "less_exposure_and_slower_or_equal": 8,
+            "worse_on_both": 35
+          }
+        },
+        "1": {
+          "member": 1.0,
+          "scenarios": 50,
+          "reached": 48,
+          "success_rate": 0.96,
+          "policy": {
+            "time": {
+              "n": 48,
+              "median": 1.3777,
+              "q1": 0.822,
+              "q3": 3.9065,
+              "min": 0.0,
+              "max": 27.7022,
+              "median_ci95": [
+                1.0016,
+                2.8587
+              ]
+            },
+            "exposure": {
+              "n": 48,
+              "median": 0.962,
+              "q1": 0.0,
+              "q3": 3.3421,
+              "min": -11.7834,
+              "max": 16.6286,
+              "median_ci95": [
+                0.5306,
+                2.1821
+              ]
+            },
+            "length": {
+              "n": 48,
+              "median": 1.3777,
+              "q1": 0.822,
+              "q3": 3.9065,
+              "min": 0.0,
+              "max": 27.7022,
+              "median_ci95": [
+                1.0016,
+                2.8587
+              ]
+            }
+          },
+          "policy_with_fallback": {
+            "time": {
+              "n": 50,
+              "median": 1.2697,
+              "q1": 0.667,
+              "q3": 3.7824,
+              "min": 0.0,
+              "max": 27.7022,
+              "median_ci95": [
+                0.972,
+                2.1101
+              ]
+            },
+            "exposure": {
+              "n": 50,
+              "median": 0.8618,
+              "q1": 0.0,
+              "q3": 3.2916,
+              "min": -11.7834,
+              "max": 16.6286,
+              "median_ci95": [
+                0.3684,
+                1.5793
+              ]
+            },
+            "length": {
+              "n": 50,
+              "median": 1.2697,
+              "q1": 0.667,
+              "q3": 3.7824,
+              "min": 0.0,
+              "max": 27.7022,
+              "median_ci95": [
+                0.972,
+                2.1101
+              ]
+            }
+          },
+          "optimal": {
+            "time": {
+              "n": 50,
+              "median": 0.0,
+              "q1": 0.0,
+              "q3": 0.0,
+              "min": 0.0,
+              "max": 0.0,
+              "median_ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "exposure": {
+              "n": 50,
+              "median": 0.0,
+              "q1": 0.0,
+              "q3": 0.0,
+              "min": 0.0,
+              "max": 0.0,
+              "median_ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "length": {
+              "n": 50,
+              "median": 0.0,
+              "q1": 0.0,
+              "q3": 0.0,
+              "min": 0.0,
+              "max": 0.0,
+              "median_ci95": [
+                0.0,
+                0.0
+              ]
+            }
+          },
+          "against_fastest": {
+            "same_as_fastest": 5,
+            "different": 43,
+            "less_exposure": 8,
+            "more_exposure": 35,
+            "less_exposure_and_slower_or_equal": 8,
+            "worse_on_both": 35
+          }
+        }
+      },
+      "preference": {
+        "od_pairs": 50,
+        "usable": 42,
+        "fulfilled": 22,
+        "shifted": 20,
+        "fulfilled_rate": 0.5238095238095238,
+        "shifted_rate": 0.47619047619047616
+      },
+      "preference_optimal": {
+        "od_pairs": 50,
+        "usable": 50,
+        "fulfilled": 50,
+        "shifted": 42,
+        "fulfilled_rate": 1.0,
+        "shifted_rate": 0.84
+      }
+    }
+  }
+}
