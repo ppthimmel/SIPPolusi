@@ -21,7 +21,11 @@ def evaluate(snapshot, checkpoint, output, *, splits=("val", "test"), device="cp
     if artifact["artifact_version"] != "idw_residual_v1":
         raise ValueError("Unsupported correction checkpoint")
     metadata = artifact["metadata"]
-    data = _data if _data is not None else prepare(snapshot, metadata["protocol"], metadata["fold"])
+    target = metadata.get("target", "pm25")
+    if target == "pm25":
+        data = _data if _data is not None else prepare(snapshot, metadata["protocol"], metadata["fold"])
+    else:
+        data = _data if _data is not None else prepare(snapshot, metadata["protocol"], metadata["fold"], target=target)
     if data.hashes != metadata["snapshot_hashes"] or data.source_ids != metadata["sensor_stations"]:
         raise ValueError("Checkpoint dataset or sensor policy mismatch")
     model = STGNN(ModelConfig(**artifact["model_config"])).to(DEVICE)
@@ -33,9 +37,13 @@ def evaluate(snapshot, checkpoint, output, *, splits=("val", "test"), device="cp
     preprocessing = Preprocessor.from_state(artifact["preprocessing"])
     model.eval()
     prediction_tables = {}
+    unavailable = {}
 
     # Evaluate test only after validation has selected the best model.
     for split in splits:
+        if not data.split_hours[split]:
+            unavailable[split] = "no held-out labels"
+            continue
         split_frames = []
         hours_to_predict = split_hours[split]
 
@@ -90,7 +98,7 @@ def evaluate(snapshot, checkpoint, output, *, splits=("val", "test"), device="cp
             row.update(calculate_metrics(station_predictions))
             station_rows.append(row)
 
-    station_metrics = pd.DataFrame(station_rows)
+    station_metrics = pd.DataFrame(station_rows, columns=["split", "method", "station_uuid", "estimation_source", "n", "mae", "rmse", "bias", "r2", "clipped_fraction"])
     station_comparison = station_metrics.pivot(
         index=["split", "station_uuid"],
         columns="method",
@@ -106,7 +114,7 @@ def evaluate(snapshot, checkpoint, output, *, splits=("val", "test"), device="cp
     metrics.to_csv(OUTPUT_DIR / "evaluation_metrics.csv", index=False)
     overall_metrics.to_csv(OUTPUT_DIR / "idw_comparison.csv", index=False)
     print("Saved:", OUTPUT_DIR.resolve())
-    provenance = dict(model="stgnn", checkpoint_sha256=hashlib.sha256(checkpoint.read_bytes()).hexdigest(),
+    provenance = dict(model="stgnn", target=target, unavailable_splits=unavailable, checkpoint_sha256=hashlib.sha256(checkpoint.read_bytes()).hexdigest(),
         snapshot_hashes=data.hashes, protocol=metadata["protocol"], fold=metadata["fold"], splits=list(splits), unit="ug/m3")
     (OUTPUT_DIR / "evaluation.json").write_text(json.dumps(provenance, indent=2), encoding="utf-8")
     return metrics

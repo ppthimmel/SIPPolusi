@@ -15,13 +15,17 @@ from .preprocessing import Preprocessor
 from .sensors import IDW_POWER, IDW_NEIGHBORS
 
 def train(snapshot, output, *, protocol="fixed_split", fold=None, seed=DEFAULT_SEED,
-          epochs=100, device="cpu", batch_size=8, threads=2, resume=False, evaluate_test=True):
+          epochs=100, device="cpu", batch_size=8, threads=2, resume=False, evaluate_test=True, target="pm25"):
+    if target not in ("pm25", "no2"):
+        raise ValueError("Choose pm25 or no2")
+    if protocol == "fixed_split" and target != "pm25":
+        raise ValueError("Fixed split requires PM2.5")
     DATA_DIR, OUTPUT_DIR = Path(snapshot), Path(output)
     if epochs < 1 or batch_size < 1 or threads < 1:
         raise ValueError("epochs, batch_size and threads must be positive")
     if OUTPUT_DIR.exists() and not resume:
         raise FileExistsError("Use a new output directory, or --resume for an interrupted run")
-    TARGET, PROTOCOL, FOLD, SEED = "pm25", protocol, fold, seed
+    TARGET, PROTOCOL, FOLD, SEED = target, protocol, fold, seed
     DEVICE, EPOCHS, BATCH_SIZE = device, epochs, batch_size
     config = load_model_config("stgnn")
     optimizer_config = config["optimizer"]
@@ -38,7 +42,7 @@ def train(snapshot, output, *, protocol="fixed_split", fold=None, seed=DEFAULT_S
         torch.cuda.manual_seed_all(seed)
         torch.backends.cudnn.benchmark = False
     from .data import prepare, make_batch as build_batch
-    data = prepare(snapshot, protocol, fold)
+    data = prepare(snapshot, protocol, fold, target=target)
     hashes = data.hashes
     split_labels = data.split_labels
     split_hours = data.split_hours
@@ -95,7 +99,7 @@ def train(snapshot, output, *, protocol="fixed_split", fold=None, seed=DEFAULT_S
     def save_progress():
         pd.DataFrame(history).to_csv(OUTPUT_DIR / "history.csv", index=False)
         torch.save(dict(artifact_version="idw_residual_v1", snapshot_hashes=hashes, configuration=config,
-            protocol=PROTOCOL, fold=FOLD, seed=SEED, epoch=epoch,
+            target=TARGET, protocol=PROTOCOL, fold=FOLD, seed=SEED, epoch=epoch,
             model_state=model.state_dict(), best_weights=best_weights,
             optimizer=optimizer.state_dict(), scheduler=scheduler.state_dict(),
             rng=json.dumps(rng.bit_generator.state), torch_rng=torch.get_rng_state(),
@@ -106,7 +110,7 @@ def train(snapshot, output, *, protocol="fixed_split", fold=None, seed=DEFAULT_S
     start_epoch = 0
     if resume:
         state = torch.load(OUTPUT_DIR / "progress.pt", map_location="cpu", weights_only=True)
-        if (state["snapshot_hashes"], state["protocol"], state["fold"], state["seed"]) != (hashes, PROTOCOL, FOLD, SEED):
+        if (state.get("target", "pm25"), state["snapshot_hashes"], state["protocol"], state["fold"], state["seed"]) != (TARGET, hashes, PROTOCOL, FOLD, SEED):
             raise ValueError("Resume data/configuration mismatch")
         if state.get("configuration", config) != config:
             raise ValueError("Resume model/optimizer configuration mismatch")
@@ -158,7 +162,7 @@ def train(snapshot, output, *, protocol="fixed_split", fold=None, seed=DEFAULT_S
         if stale >= PATIENCE:
             print("Early stopping")
             break
-    metadata = dict(configuration=config, temporal_columns=list(preprocessing.temporal.columns), local_columns=list(preprocessing.local.columns), dataset="ds-v0.3.0", features="forecast and calendar included",
+    metadata = dict(model_family="stgnn", configuration=config, temporal_columns=list(preprocessing.temporal.columns), local_columns=list(preprocessing.local.columns), dataset="ds-v0.3.0", features="forecast and calendar included",
         training_config=dict(epochs=EPOCHS, patience=PATIENCE, batch_size=BATCH_SIZE,
             learning_rate=LEARNING_RATE, weight_decay=WEIGHT_DECAY, gradient_clip=GRADIENT_CLIP),
         fit_times=fit_times, fit_nodes=training_nodes.tolist(),
@@ -182,5 +186,5 @@ def train(snapshot, output, *, protocol="fixed_split", fold=None, seed=DEFAULT_S
              splits=("val", "test") if evaluate_test else ("val",),
              device=DEVICE, batch_size=BATCH_SIZE, threads=threads, _data=data)
     from spatial_model.artifacts.bundles import export_bundle
-    return export_bundle(OUTPUT_DIR, "pm25", DATA_DIR, metadata)
+    return export_bundle(OUTPUT_DIR, TARGET, DATA_DIR, metadata)
 

@@ -69,6 +69,7 @@ MANIFEST
 venv/
 .venv-spatial/
 .cache/
+/checkpoints/
 mlruns/
 env/
 ENV/

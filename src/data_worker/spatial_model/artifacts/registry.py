@@ -21,8 +21,13 @@ def client():
 
 
 def register(bundle):
-    import mlflow
     manifest = validate_bundle(bundle)
+    expected_family = "stgnn" if manifest["target"] == "pm25" else "lightgbm"
+    if manifest.get("model_family", expected_family) != expected_family:
+        raise ValueError("Research model family is incompatible with the production target pairing")
+    if manifest["metadata"].get("fold") is not None:
+        raise ValueError("Cannot register a LOSO fold checkpoint as a serving fit")
+    import mlflow
     mlflow.set_tracking_uri(os.environ.get("MLFLOW_TRACKING_URI", "http://localhost:5000"))
     mlflow.set_experiment("spatial-downscaling")
     target = manifest["target"]
@@ -90,7 +95,9 @@ def resolve(target, selector="production", cache_dir=None):
 def promote(target, version):
     from spatial_model.inference.serving import load_model
     root, identity = resolve(target, str(version))
-    load_model(root, target)
+    model = load_model(root, target)
+    if model.metadata.get("fold") is not None:
+        raise ValueError("Cannot promote a LOSO fold checkpoint to production")
     name = os.environ.get(f"SPATIAL_{target.upper()}_MODEL", NAMES[target])
     client().set_registered_model_alias(name, "production", str(version))
     return identity

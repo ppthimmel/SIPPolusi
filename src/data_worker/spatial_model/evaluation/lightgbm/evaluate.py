@@ -19,10 +19,14 @@ def evaluate(snapshot, checkpoint, output, *, splits=("val", "test"), _panel=Non
         raise ValueError("Evaluation permits only val/test splits")
     checkpoint, output = Path(checkpoint), Path(output)
     metadata = json.loads((checkpoint / "metadata.json").read_text(encoding="utf-8"))
-    if metadata.get("target") != "no2" or metadata.get("dataset") != "ds-v0.3.0":
-        raise ValueError("Require a ds-v0.3.0 NO2 checkpoint")
+    target = metadata.get("target")
+    if target not in ("pm25", "no2") or metadata.get("dataset") != "ds-v0.3.0":
+        raise ValueError("Require a ds-v0.3.0 pollutant checkpoint")
     fold = metadata.get("fold")
-    if fold is None:
+    protocol = metadata.get("protocol", "loso" if fold is not None else "serving")
+    if protocol == "fixed_split" and (target != "pm25" or fold is not None):
+        raise ValueError("Fixed split requires PM2.5 and no fold")
+    if protocol not in ("fixed_split", "loso") or (protocol == "loso" and fold is None):
         raise ValueError("LOSO evaluation requires a held-out fold checkpoint; serving fit is ineligible")
     hashes = verify_snapshot(Path(snapshot))
     expected = metadata.get("snapshot_hashes")
@@ -34,15 +38,19 @@ def evaluate(snapshot, checkpoint, output, *, splits=("val", "test"), _panel=Non
         expected = json.loads(manifest_path.read_text(encoding="utf-8"))["snapshot_hashes"]
     if expected != hashes:
         raise ValueError("Checkpoint dataset hash mismatch or missing provenance")
-    p = _panel if _panel is not None else Panel("no2", snapshot)
-    folds = pd.read_parquet(Path(snapshot) / "splits/loso_folds.parquet")
-    match = folds[(folds.target == "no2") & (folds.fold == fold)]
-    if match.empty or match.group_id.nunique() != 1:
-        raise ValueError("Unknown NO2 LOSO fold")
-    held = match.group_id.iloc[0]
-    allowed = p.group != held
+    p = _panel if _panel is not None else Panel(target, snapshot)
+    held = None
+    if protocol == "loso":
+        folds = pd.read_parquet(Path(snapshot) / "splits/loso_folds.parquet")
+        match = folds[(folds.target == target) & (folds.fold == fold)]
+        if match.empty or match.group_id.nunique() != 1:
+            raise ValueError("Unknown LOSO fold")
+        held = match.group_id.iloc[0]
+        allowed = p.group != held
+    else:
+        allowed = p.station_split == "train"
     if metadata["sensor_stations"] != p.stations.loc[allowed, "uuid"].tolist():
-        raise ValueError("Checkpoint sensor policy differs from LOSO fold")
+        raise ValueError("Checkpoint sensor policy differs from evaluation protocol")
     model_path = checkpoint / "model.txt"
     model = lgb.Booster(model_file=str(model_path))
     if model.feature_name() != metadata["columns"]:
@@ -52,6 +60,8 @@ def evaluate(snapshot, checkpoint, output, *, splits=("val", "test"), _panel=Non
     results, reports = {}, []
     for split in splits:
         rows = (p.period == split)[:, None] & np.isfinite(p.Y) & (p.group == held)[None, :]
+        if protocol == "fixed_split":
+            rows = (p.split == split) & np.isfinite(p.Y)
         if not rows.any():
             results[split] = {"status": "unevaluable", "reason": "no held-out labels"}
             continue
@@ -72,7 +82,7 @@ def evaluate(snapshot, checkpoint, output, *, splits=("val", "test"), _panel=Non
     pd.DataFrame(reports).to_csv(output / "evaluation_metrics.csv", index=False)
     provenance = dict(model="lightgbm", checkpoint_sha256=hashlib.sha256(model_path.read_bytes()).hexdigest(),
                       metadata_sha256=hashlib.sha256((checkpoint / "metadata.json").read_bytes()).hexdigest(),
-                      snapshot_hashes=hashes, protocol="loso", fold=fold, held_out_group=str(held),
+                      snapshot_hashes=hashes, target=target, protocol=protocol, fold=fold, held_out_group=str(held) if held is not None else None,
                       splits=list(splits), unit="ug/m3")
     (output / "evaluation.json").write_text(json.dumps(provenance, indent=2), encoding="utf-8")
     return results

@@ -1,0 +1,129 @@
+{
+  "base_revision": "2fe332f",
+  "purpose": "Manual notebook workflow verification, not a new benchmark",
+  "training_cases": [
+    {
+      "case": "stgnn-pm25-fixed_split",
+      "status": "passed",
+      "run_root": ".cache\\manual-notebook-qa\\20261102T164517\\stgnn-pm25-fixed_split"
+    },
+    {
+      "case": "stgnn-pm25-loso",
+      "status": "passed",
+      "run_root": ".cache\\manual-notebook-qa\\20261102T164517\\stgnn-pm25-loso"
+    },
+    {
+      "case": "stgnn-no2-loso",
+      "status": "passed",
+      "run_root": ".cache\\manual-notebook-qa\\20261102T164517\\stgnn-no2-loso"
+    },
+    {
+      "case": "lightgbm-pm25-fixed_split",
+      "status": "passed",
+      "run_root": ".cache\\manual-notebook-qa\\20261102T164517\\lightgbm-pm25-fixed_split"
+    },
+    {
+      "case": "lightgbm-pm25-loso",
+      "status": "passed",
+      "run_root": ".cache\\manual-notebook-qa\\20261102T164517\\lightgbm-pm25-loso"
+    },
+    {
+      "case": "lightgbm-no2-loso",
+      "status": "passed",
+      "run_root": ".cache\\manual-notebook-qa\\20261102T164517\\lightgbm-no2-loso"
+    }
+  ],
+  "post_dev_saved_checkpoint_cases": [
+    {
+      "case": "stgnn-pm25-fixed_split",
+      "status": "passed",
+      "run_root": ".cache\\manual-notebook-qa\\20261102T165256\\stgnn-pm25-fixed_split"
+    },
+    {
+      "case": "stgnn-pm25-loso",
+      "status": "passed",
+      "run_root": ".cache\\manual-notebook-qa\\20261102T165256\\stgnn-pm25-loso"
+    },
+    {
+      "case": "stgnn-no2-loso",
+      "status": "passed",
+      "run_root": ".cache\\manual-notebook-qa\\20261102T165256\\stgnn-no2-loso"
+    },
+    {
+      "case": "lightgbm-pm25-fixed_split",
+      "status": "passed",
+      "run_root": ".cache\\manual-notebook-qa\\20261102T165256\\lightgbm-pm25-fixed_split"
+    },
+    {
+      "case": "lightgbm-pm25-loso",
+      "status": "passed",
+      "run_root": ".cache\\manual-notebook-qa\\20261102T165256\\lightgbm-pm25-loso"
+    },
+    {
+      "case": "lightgbm-no2-loso",
+      "status": "passed",
+      "run_root": ".cache\\manual-notebook-qa\\20261102T165256\\lightgbm-no2-loso"
+    }
+  ],
+  "python": "3.11.14",
+  "libraries": {
+    "numpy": "2.3.4",
+    "torch": "2.14.1",
+    "torch-geometric": "2.8.0.post1",
+    "lightgbm": "4.6.0",
+    "pandas": "2.3.3",
+    "pyarrow": "25.0.1",
+    "nbformat": "5.10.4",
+    "nbclient": "0.11.0"
+  },
+  "notebook_sha256": {
+    "notebooks\\spatial_model\\train_lightgbm.ipynb": "c8e341b47d108570e97533f7bd3557030ab2cdc1b62d6fe8d129f4968be9cd02",
+    "notebooks\\spatial_model\\train_stgnn.ipynb": "8b68abd50fc311f8934449e8ff066989ce2387fbf2f68b9c81b374cba0062422"
+  },
+  "independent_no2_stgnn_runs": {
+    "epochs": 1,
+    "fold": 0,
+    "seed": 42,
+    "device": "cpu",
+    "max_abs_validation_prediction_difference": 0.0,
+    "max_abs_test_prediction_difference": 0.0
+  },
+  "checks": [
+    "Both notebook schemas valid; Python cell syntax checked",
+    "Both notebooks rendered to HTML",
+    "Inline plots present for all six saved-checkpoint workflows",
+    "Independent review findings reproduced by tests and fixed",
+    "Graphify AST update completed after dev integration",
+    "Dedicated checkpoints directory ignored by Git; all six copied smoke checkpoints verified byte-identical; notebook default output paths verified"
+  ],
+  "limitations": [
+    "ST-GNN smoke training uses one epoch",
+    "Each LOSO smoke run uses fold 0 only; all-fold training was not executed",
+    "No full convergence, historical benchmark equivalence, or cross-platform bitwise reproducibility is claimed",
+    "Dependencies for verification were installed into a repository-local cache; fresh isolated environment installation was documented but not executed",
+    "Registry and promotion were left disabled"
+  ],
+  "data_worker_suite": {
+    "tests": 382,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 86,
+    "passed": 296,
+    "warnings": 33,
+    "duration_seconds": 211.59,
+    "junit_report": ".cache/manual-dev-verified.xml",
+    "skip_reasons": {
+      "TEST_DATABASE_URL tidak diatur dan testcontainers tidak terpasang": 86
+    },
+    "runner": "base2 Python -X utf8; NumPy/PyTorch preloaded; repository-local dependencies on sys.path and PYTHONPATH; TEST_DATABASE_URL unset",
+    "pytest_args": [
+      "src/data_worker/tests",
+      "-q",
+      "--tb=short",
+      "--basetemp=.cache/manual-dev-verified",
+      "--junitxml=.cache/manual-dev-verified.xml",
+      "--durations=5"
+    ]
+  },
+  "local_checkpoint_index": "checkpoints/spatial_model/smoke-checkpoints.json"
+}

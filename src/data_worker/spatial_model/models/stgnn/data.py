@@ -13,9 +13,11 @@ from spatial_model.data.validation import verify_snapshot
 
 from types import SimpleNamespace
 
-def prepare(snapshot, protocol="fixed_split", fold=None):
+def prepare(snapshot, protocol="fixed_split", fold=None, *, target="pm25"):
     DATA_DIR = Path(snapshot)
-    TARGET, PROTOCOL, FOLD = "pm25", protocol, fold
+    TARGET, PROTOCOL, FOLD = target, protocol, fold
+    if target not in ("pm25", "no2"):
+        raise ValueError("Choose pm25 or no2")
     hashes = verify_snapshot(DATA_DIR)
     if json.loads((DATA_DIR / "manifest.json").read_text(encoding="utf-8"))["version"] != "ds-v0.3.0":
         raise ValueError("Require ds-v0.3.0")
@@ -60,7 +62,8 @@ def prepare(snapshot, protocol="fixed_split", fold=None):
             table = labels[eligible & (labels.period == split) & labels[target_column].notna()].copy()
             split_labels[split] = table.rename(columns={target_column: "value_ugm3"})
     for split, table in split_labels.items():
-        if table.empty or table.duplicated(["station_uuid", "time_utc"]).any():
+        allow_empty = PROTOCOL == "loso" and split == "test"
+        if (table.empty and not allow_empty) or table.duplicated(["station_uuid", "time_utc"]).any():
             raise ValueError(f"Empty or duplicated {split} labels for this target/protocol")
         if not np.isfinite(table.value_ugm3).all() or not table.node_index.between(0, len(nodes) - 1).all():
             raise ValueError("Invalid target value or label node index")
@@ -97,7 +100,7 @@ def prepare(snapshot, protocol="fixed_split", fold=None):
         raise ValueError("No eligible feature-fit nodes")
     for table in split_labels.values():
         positions = [hour_index.get(t, -1) for t in table.time_utc]
-        if min(positions) < window - 1:
+        if positions and min(positions) < window - 1:
             raise ValueError("Label lacks a complete causal input window")
 
     split_hours = {split: table.time_utc.drop_duplicates().tolist() for split, table in split_labels.items()}
@@ -141,8 +144,8 @@ def prepare(snapshot, protocol="fixed_split", fold=None):
 
     station_position = {uuid: i for i, uuid in enumerate(stations.uuid)}
     for split, table in split_labels.items():
-        time_positions = table.time_utc.map(hour_index).to_numpy()
-        station_positions = table.station_uuid.map(station_position).to_numpy()
+        time_positions = table.time_utc.map(hour_index).to_numpy(dtype="int64")
+        station_positions = table.station_uuid.map(station_position).to_numpy(dtype="int64")
         table["idw_prediction"] = station_baselines[time_positions, station_positions]
         missing = ~np.isfinite(table.idw_prediction)
         if split == "train":

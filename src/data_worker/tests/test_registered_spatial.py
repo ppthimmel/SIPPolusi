@@ -15,7 +15,9 @@ from spatial_model.inference.serving import GridInputs
 from spatial_model.artifacts.bundles import validate_bundle
 
 
-def test_registry_accepts_serving_status_without_inventing_metrics(tmp_path, monkeypatch):
+@pytest.mark.parametrize("target,explicit_family", [("pm25", None), ("no2", None),
+                                                   ("pm25", "stgnn"), ("no2", "lightgbm")])
+def test_registry_accepts_serving_status_without_inventing_metrics(tmp_path, monkeypatch, target, explicit_family):
     """Serving fits can be registered even though they have no held-out score."""
     import sys
     from types import ModuleType
@@ -25,7 +27,9 @@ def test_registry_accepts_serving_status_without_inventing_metrics(tmp_path, mon
     (tmp_path / "bundle.json").write_text("{}")
     (tmp_path / "metrics.json").write_text(json.dumps({
         "status": "not_evaluated", "reason": "Serving fit", "val": {"rmse": 3.5}}))
-    manifest = dict(target="no2", dataset="ds-v0.3.0", code_revision="test", metadata={})
+    manifest = dict(target=target, dataset="ds-v0.3.0", code_revision="test", metadata={})
+    if explicit_family is not None:
+        manifest["model_family"] = explicit_family
     monkeypatch.setattr(registry, "validate_bundle", lambda *args: manifest)
     logged = []
     mlflow = ModuleType("mlflow")
@@ -170,14 +174,21 @@ def test_registry_rejects_corrupt_cached_artifact(tmp_path, monkeypatch):
 
 
 @pytest.mark.parametrize('target,package', [('pm25','stgnn'),('no2','lightgbm')])
-def test_notebook_uses_shared_training_api(target,package,monkeypatch):
+def test_notebook_uses_shared_training_api(target,package,monkeypatch,tmp_path):
     import importlib
     module=importlib.import_module(f'spatial_model.models.{package}.train')
     calls=[]
     monkeypatch.setattr(module,'train',lambda *args,**kwargs:calls.append((args,kwargs)) or Path('bundle'))
     root=Path(__file__).resolve().parents[3]
     notebook=json.loads((root/f'notebooks/spatial_model/train_{package}.ipynb').read_text(encoding='utf-8'))
-    scope=dict(SNAPSHOT=root/'docs/experiments/ds-v0.3.0',OUTPUT=Path('out'))
-    exec(''.join(notebook['cells'][2]['source']),scope)
-    assert calls[0][0]==(scope['SNAPSHOT'],scope['OUTPUT'])
-    assert calls[0][1]['seed']==42
+    train_cell=next(cell for cell in notebook['cells'] if cell['id']=='train')
+    scope=dict(SNAPSHOT=root/'docs/experiments/ds-v0.3.0',RUN_ROOT=tmp_path/'run',
+               TARGET=target,PROTOCOL='loso',selected_folds=[0,1],SEED=42,
+               RUN_TRAINING=True,RESUME=False,EPOCHS=1,DEVICE='cpu',BATCH_SIZE=8,THREADS=2)
+    exec(''.join(train_cell['source']),scope)
+    assert len(calls)==2
+    for fold,(args,kwargs) in enumerate(calls):
+        assert args==(scope['SNAPSHOT'],scope['RUN_ROOT']/f'fold-{fold}')
+        assert kwargs['seed']==42 and kwargs['target']==target
+        assert kwargs['protocol']=='loso' and kwargs['fold']==fold
+        assert kwargs['evaluate_test'] is False

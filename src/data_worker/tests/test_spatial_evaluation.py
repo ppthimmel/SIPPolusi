@@ -53,6 +53,11 @@ def test_stgnn_saved_evaluation_never_fits(tmp_path, monkeypatch):
         np.testing.assert_array_equal(frame.predicted, frame.idw_prediction)
     provenance = json.loads((tmp_path / "report/evaluation.json").read_text())
     assert provenance["protocol"] == "fixed_split" and len(provenance["checkpoint_sha256"]) == 64
+    data.split_hours["test"] = []
+    empty = evaluator.evaluate("unused", checkpoint, tmp_path / "no-test", splits=("test",))
+    assert empty.empty
+    missing = json.loads((tmp_path / "no-test/evaluation.json").read_text())
+    assert missing["unavailable_splits"] == {"test": "no held-out labels"}
     data.hashes = {"input": "changed"}
     with pytest.raises(ValueError, match="mismatch"):
         evaluator.evaluate("unused", checkpoint, tmp_path / "bad")
