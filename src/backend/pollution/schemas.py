@@ -1,18 +1,60 @@
 """API response models for /v1/pollution. Times are UTC ISO 8601; concentrations µg/m³."""
 from __future__ import annotations
 
-from datetime import datetime
+import re
+from datetime import datetime, timedelta
+from typing import Annotated, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import AfterValidator, BaseModel, Field, field_validator, model_validator
 
 from osm.models import Mode
 
-from .models import EdgeWeight, PollutionRead, WindowInfo
+from .models import EdgeWeight, PollutionRead, TimeWindow, WindowInfo
+
+RFC3339_PATTERN = (
+    r"^\d{4}-\d{2}-\d{2}[Tt]\d{2}:\d{2}:\d{2}(?:\.\d+)?"
+    r"(?:[Zz]|[+-](?:[01]\d|2[0-3]):[0-5]\d)$"
+)
 
 
-class WindowOut(BaseModel):
+def _utc_hour_string(value: str) -> str:
+    return TimeWindow.parse(value).start.isoformat().replace("+00:00", "Z")
+
+
+HourlyTimestamp = Annotated[
+    str, Field(pattern=RFC3339_PATTERN, json_schema_extra={"format": "date-time"}),
+    AfterValidator(_utc_hour_string),
+]
+
+
+class TimeWindowOut(BaseModel):
+    """The start/end envelope used by cache API responses; one UTC hour."""
+
     time_window_start: datetime
     time_window_end: datetime
+
+    @field_validator("time_window_start", "time_window_end", mode="before")
+    @classmethod
+    def parse_time(cls, value: object) -> datetime:
+        if isinstance(value, str):
+            if not re.fullmatch(RFC3339_PATTERN, value):
+                raise ValueError("TimeWindow timestamps must use RFC 3339 with a timezone")
+            return TimeWindow.parse(value).start
+        if not isinstance(value, datetime):
+            raise ValueError("TimeWindow timestamps must be ISO 8601 strings")
+        return value
+
+    @model_validator(mode="after")
+    def validate_window(self) -> TimeWindowOut:
+        start = TimeWindow(self.time_window_start).start
+        end = TimeWindow(self.time_window_end).start
+        if end - start != timedelta(hours=1):
+            raise ValueError("TimeWindow wajib berdurasi satu jam")
+        self.time_window_start, self.time_window_end = start, end
+        return self
+
+
+class WindowOut(TimeWindowOut):
     status: str = Field(description="writing atau complete; hanya complete yang dibaca")
     pollutant: str | None
     coverage_ratio: float | None
@@ -35,12 +77,12 @@ class WindowsOut(BaseModel):
 
 class EdgeWeightOut(BaseModel):
     edge_id: int
-    pm25_ugm3: float | None
-    no2_ugm3: float | None
-    exposure_index: float | None
-    confidence_score: float | None
-    background_source: str | None
-    estimation_source: str | None
+    pm25_ugm3: float | None = Field(ge=0, allow_inf_nan=False)
+    no2_ugm3: float | None = Field(ge=0, allow_inf_nan=False)
+    exposure_index: float | None = Field(ge=0, allow_inf_nan=False)
+    confidence_score: float | None = Field(ge=0, le=1, allow_inf_nan=False)
+    background_source: Literal["aod", "reanalysis"] | None
+    estimation_source: Literal["stgnn", "idw", "hybrid"] | None
     model_metadata: dict = Field(default_factory=dict)
     trace_run_id: str | None = None
     graph_version: str | None
@@ -51,9 +93,7 @@ class EdgeWeightOut(BaseModel):
         return cls(**{name: getattr(w, name) for name in cls.model_fields})
 
 
-class EdgeWeightsOut(BaseModel):
-    time_window_start: datetime
-    time_window_end: datetime
+class EdgeWeightsOut(TimeWindowOut):
     model_version: str | None
     coverage_ratio: float | None
     graph_version: str | None = Field(description="Versi graf yang dipakai menyaring baris; null = tanpa filter")

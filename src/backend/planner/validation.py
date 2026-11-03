@@ -18,9 +18,6 @@ from osm.models import Mode, ModeProfile, Point
 from .models import Preference, ValidatedRouteRequest
 from .schemas import RouteRequestIn
 
-# |alpha + beta - 1| <= 1e-6 (UT-BE-02a).
-PREFERENCE_TOLERANCE = 1e-6
-
 
 def resolve_mode(mode: str | Mode, settings: OsmSettings) -> ModeProfile:
     """ModeProfile with the reference speed of the mode (UT-BE-03).
@@ -52,9 +49,6 @@ def validate_route_request(payload: RouteRequestIn | Mapping[str, Any], settings
             raise InvalidRequest(_first_error(exc)) from exc
 
     alpha, beta = payload.preference.alpha, payload.preference.beta
-    if abs(alpha + beta - 1) > PREFERENCE_TOLERANCE:
-        raise InvalidRequest(f"preference.alpha + preference.beta harus 1 (sekarang {alpha + beta:g}).")
-
     origin = Point(payload.origin.lon, payload.origin.lat)
     destination = Point(payload.destination.lon, payload.destination.lat)
     for label, point in (("Titik asal", origin), ("Titik tujuan", destination)):

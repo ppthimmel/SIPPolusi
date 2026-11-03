@@ -8,13 +8,14 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from osm.models import Mode
+from osm.schemas import LonLat
 from planner.schemas import PreferenceOut
+from pollution.schemas import HourlyTimestamp
 
-_STRICT = ConfigDict(extra="forbid")
-LonLat = list[float]
+_STRICT = ConfigDict(extra="forbid", allow_inf_nan=False)
 
 
 # ------------------------------------------------------------------ errors (Tabel 3.16)
@@ -51,14 +52,14 @@ class RouteProperties(BaseModel):
     route_source: Literal["policy", "baseline"] = Field(
         description="policy = hasil Multi-Objective Route Model; baseline = rute tercepat (A*)")
     preference_applied: bool = Field(description="Apakah preferensi α/β diterapkan; selalu false untuk baseline")
-    travel_time_min: float = Field(description="T(R), menit")
-    distance_m: float = Field(description="Panjang rute, meter")
-    exposure_index_min: float = Field(description="E(R) = Σ Iₑ·τₑ, indeks·menit")
+    travel_time_min: float = Field(ge=0, description="T(R), menit")
+    distance_m: float = Field(ge=0, description="Panjang rute, meter")
+    exposure_index_min: float = Field(ge=0, description="E(R) = Σ Iₑ·τₑ, indeks·menit")
     exposure_ug_min_m3: float | None = Field(
-        description="Σ konsentrasi polutan acuan · τₑ, µg·min/m³; null bila ada ruas tanpa konsentrasi")
-    concentration_coverage: float = Field(description="Bagian ruas yang memiliki konsentrasi, 0–1")
-    confidence_score: float = Field(description="Rata-rata confidence ruas berbobot paparan, 0–1")
-    imputed_edge_count: int = Field(description="Jumlah ruas yang indeksnya diisi median wilayah")
+        ge=0, description="Σ konsentrasi polutan acuan · τₑ, µg·min/m³; null bila ada ruas tanpa konsentrasi")
+    concentration_coverage: float = Field(ge=0, le=1, description="Bagian ruas yang memiliki konsentrasi, 0–1")
+    confidence_score: float = Field(ge=0, le=1, description="Rata-rata confidence ruas berbobot paparan, 0–1")
+    imputed_edge_count: int = Field(ge=0, description="Jumlah ruas yang indeksnya diisi median wilayah")
     edge_ids: list[int] = Field(description="Urutan edge_id OSM Cache DB dari asal ke tujuan")
 
 
@@ -106,7 +107,7 @@ class RouteMetadata(BaseModel):
     fallback_reason: str | None = Field(description=(
         "null bila rute rekomendasi dari model. Saat fallback: model_timeout, model_unavailable, model_error, "
         "model_invalid_response, model_no_route; policy_unavailable bila penyedianya baseline"))
-    time_window_start: str = Field(description="Awal time window polusi (ISO 8601, UTC)")
+    time_window_start: HourlyTimestamp = Field(description="Awal time window polusi (ISO 8601, UTC)")
     data_stale: bool = Field(description="true bila time window terakhir berakhir lebih dari 3 jam lalu")
     missing_edge_count: int = Field(description="Ruas subgraf tanpa estimasi polusi")
     graph_version: str = Field(description="Versi road graph OSM Cache DB")
@@ -130,6 +131,12 @@ class RouteFeatureCollection(BaseModel):
     type: Literal["FeatureCollection"]
     features: list[RouteFeature] = Field(min_length=2, max_length=2)
     metadata: RouteMetadata
+
+    @model_validator(mode="after")
+    def validate_roles(self) -> RouteFeatureCollection:
+        if [f.properties.role for f in self.features] != ["recommended", "comparison"]:
+            raise ValueError("RouteOutput requires recommended then comparison")
+        return self
 
 
 # ------------------------------------------------------------------ GET /v1/exposure-surface
