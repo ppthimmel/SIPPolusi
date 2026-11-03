@@ -336,8 +336,11 @@ def scenario_model_failures():
     compose("stop", "route_model")
     r = route()
     meta = r["json"]["metadata"] if r["status"] == 200 else {}
-    check(s, "layanan model mati: fallback model_unavailable", r["status"] == 200 and
-          meta.get("fallback_reason") == "model_unavailable", {"status": r["status"], "fallback_reason": meta.get("fallback_reason")})
+    check(s, "layanan model mati: fallback baseline bertanda dalam batas waktu", r["status"] == 200 and
+          meta.get("route_source") == "baseline" and meta.get("preference_applied") is False and
+          meta.get("fallback_reason") == "model_unavailable" and r["elapsed_s"] < 10,
+          {"status": r["status"], "fallback_reason": meta.get("fallback_reason"), "elapsed_s": r["elapsed_s"]})
+    no_false_success(s, r)
     compose("start", "route_model")
     time.sleep(2)
 
