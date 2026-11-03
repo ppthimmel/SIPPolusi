@@ -1,10 +1,10 @@
 {
-  "git_commit": "7d446fc",
+  "git_commit": "b687b5e",
   "git_branch": "TI-SE-11",
   "git_dirty": true,
   "components": {
     "data_worker": "7d446fc 2026-11-03 Merge pull request #70 from ppthimmel/TI-SE-01",
-    "cache_api": "7d446fc 2026-11-03 Merge pull request #70 from ppthimmel/TI-SE-01",
+    "cache_api": "b687b5e 2026-11-03 fix(solver): distinguish connection timeouts from slow responses",
     "gateway": "9ee84d3 2026-10-27 TI-SE-10: uji integrasi end-to-end Worker sampai frontend (#65)",
     "frontend": "9ee84d3 2026-10-27 TI-SE-10: uji integrasi end-to-end Worker sampai frontend (#65)"
   },
@@ -23,11 +23,11 @@
     },
     "route_model": {
       "image": "sippolusi-e2e-route_model",
-      "id": "sha256:5d54f14ddf05"
+      "id": "sha256:846576005bce"
     },
     "cache_api": {
       "image": "sippolusi-e2e-cache_api",
-      "id": "sha256:be986865c286"
+      "id": "sha256:87fe26ad2d76"
     },
     "gateway": {
       "image": "sippolusi-e2e-gateway",

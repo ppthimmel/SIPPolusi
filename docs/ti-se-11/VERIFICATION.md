@@ -145,8 +145,13 @@ of an unreachable remote service. The transport regression also checks that the
 connection timeout is shorter than the read timeout. The Windows-only integration
 budget exception preserves the tighter 2.5 s bound on other platforms.
 
-The archived 64/64 E2E result is from the prior revision, not this review fix.
-The strict rerun was attempted but blocked before build by Docker Engine returning
-HTTP 500 on its named-pipe API, still present after launching Docker Desktop.
-Rerun the complete matrix after Engine recovery before merging. The incomplete
-rebuild log has been removed; it is not evidence of a full E2E build.
+The strict E2E rerun now passes 64/64 on reviewed code based on `b687b5e`.
+The stopped-model check requires model_unavailable; no permissive timeout
+alternative remains. Fresh image IDs and results are archived under `hasil/`;
+the earlier run is retained under `hasil/before-connect-timeout-fix/`.
+
+Docker recovery: Desktop's API proxy reported no route to its Linux engine,
+then no connected NIC. Desktop restart alone did not recover it and WSL shutdown
+hung. Restarting WslService with administrator elevation completed the shutdown;
+relaunching Desktop restored Engine 25.0.3. The subsequent rebuild and complete
+matrix succeeded. No Docker data reset or volume purge was used for recovery.

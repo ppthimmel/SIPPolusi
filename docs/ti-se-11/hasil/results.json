@@ -1,7 +1,7 @@
 {
   "summary": {
-    "started_at": "2026-11-03T08:34:45+00:00",
-    "finished_at": "2026-11-03T08:39:47+00:00",
+    "started_at": "2026-11-03T13:32:43+00:00",
+    "finished_at": "2026-11-03T13:37:49+00:00",
     "checks": 64,
     "passed": 64,
     "failed": 0
@@ -154,7 +154,7 @@
       "passed": true,
       "evidence": {
         "status": 200,
-        "elapsed_s": 0.401
+        "elapsed_s": 0.375
       }
     },
     {
@@ -221,7 +221,7 @@
       "check": "korelasi: X-Request-ID = metadata.request_id = log gateway = log Cache API",
       "passed": true,
       "evidence": {
-        "x_request_id": "2b84a7367f68f2fa961d056550d42ff8"
+        "x_request_id": "c62182079d4b0c7d446bb8bb11ce18c3"
       }
     },
     {
@@ -231,7 +231,7 @@
       "evidence": {
         "level": "info",
         "logger": "solver",
-        "correlation_id": "2b84a7367f68f2fa961d056550d42ff8"
+        "correlation_id": "c62182079d4b0c7d446bb8bb11ce18c3"
       }
     },
     {
@@ -374,7 +374,7 @@
       "evidence": {
         "status": 200,
         "fallback_reason": "model_timeout",
-        "elapsed_s": 8.02
+        "elapsed_s": 8.069
       }
     },
     {
@@ -396,7 +396,7 @@
       "scenario": "E2E-06 inferensi rute gagal, fallback aktif",
       "check": "model slow: log mencatat outcome=fallback dan penyebab solver_timeout",
       "passed": true,
-      "evidence": "star-baseline fallback_reason=model_timeout mode=walk alpha=0.3 beta=0.7 deadline_ms=7368 inference_ms=61.6 primary_ms=7668.5 reason=solver_timeout detail='no reply within 7668 ms'\", \"service\": \"cache-api\", \"correlation_id\": \"2435c6137c58f0a163bad14686007908\"}"
+      "evidence": "star-baseline fallback_reason=model_timeout mode=walk alpha=0.3 beta=0.7 deadline_ms=7395 inference_ms=88.2 primary_ms=7695.7 reason=solver_timeout detail='no reply within 7695 ms'\", \"service\": \"cache-api\", \"correlation_id\": \"568bca65895edafd068ea52bdcb4adf5\"}"
     },
     {
       "scenario": "E2E-06 inferensi rute gagal, fallback aktif",
@@ -405,7 +405,7 @@
       "evidence": {
         "status": 200,
         "fallback_reason": "model_error",
-        "elapsed_s": 0.334
+        "elapsed_s": 0.367
       }
     },
     {
@@ -427,7 +427,7 @@
       "scenario": "E2E-06 inferensi rute gagal, fallback aktif",
       "check": "model error: log mencatat outcome=fallback dan penyebab solver_error",
       "passed": true,
-      "evidence": "ar-baseline fallback_reason=model_error mode=walk alpha=0.3 beta=0.7 deadline_ms=7364 inference_ms=73.5 primary_ms=118.3 reason=solver_error detail='Route Model menjawab HTTP 500.'\", \"service\": \"cache-api\", \"correlation_id\": \"9049cdc76aca662f584730462dddb6de\"}"
+      "evidence": "ar-baseline fallback_reason=model_error mode=walk alpha=0.3 beta=0.7 deadline_ms=7344 inference_ms=73.0 primary_ms=133.3 reason=solver_error detail='Route Model menjawab HTTP 500.'\", \"service\": \"cache-api\", \"correlation_id\": \"7b1d1c817c5b3229c69474d18983daa7\"}"
     },
     {
       "scenario": "E2E-06 inferensi rute gagal, fallback aktif",
@@ -436,7 +436,7 @@
       "evidence": {
         "status": 200,
         "fallback_reason": "model_invalid_response",
-        "elapsed_s": 0.371
+        "elapsed_s": 0.413
       }
     },
     {
@@ -458,7 +458,7 @@
       "scenario": "E2E-06 inferensi rute gagal, fallback aktif",
       "check": "model mislabel: log mencatat outcome=fallback dan penyebab invalid_solver_response",
       "passed": true,
-      "evidence": "a=0.3 beta=0.7 deadline_ms=7329 inference_ms=69.4 primary_ms=124.7 reason=invalid_solver_response detail='route_source policy dengan preference_applied=False, fallback_reason=None'\", \"service\": \"cache-api\", \"correlation_id\": \"48d88e0d63606bf1b5099e3e555a2513\"}"
+      "evidence": "a=0.3 beta=0.7 deadline_ms=7304 inference_ms=72.1 primary_ms=137.4 reason=invalid_solver_response detail='route_source policy dengan preference_applied=False, fallback_reason=None'\", \"service\": \"cache-api\", \"correlation_id\": \"213091d45f832724c878f24886685621\"}"
     },
     {
       "scenario": "E2E-06 inferensi rute gagal, fallback aktif",
@@ -467,7 +467,7 @@
       "evidence": {
         "status": 200,
         "fallback_reason": "model_no_route",
-        "elapsed_s": 0.39
+        "elapsed_s": 0.474
       }
     },
     {
@@ -489,7 +489,7 @@
       "scenario": "E2E-06 inferensi rute gagal, fallback aktif",
       "check": "model no_route: log mencatat outcome=fallback dan penyebab solver_no_route",
       "passed": true,
-      "evidence": "on=model_no_route mode=walk alpha=0.3 beta=0.7 deadline_ms=7351 inference_ms=114.5 primary_ms=120.3 reason=solver_no_route detail='solver reported no route on a reachable subgraph'\", \"service\": \"cache-api\", \"correlation_id\": \"41b7b5d105d3254a731fefcb70b884cc\"}"
+      "evidence": "on=model_no_route mode=walk alpha=0.3 beta=0.7 deadline_ms=7315 inference_ms=142.9 primary_ms=140.1 reason=solver_no_route detail='solver reported no route on a reachable subgraph'\", \"service\": \"cache-api\", \"correlation_id\": \"223270f20ae64a0be1a5b078ed87625a\"}"
     },
     {
       "scenario": "E2E-06 inferensi rute gagal, fallback aktif",
@@ -497,8 +497,8 @@
       "passed": true,
       "evidence": {
         "status": 200,
-        "fallback_reason": "model_timeout",
-        "elapsed_s": 7.919
+        "fallback_reason": "model_unavailable",
+        "elapsed_s": 4.186
       }
     },
     {
@@ -526,7 +526,7 @@
           "route_service_unavailable",
           "solver_timeout"
         ],
-        "elapsed_s": 7.806
+        "elapsed_s": 7.805
       }
     },
     {
