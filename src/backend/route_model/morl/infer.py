@@ -19,6 +19,7 @@ import torch
 
 from .features import FEATURE_VERSION, build_sample, collate, episode_context
 from .policy import ActorCritic, ModelConfig, sample_actions, to_tensors
+from .resources import replace_file
 
 CHECKPOINT_FORMAT = "morl-checkpoint-1"
 
@@ -46,7 +47,7 @@ def save_checkpoint(path, model: ActorCritic, **metadata):
     # Written in full before it replaces the old file: a killed run never leaves a torn checkpoint.
     torch.save({"format": CHECKPOINT_FORMAT, "feature_version": FEATURE_VERSION,
                 "model_config": model.config.as_dict(), "model_state": model.state_dict(), **metadata}, temporary)
-    temporary.replace(path)
+    replace_file(temporary, path)
 
 
 def load_policy(path, device="cpu") -> tuple[ActorCritic, dict]:
