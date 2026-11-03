@@ -81,6 +81,7 @@ mendapat batas waktu, `X-Request-ID`, dan rate limit yang sama dengan klien lain
 | Gateway | `CACHE_API_UPSTREAM` | ya | `http://${{cache-api.RAILWAY_PRIVATE_DOMAIN}}:${{cache-api.PORT}}` (sesuaikan nama service) |
 | Gateway | `PORT` | tidak | disuntikkan Railway |
 | Cache API | `DATABASE_URL` | ya | `${{database.DATABASE_URL}}` |
+| Cache API | `API_GEOCODING_URL` | tidak; kosong = pencarian lokasi nonaktif | `https://photon.komoot.io`, lihat [`ti-se-12-geocoding.md`](../ti-se-12-geocoding.md) |
 | Frontend | `GATEWAY_UPSTREAM` | tidak (bawaan `http://gateway:8080`) | `http://${{gateway.RAILWAY_PRIVATE_DOMAIN}}:${{gateway.PORT}}` |
 | Data Worker | `DATABASE_URL` | ya | `${{database.DATABASE_URL}}` |
 | Data Worker | `SPKU_*` | tidak | lihat [`src/data_worker/README.md`](../../src/data_worker/README.md) |

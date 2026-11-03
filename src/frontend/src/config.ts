@@ -23,6 +23,15 @@ export function timeoutMs(value: string | undefined, fallback: number): number {
   const n = Number(value);
   return value && Number.isInteger(n) && n > 0 ? n : fallback;
 }
+/** Place search (TI-SE-12). The timeout stays above the Backend's API_GEOCODING_TIMEOUT_S, plus
+ *  its second call for a place outside the area, so the page reads the Backend's own answer. */
+export const GEOCODE_TIMEOUT_MS = 7_000;
+export const GEOCODE_DEBOUNCE_MS = 300;
+export const GEOCODE_MIN_CHARS = 3;
+/** Shown under the suggestions: where the text goes, and the source of the places (ODbL). */
+export const GEOCODE_NOTE =
+  "Teks yang diketik dikirim ke layanan pencarian lokasi dan tidak disimpan SIPPolusi. Data tempat © OpenStreetMap.";
+
 /** Debounce for pan/zoom before GET /v1/exposure-surface (Tabel 3.4). */
 export const SURFACE_DEBOUNCE_MS = 500;
 

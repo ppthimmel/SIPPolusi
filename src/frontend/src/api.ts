@@ -1,5 +1,6 @@
 import {
   DETAIL_ZOOM,
+  GEOCODE_TIMEOUT_MS,
   MAX_DETAIL_AREA_KM2,
   ROUTE_TIMEOUT_MS,
   SURFACE_TIMEOUT_MS,
@@ -10,6 +11,9 @@ import type {
   ExposureSurface,
   ExposureUnit,
   FallbackReason,
+  Place,
+  PlaceSearchResult,
+  Point,
   RouteMetadata,
   RouteRequest,
   RouteResponse,
@@ -260,6 +264,46 @@ export function parseRouteResponse(body: unknown): RouteResponse {
     disclaimer: str(meta.disclaimer),
   };
   return { recommended, comparison, exposureUnit: unit, metadata };
+}
+
+// ---------------------------------------------------------------- places
+
+function postJson(path: string, body: unknown, signal?: AbortSignal): Promise<unknown> {
+  // POST keeps the text and coordinates out of URLs, and so out of logs and history (PNF-06).
+  const init = { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) };
+  return fetchJson(path, init, GEOCODE_TIMEOUT_MS, signal);
+}
+
+function parsePlace(v: unknown): Place | null {
+  if (!isObj(v)) return null;
+  const name = str(v.name);
+  const lat = num(v.lat);
+  const lon = num(v.lon);
+  if (!name || lat === null || lon === null) return null;
+  return { name, description: typeof v.description === "string" ? v.description : "", lat, lon };
+}
+
+export function parsePlaceSearch(body: unknown): PlaceSearchResult {
+  if (!isObj(body) || !Array.isArray(body.results)) throw invalid("hasil pencarian lokasi");
+  const places = body.results.map(parsePlace);
+  if (places.some((p) => p === null)) throw invalid("tempat tidak lengkap");
+  return { places: places as Place[], outsideStudyArea: body.outside_study_area === true };
+}
+
+export function parseReversePlace(body: unknown): Place | null {
+  if (!isObj(body) || !("place" in body)) throw invalid("nama tempat");
+  if (body.place === null) return null;
+  const place = parsePlace(body.place);
+  if (!place) throw invalid("tempat tidak lengkap");
+  return place;
+}
+
+export async function searchPlaces(query: string, signal?: AbortSignal): Promise<PlaceSearchResult> {
+  return parsePlaceSearch(await postJson("/v1/geocode/search", { query }, signal));
+}
+
+export async function reversePlace(p: Point, signal?: AbortSignal): Promise<Place | null> {
+  return parseReversePlace(await postJson("/v1/geocode/reverse", { lat: p.lat, lon: p.lon }, signal));
 }
 
 // ------------------------------------------------------- exposure surface

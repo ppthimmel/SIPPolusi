@@ -36,7 +36,7 @@ def test_committed_spec_is_current(spec):
 
 
 def test_only_gateway_routed_paths(spec):
-    assert set(spec["paths"]) == {"/v1/routes", "/v1/exposure-surface"}
+    assert set(spec["paths"]) == {"/v1/routes", "/v1/exposure-surface", "/v1/geocode/search", "/v1/geocode/reverse"}
     assert all(openapi.is_public(p) for p in spec["paths"])
     assert not openapi.is_public("/v1/osm/version") and not openapi.is_public("/v1/pollution/windows")
     assert not {"SolveResultOut", "SolverInputOut", "HTTPValidationError"} & set(spec["components"]["schemas"])

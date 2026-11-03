@@ -412,6 +412,42 @@ def scenario_contract():
     check(s, "koleksi uji (17 kasus: validasi, 413, 422, heatmap) lulus", proc.returncode == 0, summary)
 
 
+def scenario_geocoding():
+    s = "E2E-12 pencarian lokasi"
+    print(s)
+    marker = "Zqxmarker Monas"
+    point = {"lat": -6.17719, "lon": 106.83113}
+    search = lambda base, query: http("POST", base + "/v1/geocode/search", {"query": query})  # noqa: E731
+    reverse = lambda body: http("POST", GATEWAY + "/v1/geocode/reverse", body)  # noqa: E731
+
+    found = search(GATEWAY, marker)
+    names = [p["name"] for p in (found["json"] or {}).get("results", [])]
+    check(s, "cari nama tempat lewat gateway -> tempat di wilayah studi, no-store",
+          found["status"] == 200 and names == ["Monumen Nasional"] and found["headers"].get("cache-control") == "no-store",
+          [found["status"], names])
+    check(s, "cari nama tempat lewat frontend -> sama", search(FRONTEND, marker)["status"] == 200, None)
+    outside, missing = search(GATEWAY, "bandung")["json"], search(GATEWAY, "tidak ada tempat ini")["json"]
+    check(s, "hanya ada di luar wilayah -> outside_study_area", outside == {"results": [], "outside_study_area": True}, outside)
+    check(s, "tidak ditemukan -> hasil kosong", missing == {"results": [], "outside_study_area": False}, missing)
+    named = reverse(point)
+    check(s, "titik di peta -> nama tempat", named["status"] == 200 and named["json"]["place"]["name"] == "Monumen Nasional",
+          named["json"])
+    check(s, "titik di luar wilayah -> 422 outside_study_area",
+          error_of(reverse({"lat": -6.9147, "lon": 107.6098}))[:2] == (422, "outside_study_area"), None)
+    check(s, "GET ditolak gateway (teks tidak boleh di URL) -> 405",
+          http("GET", GATEWAY + "/v1/geocode/search?query=monas")["status"] == 405, None)
+
+    compose("stop", "photon")
+    down = search(GATEWAY, marker)
+    check(s, "penyedia mati -> 503 geocoding_unavailable", error_of(down)[:2] == (503, "geocoding_unavailable"), error_of(down))
+    check(s, "penyedia mati -> rute tetap dilayani", route()["status"] == 200, None)
+    compose("start", "photon")
+
+    logs = compose("logs", "--no-color", "cache_api", "gateway", "frontend").stdout
+    leaks = [t for t in ("zqxmarker", "-6.17719", "106.83113") if t in logs.lower()]
+    check(s, "log Cache API, gateway, dan frontend tanpa teks pencarian dan koordinat (PNF-06)", not leaks, leaks)
+
+
 def scenario_logs_safe():
     s = "E2E-11 log aman"
     print(s)
@@ -483,12 +519,13 @@ def main() -> int:
     compose("down", "-v", "--remove-orphans", check=False)
     compose("up", "-d", "--wait", "db")
     print(compose("--profile", "tools", "run", "--rm", "fixture").stdout.strip().splitlines()[-1])
-    compose("up", "-d", "--wait", "spku_portal", "route_model", "cache_api", "gateway", "frontend")
+    compose("up", "-d", "--wait", "spku_portal", "photon", "route_model", "cache_api", "gateway", "frontend")
     started = dt.datetime.now(dt.timezone.utc)
 
     for scenario in (scenario_empty_cache, scenario_success, scenario_next_window, scenario_source_unavailable,
                      scenario_window_being_written, scenario_model_failures, scenario_model_failures_no_fallback,
-                     scenario_api_failures, scenario_version_mismatch, scenario_contract, scenario_logs_safe):
+                     scenario_api_failures, scenario_version_mismatch, scenario_contract, scenario_geocoding,
+                     scenario_logs_safe):
         try:
             scenario()
         except Exception as exc:  # noqa: BLE001 - record and keep going so the matrix is complete

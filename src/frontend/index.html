@@ -50,15 +50,23 @@
                         id="input-origin"
                         name="origin"
                         type="text"
-                        inputmode="decimal"
+                        role="combobox"
+                        aria-autocomplete="list"
+                        aria-expanded="false"
+                        aria-controls="list-origin"
                         autocomplete="off"
                         spellcheck="false"
-                        placeholder="Klik peta atau ketik lat, lon"
+                        placeholder="Cari tempat, klik peta, atau lat, lon"
                         aria-describedby="error-origin"
                       />
                       <button type="button" class="pick-btn" id="pick-origin" aria-pressed="false" aria-label="Pilih titik asal di peta" title="Pilih di peta"></button>
                     </div>
                     <p class="field-error" id="error-origin" role="alert" hidden></p>
+                    <div class="place-menu" id="menu-origin" hidden>
+                      <ul id="list-origin" role="listbox" aria-label="Saran tempat asal" hidden></ul>
+                      <p class="place-status" id="status-origin" role="status" hidden></p>
+                      <p class="place-note"></p>
+                    </div>
                   </div>
 
                   <div class="field" id="field-destination">
@@ -68,15 +76,23 @@
                         id="input-destination"
                         name="destination"
                         type="text"
-                        inputmode="decimal"
+                        role="combobox"
+                        aria-autocomplete="list"
+                        aria-expanded="false"
+                        aria-controls="list-destination"
                         autocomplete="off"
                         spellcheck="false"
-                        placeholder="Klik peta atau ketik lat, lon"
+                        placeholder="Cari tempat, klik peta, atau lat, lon"
                         aria-describedby="error-destination"
                       />
                       <button type="button" class="pick-btn" id="pick-destination" aria-pressed="false" aria-label="Pilih titik tujuan di peta" title="Pilih di peta"></button>
                     </div>
                     <p class="field-error" id="error-destination" role="alert" hidden></p>
+                    <div class="place-menu" id="menu-destination" hidden>
+                      <ul id="list-destination" role="listbox" aria-label="Saran tempat tujuan" hidden></ul>
+                      <p class="place-status" id="status-destination" role="status" hidden></p>
+                      <p class="place-note"></p>
+                    </div>
                   </div>
                 </div>
                 <button type="button" class="icon-btn swap-btn" id="swap-btn" aria-label="Tukar asal dan tujuan"></button>

@@ -109,3 +109,17 @@ export interface BBox {
   maxLon: number;
   maxLat: number;
 }
+
+/** A place from POST /v1/geocode/search or /reverse (TI-SE-12). */
+export interface Place extends Point {
+  name: string;
+  /** Street, district and city; empty when unknown. */
+  description: string;
+}
+
+export interface PlaceSearchResult {
+  places: Place[];
+  /** No place in the study area, but the provider knows one outside it. */
+  outsideStudyArea: boolean;
+}
+

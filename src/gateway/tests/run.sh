@@ -10,7 +10,7 @@
 #    with its own method; every other path is answered 404, every other method
 #    405, by the gateway.
 # 4. Rate limiting per client address (IPv6 per /64) answers 429 rate_limited
-#    with Retry-After.
+#    with Retry-After; geocoding also has a limit shared by all clients.
 # 5. An upstream that is down or whose connection never opens gives 502, one
 #    that accepts but does not answer gives 504 after the 10 s read timeout,
 #    both in the uniform error schema.
@@ -194,13 +194,16 @@ expect_route POST /v1/routes                     200 'cache_api /v1/routes '
 expect_route GET  '/v1/exposure-surface?bbox=106.8,-6.2,106.81,-6.19&zoom=15' 200 'cache_api /v1/exposure-surface?bbox=106.8,-6.2,106.81,-6.19&zoom=15 '
 # A raw path that NGINX normalises to a public path reaches the upstream as
 # that public path, never in its raw form.
+expect_route POST /v1/geocode/search             200 'cache_api /v1/geocode/search '
+expect_route POST /v1/geocode/reverse            200 'cache_api /v1/geocode/reverse '
 expect_route POST '/v1/osm/version/../../routes' 200 'cache_api /v1/routes ' --path-as-is
 expect_route GET  '/v1/osm/x/%2E%2E/%2E%2E/exposure-surface?zoom=1' 200 'cache_api /v1/exposure-surface?zoom=1 ' --path-as-is
 
 # Everything else is closed: Cache API inspection and internal reads, the
 # backend, health endpoints, and near misses of the public paths.
 for path in /v1/routes/solve /v1/routes/plan /v1/routes/solver-input /v1/routes/ \
-            /v1/exposure-surface/ /v1/osm/version '/v1/osm/graph?mode=walk' \
+            /v1/exposure-surface/ /v1/geocode /v1/geocode/ /v1/geocode/other \
+            /v1/osm/version '/v1/osm/graph?mode=walk' \
             /v1/osm/subgraph /v1/pollution/windows /v1/pollution/edge-weights \
             /v1/other /v1/ /v1 /health /health/ready /metrics /docs /openapi.json /; do
     expect_route GET "$path" 404 "$NOT_FOUND"
@@ -263,6 +266,24 @@ expect_json_error DELETE /v1/routes 405 method_not_allowed
 expect_json_error POST /v1/exposure-surface 405 method_not_allowed
 expect_allow "GET, OPTIONS"
 expect_json_error PUT '/v1/exposure-surface?zoom=1' 405 method_not_allowed
+expect_json_error GET /v1/geocode/search 405 method_not_allowed
+expect_allow "POST, OPTIONS"
+expect_json_error GET '/v1/geocode/reverse?lat=-6.2&lon=106.8' 405 method_not_allowed
+expect_allow "POST, OPTIONS"
+expect_route OPTIONS /v1/geocode/search 200 'cache_api /v1/geocode/search '
+expect_route OPTIONS /v1/geocode/reverse 200 'cache_api /v1/geocode/reverse '
+# Search text stays in the body, in memory; a body above any accepted query is refused.
+head -c 3000 /dev/zero | tr '\0' 'x' > /tmp/big_query
+head -c 1900 /dev/zero | tr '\0' 'x' > /tmp/ok_query
+expect_json_error POST /v1/geocode/search 413 payload_too_large --data-binary @/tmp/big_query -H 'Content-Type: application/json'
+expect_json_error POST /v1/geocode/reverse 413 payload_too_large --data-binary @/tmp/big_query -H 'Content-Type: application/json'
+status=$(curl -s -o /dev/null -w '%{http_code}' -H "X-Real-IP: $(client_ip)" --data-binary @/tmp/ok_query "http://127.0.0.1:$PORT/v1/geocode/search")
+[ "$status" = 200 ] && pass "POST /v1/geocode/search with 1 900 bytes reaches the Cache API" || fail "1 900-byte query: HTTP $status"
+if grep -q "buffered to a temporary file" "$ERROR_LOG"; then
+    fail "an accepted geocode body was spilled to disk and logged: $(grep 'temporary file' "$ERROR_LOG")"
+else
+    pass "accepted /v1/geocode bodies stay in memory (no temp-file warning with the client address)"
+fi
 expect_route OPTIONS /v1/routes 200 'cache_api /v1/routes '
 expect_route OPTIONS /v1/exposure-surface 200 'cache_api /v1/exposure-surface '
 # A wrong method is refused before the rate limit, so it uses up no bucket.
@@ -336,6 +357,25 @@ expect_retry_after 1
 [ "$(status_of /v1/routes 198.51.100.9 -X POST)" = 200 ] \
     && pass "limits are per path: /v1/routes unaffected by the heatmap limit" \
     || fail "/v1/routes refused after the heatmap limit was hit"
+
+# POST /v1/geocode/*: 60/min per client, burst 10, one bucket for both paths.
+sleep 3  # refills the all-clients bucket after the checks of section 3
+expect_burst /v1/geocode/search 198.51.100.11 11 -X POST
+CLIENT=198.51.100.11 expect_json_error POST /v1/geocode/reverse 429 rate_limited
+expect_retry_after 1
+[ "$(status_of /v1/routes 198.51.100.11 -X POST)" = 200 ] \
+    && pass "limits are per path: /v1/routes unaffected by the geocoding limit" \
+    || fail "/v1/routes refused after the geocoding limit was hit"
+# All clients together: 5/s, burst 10, so many clients at once meet the shared limit.
+sleep 3
+got=$(i=0; while [ "$i" -lt 30 ]; do status_of /v1/geocode/search "198.51.101.$i" -X POST; echo; i=$((i + 1)); done)
+passed=$(printf '%s\n' "$got" | grep -c '^200$')
+refused=$(printf '%s\n' "$got" | grep -c '^429$')
+if [ "$passed" -ge 11 ] && [ "$passed" -lt 30 ] && [ $((passed + refused)) = 30 ]; then
+    pass "/v1/geocode/search: 30 quick clients, $passed pass and $refused are refused by the shared limit"
+else
+    fail "/v1/geocode/search shared limit: $passed passed, $refused refused of 30"
+fi
 
 # IPv6 clients are keyed by their /64. expect_shared_bucket LABEL ADDR...:
 # six quick POST /v1/routes, cycling through the addresses, all pass; a seventh

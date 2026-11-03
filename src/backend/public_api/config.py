@@ -31,6 +31,12 @@ class ApiSettings(BaseSettings):
     # Empty: no CORS headers, so browsers on other origins are refused.
     cors_origins: str = ""
 
+    # Base URL of a Photon server for POST /v1/geocode/* (TI-SE-12, docs/ti-se-12-geocoding.md).
+    # Empty: no search text or coordinate leaves this service; the endpoints answer 503.
+    geocoding_url: str = ""
+    # Below the Frontend's GEOCODE_TIMEOUT_MS, so the page gets this service's own answer.
+    geocoding_timeout_s: float = Field(3.0, gt=0)
+
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
 

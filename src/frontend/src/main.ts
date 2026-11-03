@@ -2,8 +2,16 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import "./style.css";
 
 import { compareRoutes } from "./compare";
-import { ApiError, requestExposureSurface, submitRouteRequest, surfaceZoom } from "./api";
-import { DISCLAIMER, ROUTE_TIMEOUT_MS, STUDY_AREA, SURFACE_DEBOUNCE_MS } from "./config";
+import { ApiError, requestExposureSurface, reversePlace, searchPlaces, submitRouteRequest, surfaceZoom } from "./api";
+import {
+  DISCLAIMER,
+  GEOCODE_DEBOUNCE_MS,
+  GEOCODE_MIN_CHARS,
+  GEOCODE_NOTE,
+  ROUTE_TIMEOUT_MS,
+  STUDY_AREA,
+  SURFACE_DEBOUNCE_MS,
+} from "./config";
 import { clear, h, icon } from "./dom";
 import { describeRouteError, type ErrorField, type ErrorView } from "./errors";
 import { HEAT_LAYER_LABELS, allLowConfidence, exposureClass, layerRatio } from "./exposure";
@@ -11,9 +19,11 @@ import { confidenceBadge, renderResult } from "./results-view";
 import { fmtCoord, fmtNumber, fmtWib } from "./format";
 import { Legend } from "./legend";
 import { MapView, type SegmentClick } from "./map-view";
+import { PlaceCombobox } from "./place-combobox";
+import { PlaceSearch, PointNamer } from "./place-search";
 import { SurfaceRefresher } from "./surface-refresher";
-import type { HeatLayer, Mode, Point } from "./types";
-import { buildRouteRequest, parseCoordinateText, preferenceFromSlider, validateTrip } from "./validation";
+import type { HeatLayer, Mode, Place, Point } from "./types";
+import { buildRouteRequest, parseCoordinateText, preferenceFromSlider, validatePoint, validateTrip } from "./validation";
 
 // Presentation layer (PF-01, PF-02, PF-09 – PF-12, PNF-07, PNF-08): trip form,
 // route comparison, exposure heatmap, confidence, fallback and error states.
@@ -57,7 +67,9 @@ const fields: Record<Which, { input: HTMLInputElement; error: HTMLElement; wrap:
 // --------------------------------------------------------------------- state
 const state = {
   points: { origin: null, destination: null } as Record<Which, Point | null>,
-  /** Text the user typed that is not a coordinate pair. */
+  /** Name shown for the point (a chosen suggestion or the map point's name); null for bare coordinates. */
+  labels: { origin: null, destination: null } as Record<Which, string | null>,
+  /** Text the user typed that is neither a coordinate pair nor a chosen place. */
   parseError: { origin: false, destination: false } as Record<Which, boolean>,
   touched: { origin: false, destination: false } as Record<Which, boolean>,
   /** Error the Backend attached to one point (e.g. point_not_on_network). */
@@ -90,22 +102,46 @@ for (const w of ["origin", "destination"] as const) fields[w].pick.append(icon("
 const mode = (): Mode => (tripForm.elements.namedItem("mode") as RadioNodeList).value === "bike" ? "bike" : "walk";
 
 // -------------------------------------------------------------- form helpers
-function setPoint(which: Which, p: Point | null, opts: { fill?: boolean; fly?: boolean } = {}): void {
+function setPoint(which: Which, p: Point | null, opts: { fill?: boolean; fly?: boolean; label?: string } = {}): void {
   state.points[which] = p;
+  state.labels[which] = opts.label ?? null;
   state.parseError[which] = false;
   state.serverError[which] = null;
   if (p) state.touched[which] = true;
-  if (opts.fill !== false) fields[which].input.value = p ? fmtCoord(p) : "";
+  searches[which].stop();
+  namers[which].cancel();
+  if (opts.fill !== false) fields[which].input.value = opts.label ?? (p ? fmtCoord(p) : "");
+  fields[which].input.title = p ? fmtCoord(p) : "";
   mapView.setPoint(which, p);
   if (p && opts.fly) mapView.flyTo(p);
+  if (p && !opts.label) nameIfUsable(which, p);
   refreshForm();
+}
+
+/** Looks up the name of a map point. Points outside the study area are never sent. */
+function nameIfUsable(which: Which, p: Point): void {
+  if (!validatePoint(p, "asal")) namers[which].name(p);
+}
+
+/** A found name replaces the coordinates, unless the user has moved on in the meantime. */
+function showPointName(which: Which, place: Place, p: Point): void {
+  const { input } = fields[which];
+  if (state.points[which] !== p || input.value !== fmtCoord(p)) return;
+  state.labels[which] = place.name;
+  input.value = place.name;
+}
+
+function choosePlace(which: Which, place: Place): void {
+  // Same step as a map click: the next click on the map must not move this point.
+  if (state.pick === which) state.pick = which === "origin" && !state.points.destination ? "destination" : null;
+  setPoint(which, { lat: place.lat, lon: place.lon }, { fly: true, label: place.name });
 }
 
 function currentErrors(): Record<Which, string | null> {
   const trip = validateTrip(state.points.origin, state.points.destination, mode());
   const out: Record<Which, string | null> = { origin: trip.origin, destination: trip.destination };
   for (const w of ["origin", "destination"] as const) {
-    if (state.parseError[w]) out[w] = 'Format koordinat tidak dikenali. Contoh: -6.2088, 106.8456.';
+    if (state.parseError[w]) out[w] = 'Pilih salah satu saran, pilih titik di peta, atau ketik koordinat "lat, lon".';
   }
   return out;
 }
@@ -115,7 +151,7 @@ function refreshForm(): void {
   const valid = !errors.origin && !errors.destination;
   for (const w of ["origin", "destination"] as const) {
     const f = fields[w];
-    const shown = state.serverError[w] ?? (state.touched[w] || state.parseError[w] ? errors[w] : null);
+    const shown = state.serverError[w] ?? (state.touched[w] ? errors[w] : null);
     f.error.hidden = !shown;
     f.error.textContent = shown ?? "";
     f.wrap.classList.toggle("is-invalid", !!shown);
@@ -146,17 +182,45 @@ function refreshForm(): void {
 function onTyped(which: Which): void {
   const text = fields[which].input.value;
   const p = parseCoordinateText(text);
+  const isSearch = text.trim() !== "" && !p;
   state.serverError[which] = null;
-  state.parseError[which] = text.trim() !== "" && !p;
+  state.parseError[which] = isSearch;
   state.points[which] = p;
+  state.labels[which] = null;
+  namers[which].cancel();
+  fields[which].input.title = "";
+  // Still typing a name is not a mistake: the message waits until the field is left.
+  if (isSearch) {
+    state.touched[which] = false;
+    searches[which].schedule(text);
+  } else {
+    searches[which].stop();
+  }
   mapView.setPoint(which, p);
   refreshForm();
+}
+
+const searches = {} as Record<Which, PlaceSearch>;
+const namers = {} as Record<Which, PointNamer>;
+for (const w of ["origin", "destination"] as const) {
+  const combobox = new PlaceCombobox(
+    fields[w].input,
+    $(`menu-${w}`),
+    $(`list-${w}`),
+    $(`status-${w}`),
+    (place) => choosePlace(w, place),
+    () => searches[w].stop(),
+  );
+  searches[w] = new PlaceSearch(searchPlaces, (view) => combobox.render(view), GEOCODE_DEBOUNCE_MS, GEOCODE_MIN_CHARS);
+  namers[w] = new PointNamer(reversePlace, (place, p) => showPointName(w, place, p));
+  $(`menu-${w}`).querySelector(".place-note")!.textContent = GEOCODE_NOTE;
 }
 
 for (const w of ["origin", "destination"] as const) {
   const f = fields[w];
   f.input.addEventListener("input", () => onTyped(w));
   f.input.addEventListener("blur", () => {
+    searches[w].stop();
     state.touched[w] = true;
     refreshForm();
   });
@@ -169,13 +233,26 @@ for (const w of ["origin", "destination"] as const) {
 $("swap-btn").addEventListener("click", () => {
   const { origin, destination } = state.points;
   const texts = [fields.origin.input.value, fields.destination.input.value];
+  const titles = [fields.origin.input.title, fields.destination.input.title];
+  for (const w of ["origin", "destination"] as const) {
+    searches[w].stop();
+    namers[w].cancel();
+  }
   state.points = { origin: destination, destination: origin };
+  state.labels = { origin: state.labels.destination, destination: state.labels.origin };
   state.parseError = { origin: state.parseError.destination, destination: state.parseError.origin };
   state.serverError = { origin: null, destination: null };
   fields.origin.input.value = texts[1];
   fields.destination.input.value = texts[0];
+  fields.origin.input.title = titles[1];
+  fields.destination.input.title = titles[0];
   mapView.setPoint("origin", state.points.origin);
   mapView.setPoint("destination", state.points.destination);
+  // A lookup cancelled above goes on for the field that holds the point now.
+  for (const w of ["origin", "destination"] as const) {
+    const p = state.points[w];
+    if (p && !state.labels[w] && fields[w].input.value === fmtCoord(p)) nameIfUsable(w, p);
+  }
   refreshForm();
 });
 
@@ -325,7 +402,7 @@ async function submit(): Promise<void> {
     clearStatus();
     formView.hidden = true;
     resultView.hidden = false;
-    const title = renderResult(resultView, { response, request, onBack: backToForm });
+    const title = renderResult(resultView, { response, request, places: { ...state.labels }, onBack: backToForm });
     legend.setRoutes({
       fallback: response.recommended.routeSource === "baseline",
       hasComparison: compareRoutes(response).kind !== "none" && compareRoutes(response).kind !== "identical",

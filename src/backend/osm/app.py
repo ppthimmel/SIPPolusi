@@ -30,6 +30,7 @@ from starlette.middleware.gzip import GZipMiddleware
 from log_config import configure_logging
 from planner.router import router as planner_router
 from public_api.config import ApiSettings, get_api_settings
+from public_api.geocoding import make_geocoder
 from public_api.limits import BodySizeLimit
 from public_api.openapi import install_openapi
 from public_api.router import router as public_router
@@ -110,6 +111,7 @@ def create_app(
         lifespan=lifespan,
     )
     app.state.api_settings = api_settings
+    app.state.geocoder = make_geocoder(api_settings)
     install_error_handling(app)
     # Added later = further out: oversized bodies are refused before anything reads them.
     app.add_middleware(GZipMiddleware, minimum_size=1024)
