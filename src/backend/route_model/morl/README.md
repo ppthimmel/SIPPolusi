@@ -88,10 +88,15 @@ Actor's and the Critic's input. An arc's score subtracts its scalarized regret t
 learned scale, because without this the policy ignored the preference; the MLP learns the
 correction, and `verify` reports the policy against this prior alone.
 
-Features, Graph Encoder, warm start, PPO, run record and data are those of PIC B, so TI-AI-10
-compares the approaches and not their inputs: both configs have the same OD and
-environment settings (a unit test checks this). `scalarized.py` passes its own `Scalarized`
-hooks to `train.train`; `FixedPreference` holds the hooks of a set member.
+Features, Graph Encoder, warm start, PPO, run record and data are those of PIC B, and both
+configs have the same OD and environment settings (a unit test checks this). `scalarized.py`
+passes its own `Scalarized` hooks to `train.train`; `FixedPreference` holds the hooks of a set
+member.
+
+**The arc score is not shared, and it decides the numbers.** PIC B has no regret path, so
+comparing the two checkpoints mostly measures that path, not one preference-conditioned
+policy against a set of fixed-preference policies. TI-AI-10 must separate the two effects;
+what it has to report is in the [experiment report](../../../../docs/experiments/TI-AI-09/scalarized/README.md#what-ti-ai-10-must-report).
 
 | File | Role |
 |---|---|
@@ -99,6 +104,7 @@ hooks to `train.train`; `FixedPreference` holds the hooks of a set member.
 | `scalarized.py` | `train`, `verify` and `export` commands; episode stream with a preference per episode; checkpoint loader |
 | `scalarized_report.py` | `training_curves.png` and `summary.md` from a run's files |
 | `configs/scalarized-bike-v1.json`, `configs/scalarized-bike-smoke.json` | The real run, and a 3-minute pipeline check |
+| `configs/scalarized-bike-mlp-only-v1.json` | The same run without the regret path, for the comparison with PIC B |
 
 How to run it, results and limitations: [`docs/experiments/TI-AI-09/scalarized`](../../../../docs/experiments/TI-AI-09/scalarized/README.md).
 

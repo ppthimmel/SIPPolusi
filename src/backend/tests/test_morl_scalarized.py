@@ -21,7 +21,7 @@ from src.backend.route_model.morl.scalarized import (
     verify,
 )
 from src.backend.route_model.morl.scalarized_policy import (
-    BoundPreference, PreferenceActorCritic, PreferenceEncoder, RegretPrior, ScalarizedConfig,
+    BoundPreference, PreferenceActorCritic, PreferenceEncoder, RegretPrior, ScalarizedConfig, scalarized_regret,
 )
 from src.backend.route_model.morl.scalarized_report import write_summary
 from src.backend.route_model.morl.train import TrainingDiverged, build_envs, evaluate
@@ -153,6 +153,59 @@ class PolicyTests(unittest.TestCase):
             BoundPreference(model, 1.5)
         with self.assertRaises(ValueError):
             decode_preference_route(model, self.router, EXPOSURE, 1, 4, (0.5, 0.6))
+
+
+class RegretPathTests(unittest.TestCase):
+    OFF = ScalarizedConfig(hidden_dim=16, graph_layers=2, ego_hops=3, ego_max_nodes=32, preference_dim=8, fourier=2,
+                           regret_path=False)
+
+    def batch(self, model_config):
+        router = two_route_router()
+        with tempfile.TemporaryDirectory() as folder:
+            fields = write_fields(Path(folder) / "fields", router)
+            envs, _ = build_envs(router, fields, OD_PAIRS[:1], tiny_config()["env"], "train", 42)
+        return to_tensors(collate([PreferenceActor(envs, 0, model_config, None).sample()]))
+
+    def test_the_path_is_one_parameter_that_can_be_left_out(self):
+        on, off = PreferenceActorCritic(SMALL), PreferenceActorCritic(self.OFF)
+        self.assertEqual(set(on.state_dict()) - set(off.state_dict()), {"log_regret_scale"})
+        self.assertEqual(set(off.state_dict()) - set(on.state_dict()), set())
+
+    def test_the_path_only_subtracts_the_scaled_regret(self):
+        torch.manual_seed(0)
+        on = PreferenceActorCritic(SMALL).eval()
+        off = PreferenceActorCritic(self.OFF).eval()
+        off.load_state_dict({k: v for k, v in on.state_dict().items() if k != "log_regret_scale"})
+        batch = self.batch(SMALL)
+        with mock.patch("src.backend.route_model.morl.scalarized_policy.masked_log_softmax",
+                        lambda logits, *rest: logits):
+            with_path, _ = on(batch)
+            without_path, _ = off(batch)
+        self.assertTrue(torch.allclose(with_path, without_path - on.log_regret_scale.exp() * scalarized_regret(batch)))
+
+    def test_a_run_without_the_path_trains_reloads_and_says_so(self):
+        config = tiny_scalarized_config()
+        config["model"]["regret_path"] = False
+        router = two_route_router()
+        with tempfile.TemporaryDirectory() as folder:
+            fields = write_fields(Path(folder) / "fields", router)
+            run = train_scalarized(config, fields, Path(folder) / "runs", router=router, od_pairs=OD_PAIRS)
+            model, checkpoint = load_scalarized_policy(run.dir / "checkpoints" / "best.pt")
+        self.assertFalse(model.config.regret_path)
+        self.assertFalse(checkpoint["model_config"]["regret_path"])
+        self.assertFalse(hasattr(model, "log_regret_scale"))
+
+    def test_a_checkpoint_from_before_the_option_keeps_its_path(self):
+        """The committed run's model_config has no regret_path key."""
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / "best.pt"
+            save_checkpoint(path, PreferenceActorCritic(SMALL))
+            saved = torch.load(path, weights_only=True)
+            del saved["model_config"]["regret_path"]
+            torch.save(saved, path)
+            model, _ = load_scalarized_policy(path)
+        self.assertTrue(model.config.regret_path)
+        self.assertTrue(hasattr(model, "log_regret_scale"))
 
 
 class CheckpointTests(unittest.TestCase):
@@ -293,7 +346,7 @@ class TrainingTests(unittest.TestCase):
 
     def test_shipped_configs_are_complete(self):
         folder = Path(scalarized_module.__file__).parent / "configs"
-        for name in ("scalarized-bike-v1.json", "scalarized-bike-smoke.json"):
+        for name in ("scalarized-bike-v1.json", "scalarized-bike-smoke.json", "scalarized-bike-mlp-only-v1.json"):
             config = json.loads((folder / name).read_text(encoding="utf-8"))
             self.assertEqual(config["algorithm"], scalarized_module.ALGORITHM)
             self.assertNotIn("alpha", config)
@@ -308,6 +361,14 @@ class TrainingTests(unittest.TestCase):
             self.assertEqual(ours[key], theirs[key], key)
         for key in ("hidden_dim", "graph_layers", "ego_hops", "ego_max_nodes"):
             self.assertEqual(ours["model"][key], theirs["model"][key], key)
+
+    def test_the_mlp_only_config_differs_from_v1_only_by_the_regret_path(self):
+        folder = Path(scalarized_module.__file__).parent / "configs"
+        v1 = json.loads((folder / "scalarized-bike-v1.json").read_text(encoding="utf-8"))
+        mlp_only = json.loads((folder / "scalarized-bike-mlp-only-v1.json").read_text(encoding="utf-8"))
+        self.assertIs(mlp_only["model"].pop("regret_path"), False)
+        del v1["name"], mlp_only["name"]
+        self.assertEqual(v1, mlp_only)
 
     def test_verify_and_export_work_from_the_run_files_alone(self):
         run = self.run_training()

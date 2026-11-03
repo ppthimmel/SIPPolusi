@@ -15,10 +15,39 @@ and each training episode draws its own `α ~ U[0, 1]`. A reached route returns
 |---|---|---|
 | Graph Encoder | Ego-graph of up to 64 nodes within 4 hops, 3 layers of edge-conditioned message passing | Same class |
 | Preference Encoder | MLP on `(α, β)` and Fourier features of α; modulates the graph representation (FiLM) and joins the Actor's and Critic's input | PIC A only |
-| Actor-Critic | Actor scores each outgoing arc, with invalid arcs masked. The score subtracts the arc's scalarized regret, `α·time regret + β·exposure regret`, times a learned scale; the MLP learns the correction. Critic estimates the scalarized return and does not train the encoder | Same structure, plus the regret path |
+| Actor-Critic | Actor scores each outgoing arc, with invalid arcs masked. Critic estimates the scalarized return and does not train the encoder | Same structure |
+| Arc score | The score subtracts the arc's scalarized regret, `α·time regret + β·exposure regret`, times a learned scale; the MLP learns the correction | **Not shared: PIC B has no regret path** |
 | Warm start | Imitates the exact weighted-optimal route for each episode's preference | Same code, same 400 episodes |
 | PPO | Same hyperparameters | Same code |
-| Data | Same fields (31 of 31 window hashes identical), same OD configuration, same environment settings | Same |
+| Data | Same fields (31 of 31 window hashes identical), same OD pairs, same environment settings | Same |
+
+The data are the same, but the two approaches do not differ only in how they handle the preference: the arc score
+differs too, and the [next section](#what-ti-ai-10-must-report) says what follows from that.
+
+## What TI-AI-10 must report
+
+A comparison of the two selected checkpoints mostly measures the regret path. Validation return on real fields, with
+the conditions that differ between these rows:
+
+| Policy | Return | Conditions |
+|---|---:|---|
+| Selected PIC A checkpoint (warm start, regret path) | −1.0003 | 150 pairs, 5 preferences |
+| PIC B members, best checkpoints after PPO | −1.025 to −1.047 | 150 pairs, each member at its own α |
+| PIC A without the regret path, warm start only | −1.102 | 60 pairs, 3 preferences; development number from an earlier revision |
+| Regret prior alone, no learning | −1.0061 | 150 pairs, 3 preferences |
+
+So that the effect of the architecture is separated from the effect of the approach, TI-AI-10 must report these four
+side by side, on the same test pairs, windows and preferences:
+
+1. the selected PIC A checkpoint;
+2. the PIC B set;
+3. PIC A without the regret path, trained with `configs/scalarized-bike-mlp-only-v1.json`;
+4. the regret prior (`RegretPrior`), which needs no training.
+
+**1 against 3** is the effect of the regret path. **3 against 2** is the effect of the approach, one conditioned policy
+against a set, with neither using the path. **1 against 4** is what learning adds to the path. Run 3 has not been
+trained yet, and `evaluate_candidate.py` loads only policy sets so far; both are TI-AI-10 work. Do not conclude from 1
+against 2 alone that one approach is better.
 
 ## Design decision: the direct regret path
 
@@ -32,7 +61,7 @@ Warm start only, 400 episodes, 60 validation pairs, seed 42 (development numbers
 | Exact optimum | | | 1.030, 0.979 | 1.000, 1.000 |
 
 With the MLP alone the policy ignored the preference: α=0 and α=1 took nearly the same routes. The
-last row but one is why `verify` always reports the prior next to the policy: **most of the
+regret-only row is why `verify` always reports the prior next to the policy: **most of the
 performance comes from the two Dijkstra potentials**, and training's contribution is mainly fewer dead ends at
 mid-range preferences (93.3% → 98.3% reached at α=0.5 on perturbed fields).
 
@@ -62,6 +91,31 @@ optimises the same α/β objective, but the selected weights have had no PPO upd
 - **Reload:** `best.pt` matches its SHA-256, and 750 routes were identical across two loads. Median 0.45 s per route on CPU
   (p95 1.77 s, maximum 12.9 s).
 - These numbers come from the episodes that selected the checkpoint. Unbiased numbers belong to TI-AI-10.
+- **Serving:** the 12.9 s maximum is above the design's 8 s limit, so a request like that would fall back to the baseline
+  route. TI-AI-10 and the serving work should measure how often this happens.
+
+**The selection metric is nearly flat on real fields.** Every reasonable policy scores about −1 there, so update 0 won by
+0.0001 over update 30. "PPO did not improve validation return" is true of this metric, but the metric can barely
+move. The perturbed fields do not show a clear PPO gain either:
+
+| Update | Real: return, dead ends | Perturbed: return, dead ends | Perturbed return, excluding dead ends |
+|---:|---:|---:|---:|
+| 0 (selected) | −1.0003, 0 | −1.0391, 11 | −0.9951 |
+| 30 | −1.0004, 0 | −1.0269, 8 | −0.9949 |
+| 60 | −1.0102, 2 | −1.0208, 6 | −0.9968 |
+| 90 | −1.0132, 3 | −1.0405, 11 | −0.9965 |
+| 120 | −1.0211, 5 | −1.0442, 12 | −0.9961 |
+| 150 | −1.0012, 0 | −1.0290, 8 | −0.9970 |
+
+A dead end costs about 0.004 of the mean return over 750 episodes, so the perturbed return follows the dead-end count,
+which rises and falls without a trend. Reached routes do not get better. The selection rule stays as it was declared
+before the run, because changing it after seeing these numbers would select on them. A future run could declare a
+tolerance on real fields with ties broken on perturbed validation fields.
+
+`checkpoints/update_00150.pt` in the run folder is kept as evidence of a checkpoint that PPO did update, so TI-AI-10 can
+measure what RL training adds (SHA-256 `d43df02a...`). It was **not selected**. It is the only one of the retained
+checkpoints (updates 90, 120 and 150; `keep_checkpoints` is 3) with no dead ends on real fields. Updates 30 and 60 were pruned
+during the run.
 
 ## Running it locally (Windows, PowerShell, from the repo root)
 

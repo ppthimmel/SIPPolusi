@@ -2,8 +2,8 @@
 
 One network serves every preference. The Preference Encoder turns w = (alpha, beta)
 into a vector z that modulates the Graph Encoder's output and joins the Actor's and
-the Critic's input, so a new preference needs no retraining. Everything else matches
-the multi-policy member in policy.py, so that the two approaches compare like with like.
+the Critic's input, so a new preference needs no retraining. Apart from that and the
+regret path below, the network matches the multi-policy member in policy.py.
 
 The preference travels at the end of `global_x`, which keeps batches in the format of
 features.collate.
@@ -13,6 +13,8 @@ regret, times a learned scale. An MLP on concatenated inputs learns that product
 slowly: without this path the warm-start policy took nearly the same routes at alpha = 0
 and alpha = 1, even where a trade-off existed. The MLP learns the correction to this
 prior, so `verify` in scalarized.py reports the policy against the prior alone (RegretPrior).
+PIC B has no such path, so the path must be separated from the approach when the two are
+compared: `regret_path = False` trains this network without it.
 """
 from __future__ import annotations
 
@@ -36,6 +38,7 @@ INITIAL_REGRET_SCALE = 20.0
 class ScalarizedConfig(ModelConfig):
     preference_dim: int = 16
     fourier: int = 4
+    regret_path: bool = True  # False only for the comparison that separates this path from the approach
 
     def __post_init__(self):
         super().__post_init__()
@@ -73,7 +76,8 @@ class PreferenceActorCritic(nn.Module):
         self.film = nn.Linear(z_dim, 2 * hidden)
         self.actor = _mlp(hidden + EDGE_FEATURES + 1 + context, hidden, 1)
         self.critic = _mlp(hidden + context, hidden, 1)
-        self.log_regret_scale = nn.Parameter(torch.tensor(INITIAL_REGRET_SCALE).log())
+        if config.regret_path:
+            self.log_regret_scale = nn.Parameter(torch.tensor(INITIAL_REGRET_SCALE).log())
 
     def forward(self, batch):
         """(action log-probabilities [actions], value [samples]); `global_x` ends with (alpha, beta)."""
@@ -87,7 +91,9 @@ class PreferenceActorCritic(nn.Module):
         arcs, owner = batch["action_edge_x"], batch["action_batch"]
         regret = scalarized_regret(batch)
         logits = self.actor(torch.cat([h[batch["action_node"]], arcs, regret.unsqueeze(-1), context[owner]],
-                                      dim=-1)).squeeze(-1) - self.log_regret_scale.exp() * regret
+                                      dim=-1)).squeeze(-1)
+        if self.config.regret_path:
+            logits = logits - self.log_regret_scale.exp() * regret
         log_probs = masked_log_softmax(logits, batch["action_mask"], owner, size)
         pooled = torch.zeros(size, h.size(1), device=h.device, dtype=h.dtype).index_add_(0, batch["node_batch"], h)
         counts = torch.bincount(batch["node_batch"], minlength=size).to(h.dtype).unsqueeze(-1)
