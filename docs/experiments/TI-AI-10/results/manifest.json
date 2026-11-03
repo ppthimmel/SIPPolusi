@@ -1,0 +1,178 @@
+{
+  "evaluation": "ti-ai-10-multi-policy-bike-v1",
+  "split": "test",
+  "code": {
+    "commit": "2c2813d5dc84180637a54635b68afdef982ed9c5",
+    "branch": "feat/TI-AI-10",
+    "dirty": false
+  },
+  "config_sha256": "e77ac3e1c4877db7c9681108ecf449b10cff2bde57f46ae1ab87da8134528242",
+  "config": {
+    "name": "ti-ai-10-multi-policy-bike-v1",
+    "seed": 42,
+    "threads": 1,
+    "set_dir": "docs/experiments/TI-AI-09/set",
+    "strata": [
+      {
+        "name": "trained-range",
+        "pairs": 200,
+        "seed": 1010,
+        "min_distance_m": 500.0,
+        "max_distance_m": 3000.0,
+        "primary": true
+      },
+      {
+        "name": "longer-trips",
+        "pairs": 50,
+        "seed": 1011,
+        "min_distance_m": 3000.0,
+        "max_distance_m": 8000.0,
+        "primary": false
+      }
+    ],
+    "alphas": [
+      0.0,
+      0.1,
+      0.2,
+      0.3,
+      0.4,
+      0.5,
+      0.6,
+      0.7,
+      0.8,
+      0.9,
+      1.0
+    ],
+    "perturbed_seed": 2010,
+    "criteria": {
+      "default_alpha": 0.5,
+      "route_validity_min": 1.0,
+      "success_rate_min": 0.95,
+      "inference_budget_ms": 4500,
+      "inference_p95_max_ms": 4500,
+      "eai04_median_exposure_reduction_min_pct": 4.0,
+      "eai04_median_added_time_max_pct": 20.0,
+      "eai05_fulfilled_min": 0.8
+    }
+  },
+  "started_at": "2026-11-03T05:22:33+00:00",
+  "wall_s": 361.2,
+  "candidate": {
+    "set_id": "20261102T145533Z-multi-policy-bike-v1-201e7d41",
+    "approach": "multi-policy",
+    "training_commit": "7c0df735597738b13b639f247a1f29a938eecb1a",
+    "checkpoints": {
+      "0": "de93a585b4df673ba7005ee10c372f3ca7a133b0275cd56d6492a35e88e3a340",
+      "0.25": "c7181b3d576c1e87482777f384eb063e5eb9d625da2a7e1bc27c2e1aa5f745ba",
+      "0.5": "1ca67248a5f321b1631e8ce51344dcf48a3577d4ea842c81bcf2029d557a2dc6",
+      "0.75": "c1775e2386907d9ca3ae9144facd444950f031a4b4d2240527336e17d055383b",
+      "1": "dc3cb0ab4971330c08b49a49a257480b9fff8e7df299b5d6773aad0ed7e665b9"
+    }
+  },
+  "graph_version": "jakarta-20261005",
+  "mode": "bike",
+  "fields_manifest_sha256": "100a92652281f33e570f91a31aca2f6731e01e7eb3016955c7eae591295da95c",
+  "strata": {
+    "trained-range": {
+      "od_pairs": 200,
+      "od_sha256": "5ae2395357be85f21b41bb0c7d6f02ec32267442b0140e123e74ef7a3922fa43",
+      "sampling": {
+        "seed": 1010,
+        "min_distance_m": 500.0,
+        "max_distance_m": 3000.0,
+        "candidate_origins": {
+          "train": 162440,
+          "val": 52608,
+          "test": 33354
+        },
+        "candidate_destinations": {
+          "train": 162408,
+          "val": 52609,
+          "test": 33352
+        },
+        "splits": {
+          "train": {
+            "pairs": 0,
+            "attempts": 0,
+            "rejected": {
+              "distance": 0,
+              "unreachable": 0,
+              "duplicate": 0
+            }
+          },
+          "val": {
+            "pairs": 0,
+            "attempts": 0,
+            "rejected": {
+              "distance": 0,
+              "unreachable": 0,
+              "duplicate": 0
+            }
+          },
+          "test": {
+            "pairs": 200,
+            "attempts": 2236,
+            "rejected": {
+              "distance": 2033,
+              "unreachable": 3,
+              "duplicate": 0
+            }
+          }
+        }
+      }
+    },
+    "longer-trips": {
+      "od_pairs": 50,
+      "od_sha256": "008d7b5019eba794570f716b012d2a21584de003f9d3ed7c4976cb3cd6b18e7b",
+      "sampling": {
+        "seed": 1011,
+        "min_distance_m": 3000.0,
+        "max_distance_m": 8000.0,
+        "candidate_origins": {
+          "train": 162440,
+          "val": 52608,
+          "test": 33354
+        },
+        "candidate_destinations": {
+          "train": 162408,
+          "val": 52609,
+          "test": 33352
+        },
+        "splits": {
+          "train": {
+            "pairs": 0,
+            "attempts": 0,
+            "rejected": {
+              "distance": 0,
+              "unreachable": 0,
+              "duplicate": 0
+            }
+          },
+          "val": {
+            "pairs": 0,
+            "attempts": 0,
+            "rejected": {
+              "distance": 0,
+              "unreachable": 0,
+              "duplicate": 0
+            }
+          },
+          "test": {
+            "pairs": 50,
+            "attempts": 297,
+            "rejected": {
+              "distance": 245,
+              "unreachable": 2,
+              "duplicate": 0
+            }
+          }
+        }
+      }
+    }
+  },
+  "versions": {
+    "python": "3.14.3",
+    "torch": "2.15.0",
+    "threads": 1
+  }
+}

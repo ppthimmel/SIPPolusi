@@ -1,0 +1,66 @@
+{
+  "model_name": "morl-route-policy",
+  "approach": "multi-policy",
+  "decision": "conditional_candidate",
+  "set_id": "20261102T145533Z-multi-policy-bike-v1-201e7d41",
+  "set_dir": "docs/experiments/TI-AI-09/set",
+  "training_commit": "7c0df735597738b13b639f247a1f29a938eecb1a",
+  "evaluation_commit": "2c2813d5dc84180637a54635b68afdef982ed9c5",
+  "checkpoint_format": "morl-checkpoint-1",
+  "feature_version": "ego-3",
+  "graph_version": "jakarta-20261005",
+  "mode": "bike",
+  "members": [
+    {
+      "alpha": 0.0,
+      "checkpoint": "docs/experiments/TI-AI-09/set/members/20261102T145538Z-multi-policy-bike-v1-a0-77926aea/checkpoints/best.pt",
+      "sha256": "de93a585b4df673ba7005ee10c372f3ca7a133b0275cd56d6492a35e88e3a340",
+      "selected_update": 120
+    },
+    {
+      "alpha": 0.25,
+      "checkpoint": "docs/experiments/TI-AI-09/set/members/20261102T151419Z-multi-policy-bike-v1-a0.25-e484f5cf/checkpoints/best.pt",
+      "sha256": "c7181b3d576c1e87482777f384eb063e5eb9d625da2a7e1bc27c2e1aa5f745ba",
+      "selected_update": 60
+    },
+    {
+      "alpha": 0.5,
+      "checkpoint": "docs/experiments/TI-AI-09/set/members/20261102T152936Z-multi-policy-bike-v1-a0.5-b1980561/checkpoints/best.pt",
+      "sha256": "1ca67248a5f321b1631e8ce51344dcf48a3577d4ea842c81bcf2029d557a2dc6",
+      "selected_update": 160
+    },
+    {
+      "alpha": 0.75,
+      "checkpoint": "docs/experiments/TI-AI-09/set/members/20261102T154810Z-multi-policy-bike-v1-a0.75-6d4c2622/checkpoints/best.pt",
+      "sha256": "c1775e2386907d9ca3ae9144facd444950f031a4b4d2240527336e17d055383b",
+      "selected_update": 120
+    },
+    {
+      "alpha": 1.0,
+      "checkpoint": "docs/experiments/TI-AI-09/set/members/20261102T160611Z-multi-policy-bike-v1-a1-8da0fdf1/checkpoints/best.pt",
+      "sha256": "dc3cb0ab4971330c08b49a49a257480b9fff8e7df299b5d6773aad0ed7e665b9",
+      "selected_update": 120
+    }
+  ],
+  "selection_rule": "nearest alpha; on a tie the lower alpha",
+  "load": "route_model.morl.infer.load_policy_set(set_dir)",
+  "infer": "route_model.morl.infer.decode_for_preference(policies, router, exposure, start, end, preference)",
+  "reference_config": "src/backend/route_model/morl/configs/multi-policy-bike-v1.json",
+  "env_limits": {
+    "max_steps": 400,
+    "max_steps_factor": 3.0,
+    "failure_return": 4.0,
+    "illegal_action_penalty": 0.1
+  },
+  "requirements": [
+    "torch (CPU is enough for inference)",
+    "numpy"
+  ],
+  "constraints_for_integration": [
+    "Requests must validate alpha and beta: decode_for_preference reads only preference[0].",
+    "timeout_ms is checked inside the step loop only, after the A* reference and two reverse searches.",
+    "Missing edge exposure must be filled with the median of covered edges, as RouteEnv does.",
+    "A PolicyFailure must fall back to the A* route, marked as baseline.",
+    "No Model Registry entry yet (TI-AI-11)."
+  ]
+}

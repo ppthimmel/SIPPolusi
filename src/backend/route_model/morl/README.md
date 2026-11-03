@@ -39,6 +39,7 @@ Results, evidence and limitations: [`docs/experiments/TI-AI-09`](../../../../doc
 | `infer.py` | Checkpoint format, member selection, greedy route decoding, exact optimum for comparison |
 | `augment.py` | Training-only perturbation of exposure fields |
 | `resources.py` | Memory, disk and thread limits |
+| `evaluate_candidate.py` | TI-AI-10: the set against the fastest route on the test split ([report](../../../../docs/experiments/TI-AI-10/README.md)) |
 | `verify_set.py` | Checks a trained set from its files: checksums, identical routes after reload, inference time |
 
 ## Choices the results depend on
