@@ -90,7 +90,8 @@ are rejected by production serving. LOSO checkpoints are not all-station serving
 fits. NO₂ serving is fitted separately via LightGBM `protocol="serving", fold=None`,
 which does not produce LOSO evaluation claims.
 
-Registration/promotion flags default to false. Publishing requires an explicit
+Registration/promotion flags default to false. The shared `register()` API rejects
+research target/model pairings and LOSO fold checkpoints before accessing MLflow. Publishing requires an explicit
 bundle path and externally configured MLflow/MinIO environment variables; never
 put credentials into the notebook. No registry is needed for training/evaluation.
 

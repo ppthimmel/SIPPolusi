@@ -14,6 +14,9 @@ def summarize(run_root, folds, *, splits=("val", "test")):
     ``None`` denotes ``fixed-split``; integer folds denote ``fold-N``.
     Validation protocols differ between model families; compare test rows only.
     """
+    folds = list(folds)
+    if None in folds and any(fold is not None for fold in folds):
+        raise ValueError("Cannot mix fixed-split and LOSO folds in one summary")
     rows, coverage = [], []
     pooled = {}
     for fold in folds:

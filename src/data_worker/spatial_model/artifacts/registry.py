@@ -21,8 +21,13 @@ def client():
 
 
 def register(bundle):
-    import mlflow
     manifest = validate_bundle(bundle)
+    expected_family = "stgnn" if manifest["target"] == "pm25" else "lightgbm"
+    if manifest.get("model_family", expected_family) != expected_family:
+        raise ValueError("Research model family is incompatible with the production target pairing")
+    if manifest["metadata"].get("fold") is not None:
+        raise ValueError("Cannot register a LOSO fold checkpoint as a serving fit")
+    import mlflow
     mlflow.set_tracking_uri(os.environ.get("MLFLOW_TRACKING_URI", "http://localhost:5000"))
     mlflow.set_experiment("spatial-downscaling")
     target = manifest["target"]

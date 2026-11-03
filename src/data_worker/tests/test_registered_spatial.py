@@ -15,7 +15,9 @@ from spatial_model.inference.serving import GridInputs
 from spatial_model.artifacts.bundles import validate_bundle
 
 
-def test_registry_accepts_serving_status_without_inventing_metrics(tmp_path, monkeypatch):
+@pytest.mark.parametrize("target,explicit_family", [("pm25", None), ("no2", None),
+                                                   ("pm25", "stgnn"), ("no2", "lightgbm")])
+def test_registry_accepts_serving_status_without_inventing_metrics(tmp_path, monkeypatch, target, explicit_family):
     """Serving fits can be registered even though they have no held-out score."""
     import sys
     from types import ModuleType
@@ -25,7 +27,9 @@ def test_registry_accepts_serving_status_without_inventing_metrics(tmp_path, mon
     (tmp_path / "bundle.json").write_text("{}")
     (tmp_path / "metrics.json").write_text(json.dumps({
         "status": "not_evaluated", "reason": "Serving fit", "val": {"rmse": 3.5}}))
-    manifest = dict(target="no2", dataset="ds-v0.3.0", code_revision="test", metadata={})
+    manifest = dict(target=target, dataset="ds-v0.3.0", code_revision="test", metadata={})
+    if explicit_family is not None:
+        manifest["model_family"] = explicit_family
     monkeypatch.setattr(registry, "validate_bundle", lambda *args: manifest)
     logged = []
     mlflow = ModuleType("mlflow")

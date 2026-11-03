@@ -62,7 +62,8 @@ def prepare(snapshot, protocol="fixed_split", fold=None, *, target="pm25"):
             table = labels[eligible & (labels.period == split) & labels[target_column].notna()].copy()
             split_labels[split] = table.rename(columns={target_column: "value_ugm3"})
     for split, table in split_labels.items():
-        if (table.empty and split != "test") or table.duplicated(["station_uuid", "time_utc"]).any():
+        allow_empty = PROTOCOL == "loso" and split == "test"
+        if (table.empty and not allow_empty) or table.duplicated(["station_uuid", "time_utc"]).any():
             raise ValueError(f"Empty or duplicated {split} labels for this target/protocol")
         if not np.isfinite(table.value_ugm3).all() or not table.node_index.between(0, len(nodes) - 1).all():
             raise ValueError("Invalid target value or label node index")
