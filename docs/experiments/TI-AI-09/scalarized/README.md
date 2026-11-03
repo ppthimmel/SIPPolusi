@@ -38,8 +38,30 @@ mid-range preferences (93.3% → 98.3% reached at α=0.5 on perturbed fields).
 
 ## Results
 
-No reportable run is committed yet. After step 5 of the guide below, each run has its own
-folder here, with a generated `summary.md`.
+Run [`20261103T081938Z-scalarized-bike-v1-6eab87d4`](20261103T081938Z-scalarized-bike-v1-6eab87d4/summary.md),
+commit `6efe87f` with a clean tree, seed 42, 87,043 parameters. It took 2 h 49 min on CPU. Each further run gets its
+own folder here, with a generated `summary.md`.
+
+**The selected checkpoint is the warm start (update 0): PPO on the scalarized reward did not improve validation
+return.** The run stopped early at update 150, after 5 evaluations without improvement. The teacher it imitates
+optimises the same α/β objective, but the selected weights have had no PPO update.
+
+| Validation, selected checkpoint | Real fields | Perturbed fields (synthetic, not used for selection) |
+|---|---:|---:|
+| Routes reached (11 preferences, 1,650 episodes) | 100% | 98.4% |
+| Mean return | −1.0003 | −1.0432 |
+| Optimality gap on reached routes | 0.08% | 0.19% |
+| α=0, T/T_ref and E/E_ref (exact optimum) | 1.003, 0.999 (1.002, 0.998) | 1.021, 0.982 (1.025, 0.981) |
+| α=1, T/T_ref and E/E_ref (exact optimum) | 1.001, 1.001 (1.000, 1.000) | 1.001, 0.999 (1.000, 1.000) |
+
+- **Preference:** on perturbed fields one network moves along the trade-off as α changes. On real IDW fields there is
+  almost nothing to trade: even the exact optimum saves only 0.2% exposure.
+- **Against the regret prior** (greedy on the scalarized regret, no learned part): the policy is better at α=0.5, with 97.3%
+  reached against 94.0% on perturbed fields and 100% against 99.3% on real ones. The prior is slightly better at α=0 and
+  α=1, where it follows an exact single-objective route.
+- **Reload:** `best.pt` matches its SHA-256, and 750 routes were identical across two loads. Median 0.45 s per route on CPU
+  (p95 1.77 s, maximum 12.9 s).
+- These numbers come from the episodes that selected the checkpoint. Unbiased numbers belong to TI-AI-10.
 
 ## Running it locally (Windows, PowerShell, from the repo root)
 
