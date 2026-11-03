@@ -1,0 +1,101 @@
+# TI-AI-11: model packages and versions
+
+Both models are shipped as a directory with a `package.json` at its root. The manifest lists the
+SHA-256 of every other file, the contract the model was built for, where it came from, the
+environment it needs, and its evaluation. A loader verifies all of it before the model is used.
+
+| | Spatial Downscaling Model | Route model (multi-policy MORL) |
+|---|---|---|
+| `model_kind` / `model_id` | `spatial_downscaling` / `spatial-downscaling-pm25`, `spatial-downscaling-no2` | `route_policy` / `morl-route-policy` |
+| Package contents | the `export_bundle` bundle (`bundle.json`, `best.pt` or `model.txt` + `metadata.json`, `stations.parquet`, metrics) + `package.json` | `set_manifest.json`, `od_pairs.json`, each member's selected `best.pt`, `manifest.json`, `config.json`, `evaluation.json` + `package.json` |
+| Made by | `spatial_model.artifacts.packaging.package_bundle` | `route_model.morl.packaging.package_policy_set` |
+| Loaded by | `spatial_model.inference.serving.load_model(dir, target, runtime_contract)` | `route_model.morl.packaging.load_packaged_policy_set(dir, runtime_contract)` |
+| Registry name | `spatial-downscaling-pm25`, `spatial-downscaling-no2` | `morl-route-policy` |
+
+The shared code is `model_package.py`. The backend and the Data Worker are separate containers, so
+the file exists twice (`src/backend/route_model/` and `src/data_worker/spatial_model/artifacts/`);
+a test fails if the copies differ. Edit one and copy it over the other.
+
+## Manifest (`model-package-1`)
+
+```
+package_format, model_kind, model_id, model_version, created_at
+contract:    data_contracts_version, graph_version, [grid_spec_id, feature_matrix_version | feature_version, mode]
+lineage:     dataset, snapshot/graph/field hashes, code_revision, config hashes, upstream_model (route -> spatial)
+environment: python, libraries (pinned versions)
+inference:   entrypoint, device, inputs/outputs, fallback
+evaluation:  headline metrics, protocol, decision
+artifacts:   { relative path: sha256 }   # every file, including inner manifests
+```
+
+Example: [`route_package.json`](route_package.json) (built from the committed TI-AI-09 set).
+The spatial example is not included yet: no trained spatial serving bundle exists in git or in
+the Railway bucket. It is produced by the same call as soon as one is uploaded.
+
+## Loading
+
+```python
+# Route model (backend)
+from route_model.morl.packaging import load_packaged_policy_set, runtime_contract
+policies, package, compatibility = load_packaged_policy_set(
+    "path/to/package", runtime_contract(graph_version, data_contracts_version))
+
+# Spatial model (Data Worker): the pipeline does this on every run
+from spatial_model.artifacts.packaging import runtime_contract
+from spatial_model.inference.serving import load_model
+loaded = load_model(bundle_dir, "pm25", runtime_contract(graph_version, grid_spec))
+loaded.compatibility  # compatible | flagged | rejected is raised
+```
+
+`data_contracts_version` is `CONTRACT_VERSION` in `backend/public_api/data_contracts.py`
+(the worker's copy, `DATA_CONTRACTS_VERSION`, is checked equal by a test). The HTTP API version in
+`openapi.json` is a different number and is not used.
+
+## Compatibility matrix
+
+| Package built for | Runtime provides | Result |
+|---|---|---|
+| same contract, same graph | same | compatible |
+| contract 1.x.y | 1.a.b (a.b differs) | **flagged**: loads, status recorded |
+| contract 1.x.y | 2.x.y or another major | **rejected** (`PackageIncompatible`) |
+| graph `jakarta-A` | graph `jakarta-B` | **rejected**: edge ids would not match |
+| grid spec A | grid spec B | flagged |
+| route policy on spatial model X | spatial model Y in production | flagged |
+| unknown `package_format`, changed file, unlisted file, path outside the package | any | rejected (`PackageError`) |
+| credentials or key files in the package | any | build and verification refuse |
+| spatial bundle without `package.json` (made before TI-AI-11) | any | loads, flagged as unpackaged |
+
+What a rejection does: in the Data Worker the pollutant falls back to IDW and `model_metadata`
+records `fallback_reason = load_bundle:PackageIncompatible` and the requested model version (the
+reasons go to the log). A flagged load adds `compatibility` to that pollutant's `model_metadata`.
+In the backend a loader error is raised to the caller, which already falls back to A*.
+
+## Verification
+
+```bash
+python scripts/verify_model_packages.py route --set docs/experiments/TI-AI-09/set --out docs/experiments/TI-AI-11/route_smoke_test.json
+python scripts/verify_model_packages.py spatial --bundle <bundle dir> --graph-version jakarta-20261005
+python -m pytest src/backend/tests/test_model_package.py        # from the repo root
+python -m pytest tests/test_model_package.py                     # from src/data_worker
+```
+
+[`route_smoke_test.json`](route_smoke_test.json): the TI-AI-09 set was packaged (23 files, 2.1 MB), then the
+original set and the package were each loaded in a fresh interpreter. For 20 validation OD pairs at all
+5 preferences, 100 routes, the edge sequences are identical (99 reach the destination; one is a
+`dead_end`, the same in both).
+
+Limits of this evidence:
+- The exposure field is a fixed synthetic one: the real fields are not in git. It shows that the package
+  reproduces the set, not route quality (TI-AI-10 covers that).
+- "Clean environment" here is a fresh Python process on the same machine, not a fresh container.
+  The same check should run in CI or on Railway once the registry is fixed.
+- No spatial serving model was available, so the spatial reload against a reference run
+  (criteria 1 and 4 for that model) is **pending**. The code path is covered with a hand-made
+  bundle in `tests/test_model_package.py`.
+
+## Registry (MLflow)
+
+`register` tags a version with `package_sha256` when the bundle has a `package.json`, and `resolve`
+refuses a download whose `package.json` does not match the tag. Registering the route model uses the
+same pattern and still needs the registry fix below. Production serving of the registry on Railway:
+see [`src/model_registry/README.md`](../../../src/model_registry/README.md).
