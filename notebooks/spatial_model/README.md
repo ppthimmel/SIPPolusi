@@ -8,6 +8,30 @@ for full-feature LightGBM. Both call the maintained Python training/evaluation A
 | PM2.5 | Both models | Both models |
 | NO₂ | Unsupported | Both models |
 
+## What the PM2.5 held-out split means
+
+`PROTOCOL="fixed_split"` holds out both station groups and time periods. It is
+not a temporal-only split using all stations. Training labels come from training
+stations in the training block; validation and test labels come from their own
+station groups in later blocks. Sensor-derived inputs use eligible training
+stations, with the target group excluded as required by the feature pipeline.
+
+The ds-v0.3.0 PM2.5 fixed-split labels contain:
+
+| Split | Distinct stations with labels | Label timestamps (UTC, inclusive) |
+|---|---:|---|
+| Train | 69 | 2026-09-13 01:00 to 2026-09-24 00:00 |
+| Validation | 14 | 2026-09-25 01:00 to 2026-09-28 00:00 |
+| Test | 15 | 2026-09-29 01:00 to 2026-09-30 23:00 |
+
+These are counts of stations represented in each label table, not the configured
+station-group split fractions. Station grouping and temporal gaps are defined in
+[`split_spec.json`](../../docs/experiments/ds-v0.3.0/split_spec.json).
+
+A temporal-only holdout would train on earlier labels from all eligible stations
+and evaluate later labels from those stations. That is a different protocol and
+is not the current PM2.5 `fixed_split` workflow.
+
 ## Start
 
 The first section in each notebook gives terminal commands to create a Python 3.11
@@ -94,6 +118,15 @@ and NO₂ LightGBM. Alternative pairings carry explicit model-family provenance 
 are rejected by production serving. LOSO checkpoints are not all-station serving
 fits. NO₂ serving is fitted separately via LightGBM `protocol="serving", fold=None`,
 which does not produce LOSO evaluation claims.
+
+For upload or handoff, describe the PM2.5 ST-GNN fixed-split checkpoint as:
+"Fixed spatial-and-temporal held-out checkpoint; not a LOSO fold and not an
+all-station refit." A missing fold (`fold=None`) does not establish that all
+stations were used for training. The registration guard rejects LOSO folds; it
+does not require every accepted checkpoint to be an all-station fit. Upload and
+registration do not themselves promote a model to production. See the
+[naming convention](NAMING_CONVENTION.md) for separate evaluation, training-scope,
+and deployment labels.
 
 Registration/promotion flags default to false. The shared `register()` API rejects
 research target/model pairings and LOSO fold checkpoints before accessing MLflow.

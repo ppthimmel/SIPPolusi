@@ -51,7 +51,7 @@ def main():
         assert len(frame) and np.isfinite(frame.y).all()
         assert np.isfinite(frame.idw_p2_k8).all()
         assert not np.isinf(frame[columns].to_numpy()).any()
-    out = common.OUT / "xgboost_fixed" / datetime.now().strftime("pm25_gpu_seed42_%Y%m%d_%H%M%S_%f")
+    out = common.OUT.parents[2] / "checkpoints/spatial_model/xgboost/pm25/fixed_split" / datetime.now().strftime("pm25_gpu_seed42_%Y%m%d_%H%M%S_%f")
     out.mkdir(parents=True, exist_ok=False)
     (out / "runner.py").write_bytes(Path(__file__).read_bytes())
     for name in ("common.py", "models.py"):
