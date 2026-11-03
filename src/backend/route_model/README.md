@@ -158,7 +158,8 @@ State, action, reward, splits and logging are specified in
 
 ## MORL policy
 
-[`morl/`](morl/README.md) holds the multi-policy MORL set of TI-AI-09 (PIC B).
+[`morl/`](morl/README.md) holds the two MORL approaches of TI-AI-09: the multi-policy set
+(PIC B) and the scalarized preference-conditioned policy (PIC A).
 
 ## Verification
 

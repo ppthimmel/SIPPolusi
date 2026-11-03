@@ -1,6 +1,8 @@
-"""Train one member of the multi-policy set, for one fixed preference (PIC B of TI-AI-09).
+"""Train one PPO policy: a member of the multi-policy set, or the scalarized policy (TI-AI-09).
 
-multi_policy.py is the entry point; it calls train() once per alpha.
+multi_policy.py calls train() once per alpha (PIC B). scalarized.py calls it once with its
+own hooks, for one preference-conditioned policy (PIC A). What follows describes a
+member; scalarized.py says what differs.
 
 Algorithm: PPO on the TI-AI-08 environment, under the member's fixed (alpha, beta).
 Each episode draws an OD pair and a time window. An optional warm start imitates a
@@ -51,7 +53,9 @@ from .augment import Augmentation, PerturbedExposure, SmoothField
 from .features import FEATURE_VERSION, build_sample, collate, episode_context
 from .infer import PolicyFailure, decode_route, load_policy, optimal_weighted_route, save_checkpoint
 from .policy import ActorCritic, ModelConfig, entropy, sample_actions, sample_offsets, to_tensors
-from .resources import ResourceGuard, ResourceLimits, prune_checkpoints, release_accelerator_cache, thread_limit
+from .resources import (
+    ResourceGuard, ResourceLimits, prune_checkpoints, release_accelerator_cache, replace_file, thread_limit,
+)
 
 ROOT = Path(__file__).resolve().parents[4]
 ALGORITHM = "ppo-fixed-preference-1"
@@ -199,7 +203,8 @@ def warm_start(model, optimizer_lr, samples, actions, cfg, device, generator, lo
 # ------------------------------------------------------------------ evaluation
 
 @torch.inference_mode()
-def evaluate(model, val_envs, od_pairs, alphas, model_config, device, batch_size, oracle=False, augmentation=None):
+def evaluate(model, val_envs, od_pairs, alphas, model_config, device, batch_size, oracle=False, augmentation=None,
+             actor_type=Actor):
     """Greedy policy on every (validation OD, alpha); each OD keeps one window across alphas,
     so routes at different preferences compare like with like.
 
@@ -219,7 +224,7 @@ def evaluate(model, val_envs, od_pairs, alphas, model_config, device, batch_size
         while position < len(jobs) and len(slots) < batch_size:
             od, alpha, env, field = jobs[position]
             position += 1
-            actor = Actor.__new__(Actor)
+            actor = actor_type.__new__(actor_type)
             actor.config, actor.augmentation, actor.alpha = model_config, None, alpha
             actor.reset(env=copy.copy(env), field=field, od_id=od.od_id)
             slots.append(actor)
@@ -396,9 +401,10 @@ class Run:
         self.manifest = {
             "run_id": self.run_id, "experiment": "morl-route-policy", "status": "running", "stop_reason": None,
             "started_at": started.isoformat(timespec="seconds"), "finished_at": None,
-            "algorithm": ALGORITHM, "env_version": ENV_VERSION, "feature_version": FEATURE_VERSION,
-            "threads": torch.get_num_threads(), "resource_limits": resource_limits(config).as_dict(),
-            "config_sha256": digest, "config": config, "alpha": config["alpha"], "seed": config["seed"],
+            "algorithm": config.get("algorithm", ALGORITHM), "env_version": ENV_VERSION,
+            "feature_version": FEATURE_VERSION, "threads": torch.get_num_threads(),
+            "resource_limits": resource_limits(config).as_dict(),
+            "config_sha256": digest, "config": config, "alpha": config.get("alpha"), "seed": config["seed"],
             "device": str(device),
             "code": git_state(), "versions": {"python": platform.python_version(), "torch": torch.__version__,
                                               "numpy": np.__version__},
@@ -414,12 +420,12 @@ class Run:
             stream.write(json.dumps(record, allow_nan=False) + "\n")
 
     def save(self):
-        self.manifest["artifacts"] = sorted(str(p.relative_to(self.dir)) for p in self.dir.rglob("*")
+        self.manifest["artifacts"] = sorted(p.relative_to(self.dir).as_posix() for p in self.dir.rglob("*")
                                             if p.is_file() and p.name != "manifest.json")
         path = self.dir / "manifest.json"
         temporary = path.with_suffix(".tmp")
         temporary.write_text(json.dumps(self.manifest, indent=2), encoding="utf-8")
-        temporary.replace(path)
+        replace_file(temporary, path)
 
     def finish(self, status, reason):
         self.manifest.update(status=status, stop_reason=reason,
@@ -444,6 +450,31 @@ def write_curves(metrics_path, out):
             evaluation = val.get(row["update"], {})
             writer.writerow({**row, "val_mean_return": evaluation.get("mean_return"),
                              "val_success_rate": evaluation.get("success_rate")})
+
+
+class FixedPreference:
+    """What makes a run one member of the policy set: one network for one fixed alpha."""
+    actor = Actor
+    load_policy = staticmethod(load_policy)
+
+    @staticmethod
+    def build_model(config):
+        return ActorCritic(ModelConfig(**config["model"]))
+
+    @staticmethod
+    def selection_alphas(config):
+        """The preferences the checkpoint is selected on."""
+        return [config["alpha"]]
+
+    @staticmethod
+    def report_alphas(config):
+        """The preferences of the final report, evaluation.json."""
+        return [config["alpha"]]
+
+    @staticmethod
+    def for_preference(model, alpha):
+        """What decode_route should run to serve `alpha`."""
+        return model
 
 
 def resource_limits(config) -> ResourceLimits:
@@ -473,7 +504,7 @@ def sample_od(router, config, run_dir, given=None):
 
 
 def train(config, fields_dir, out=None, *, graph_dir=DEFAULT_GRAPH, device="cpu", router=None, max_seconds=None,
-          od_pairs=None, resume=None, guard=None):
+          od_pairs=None, resume=None, guard=None, approach=FixedPreference):
     """Run or resume one training; returns the Run. Exceptions are recorded in the manifest, then re-raised."""
     torch.set_num_threads(thread_limit(config.get("threads", 4)))
     seed_everything(config["seed"])
@@ -483,7 +514,7 @@ def train(config, fields_dir, out=None, *, graph_dir=DEFAULT_GRAPH, device="cpu"
     previous = signal.signal(signal.SIGTERM, _raise_terminated)
     try:
         status, reason = _train(run, config, fields_dir, graph_dir, device, router, max_seconds, od_pairs, guard,
-                                resume is not None)
+                                resume is not None, approach)
         run.finish(status, reason)
     except TrainingDiverged as exc:
         run.finish("failed", f"diverged: {exc}")
@@ -501,41 +532,43 @@ def train(config, fields_dir, out=None, *, graph_dir=DEFAULT_GRAPH, device="cpu"
     return run
 
 
-def final_evaluation(run, router, val_envs, val_od, config, device):
+def final_evaluation(run, router, val_envs, val_od, config, device, approach=FixedPreference):
     """evaluation.json: the selected checkpoint, reloaded from disk, on the validation set.
 
     Compares it with the exact optimum per preference, and repeats inference from a
     second fresh load to show the checkpoint reproduces its routes.
     """
     path = run.dir / "checkpoints" / "best.pt"
-    model, checkpoint = load_policy(path, device)
-    schedule, alphas = config["schedule"], [config["alpha"]]
-    summary, _ = evaluate(model, val_envs, val_od, alphas, model.config, device, schedule["eval_batch"], oracle=True)
+    model, checkpoint = approach.load_policy(path, device)
+    schedule, alphas = config["schedule"], approach.report_alphas(config)
+    summary, _ = evaluate(model, val_envs, val_od, alphas, model.config, device, schedule["eval_batch"], oracle=True,
+                          actor_type=approach.actor)
 
     def routes(policy):
         result = []
         for i, od in enumerate(val_od):
             exposure = val_envs[i % len(val_envs)].exposure
-            try:
-                result.append(list(decode_route(policy, router, exposure, od.start, od.end,
-                                                max_steps=config["env"]["max_steps"],
-                                                max_steps_factor=config["env"]["max_steps_factor"],
-                                                device=device).edge_ids))
-            except PolicyFailure as failure:
-                result.append(failure.reason)
+            for alpha in approach.selection_alphas(config):
+                try:
+                    result.append(list(decode_route(approach.for_preference(policy, alpha), router, exposure, od.start,
+                                                    od.end, max_steps=config["env"]["max_steps"],
+                                                    max_steps_factor=config["env"]["max_steps_factor"],
+                                                    device=device).edge_ids))
+                except PolicyFailure as failure:
+                    result.append(failure.reason)
         return result
 
-    first, second = routes(model), routes(load_policy(path, device)[0])
+    first, second = routes(model), routes(approach.load_policy(path, device)[0])
     evaluation = {"checkpoint": {"update": checkpoint["update"], "sha256": file_sha256(path)}, "split": "val",
-                  "alpha": config["alpha"], "summary": summary,
-                  "reload_check": {"od_pairs": len(val_od), "identical": first == second,
+                  "alpha": config.get("alpha"), "alphas": alphas, "summary": summary,
+                  "reload_check": {"od_pairs": len(val_od), "routes": len(first), "identical": first == second,
                                    "routes_reached": sum(isinstance(r, list) for r in first)}}
     augmentation = training_augmentation(config)
     if augmentation:
         evaluation["perturbed_fields"] = {
             "note": "Synthetic perturbation of the validation fields; not used to select the checkpoint.",
-            "summary": evaluate(model, val_envs, val_od, alphas, model.config, device,
-                                schedule["eval_batch"], oracle=True, augmentation=augmentation)[0]}
+            "summary": evaluate(model, val_envs, val_od, alphas, model.config, device, schedule["eval_batch"],
+                                oracle=True, augmentation=augmentation, actor_type=approach.actor)[0]}
     (run.dir / "evaluation.json").write_text(json.dumps(evaluation, indent=2), encoding="utf-8")
     run.manifest["evaluation"] = {k: evaluation[k] for k in ("reload_check",)} | {
         "mean_return": summary["mean_return"], "success_rate": summary["success_rate"],
@@ -543,13 +576,16 @@ def final_evaluation(run, router, val_envs, val_od, config, device):
     run.save()
 
 
-def _train(run, config, fields_dir, graph_dir, device, router, max_seconds, od_pairs, guard, resuming):
-    result = _optimise(run, config, fields_dir, graph_dir, device, router, max_seconds, od_pairs, guard, resuming)
-    final_evaluation(run, *result[2:], config, device)
+def _train(run, config, fields_dir, graph_dir, device, router, max_seconds, od_pairs, guard, resuming,
+           approach=FixedPreference):
+    result = _optimise(run, config, fields_dir, graph_dir, device, router, max_seconds, od_pairs, guard, resuming,
+                       approach)
+    final_evaluation(run, *result[2:], config, device, approach)
     return result[:2]
 
 
-def _optimise(run, config, fields_dir, graph_dir, device, router, max_seconds, od_pairs, guard, resuming):
+def _optimise(run, config, fields_dir, graph_dir, device, router, max_seconds, od_pairs, guard, resuming,
+              approach=FixedPreference):
     started = time.perf_counter()
     router = router or get_router(graph_dir, config["mode"])
     if resuming:  # The run's own pairs, not a new sample.
@@ -573,12 +609,13 @@ def _optimise(run, config, fields_dir, graph_dir, device, router, max_seconds, o
     }
     run.save()
 
-    model_config = ModelConfig(**config["model"])
-    model = ActorCritic(model_config).to(device)
+    model = approach.build_model(config).to(device)
+    model_config = model.config
     run.manifest["parameters"] = sum(p.numel() for p in model.parameters())
     generator = torch.Generator().manual_seed(config["seed"])
     ppo, schedule = config["ppo"], config["schedule"]
-    alphas, alpha = [config["alpha"]], config["alpha"]
+    alphas, alpha = approach.selection_alphas(config), config.get("alpha")
+    run.manifest["checkpoint_selection"]["alphas"] = alphas
     optimizer = torch.optim.Adam(model.parameters(), lr=ppo["learning_rate"])
     limits = resource_limits(config)
     progress = {"update": 0, "env_steps": 0, "episodes": 0}
@@ -595,7 +632,8 @@ def _optimise(run, config, fields_dir, graph_dir, device, router, max_seconds, o
     augmentation = training_augmentation(config)
     run.manifest["data"]["train"]["augmentation"] = {
         "synthetic": True, "used_for": "training episodes only", **augmentation.as_dict()} if augmentation else None
-    actors = [Actor(train_envs, actor_seed + i, model_config, alpha, augmentation) for i in range(ppo["actors"])]
+    actors = [approach.actor(train_envs, actor_seed + i, model_config, alpha, augmentation)
+              for i in range(ppo["actors"])]
 
     def checkpoint(update, metrics, name=None):
         path = run.dir / "checkpoints" / (name or f"update_{update:05d}.pt")
@@ -613,12 +651,13 @@ def _optimise(run, config, fields_dir, graph_dir, device, router, max_seconds, o
     def validate(update):
         """Evaluate, log and keep the best checkpoint; returns True when it improved."""
         nonlocal best_return, stale
-        summary, _ = evaluate(model, val_envs, val_od, alphas, model_config, device, schedule["eval_batch"])
+        summary, _ = evaluate(model, val_envs, val_od, alphas, model_config, device, schedule["eval_batch"],
+                              actor_type=approach.actor)
         run.log({"phase": "val", "update": update, **summary})
         if augmentation:
             run.log({"phase": "val_perturbed", "update": update,
                      **evaluate(model, val_envs, val_od, alphas, model_config, device, schedule["eval_batch"],
-                                augmentation=augmentation)[0]})
+                                augmentation=augmentation, actor_type=approach.actor)[0]})
         path = checkpoint(update, summary)
         improved = summary["mean_return"] > best_return
         if improved:
@@ -640,7 +679,7 @@ def _optimise(run, config, fields_dir, graph_dir, device, router, max_seconds, o
     if not resuming:
         teacher = config.get("warm_start")
         if teacher and teacher.get("episodes"):
-            demo_actor = Actor(train_envs, config["seed"] + 500, model_config, alpha, augmentation)
+            demo_actor = approach.actor(train_envs, config["seed"] + 500, model_config, alpha, augmentation)
             samples, actions = collect_demonstrations(demo_actor, teacher["episodes"], teacher["teacher"])
             warm_start(model, teacher["learning_rate"], samples, actions, teacher, device, generator, run.log)
             del demo_actor, samples, actions

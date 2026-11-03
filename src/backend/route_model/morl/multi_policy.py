@@ -33,7 +33,7 @@ from ..astar_osm import DEFAULT_GRAPH, get_router
 from ..training_env import file_sha256, load_od_pairs
 from .features import FEATURE_VERSION
 from .infer import PolicyFailure, decode_for_preference, load_policy_set, nearest_alpha
-from .resources import thread_limit
+from .resources import replace_file, thread_limit
 from .train import (
     ALGORITHM, _raise_terminated, _Terminated, build_envs, config_digest, evaluate, git_state, load_config,
     sample_od, summarize_evaluation, train, training_augmentation,
@@ -93,7 +93,7 @@ class PolicySetRun:
         path = self.dir / "set_manifest.json"
         temporary = path.with_suffix(".tmp")
         temporary.write_text(json.dumps(self.manifest, indent=2), encoding="utf-8")
-        temporary.replace(path)
+        replace_file(temporary, path)
 
     def finish(self, status, reason):
         self.manifest.update(status=status, stop_reason=reason, finished_at=_now())

@@ -8,3 +8,5 @@ torch>=2.2
 # route_model.morl.fields only: the Data Worker's grid and edge aggregation
 pyproj
 shapely
+# Notebook charts
+matplotlib
