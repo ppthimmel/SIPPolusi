@@ -4,6 +4,5 @@ httpx>=0.24,<1
 numpy
 pandas>=2.1
 pyarrow>=15
-# route_model.morl (TI-AI-09): CPU build, CI has no GPU and the default wheel pulls gigabytes of CUDA
---extra-index-url https://download.pytorch.org/whl/cpu
-torch>=2.2
+# route_model.morl (TI-AI-09) also needs torch. It is installed on its own, from its own
+# index and at a pinned version: see .github/workflows/ci.yml and route_model/README.md.

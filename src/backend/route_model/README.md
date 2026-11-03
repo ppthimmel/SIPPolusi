@@ -164,6 +164,7 @@ State, action, reward, splits and logging are specified in
 
 ```shell
 python -m pip install -r src/backend/requirements-test.txt
+python -m pip install --index-url https://download.pytorch.org/whl/cpu torch==2.15.0
 python -m unittest discover -s src/backend/tests -v
 python -m src.backend.route_model.verify_jakarta --output docs/experiments/TI-AI-07/jakarta-baseline.json
 ```

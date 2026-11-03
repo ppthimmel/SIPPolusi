@@ -26,6 +26,9 @@ preference. No test data was used; the comparison with A* on test belongs to TI-
 used in training. Ratios are relative to the fastest route; below 1 is better than it.
 "Optimal" is exact Dijkstra on the same objective.
 
+These numbers are slightly optimistic: they come from the same 150 pairs that chose each
+checkpoint. Unbiased numbers will come from TI-AI-10's test split.
+
 | α | Update selected | Warm-start success | Selected success | Mean return | Optimality gap |
 |---|---|---:|---:|---:|---:|
 | 0 | 120 of 200 | 96.0% | 99.3% | −1.025 | 0.71% |
