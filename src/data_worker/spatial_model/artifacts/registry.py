@@ -9,8 +9,10 @@ import re
 from pathlib import Path
 
 from spatial_model.artifacts.bundles import validate_bundle, digest
+from spatial_model.artifacts.model_package import PACKAGE_FILE, package_digest, validate_package
 
 NAMES = {"pm25": "spatial-downscaling-pm25", "no2": "spatial-downscaling-no2"}
+ROUTE_NAME = "morl-route-policy"
 
 
 def client():
@@ -22,6 +24,9 @@ def client():
 
 def register(bundle):
     manifest = validate_bundle(bundle)
+    packaged = (Path(bundle) / PACKAGE_FILE).is_file()
+    if packaged:
+        validate_package(bundle, "spatial_downscaling")
     expected_family = "stgnn" if manifest["target"] == "pm25" else "lightgbm"
     if manifest.get("model_family", expected_family) != expected_family:
         raise ValueError("Research model family is incompatible with the production target pairing")
@@ -62,7 +67,8 @@ def register(bundle):
             if exc.error_code != "RESOURCE_ALREADY_EXISTS":
                 raise
         version = c.create_model_version(name, f"{run.info.artifact_uri}/bundle", run.info.run_id,
-                                         tags={"bundle_sha256": digest(Path(bundle) / "bundle.json")})
+                                         tags={"bundle_sha256": digest(Path(bundle) / "bundle.json"),
+                                                 **({"package_sha256": package_digest(bundle)} if packaged else {})})
         c.set_registered_model_alias(name, "candidate", version.version)
     return {"name": name, "version": str(version.version), "run_id": run.info.run_id}
 
@@ -85,11 +91,20 @@ def resolve(target, selector="production", cache_dir=None):
             validate_bundle(path, target)
             if digest(path / "bundle.json") != expected:
                 raise ValueError("Registered bundle hash mismatch")
+            _check_package_tag(path, version)
             shutil.copytree(path, root)
     validate_bundle(root, target)
     if digest(root / "bundle.json") != expected:
         raise ValueError("Cached bundle hash mismatch")
+    _check_package_tag(root, version)
     return root, identity
+
+
+def _check_package_tag(root, version):
+    """A version tagged with package_sha256 must carry the package.json it was registered with."""
+    expected = version.tags.get("package_sha256")
+    if expected and (not (Path(root) / PACKAGE_FILE).is_file() or package_digest(root) != expected):
+        raise ValueError("Registered package hash mismatch")
 
 
 def promote(target, version):
@@ -101,3 +116,56 @@ def promote(target, version):
     name = os.environ.get(f"SPATIAL_{target.upper()}_MODEL", NAMES[target])
     client().set_registered_model_alias(name, "production", str(version))
     return identity
+
+
+def register_route_package(package_dir):
+    """Register a route policy package (route_model.morl.packaging) as a version of morl-route-policy."""
+    manifest = validate_package(package_dir, "route_policy")
+    if manifest["model_id"] != ROUTE_NAME:
+        raise ValueError("Package is not a morl-route-policy")
+    import mlflow
+    mlflow.set_tracking_uri(os.environ.get("MLFLOW_TRACKING_URI", "http://localhost:5000"))
+    mlflow.set_experiment("route-policy")
+    name = os.environ.get("ROUTE_POLICY_MODEL", ROUTE_NAME)
+    package_sha256 = package_digest(package_dir)
+    with mlflow.start_run() as run:
+        mlflow.set_tags({"model_kind": "route_policy", "graph_version": manifest["contract"]["graph_version"],
+                         "code_revision": str(manifest["lineage"]["code_revision"])})
+        mlflow.log_params({"package_sha256": package_sha256, "model_version": manifest["model_version"]})
+        mlflow.log_artifacts(str(package_dir), artifact_path="package")
+        c = client()
+        from mlflow.exceptions import MlflowException
+        try:
+            c.create_registered_model(name)
+        except MlflowException as exc:
+            if exc.error_code != "RESOURCE_ALREADY_EXISTS":
+                raise
+        version = c.create_model_version(name, f"{run.info.artifact_uri}/package", run.info.run_id,
+                                         tags={"package_sha256": package_sha256})
+        c.set_registered_model_alias(name, "candidate", version.version)
+    return {"name": name, "version": str(version.version), "run_id": run.info.run_id}
+
+
+def resolve_route_package(selector="production", cache_dir=None):
+    """Download and verify a registered route package; returns (directory, 'name:version')."""
+    c = client()
+    name = os.environ.get("ROUTE_POLICY_MODEL", ROUTE_NAME)
+    version = c.get_model_version(name, selector) if str(selector).isdigit() else c.get_model_version_by_alias(name, selector)
+    expected = version.tags.get("package_sha256")
+    if not expected or not re.fullmatch(r"[0-9a-f]{64}", expected):
+        raise ValueError("Registered route package has no integrity tag")
+    root = Path(cache_dir or os.environ.get("ROUTE_MODEL_CACHE", ".cache/route-models")) / name / str(version.version) / expected
+    if not root.exists():
+        import mlflow
+        root.parent.mkdir(parents=True, exist_ok=True)
+        with tempfile.TemporaryDirectory(dir=root.parent) as tmp:
+            path = Path(mlflow.artifacts.download_artifacts(artifact_uri=version.source, dst_path=tmp,
+                                                         tracking_uri=c.tracking_uri))
+            validate_package(path, "route_policy")
+            if package_digest(path) != expected:
+                raise ValueError("Registered package hash mismatch")
+            shutil.copytree(path, root)
+    validate_package(root, "route_policy")
+    if package_digest(root) != expected:
+        raise ValueError("Cached package hash mismatch")
+    return root, f"{name}:{version.version}"

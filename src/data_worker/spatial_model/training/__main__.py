@@ -27,8 +27,20 @@ def main(argv=None):
     p = commands.add_parser("promote")
     p.add_argument("target", choices=("pm25", "no2"))
     p.add_argument("version")
+    k = commands.add_parser("package", help="write package.json into a bundle (TI-AI-11)")
+    k.add_argument("bundle", type=Path)
+    k.add_argument("--graph-version", required=True)
+    k.add_argument("--grid-spec-id")
+    q = commands.add_parser("register-route", help="register a route policy package (TI-AI-11)")
+    q.add_argument("package", type=Path)
     args = parser.parse_args(argv)
-    if args.command == "promote":
+    if args.command == "package":
+        from spatial_model.artifacts.packaging import package_bundle
+        print(json.dumps(package_bundle(args.bundle, graph_version=args.graph_version, grid_spec_id=args.grid_spec_id)["model_version"]))
+    elif args.command == "register-route":
+        from spatial_model.artifacts.registry import register_route_package
+        print(json.dumps(register_route_package(args.package)))
+    elif args.command == "promote":
         from spatial_model.artifacts.registry import promote
         print(promote(args.target, args.version))
     elif args.command == "register":
