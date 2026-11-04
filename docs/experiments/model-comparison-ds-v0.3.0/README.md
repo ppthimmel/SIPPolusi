@@ -319,7 +319,7 @@ seluruh baris validation/test harus memiliki prediksi IDW yang valid.
 IDW dasar menggunakan p=2/k=8. Runner memverifikasi kecocokan stasiun-jam,
 label, dan baseline IDW sebelum menghitung metrik serta bootstrap berpasangan per grup.
 
-Model dan prediksi lengkap disimpan di `graphify-out/xgboost-ds-v0.3.0/`;
+Model dan prediksi lengkap disimpan di `checkpoints/spatial_model/xgboost/pm25/loso/`;
 tabel ringkas dan laporan di `idw_hybrid_comparison/`.
 Ini perbandingan pipeline dengan representasi fitur dan anggaran seleksi yang berbeda,
 bukan pengujian jenis arsitektur dengan input identik.
