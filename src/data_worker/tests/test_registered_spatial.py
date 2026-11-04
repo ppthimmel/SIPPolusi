@@ -192,3 +192,50 @@ def test_notebook_uses_shared_training_api(target,package,monkeypatch,tmp_path):
         assert kwargs['seed']==42 and kwargs['target']==target
         assert kwargs['protocol']=='loso' and kwargs['fold']==fold
         assert kwargs['evaluate_test'] is False
+
+
+def test_inference_reads_the_live_feature_store_unless_files_are_named(monkeypatch, tmp_path):
+    """The Worker image has no dataset_processed: without SPATIAL_FEATURE_ROOT the features come from the
+    PostgreSQL feature store the cycle writes, through StoreSourceReader (same as-of rules)."""
+    from feature_matrix.sources import SourceReader
+    from feature_store import reader as store_reader, store as feature_store
+    from spatial_model.inference import runtime
+
+    opened, closed = [], []
+
+    class Store:
+        @classmethod
+        def connect(cls, dsn, schema=None):
+            opened.append(dsn)
+            return cls()
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc):
+            closed.append(True)
+
+    monkeypatch.setattr(feature_store, "FeatureStore", Store)
+    monkeypatch.setattr(store_reader, "active_cells", lambda: pd.DataFrame(dict(grid_id=["r0001_c0001"])))
+    monkeypatch.delenv("SPATIAL_FEATURE_ROOT", raising=False)
+    with runtime.feature_reader("postgresql://example/db") as reader:
+        assert isinstance(reader, store_reader.StoreSourceReader)
+    assert opened == ["postgresql://example/db"] and closed == [True]  # closed after inference
+
+    monkeypatch.setenv("SPATIAL_FEATURE_ROOT", str(tmp_path))
+    with runtime.feature_reader("postgresql://example/db") as reader:
+        assert type(reader) is SourceReader
+    assert len(opened) == 1  # files named: no database connection
+
+
+def test_worker_inputs_use_the_given_reader(monkeypatch):
+    from spatial_model.inference import runtime
+    import spatial_model.data.observations as observations
+
+    end = pd.Timestamp("2026-11-04T06:00Z")
+    rows = pd.DataFrame(dict(station_id=["s"], pollutant=["pm25"], value=[20.0]))
+    monkeypatch.setattr(observations, "load_ground_truth_window", lambda *args, **kwargs: rows)
+    reader = object()
+    window = SimpleNamespace(start=end - pd.Timedelta(hours=1), end=end)
+    inputs = runtime.worker_inputs(None, window, {"qc": {}}, reader=reader)
+    assert inputs.reader is reader and len(inputs.readings) == 24

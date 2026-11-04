@@ -130,7 +130,10 @@ dan memverifikasi hash pada cache lokal `SPATIAL_MODEL_CACHE`.
 ## Inferensi dan cache
 
 Worker membaca 24 jam sensor dengan QC/hourly aggregation yang sama dengan baseline.
-`SPATIAL_FEATURE_ROOT` menunjuk keluaran preprocessing yang dikonsumsi `SourceReader`.
+Fitur lingkungan dibaca dari *feature store* PostgreSQL yang diisi siklus setiap jam (skema `features`,
+`StoreSourceReader`, aturan *as-of* sama dengan `SourceReader`). `SPATIAL_FEATURE_ROOT`, bila diatur, menunjuk
+keluaran preprocessing (`dataset_processed`) sebagai gantinya, untuk run luring dan reproduksi; image Worker tidak
+memuat `dataset_processed`.
 Fitur mengikuti aturan waktu tersedia dataset; input masa depan ditolak. ST-GNN memakai tile
 dengan halo satu hop, LightGBM diproses dalam batch. IDW fallback diterapkan per polutan secara mandiri.
 Nilai hilang berbeda dari nol.
