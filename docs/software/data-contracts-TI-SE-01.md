@@ -1,6 +1,6 @@
 # Kontrak data lintas komponen — TI-SE-01
 
-Versi **1.0.0**, 27 Oktober 2026. Mengikat pertukaran Data Worker, model AI,
+Versi **1.1.0**, 4 November 2026 (1.0.0: 27 Oktober 2026). Mengikat pertukaran Data Worker, model AI,
 cache, backend, dan frontend. Rujukan implementasi Bab III: Tabel 3.3,
 antarmuka cache Tabel 3.11/3.14–3.17, Kode 3.1–3.3.
 
@@ -13,7 +13,7 @@ antarmuka cache Tabel 3.11/3.14–3.17, Kode 3.1–3.3.
 - [API publik](../../src/backend/public_api/README.md),
   [OpenAPI](../../src/backend/public_api/openapi.json), [hasil uji](verification-TI-SE-01.md).
 
-Identitas skema `urn:sippolusi:data-contracts:1.0.0`. Pilih tipe dengan `$ref`
+Identitas skema `urn:sippolusi:data-contracts:1.1.0`. Pilih tipe dengan `$ref`
 `#/$defs/Point`, `RouteRequest`, `RoadGraph`, `EdgeWeight`, `TimeWindow`,
 `RouteOutput`. `EdgeWeights` adalah envelope bobot; `SolverInput` adalah input
 model rute. Akar bundle hanya menyimpan definisi; validasi harus memilih tipe.
@@ -218,11 +218,16 @@ policy/fallback yang sama dipakai uji frontend.
 `metadata.estimation` memuat `source` (nullable) dan `fallback_pollutants`
 (daftar pm25/no2). Input solver juga memuat `source.downscaling_fallback`
 (default daftar kosong). Keduanya mengikuti metadata provenance terbaru di dev
-dan tercakup dalam bundle skema v1.0.0.
+dan tercakup dalam bundle skema sejak v1.0.0.
 
 ## Versi dan regenerasi
 
-Versi 1.0.0 dipasang pada artefak skema, bukan field wajib baru pada payload.
+Versi dipasang pada artefak skema, bukan field wajib baru pada payload.
+
+| Versi | Tanggal | Perubahan |
+|---|---|---|
+| 1.1.0 | 4 November 2026 | `RouteOutput.metadata.route_model` (opsional, *nullable*): model rute di balik rekomendasi (`morl-route-policy`, versi registry, `package_sha256`, `policy_family`, `status`, α anggota, durasi inferensi, kompatibilitas). Perluasan kompatibel (TI-SE-07b). Paket model yang dibuat untuk 1.0.0 tetap dimuat dengan kompatibilitas `flagged` |
+| 1.0.0 | 27 Oktober 2026 | Versi awal |
 Komponen memakai kontrak melalui sumber berversi Git; bundle bukan endpoint
 runtime baru. Versi aplikasi OpenAPI (1.2.0), graph_version dan model_version
 memiliki arti berbeda dan tidak digunakan untuk menebak kompatibilitas kontrak.

@@ -15,7 +15,7 @@ from planner.schemas import RouteRequestIn, SolverInputOut
 from pollution.schemas import EdgeWeightOut, EdgeWeightsOut, TimeWindowOut
 from public_api.schemas import RouteFeatureCollection
 
-CONTRACT_VERSION = "1.0.0"
+CONTRACT_VERSION = "1.1.0"
 SCHEMA_PATH = Path(__file__).with_name("data-contracts-v1.schema.json")
 EXAMPLES_PATH = Path(__file__).with_name("examples") / "data-contracts-v1.json"
 MODELS = {

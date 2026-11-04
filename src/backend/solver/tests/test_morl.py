@@ -493,3 +493,14 @@ async def test_close_does_not_wait_for_a_sleeping_registry(tmp_path):
     release.set()
     loader.join(5)
     assert not loader.is_alive() and len(calls) == 1  # the stop event ended the remaining 4 attempts
+
+
+async def test_package_built_for_an_older_minor_contract_still_serves_flagged(tmp_path, osm_repo, pollution_repo, settings,
+                                                                              oracle_family):
+    """Contract 1.1.0 added metadata.route_model; a package built for 1.0.0 loads and is reported as flagged."""
+    from public_api.data_contracts import CONTRACT_VERSION
+    assert CONTRACT_VERSION == "1.1.0"
+    solver = MorlSolver(morl_settings(model_dir=str(build_package(tmp_path, contract="1.0.0", family=oracle_family))))
+    assert await solver.load_once()
+    result = await solve(solver, osm_repo, pollution_repo, settings)
+    assert result.route_source == "policy" and result.route_model["compatibility"] == "flagged"

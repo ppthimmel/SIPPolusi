@@ -7,7 +7,7 @@ Tanggal: **27 Oktober 2026**. Branch `TI-SE-01`, baseline sebelum perubahan
 
 | Kriteria issue | Bukti |
 |---|---|
-| Keenam tipe, contoh dan aturan validasi | [Kontrak terpusat](data-contracts-TI-SE-01.md), [skema v1.0.0](../../src/backend/public_api/data-contracts-v1.schema.json), [corpus valid/tidak valid](../../src/backend/public_api/examples/data-contracts-v1.json) |
+| Keenam tipe, contoh dan aturan validasi | [Kontrak terpusat](data-contracts-TI-SE-01.md), [skema v1](../../src/backend/public_api/data-contracts-v1.schema.json), [corpus valid/tidak valid](../../src/backend/public_api/examples/data-contracts-v1.json) |
 | RouteRequest lengkap, satuan tidak ambigu | RouteRequestIn/PreferenceIn, PointModel, validasi wilayah; [OpenAPI](../../src/backend/public_api/openapi.json) dan kontrak terpusat |
 | RoadGraph/EdgeWeight dapat dipertukarkan | Pemetaan worker/domain/wire/cache terdokumentasi; uji nyata writer → PostGIS → backend → serializer/skema |
 | Masukan tidak lengkap, koordinat salah, moda unsupported, TimeWindow invalid | Uji validasi planner/API, corpus skema dan uji TimeWindow/backend/worker |

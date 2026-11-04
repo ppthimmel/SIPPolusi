@@ -8,7 +8,7 @@ from spatial_model.artifacts.bundles import validate_bundle
 from spatial_model.artifacts.model_package import build_package, package_digest, validate_package
 
 #: Must equal backend/public_api/data_contracts.py CONTRACT_VERSION; a backend test checks it.
-DATA_CONTRACTS_VERSION = "1.0.0"
+DATA_CONTRACTS_VERSION = "1.1.0"
 
 _INFERENCE = {
     "entrypoint": "spatial_model.inference.serving.load_model",
