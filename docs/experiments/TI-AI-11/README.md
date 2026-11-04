@@ -30,8 +30,9 @@ artifacts:   { relative path: sha256 }   # every file, including inner manifests
 ```
 
 Example: [`route_package.json`](route_package.json) (built from the committed TI-AI-09 set).
-The spatial example is not included yet: no trained spatial serving bundle exists in git or in
-the Railway bucket. It is produced by the same call as soon as one is uploaded.
+The PM2.5 spatial example is [`spatial_pm25_package.json`](spatial_pm25_package.json), made from the bundle its PIC
+uploaded (fixed-split checkpoint, not an all-station refit; see the Railway notes). The NO2 serving fit is
+[`spatial_no2_package.json`](spatial_no2_package.json).
 
 ## Loading
 
@@ -91,9 +92,12 @@ Limits of this evidence:
   reproduces the set, not route quality (TI-AI-10 covers that).
 - "Clean environment" here is a fresh Python process on the same machine, not a fresh container.
   The same check should run in CI or on Railway once the registry is fixed.
-- No spatial serving model was available, so the spatial reload against a reference run
-  (criteria 1 and 4 for that model) is **pending**. The code path is covered with a hand-made
-  bundle in `tests/test_model_package.py`.
+- Spatial: the PM2.5 and NO2 bundles package and load (`spatial_pm25_smoke_test.json`, `spatial_no2_smoke_test.json`).
+  The PM2.5 test RMSE was recomputed from the weights with the repository's evaluator and equals the PIC's value
+  (18.372, `spatial_pm25_recomputed_metrics.csv`; see the caveats in the Railway notes). The NO2 serving fit has no
+  evaluation of its own. The code path is also covered with a hand-made bundle in `tests/test_model_package.py`.
+- Railway: registry through the proxy, and both models registered, are recorded in
+  [`railway_registry_evidence.md`](railway_registry_evidence.md).
 
 ## Decision field and policy families
 
