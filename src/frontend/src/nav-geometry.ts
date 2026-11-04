@@ -65,9 +65,25 @@ export interface Snap {
  *  route that passes the same street twice (or returns on the other carriageway after a
  *  U-turn) from snapping onto the other pass, back or ahead. */
 export function snapToLine(line: RouteLine, p: Point, minAlong = 0, maxAlong = Infinity): Snap {
+  let best: Snap = { along: 0, offsetM: Infinity, point: line.points[0] };
+  for (const c of snapCandidates(line, p, minAlong, maxAlong)) if (c.offsetM < best.offsetM) best = c;
+  return best;
+}
+
+/** The nearest point of one segment, with the segment's direction of travel. */
+export interface Candidate extends Snap {
+  bearing: number;
+  /** Held at `maxAlong`: the position may lie farther along this segment than the window reaches. */
+  clamped: boolean;
+}
+
+/** The nearest point of each segment between `minAlong` and `maxAlong`, in route order. Where the
+ *  route passes the same place twice (both carriageways after a putar balik), each pass is its own
+ *  candidate, and the caller tells them apart by direction. */
+export function snapCandidates(line: RouteLine, p: Point, minAlong = 0, maxAlong = Infinity): Candidate[] {
   const { points, cum } = line;
-  if (points.length === 1) return { along: 0, offsetM: distanceM(points[0], p), point: points[0] };
-  let best: Snap = { along: 0, offsetM: Infinity, point: points[0] };
+  if (points.length === 1) return [{ along: 0, offsetM: distanceM(points[0], p), point: points[0], bearing: 0, clamped: false }];
+  const found: Candidate[] = [];
   for (let i = 0; i < points.length - 1; i++) {
     if (cum[i + 1] < minAlong) continue;
     if (cum[i] > maxAlong) break;
@@ -78,13 +94,14 @@ export function snapToLine(line: RouteLine, p: Point, minAlong = 0, maxAlong = I
     let t = len2 ? (px * bx + py * by) / len2 : 0;
     t = Math.min(1, Math.max(0, t));
     const along = cum[i] + t * (cum[i + 1] - cum[i]);
+    const clamped = along > maxAlong;
     if (along < minAlong) t = (minAlong - cum[i]) / Math.max(cum[i + 1] - cum[i], 1e-9);
-    else if (along > maxAlong) t = (maxAlong - cum[i]) / Math.max(cum[i + 1] - cum[i], 1e-9);
+    else if (clamped) t = (maxAlong - cum[i]) / Math.max(cum[i + 1] - cum[i], 1e-9);
     const point = { lat: a.lat + t * (points[i + 1].lat - a.lat), lon: a.lon + t * (points[i + 1].lon - a.lon) };
-    const offsetM = distanceM(point, p);
-    if (offsetM < best.offsetM) best = { along: cum[i] + t * (cum[i + 1] - cum[i]), offsetM, point };
+    found.push({ along: cum[i] + t * (cum[i + 1] - cum[i]), offsetM: distanceM(point, p), point,
+                 bearing: bearingDeg(a, points[i + 1]), clamped });
   }
-  return best;
+  return found;
 }
 
 /** The point at `along` metres from the start, clamped to the line. */

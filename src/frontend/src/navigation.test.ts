@@ -88,6 +88,48 @@ describe("progress along the route", () => {
     expect(later.next?.maneuver.kind).not.toBe("arrive");
   });
 
+  it("finds the outbound lane on a first fix mid-route that drifts toward the return lane", () => {
+    const first = new NavigationSession(outAndBack, outAndBackEnd).update(fix(9, 200, 0));
+    expect(first.remainingM).toBeCloseTo(1115 - 200, -1);
+    expect(first.next?.maneuver.kind).not.toBe("arrive");
+  });
+
+  it("does not skip it after a long gap with real movement either", () => {
+    const s = new NavigationSession(outAndBack, outAndBackEnd);
+    s.update(fix(0, 100, 0));
+    const later = s.update(fix(9, 250, 60_000)); // 150 m on, drifting 9 m toward the return lane
+    expect(later.remainingM).toBeCloseTo(1115 - 250, -1);
+    expect(later.next?.maneuver.kind).not.toBe("arrive");
+  });
+
+  it("follows the return lane after a gap across the putar balik (screen locked)", () => {
+    const s = new NavigationSession(outAndBack, outAndBackEnd);
+    let t = 0;
+    for (const n of [0, 50, 100, 150, 200, 250, 270]) { s.update(fix(0, n, t)); t += 6_000; }
+    t += 15_000;
+    const remaining = [225, 150, 50].map((n) => { const r = s.update(fix(15, n, t)); t += 6_000; return r; });
+    expect(remaining.map((r) => Math.round(r.remainingM / 10) * 10)).toEqual([730, 650, 550]);
+    expect(remaining.every((r) => r.status === "tracking" && r.next?.maneuver.kind === "arrive")).toBe(true);
+  });
+
+  it("rides the whole out-and-back route with GPS noise without losing the lane", () => {
+    let seed = 7;
+    const noise = () => ((seed = (seed * 16807) % 2147483647) / 2147483647 - 0.5) * 12; // ±6 m
+    const line = routeLine(outAndBack.coordinates);
+    const s = new NavigationSession(outAndBack, outAndBackEnd, "bike");
+    let last = Infinity;
+    for (let along = 0, t = 0; along <= line.length; along += 4, t += 1_000) {
+      const p = pointAt(line, along);
+      const snap = s.update({ lat: p.lat + noise() / 111_195, lon: p.lon + noise() / 110_540, accuracyM: 8,
+                              headingDeg: null, speedMps: null, time: t });
+      if (snap.status === "arrived") break;
+      expect(snap.status).toBe("tracking");
+      expect(snap.remainingM).toBeLessThan(last + 15); // noise only, never a jump back to the other lane
+      last = Math.min(last, snap.remainingM);
+    }
+    expect(s.snapshot.status).toBe("arrived");
+  });
+
   it("finds a user who starts mid-route", () => {
     const first = session().update(fix(3, 200, 0));
     expect(first.status).toBe("tracking");
@@ -235,6 +277,15 @@ describe("arrival", () => {
                                       [15, 230], [15, 180], [15, 130], [15, 90]];
     ride.forEach(([e, n], i) => expect(s.update(fix(e, n, 40_000 + i * 10_000)).status).toBe("tracking"));
     expect(s.update(fix(15, 55, 160_000)).status).toBe("arrived");
+  });
+
+  it("by bike, arrives after a gap across the putar balik", () => {
+    const s = new NavigationSession(uturn, end, "bike");
+    let t = 0;
+    for (const n of [0, 50, 100, 150, 200, 250, 270]) { s.update(fix(0, n, t)); t += 6_000; }
+    t += 15_000;
+    for (const n of [225, 150, 100]) { expect(s.update(fix(15, n, t)).status).toBe("tracking"); t += 6_000; }
+    expect(s.update(fix(15, 55, t)).status).toBe("arrived");
   });
 
   it("on foot, it is: the user can cross the street", () => {

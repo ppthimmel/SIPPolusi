@@ -8,8 +8,11 @@ import {
   distanceM,
   maneuvers,
   routeLine,
-  snapToLine,
+  snapCandidates,
+  turnAngle,
+  type Candidate,
   type Maneuver,
+  type Snap,
   type RouteLine,
 } from "./nav-geometry";
 import type { Mode, Point } from "./types";
@@ -47,13 +50,16 @@ export const NAV_LIMITS = {
   rerouteMaxIntervalS: 120,
   /** How far back along the route a position may snap. */
   backtrackM: 50,
-  /** How far ahead it may snap. A position off the route within that is snapped again, up to
-   *  aheadM + maxSpeedMps for each second since the last fix on the route (no limit before the
-   *  first one). GPS noise near a later pass of the route (the other carriageway after a putar
-   *  balik) then cannot jump progress ahead, on the first fix or after a gap, while a user who
-   *  really moved on (or starts mid-route) is still found. */
+  /** How far ahead it may snap. A position not found on the route within that is looked for
+   *  again up to aheadM + maxSpeedMps for each second since the last fix on the route (no limit
+   *  before the first one), so a user who moved on during a gap, or starts mid-route, is found. */
   aheadM: 60,
   maxSpeedMps: 10,
+  /** Where the route passes a place twice (the carriageways either side of a putar balik), the
+   *  pass whose direction is within this of the user's direction of travel is the one taken. */
+  directionToleranceDeg: 90,
+  /** Movement shorter than this gives no usable direction (GPS noise). */
+  minMoveM: 10,
   /** A turn stays the next instruction until the position is this far past it. */
   passedM: 5,
 };
@@ -85,6 +91,9 @@ export class NavigationSession {
   /** Distance from the route's end to the destination (the route ends at the nearest road node). */
   private endGapM = 0;
   private last: Fix | null = null;
+  /** An accurate fix at least minMoveM back; the direction of travel is measured from it, so it is
+   *  known at walking pace too, where consecutive fixes are only a few metres apart. */
+  private anchor: Fix | null = null;
   private offSince: number | null = null;
   private arrived = false;
   private reroutePending = false;
@@ -140,19 +149,11 @@ export class NavigationSession {
     this.last = fix;
     const weak = !(fix.accuracyM <= L.weakAccuracyM);
     const threshold = Math.max(L.offRouteM, fix.accuracyM);
-    const back = this.progress - L.backtrackM;
-    let snap = snapToLine(this.line, fix, back, this.progress + L.aheadM);
-    if (snap.offsetM > threshold) {
-      // Off the route near the last position: the user may have moved on during a gap, or
-      // started mid-route. Only then is the rest of the reachable route considered.
-      const reach = this.progressAt === null ? Infinity
-        : this.progress + L.aheadM + L.maxSpeedMps * Math.max(0, (fix.time - this.progressAt) / 1000);
-      const farther = snapToLine(this.line, fix, back, reach);
-      if (farther.offsetM <= threshold) snap = farther;
-    }
+    const snap = this.locate(fix, threshold);
     const onRoute = snap.offsetM <= threshold;
 
     if (!weak) {
+      if (!this.anchor || distanceM(this.anchor, fix) >= L.minMoveM) this.anchor = fix;
       if (onRoute) {
         this.offSince = null;
         this.progress = snap.along;
@@ -174,6 +175,46 @@ export class NavigationSession {
     const status: NavStatus = weak ? "weak_signal" : off ? "off_route" : "tracking";
     const shown = onRoute ? snap.point : fix;
     return (this.snapshot = this.build(status, fix, shown, this.heading(fix, previous), snap.offsetM));
+  }
+
+  /** Where on the route the user is. Two parallel passes of the route (both carriageways after a
+   *  putar balik) are equally near, so the direction of travel decides between them:
+   *
+   *  1. near the last position (progress - backtrackM to progress + aheadM);
+   *  2. if not found there, anywhere the user could have reached since the last fix on the route
+   *     (after a gap, or on a first fix mid-route);
+   *  3. if neither has a pass in the direction of travel, the nearest point near the last position.
+   *
+   *  Without a direction (first fix, standing still) the nearest point is used near the last position,
+   *  and the earliest pass farther on: the route is ridden in order, and a wrong guess is corrected
+   *  by the direction of the next fixes. */
+  private locate(fix: Fix, threshold: number): Snap {
+    const L = this.limits;
+    const back = this.progress - L.backtrackM;
+    const direction = this.travelDirection(fix);
+    const usable = (all: Candidate[]) => all.filter((c) => c.offsetM <= threshold && !c.clamped);
+    const nearest = (all: Candidate[]) => all.reduce((a, b) => (b.offsetM < a.offsetM ? b : a));
+    const pick = (all: Candidate[], near: boolean): Candidate | null => {
+      const found = usable(all);
+      if (!found.length) return null;
+      if (direction !== null) {
+        const along = found.filter((c) => Math.abs(turnAngle(c.bearing, direction)) <= L.directionToleranceDeg);
+        return along.length ? nearest(along) : null;
+      }
+      return near ? nearest(found) : found[0];
+    };
+    const near = snapCandidates(this.line, fix, back, this.progress + L.aheadM);
+    const reach = this.progressAt === null ? Infinity
+      : this.progress + L.aheadM + L.maxSpeedMps * Math.max(0, (fix.time - this.progressAt) / 1000);
+    return pick(near, true) ?? pick(snapCandidates(this.line, fix, back, reach), false) ?? nearest(near);
+  }
+
+  /** Degrees from north the user is moving in, or null when that is not known. */
+  private travelDirection(fix: Fix): number | null {
+    if (fix.headingDeg !== null && Number.isFinite(fix.headingDeg) && (fix.speedMps ?? 0) >= 1) return fix.headingDeg;
+    const from = this.anchor;
+    if (from && distanceM(from, fix) >= this.limits.minMoveM) return bearingDeg(from, fix);
+    return null;
   }
 
   /** True when the caller should request a new route now. */
