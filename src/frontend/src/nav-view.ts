@@ -70,6 +70,9 @@ export class NavView {
   private readonly recenter: HTMLButtonElement;
   private readonly finish: HTMLButtonElement;
   private announced = "";
+  /** The notice now shown. It is rebuilt only when it changes, so its live role does not
+   *  re-announce the same notice on every fix. */
+  private shownMessage = "";
 
   constructor(container: HTMLElement, handlers: { onEnd: () => void; onRecenter: () => void }) {
     this.recenter = h("button", { type: "button", class: "secondary", onclick: handlers.onRecenter }, icon("locate", 18), " Ikuti posisi");
@@ -112,16 +115,20 @@ export class NavView {
     this.arrival.textContent = arrived ? "—" : fmtArrival(s.remainingMin);
 
     const message = state.message ?? statusMessage(s);
-    clear(this.status);
-    if (message) {
-      this.status.append(
-        h(
-          "div",
-          { class: `notice notice-${message.kind === "done" ? "done" : message.kind}`, role: message.kind === "error" ? "alert" : "status" },
-          icon(message.kind === "done" ? "flag" : message.kind === "info" ? "info" : "warn", 18),
-          h("div", {}, h("strong", {}, message.title), message.text && h("p", {}, message.text)),
-        ),
-      );
+    const key = message ? `${message.kind}\n${message.title}\n${message.text}` : "";
+    if (key !== this.shownMessage) {
+      this.shownMessage = key;
+      clear(this.status);
+      if (message) {
+        this.status.append(
+          h(
+            "div",
+            { class: `notice notice-${message.kind === "done" ? "done" : message.kind}`, role: message.kind === "error" ? "alert" : "status" },
+            icon(message.kind === "done" ? "flag" : message.kind === "info" ? "info" : "warn", 18),
+            h("div", {}, h("strong", {}, message.title), message.text && h("p", {}, message.text)),
+          ),
+        );
+      }
     }
     this.recenter.hidden = state.following || arrived;
     this.finish.textContent = arrived ? "Selesai" : "Akhiri navigasi";
@@ -143,7 +150,8 @@ function statusMessage(s: NavSnapshot): NavMessage | null {
       return {
         kind: "warn",
         title: "Sinyal GPS lemah",
-        text: `Akurasi sekitar ±${fmtNumber(Math.round(s.fix?.accuracyM ?? 0), 0)} m, jadi posisi di peta bisa meleset. Deteksi keluar rute ditunda sampai sinyal membaik.`,
+        // In steps of 10 m: the text (and so the notice) does not change with every fix.
+        text: `Akurasi sekitar ±${fmtNumber(Math.ceil((s.fix?.accuracyM ?? 0) / 10) * 10, 0)} m, jadi posisi di peta bisa meleset. Deteksi keluar rute ditunda sampai sinyal membaik.`,
       };
     case "off_route":
       return { kind: "warn", title: "Anda keluar dari rute", text: "Mencari rute baru dari posisi Anda…" };

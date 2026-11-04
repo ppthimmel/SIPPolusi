@@ -58,6 +58,7 @@ export class MapView {
   readonly map: maplibregl.Map;
   private origin: maplibregl.Marker | null = null;
   private destination: maplibregl.Marker | null = null;
+  private pointsDraggable = true;
   private ready: Promise<void>;
   private surface: SurfaceFeature[] = [];
   private heatLayer: HeatLayer = "combined";
@@ -220,7 +221,7 @@ export class MapView {
     el.className = `marker marker-${which}`;
     el.setAttribute("role", "img");
     el.setAttribute("aria-label", which === "origin" ? "Titik asal" : "Titik tujuan");
-    const marker = new maplibregl.Marker({ element: el, draggable: true, anchor: which === "origin" ? "center" : "bottom" })
+    const marker = new maplibregl.Marker({ element: el, draggable: this.pointsDraggable, anchor: which === "origin" ? "center" : "bottom" })
       .setLngLat([p.lon, p.lat])
       .addTo(this.map);
     marker.on("dragend", () => {
@@ -229,6 +230,13 @@ export class MapView {
     });
     if (which === "origin") this.origin = marker;
     else this.destination = marker;
+  }
+
+  /** Off while navigating: the session keeps its destination, so a moved pin would misstate it. */
+  setPointsDraggable(on: boolean): void {
+    this.pointsDraggable = on;
+    this.origin?.setDraggable(on);
+    this.destination?.setDraggable(on);
   }
 
   // ---------------------------------------------------------------- routes

@@ -20,6 +20,7 @@ import { fmtCoord, fmtNumber, fmtWib } from "./format";
 import { Legend } from "./legend";
 import { MapView, type SegmentClick } from "./map-view";
 import { NavView, type NavMessage } from "./nav-view";
+import type { RouteLine } from "./nav-geometry";
 import { NavigationSession, type Fix } from "./navigation";
 import { PlaceCombobox } from "./place-combobox";
 import { PlaceSearch, PointNamer } from "./place-search";
@@ -33,7 +34,7 @@ import {
   type PositionSource,
 } from "./position";
 import { SurfaceRefresher } from "./surface-refresher";
-import type { HeatLayer, Mode, Place, Point, RouteRequest, RouteResponse, RouteResult } from "./types";
+import type { BBox, HeatLayer, Mode, Place, Point, RouteRequest, RouteResponse, RouteResult } from "./types";
 import { buildRouteRequest, parseCoordinateText, preferenceFromSlider, validatePoint, validateTrip } from "./validation";
 
 // Presentation layer (PF-01, PF-02, PF-09 – PF-12, PNF-07, PNF-08): trip form,
@@ -283,7 +284,11 @@ slider.addEventListener("input", updatePriority);
 updatePriority();
 
 // ---------------------------------------------------------------- map events
-mapView.onPointMoved = (which, p) => setPoint(which, p);
+// While navigating the pins cannot be dragged (MapView.setPointsDraggable); the guard covers a drag
+// that started just before navigation did.
+mapView.onPointMoved = (which, p) => {
+  if (!nav.session) setPoint(which, p);
+};
 
 mapView.onClick = ({ point, feature }: SegmentClick) => {
   // With the heatmap on, a click on a segment inspects it (its card offers to use
@@ -500,8 +505,11 @@ cancelBtn.addEventListener("click", () => state.controller?.abort());
 // ------------------------------------------------------------------- heatmap
 const heatSurface = new SurfaceRefresher(
   (signal) => {
-    const { bbox, zoom } = mapView.getView();
-    return requestExposureSurface(bbox, surfaceZoom(zoom, bbox), signal);
+    const view = mapView.getView();
+    // While navigating, the camera follows the user, so its bounds would give the position
+    // away. The route's area is asked for instead: its ends are what the route request sent.
+    const bbox = nav.session ? routeArea(nav.session.routeLine) : view.bbox;
+    return requestExposureSurface(bbox, surfaceZoom(view.zoom, bbox), signal);
   },
   (status, surface) => {
     if (status === "ready" && surface) {
@@ -558,7 +566,23 @@ legend.onLayer = (layer) => {
   legendState();
 };
 legend.onRetry = () => scheduleSurface(true);
-mapView.onViewChange = () => scheduleSurface();
+// Not while navigating: the route's area does not change when the camera follows the user.
+mapView.onViewChange = () => {
+  if (!nav.session) scheduleSurface();
+};
+
+/** The bounding box of a route line, with a margin so the heatmap reaches past its ends. */
+function routeArea(line: RouteLine): BBox {
+  const margin = 0.003; // about 330 m
+  const lats = line.points.map((p) => p.lat);
+  const lons = line.points.map((p) => p.lon);
+  return {
+    minLon: Math.min(...lons) - margin,
+    minLat: Math.min(...lats) - margin,
+    maxLon: Math.max(...lons) + margin,
+    maxLat: Math.max(...lats) + margin,
+  };
+}
 
 // ------------------------------------------------------------------ geolocate
 const insideStudyArea = (p: Point) =>
@@ -574,8 +598,10 @@ function useMyLocation(): void {
   };
   const problem = positionProblem();
   if (problem) return say(`${describePositionProblem(problem)} Pilih titik asal di peta.`);
+  // Navigation may have started while this request was pending; it must not touch the form then.
   navigator.geolocation.getCurrentPosition(
     (pos) => {
+      if (nav.session) return;
       const p = { lat: pos.coords.latitude, lon: pos.coords.longitude };
       if (!insideStudyArea(p)) {
         say("Lokasi Anda berada di luar wilayah studi (Jakarta), jadi tidak dipakai sebagai titik asal.");
@@ -584,7 +610,9 @@ function useMyLocation(): void {
       state.pick = state.points.destination ? null : "destination";
       setPoint("origin", p, { fly: true });
     },
-    (err) => say(`${describePositionProblem(problemFromCode(err.code))} Pilih titik asal di peta.`),
+    (err) => {
+      if (!nav.session) say(`${describePositionProblem(problemFromCode(err.code))} Pilih titik asal di peta.`);
+    },
     { enableHighAccuracy: true, timeout: 10_000, maximumAge: 60_000 },
   );
 }
@@ -654,6 +682,7 @@ async function startNavigation(role: RouteResult["role"]): Promise<void> {
   resultView.hidden = true;
   navViewEl.hidden = false;
   void mapView.showNavRoute(route.coordinates);
+  mapView.setPointsDraggable(false);
   setLocateLabel(true);
   renderNav();
   nav.view.title.focus({ preventScroll: true });
@@ -677,6 +706,7 @@ function endNavigation(notice: { title: string; text: string } | null = null): v
   void keepScreenOn(false);
   void mapView.setUser(null);
   mapView.resetPadding();
+  mapView.setPointsDraggable(true);
   setLocateLabel(false);
   clear(navViewEl);
   const title = showResultView(notice);
@@ -696,18 +726,25 @@ function onFix(fix: Fix): void {
   nav.firstFix = false;
 
   if (snap.status === "arrived") {
-    // Tracking stops at once; the panel says so until the user closes it.
-    nav.source?.stop();
-    nav.source = null;
-    nav.controller?.abort();
-    void keepScreenOn(false);
-  } else if (snap.status !== "off_route" && nav.controller) {
-    // Back on the route before the new one arrived: it is no longer needed.
+    stopTracking();
+  } else if (snap.status === "tracking" && nav.controller) {
+    // Back on the route before the new one arrived: it is no longer needed. A weak fix
+    // says nothing about that, so it leaves the request running.
     nav.controller.abort();
   } else if (session.rerouteDue(Date.now())) {
     void reroute(session, fix);
   }
   renderNav();
+}
+
+/** On arrival, however it was reached (a fix, or a new route that ends where the user is):
+ *  tracking stops at once, and the panel says so until the user closes it. */
+function stopTracking(): void {
+  nav.source?.stop();
+  nav.source = null;
+  nav.controller?.abort();
+  nav.message = null; // a pending reroute error must not hide the arrival
+  void keepScreenOn(false);
 }
 
 /** A new route from the current position, at most once per NAV_LIMITS.rerouteIntervalS. */
@@ -722,7 +759,7 @@ async function reroute(session: NavigationSession, from: Point): Promise<void> {
     );
     return;
   }
-  session.rerouteStarted();
+  session.rerouteStarted(Date.now());
   const controller = new AbortController();
   nav.controller = controller;
   setNavMessage({ kind: "warn", title: "Anda keluar dari rute", text: "Mencari rute baru dari posisi Anda…" }, "on_route");
@@ -733,7 +770,12 @@ async function reroute(session: NavigationSession, from: Point): Promise<void> {
     session.replaceRoute(route, Date.now());
     nav.source?.routeChanged?.();
     void mapView.showNavRoute(route.coordinates);
-    setNavMessage({ kind: "info", title: "Rute diperbarui", text: "Rute baru dihitung dari posisi Anda." }, Date.now() + 6_000);
+    if (session.isArrived) {
+      stopTracking();
+    } else {
+      setNavMessage({ kind: "info", title: "Rute diperbarui", text: "Rute baru dihitung dari posisi Anda." }, Date.now() + 6_000);
+      scheduleSurface(true); // the heatmap follows the new route's area
+    }
   } catch (err) {
     if (nav.session !== session) return;
     if (err instanceof ApiError && err.kind === "aborted") {
@@ -819,17 +861,26 @@ function renderNav(): void {
 
 /** Keeps the screen on while navigating, where the browser allows it. */
 async function keepScreenOn(on: boolean): Promise<void> {
-  try {
-    if (!on) {
-      const lock = nav.wakeLock;
-      nav.wakeLock = null;
-      await lock?.release();
-    } else if (!nav.wakeLock && "wakeLock" in navigator) {
-      nav.wakeLock = await navigator.wakeLock.request("screen");
-    }
-  } catch {
-    nav.wakeLock = null; // refused or unsupported: navigation works without it
+  if (!on) {
+    const lock = nav.wakeLock;
+    nav.wakeLock = null;
+    await lock?.release().catch(() => {});
+    return;
   }
+  if (nav.wakeLock || !("wakeLock" in navigator)) return;
+  const session = nav.session;
+  let lock: WakeLockSentinel;
+  try {
+    lock = await navigator.wakeLock.request("screen");
+  } catch {
+    return; // refused or unsupported: navigation works without it
+  }
+  // Navigation may have ended or arrived, or another request been granted, while this one was pending.
+  if (!session || nav.session !== session || session.isArrived || nav.wakeLock) {
+    await lock.release().catch(() => {});
+    return;
+  }
+  nav.wakeLock = lock;
 }
 document.addEventListener("visibilitychange", () => {
   // The browser releases the lock when the page is hidden.

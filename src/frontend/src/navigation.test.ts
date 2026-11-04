@@ -44,6 +44,39 @@ describe("progress along the route", () => {
     expect(c.next?.distanceM).toBeCloseTo(200, -1);
   });
 
+  it("keeps a turn as the instruction until it has been passed", () => {
+    const s = session();
+    s.update(fix(0, 380, 0));
+    const before = s.update(fix(0, 397, 5_000));
+    expect(before.next?.maneuver.kind).toBe("right");
+    expect(before.next?.distanceM).toBeCloseTo(3, 0);
+    const at = s.update(fix(3, 400, 6_000));
+    expect(at.next?.maneuver.kind).toBe("right");
+    expect(at.next?.distanceM).toBe(0);
+    expect(s.update(fix(20, 400, 9_000)).next?.maneuver.kind).toBe("arrive");
+  });
+
+  it("does not jump ahead to a later pass of the route nearby", () => {
+    // 300 m north, putar balik, then 250 m back south on the other carriageway, 15 m east.
+    const uturn = { coordinates: [at(0, 0), at(0, 300), at(15, 300), at(15, 50)], travelTimeMin: 10 };
+    const s = new NavigationSession(uturn, { lat: at(15, 50)[1], lon: at(15, 50)[0] });
+    s.update(fix(0, 100, 0));
+    const drift = s.update(fix(9, 101, 1_000)); // nearer the return leg than the outbound one
+    expect(drift.status).toBe("tracking");
+    expect(drift.remainingM).toBeCloseTo(565 - 101, -1);
+    expect(drift.next?.distanceM).toBeCloseTo(300 - 101, -1);
+    // The next fix on the outbound leg is still on the route: no false off-route.
+    expect(s.update(fix(0, 105, 2_000)).offRouteM).toBeLessThan(1);
+  });
+
+  it("lets progress catch up after a gap in the fixes", () => {
+    const s = session();
+    s.update(fix(0, 50, 0));
+    const later = s.update(fix(0, 350, 40_000)); // 300 m on, after 40 s without a fix
+    expect(later.status).toBe("tracking");
+    expect(later.remainingM).toBeCloseTo(350, -1);
+  });
+
   it("shows the position snapped onto the route while on it", () => {
     const snap = session().update(fix(12, 100, 0));
     expect(snap.offRouteM).toBeCloseTo(12, 0);
@@ -100,7 +133,7 @@ describe("leaving the route", () => {
     let now = 12_000;
     s.update(fix(80, 100, now));
     expect(s.rerouteDue(now)).toBe(true);
-    s.rerouteStarted();
+    s.rerouteStarted(now);
     expect(s.rerouteDue(now)).toBe(false); // one request at a time
 
     expect(s.rerouteFailed(now)).toBe(30);
@@ -108,14 +141,28 @@ describe("leaving the route", () => {
     now += 30_000;
     s.update(fix(80, 100, now));
     expect(s.rerouteDue(now)).toBe(true);
-    s.rerouteStarted();
+    s.rerouteStarted(now);
     expect(s.rerouteFailed(now)).toBe(60);
-    s.rerouteStarted();
+    s.rerouteStarted(now);
     expect(s.rerouteFailed(now)).toBe(120);
-    s.rerouteStarted();
+    s.rerouteStarted(now);
     expect(s.rerouteFailed(now)).toBe(120); // capped
-    s.rerouteStarted();
+    s.rerouteStarted(now);
     expect(s.rerouteFailed(now, 300)).toBe(300); // Retry-After wins when longer
+  });
+
+  it("an abandoned request still uses up the interval", () => {
+    // Accuracy flapping around the weak-signal limit must not turn into a request every other fix.
+    const s = session();
+    s.update(fix(0, 100, 0));
+    s.update(fix(80, 100, 1_000));
+    s.update(fix(80, 100, 12_000));
+    s.rerouteStarted(12_000);
+    s.rerouteCancelled();
+    s.update(fix(80, 100, 13_000));
+    expect(s.snapshot.status).toBe("off_route");
+    expect(s.rerouteDue(13_000)).toBe(false);
+    expect(s.rerouteDue(12_000 + NAV_LIMITS.rerouteIntervalS * 1000)).toBe(true);
   });
 
   it("follows a new route from the current position", () => {
@@ -123,7 +170,7 @@ describe("leaving the route", () => {
     s.update(fix(0, 100, 0));
     s.update(fix(80, 100, 1_000));
     s.update(fix(80, 100, 12_000));
-    s.rerouteStarted();
+    s.rerouteStarted(12_000);
     s.replaceRoute({ coordinates: [at(80, 100), at(80, 400), at(300, 400)], travelTimeMin: 8 }, 12_500);
     const snap = s.snapshot;
     expect(snap.status).toBe("tracking");

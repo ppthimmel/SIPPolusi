@@ -61,14 +61,16 @@ export interface Snap {
   point: Point;
 }
 
-/** Nearest point of the line to `p`, ignoring the part before `minAlong`. That keeps a
- *  route that passes the same street twice from snapping back onto the earlier pass. */
-export function snapToLine(line: RouteLine, p: Point, minAlong = 0): Snap {
+/** Nearest point of the line to `p` between `minAlong` and `maxAlong`. The window keeps a
+ *  route that passes the same street twice (or returns on the other carriageway after a
+ *  U-turn) from snapping onto the other pass, back or ahead. */
+export function snapToLine(line: RouteLine, p: Point, minAlong = 0, maxAlong = Infinity): Snap {
   const { points, cum } = line;
   if (points.length === 1) return { along: 0, offsetM: distanceM(points[0], p), point: points[0] };
   let best: Snap = { along: 0, offsetM: Infinity, point: points[0] };
   for (let i = 0; i < points.length - 1; i++) {
     if (cum[i + 1] < minAlong) continue;
+    if (cum[i] > maxAlong) break;
     const a = points[i];
     const [bx, by] = local(points[i + 1], a);
     const [px, py] = local(p, a);
@@ -77,6 +79,7 @@ export function snapToLine(line: RouteLine, p: Point, minAlong = 0): Snap {
     t = Math.min(1, Math.max(0, t));
     const along = cum[i] + t * (cum[i + 1] - cum[i]);
     if (along < minAlong) t = (minAlong - cum[i]) / Math.max(cum[i + 1] - cum[i], 1e-9);
+    else if (along > maxAlong) t = (maxAlong - cum[i]) / Math.max(cum[i + 1] - cum[i], 1e-9);
     const point = { lat: a.lat + t * (points[i + 1].lat - a.lat), lon: a.lon + t * (points[i + 1].lon - a.lon) };
     const offsetM = distanceM(point, p);
     if (offsetM < best.offsetM) best = { along: cum[i] + t * (cum[i + 1] - cum[i]), offsetM, point };

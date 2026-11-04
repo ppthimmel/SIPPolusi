@@ -70,6 +70,18 @@ describe("snapToLine", () => {
     expect(snapToLine(back, pt(at(0, 50))).along).toBeCloseTo(50, 0);
     expect(snapToLine(back, pt(at(0, 50)), 250).along).toBeCloseTo(350, 0);
   });
+
+  it("ignores the part of the route too far ahead", () => {
+    // After a putar balik the route returns on the other carriageway, 15 m away: a fix drifting
+    // toward it must stay on the outbound leg.
+    const uturn = routeLine([at(0, 0), at(0, 300), at(15, 300), at(15, 0)]);
+    expect(snapToLine(uturn, pt(at(9, 100))).along).toBeGreaterThan(400);
+    const s = snapToLine(uturn, pt(at(9, 100)), 50, 170);
+    expect(s.along).toBeCloseTo(100, 0);
+    expect(s.offsetM).toBeCloseTo(9, 0);
+    // Beyond the window the position is held at its far end, not dropped.
+    expect(snapToLine(uturn, pt(at(0, 250)), 0, 170).along).toBeCloseTo(170, 0);
+  });
 });
 
 describe("maneuvers", () => {

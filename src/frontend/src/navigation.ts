@@ -46,7 +46,12 @@ export const NAV_LIMITS = {
   rerouteMaxIntervalS: 120,
   /** How far back along the route a position may snap. */
   backtrackM: 50,
-  /** A turn closer than this behind the position has been taken. */
+  /** How far ahead it may snap: this, plus maxSpeedMps for each second since the last fix on the
+   *  route. GPS noise near a later pass of the route (the other carriageway after a putar balik)
+   *  then cannot jump progress ahead, while a gap in the fixes does not hold it back. */
+  aheadM: 60,
+  maxSpeedMps: 10,
+  /** A turn stays the next instruction until the position is this far past it. */
   passedM: 5,
 };
 export type NavLimits = typeof NAV_LIMITS;
@@ -72,6 +77,8 @@ export class NavigationSession {
   /** Seconds per metre of the current route, from the Backend's own estimate. */
   private pace = 0;
   private progress = 0;
+  /** Time of the fix that last moved `progress`; null until the first fix on this route. */
+  private progressAt: number | null = null;
   private last: Fix | null = null;
   private offSince: number | null = null;
   private arrived = false;
@@ -104,6 +111,7 @@ export class NavigationSession {
     this.reroutePending = false;
     this.failures = 0;
     this.nextRerouteAt = now + this.limits.rerouteIntervalS * 1000;
+    this.progressAt = now; // the new route starts where the user is
     if (this.last) this.update(this.last);
   }
 
@@ -112,6 +120,7 @@ export class NavigationSession {
     this.turns = maneuvers(this.line);
     this.pace = this.line.length > 0 ? (route.travelTimeMin * 60) / this.line.length : 0;
     this.progress = 0;
+    this.progressAt = null;
   }
 
   update(fix: Fix): NavSnapshot {
@@ -120,7 +129,9 @@ export class NavigationSession {
     const previous = this.last;
     this.last = fix;
     const weak = !(fix.accuracyM <= L.weakAccuracyM);
-    const snap = snapToLine(this.line, fix, this.progress - L.backtrackM);
+    const ahead = this.progressAt === null ? Infinity
+      : this.progress + L.aheadM + L.maxSpeedMps * Math.max(0, (fix.time - this.progressAt) / 1000);
+    const snap = snapToLine(this.line, fix, this.progress - L.backtrackM, ahead);
     const threshold = Math.max(L.offRouteM, fix.accuracyM);
     const onRoute = snap.offsetM <= threshold;
 
@@ -128,6 +139,7 @@ export class NavigationSession {
       if (onRoute) {
         this.offSince = null;
         this.progress = snap.along;
+        this.progressAt = fix.time;
       } else if (this.offSince === null) {
         this.offSince = fix.time;
       }
@@ -150,8 +162,11 @@ export class NavigationSession {
     return this.snapshot.status === "off_route" && !this.reroutePending && now >= this.nextRerouteAt;
   }
 
-  rerouteStarted(): void {
+  /** A request was sent. The interval counts from here, so a request that is later
+   *  abandoned still uses up its slot (the gateway allows 20 route requests a minute). */
+  rerouteStarted(now: number): void {
     this.reroutePending = true;
+    this.nextRerouteAt = now + this.limits.rerouteIntervalS * 1000;
   }
 
   /** A request failed: wait longer before the next one, at least `waitSec` (Retry-After). */
@@ -165,7 +180,8 @@ export class NavigationSession {
     return wait;
   }
 
-  /** A request was abandoned without an answer (the position came back to the route). */
+  /** A request was abandoned without an answer (the position came back to the route).
+   *  The interval set by rerouteStarted stays. */
   rerouteCancelled(): void {
     this.reroutePending = false;
   }
@@ -178,7 +194,7 @@ export class NavigationSession {
 
   private build(status: NavStatus, fix: Fix | null, shown: Point | null, heading: number | null, offRouteM: number | null): NavSnapshot {
     const remainingM = Math.max(0, this.line.length - this.progress);
-    const ahead = this.turns.find((m) => m.along > this.progress + this.limits.passedM) ?? null;
+    const ahead = this.turns.find((m) => m.along > this.progress - this.limits.passedM) ?? null;
     return {
       status,
       fix,
@@ -187,7 +203,7 @@ export class NavigationSession {
       offRouteM,
       remainingM,
       remainingMin: (remainingM * this.pace) / 60,
-      next: ahead && status !== "arrived" ? { maneuver: ahead, distanceM: ahead.along - this.progress } : null,
+      next: ahead && status !== "arrived" ? { maneuver: ahead, distanceM: Math.max(0, ahead.along - this.progress) } : null,
     };
   }
 }

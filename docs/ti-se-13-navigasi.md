@@ -49,17 +49,19 @@ Semua di [`NAV_LIMITS`](../src/frontend/src/navigation.ts).
 |---|---|---|
 | Sinyal lemah | Akurasi > 50 m | Posisi tetap tampil dengan lingkar akurasi, tetapi tidak dipakai untuk menilai keluar rute atau tiba, agar sinyal buruk tidak memicu rute ulang palsu |
 | Keluar rute | > 40 m dari rute (atau > akurasi fix bila lebih besar) selama ≥ 10 s | Satu fix yang melenceng tidak cukup; 40 m di atas akurasi GPS ponsel biasa di kota |
-| Jeda rute ulang | ≥ 30 s antar permintaan, satu permintaan pada satu waktu | Gateway membatasi `/v1/routes` 20 per menit per IP (Tabel 3.15); navigasi memakai paling banyak 2 per menit |
+| Jeda rute ulang | ≥ 30 s antar permintaan, dihitung sejak permintaan dikirim (juga bila kemudian dibatalkan), satu permintaan pada satu waktu | Gateway membatasi `/v1/routes` 20 per menit per IP (Tabel 3.15); navigasi memakai paling banyak 2 per menit, juga saat akurasi naik-turun di sekitar batas sinyal lemah |
 | Setelah gagal | Jeda berlipat: 30, 60, 120 s (maksimal), atau `Retry-After` bila lebih lama | Server yang bermasalah tidak dibanjiri |
-| Kembali ke rute | Permintaan rute ulang yang masih berjalan dibatalkan | Tidak ada rute baru yang tidak diperlukan |
-| Tiba | ≤ 25 m dari tujuan, atau ≤ 25 m sebelum ujung rute saat berada di rute | Pelacakan langsung dihentikan |
-| Proyeksi ke rute | Tidak mundur lebih dari 50 m | Rute yang melewati jalan yang sama dua kali tidak "melompat" ke lintasan pertama |
+| Kembali ke rute | Fix akurat yang kembali berada di rute membatalkan permintaan rute ulang yang masih berjalan; fix lemah tidak | Tidak ada rute baru yang tidak diperlukan, dan sinyal lemah tidak dianggap kembali ke rute |
+| Tiba | ≤ 25 m dari tujuan, atau ≤ 25 m sebelum ujung rute saat berada di rute; juga bila rute baru berakhir di posisi pengguna | Pelacakan dan *wake lock* langsung dihentikan, pesan lain diganti pesan tiba |
+| Proyeksi ke rute | Tidak mundur lebih dari 50 m, dan tidak maju lebih dari 60 m + 10 m per detik sejak fix terakhir di rute | Rute yang melewati jalan yang sama dua kali, atau kembali di jalur seberang setelah putar balik, tidak "melompat" ke lintasan lain; jeda fix (sinyal hilang) tidak menahan kemajuan |
+| Belokan | Tetap menjadi petunjuk sampai terlewati 5 m | Petunjuk tidak berganti sebelum pengguna berbelok |
 
 ## Data posisi (PNF-06, RI-09)
 
 | Hal | Perlakuan |
 |---|---|
 | Pelacakan | Seluruhnya di perangkat. Posisi tidak dikirim selama pengguna berada di rute |
+| Heatmap | Selama navigasi, `GET /v1/exposure-surface` memakai kotak rute (+±330 m), bukan tampilan kamera yang mengikuti pengguna; gerakan kamera tidak memicu permintaan. Diperbarui hanya setelah rute ulang |
 | Rute ulang | Satu-satunya saat posisi keluar perangkat: sebagai `origin` di body `POST /v1/routes`, sama seperti pencarian rute biasa. Gateway dan Cache API hanya mencatat path; pemeriksaan E2E-11 memastikan log Cache API dan gateway tanpa koordinat perjalanan |
 | Penyimpanan | Tidak ada: tanpa `localStorage`, tanpa riwayat, tanpa log konsol. Posisi terakhir hilang saat navigasi diakhiri |
 | Pemberitahuan | Panel navigasi menulis bahwa posisi diproses di perangkat dan server hanya menerimanya saat rute dihitung ulang |
@@ -78,6 +80,9 @@ Semua di [`NAV_LIMITS`](../src/frontend/src/navigation.ts).
 | Keluar rute | Pesan "Anda keluar dari rute", satu permintaan dari posisi menyimpang, rute diperbarui | Browser, [`02`](ti-se-13/02-keluar-rute.jpg); log mock: tepat 1 permintaan |
 | Rute ulang gagal (timeout 12 s) | Rute lama tetap tampil, pesan galat, dicoba lagi tepat setelah 30 s dan berhasil | Browser; log mock: 1 gagal, 1 berhasil dalam ±45 s keluar rute |
 | Rute ulang berturut-turut | Jeda 30 → 60 → 120 s, `Retry-After` dihormati | Unit |
+| Rute ulang dibatalkan | Tetap memakai jeda 30 s | Unit |
+| Putar balik, jalur seberang 15 m | GPS yang melenceng ke jalur seberang tidak melompatkan kemajuan, tidak memicu keluar rute | Unit |
+| Fix hilang 40 s | Kemajuan menyusul posisi berikutnya, tetap di rute | Unit |
 | Satu fix melenceng | Tidak dianggap keluar rute | Unit |
 | Sinyal lemah (akurasi ±120 m) | Lingkar akurasi, pesan "Sinyal GPS lemah", keluar rute dan tiba tidak dinilai | Unit, Browser, [`03`](ti-se-13/03-sinyal-lemah.jpg) |
 | Izin lokasi ditolak | Navigasi tidak dimulai, kembali ke hasil rute dengan pesan, kedua rute tetap utuh | Browser, [`04`](ti-se-13/04-izin-ditolak.jpg) |
