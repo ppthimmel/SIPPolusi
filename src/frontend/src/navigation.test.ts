@@ -69,6 +69,31 @@ describe("progress along the route", () => {
     expect(s.update(fix(0, 105, 2_000)).offRouteM).toBeLessThan(1);
   });
 
+  // 300 m out, putar balik, then 800 m back on the other carriageway, 15 m away (review of ddab651).
+  const outAndBack = { coordinates: [at(0, 0), at(0, 300), at(15, 300), at(15, -500)], travelTimeMin: 15 };
+  const outAndBackEnd = { lat: at(15, -500)[1], lon: at(15, -500)[0] };
+
+  it("does not skip the putar balik when the first fix drifts toward the return carriageway", () => {
+    const s = new NavigationSession(outAndBack, outAndBackEnd);
+    const first = s.update(fix(9, 10, 0));
+    expect(first.remainingM).toBeCloseTo(1115 - 10, -1);
+    expect(first.next?.maneuver.kind).not.toBe("arrive");
+  });
+
+  it("does not skip it after a gap either", () => {
+    const s = new NavigationSession(outAndBack, outAndBackEnd);
+    s.update(fix(0, 100, 0));
+    const later = s.update(fix(9, 150, 60_000));
+    expect(later.remainingM).toBeCloseTo(1115 - 150, -1);
+    expect(later.next?.maneuver.kind).not.toBe("arrive");
+  });
+
+  it("finds a user who starts mid-route", () => {
+    const first = session().update(fix(3, 200, 0));
+    expect(first.status).toBe("tracking");
+    expect(first.remainingM).toBeCloseTo(500, -1);
+  });
+
   it("lets progress catch up after a gap in the fixes", () => {
     const s = session();
     s.update(fix(0, 50, 0));
@@ -194,6 +219,38 @@ describe("leaving the route", () => {
 });
 
 describe("arrival", () => {
+  // 300 m north, putar balik, then 250 m back on the other carriageway, 15 m east: the destination
+  // is beside the outbound lane, with 515 m of route still to go there.
+  const uturn = { coordinates: [at(0, 0), at(0, 300), at(15, 300), at(15, 50)], travelTimeMin: 10 };
+  const end = { lat: at(15, 50)[1], lon: at(15, 50)[0] };
+
+  it("by bike, passing the destination on the outbound lane is not arrival", () => {
+    const s = new NavigationSession(uturn, end, "bike");
+    s.update(fix(0, 0, 0));
+    const passing = s.update(fix(0, 50, 30_000));
+    expect(passing.status).toBe("tracking");
+    expect(passing.remainingM).toBeCloseTo(515, -1);
+    // Riding on through the putar balik and back down the other carriageway.
+    const ride: [number, number][] = [[0, 100], [0, 150], [0, 200], [0, 250], [0, 295], [8, 300], [15, 280],
+                                      [15, 230], [15, 180], [15, 130], [15, 90]];
+    ride.forEach(([e, n], i) => expect(s.update(fix(e, n, 40_000 + i * 10_000)).status).toBe("tracking"));
+    expect(s.update(fix(15, 55, 160_000)).status).toBe("arrived");
+  });
+
+  it("on foot, it is: the user can cross the street", () => {
+    const s = new NavigationSession(uturn, end, "walk");
+    s.update(fix(0, 0, 0));
+    expect(s.update(fix(0, 50, 30_000)).status).toBe("arrived");
+  });
+
+  it("by bike, a destination away from the road is reached off the route near its end", () => {
+    // The route ends at the nearest road node, 63 m from the destination.
+    const s = new NavigationSession({ coordinates: [at(0, 0), at(0, 400)], travelTimeMin: 6 },
+      { lat: at(60, 380)[1], lon: at(60, 380)[0] }, "bike");
+    s.update(fix(0, 360, 0));
+    expect(s.update(fix(50, 380, 20_000)).status).toBe("arrived");
+  });
+
   it("ends at the destination and stops updating", () => {
     const s = session();
     s.update(fix(0, 100, 0));

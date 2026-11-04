@@ -671,7 +671,7 @@ async function startNavigation(role: RouteResult["role"]): Promise<void> {
   }
   nav.role = role;
   const route = navRoute(r.response);
-  const session = new NavigationSession(route, r.request.destination);
+  const session = new NavigationSession(route, r.request.destination, r.request.mode);
   nav.session = session;
   nav.following = true;
   nav.firstFix = true;

@@ -52,8 +52,8 @@ Semua di [`NAV_LIMITS`](../src/frontend/src/navigation.ts).
 | Jeda rute ulang | ≥ 30 s antar permintaan, dihitung sejak permintaan dikirim (juga bila kemudian dibatalkan), satu permintaan pada satu waktu | Gateway membatasi `/v1/routes` 20 per menit per IP (Tabel 3.15); navigasi memakai paling banyak 2 per menit, juga saat akurasi naik-turun di sekitar batas sinyal lemah |
 | Setelah gagal | Jeda berlipat: 30, 60, 120 s (maksimal), atau `Retry-After` bila lebih lama | Server yang bermasalah tidak dibanjiri |
 | Kembali ke rute | Fix akurat yang kembali berada di rute membatalkan permintaan rute ulang yang masih berjalan; fix lemah tidak | Tidak ada rute baru yang tidak diperlukan, dan sinyal lemah tidak dianggap kembali ke rute |
-| Tiba | ≤ 25 m dari tujuan, atau ≤ 25 m sebelum ujung rute saat berada di rute; juga bila rute baru berakhir di posisi pengguna | Pelacakan dan *wake lock* langsung dihentikan, pesan lain diganti pesan tiba |
-| Proyeksi ke rute | Tidak mundur lebih dari 50 m, dan tidak maju lebih dari 60 m + 10 m per detik sejak fix terakhir di rute | Rute yang melewati jalan yang sama dua kali, atau kembali di jalur seberang setelah putar balik, tidak "melompat" ke lintasan lain; jeda fix (sinyal hilang) tidak menahan kemajuan |
+| Tiba | ≤ 25 m sebelum ujung rute saat berada di rute, atau ≤ 25 m dari tujuan. Untuk sepeda, yang kedua hanya berlaku bila sisa rute ≤ jarak ujung rute ke tujuan + 25 m; juga bila rute baru berakhir di posisi pengguna | Pejalan kaki dapat menyeberang ke tujuan di sisi jalan; pesepeda yang melewati tujuan di jalur seberang masih harus putar balik, jadi navigasinya tidak berakhir terlalu awal. Pelacakan dan *wake lock* langsung dihentikan, pesan lain diganti pesan tiba |
+| Proyeksi ke rute | Tidak mundur lebih dari 50 m; maju paling jauh 60 m. Hanya bila posisi berada di luar rute dalam jendela itu, jendela diperluas sampai 60 m + 10 m per detik sejak fix terakhir di rute (tanpa batas sebelum fix pertama) | Rute yang melewati jalan yang sama dua kali, atau kembali di jalur seberang setelah putar balik, tidak "melompat" ke lintasan lain, juga pada fix pertama dan setelah jeda; pengguna yang mulai di tengah rute atau benar-benar bergerak selama jeda tetap ditemukan |
 | Belokan | Tetap menjadi petunjuk sampai terlewati 5 m | Petunjuk tidak berganti sebelum pengguna berbelok |
 
 ## Data posisi (PNF-06, RI-09)
@@ -81,7 +81,9 @@ Semua di [`NAV_LIMITS`](../src/frontend/src/navigation.ts).
 | Rute ulang gagal (timeout 12 s) | Rute lama tetap tampil, pesan galat, dicoba lagi tepat setelah 30 s dan berhasil | Browser; log mock: 1 gagal, 1 berhasil dalam ±45 s keluar rute |
 | Rute ulang berturut-turut | Jeda 30 → 60 → 120 s, `Retry-After` dihormati | Unit |
 | Rute ulang dibatalkan | Tetap memakai jeda 30 s | Unit |
-| Putar balik, jalur seberang 15 m | GPS yang melenceng ke jalur seberang tidak melompatkan kemajuan, tidak memicu keluar rute | Unit |
+| Putar balik, jalur seberang 15 m | GPS yang melenceng ke jalur seberang tidak melompatkan kemajuan (juga pada fix pertama dan setelah jeda 60 s), tidak memicu keluar rute | Unit |
+| Tujuan di sisi jalur berangkat, rute masih putar balik | Sepeda: belum tiba sampai putar balik dilalui; jalan kaki: tiba | Unit |
+| Tujuan jauh dari jalan (sepeda) | Tiba saat mendekati tujuan di luar rute dekat ujung rute | Unit |
 | Fix hilang 40 s | Kemajuan menyusul posisi berikutnya, tetap di rute | Unit |
 | Satu fix melenceng | Tidak dianggap keluar rute | Unit |
 | Sinyal lemah (akurasi ±120 m) | Lingkar akurasi, pesan "Sinyal GPS lemah", keluar rute dan tiba tidak dinilai | Unit, Browser, [`03`](ti-se-13/03-sinyal-lemah.jpg) |

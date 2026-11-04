@@ -12,7 +12,7 @@ import {
   type Maneuver,
   type RouteLine,
 } from "./nav-geometry";
-import type { Point } from "./types";
+import type { Mode, Point } from "./types";
 
 /** One position from the Geolocation API (or the development simulator). */
 export interface Fix extends Point {
@@ -38,7 +38,8 @@ export const NAV_LIMITS = {
   offRouteM: 40,
   /** …for this long counts as having left the route. One stray fix never does. */
   offRouteS: 10,
-  /** Within this of the destination is arrival. */
+  /** Within this of the destination is arrival. Cycling also needs the route to be nearly done
+   *  (see NavigationSession), walking does not. */
   arriveM: 25,
   /** At least this long between two requests for a new route. */
   rerouteIntervalS: 30,
@@ -46,9 +47,11 @@ export const NAV_LIMITS = {
   rerouteMaxIntervalS: 120,
   /** How far back along the route a position may snap. */
   backtrackM: 50,
-  /** How far ahead it may snap: this, plus maxSpeedMps for each second since the last fix on the
-   *  route. GPS noise near a later pass of the route (the other carriageway after a putar balik)
-   *  then cannot jump progress ahead, while a gap in the fixes does not hold it back. */
+  /** How far ahead it may snap. A position off the route within that is snapped again, up to
+   *  aheadM + maxSpeedMps for each second since the last fix on the route (no limit before the
+   *  first one). GPS noise near a later pass of the route (the other carriageway after a putar
+   *  balik) then cannot jump progress ahead, on the first fix or after a gap, while a user who
+   *  really moved on (or starts mid-route) is still found. */
   aheadM: 60,
   maxSpeedMps: 10,
   /** A turn stays the next instruction until the position is this far past it. */
@@ -79,6 +82,8 @@ export class NavigationSession {
   private progress = 0;
   /** Time of the fix that last moved `progress`; null until the first fix on this route. */
   private progressAt: number | null = null;
+  /** Distance from the route's end to the destination (the route ends at the nearest road node). */
+  private endGapM = 0;
   private last: Fix | null = null;
   private offSince: number | null = null;
   private arrived = false;
@@ -87,9 +92,12 @@ export class NavigationSession {
   private failures = 0;
   snapshot: NavSnapshot;
 
+  /** `mode` decides arrival: on foot the user can cross to a destination beside the route, by bike
+   *  the route may still have a U-turn to make, so arrival also needs the route to be nearly done. */
   constructor(
     route: NavRoute,
     readonly destination: Point,
+    readonly mode: Mode = "walk",
     private readonly limits: NavLimits = NAV_LIMITS,
   ) {
     this.setRoute(route);
@@ -121,6 +129,8 @@ export class NavigationSession {
     this.pace = this.line.length > 0 ? (route.travelTimeMin * 60) / this.line.length : 0;
     this.progress = 0;
     this.progressAt = null;
+    const end = this.line.points[this.line.points.length - 1];
+    this.endGapM = end ? distanceM(end, this.destination) : 0;
   }
 
   update(fix: Fix): NavSnapshot {
@@ -129,10 +139,17 @@ export class NavigationSession {
     const previous = this.last;
     this.last = fix;
     const weak = !(fix.accuracyM <= L.weakAccuracyM);
-    const ahead = this.progressAt === null ? Infinity
-      : this.progress + L.aheadM + L.maxSpeedMps * Math.max(0, (fix.time - this.progressAt) / 1000);
-    const snap = snapToLine(this.line, fix, this.progress - L.backtrackM, ahead);
     const threshold = Math.max(L.offRouteM, fix.accuracyM);
+    const back = this.progress - L.backtrackM;
+    let snap = snapToLine(this.line, fix, back, this.progress + L.aheadM);
+    if (snap.offsetM > threshold) {
+      // Off the route near the last position: the user may have moved on during a gap, or
+      // started mid-route. Only then is the rest of the reachable route considered.
+      const reach = this.progressAt === null ? Infinity
+        : this.progress + L.aheadM + L.maxSpeedMps * Math.max(0, (fix.time - this.progressAt) / 1000);
+      const farther = snapToLine(this.line, fix, back, reach);
+      if (farther.offsetM <= threshold) snap = farther;
+    }
     const onRoute = snap.offsetM <= threshold;
 
     if (!weak) {
@@ -143,8 +160,10 @@ export class NavigationSession {
       } else if (this.offSince === null) {
         this.offSince = fix.time;
       }
-      const toDestination = distanceM(fix, this.destination);
-      if (toDestination <= L.arriveM || (onRoute && this.line.length - snap.along <= L.arriveM)) {
+      const remainingM = this.line.length - this.progress;
+      const nearDestination = distanceM(fix, this.destination) <= L.arriveM &&
+        (this.mode === "walk" || remainingM <= this.endGapM + L.arriveM);
+      if (nearDestination || (onRoute && this.line.length - snap.along <= L.arriveM)) {
         this.arrived = true;
         this.progress = this.line.length;
         return (this.snapshot = this.build("arrived", fix, this.destination, null, 0));
