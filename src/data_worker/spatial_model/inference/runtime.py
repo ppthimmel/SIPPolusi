@@ -1,6 +1,7 @@
 """Worker bridge: registered models, independent fallbacks and input identity."""
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import json
 import logging
@@ -76,12 +77,35 @@ def infer_registered(time_window, ground_truth, spec, settings, inputs=None, res
     return grid, provenance, f"spatial-{identity}", fingerprint.hexdigest()
 
 
-def worker_inputs(conn, time_window, settings, schema="ground_truth"):
-    """Use the same QC/hourly aggregation as the IDW fallback for all 24 hours."""
+@contextlib.contextmanager
+def feature_reader(dsn):
+    """Environmental features for model inference, as a SourceReader.
+
+    SPATIAL_FEATURE_ROOT, when set, names preprocessed files (dataset_processed, for offline
+    runs and reproductions). Otherwise the features come from the live feature store the cycle
+    writes every hour (schema FEATURES_DB_SCHEMA, `features` by default), through
+    StoreSourceReader, which applies the same as-of rules. The Worker image does not ship
+    dataset_processed, so on Railway this is the only source of inputs.
+    """
+    root = os.environ.get("SPATIAL_FEATURE_ROOT")
+    if root:
+        from feature_matrix.sources import SourceReader
+        yield SourceReader(root)
+        return
+    from feature_store.reader import StoreSourceReader
+    from feature_store.store import FeatureStore
+    with FeatureStore.connect(dsn) as store:
+        yield StoreSourceReader(store)
+
+
+def worker_inputs(conn, time_window, settings, schema="ground_truth", reader=None):
+    """Use the same QC/hourly aggregation as the IDW fallback for all 24 hours.
+
+    reader: the environmental feature source (feature_reader); defaults to SPATIAL_FEATURE_ROOT files.
+    """
     from contracts import TimeWindow
     from spatial_model.data.observations import load_ground_truth_window
     from spatial_model.inference.serving import GridInputs
-    from feature_matrix.sources import SourceReader
     history = []
     for offset in range(23, -1, -1):
         start = time_window.start - pd.Timedelta(hours=offset)
@@ -98,4 +122,7 @@ def worker_inputs(conn, time_window, settings, schema="ground_truth"):
         history.append(frame)
     if not history:
         return None
-    return GridInputs(SourceReader(os.environ.get("SPATIAL_FEATURE_ROOT", "dataset_processed")), pd.concat(history, ignore_index=True))
+    if reader is None:
+        from feature_matrix.sources import SourceReader
+        reader = SourceReader(os.environ.get("SPATIAL_FEATURE_ROOT", "dataset_processed"))
+    return GridInputs(reader, pd.concat(history, ignore_index=True))

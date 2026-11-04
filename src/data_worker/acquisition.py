@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import dataclasses
 import logging
 import os
@@ -82,17 +83,19 @@ def _step_downscale_inference(time_window: TimeWindow, config: Config) -> dict:
 
     settings = load_idw_settings()
     artifact_dir = os.environ.get("SPATIAL_ARTIFACT_DIR") or None
-    with psycopg.connect(config.database) as conn:
+    from spatial_model.inference.runtime import feature_reader, worker_inputs
+    with psycopg.connect(config.database) as conn, contextlib.ExitStack() as stack:
         conn.autocommit = True
         ground_truth = load_ground_truth_window(conn, time_window, settings["qc"], config.db_schema)
         graph_version = cache.read_active_graph_version(conn)
         if graph_version is None:
             return {"status": "unavailable", "note": "tidak ada graf road network berstatus active"}
         edges = cache.read_road_edges(conn, graph_version)
-        from spatial_model.inference.runtime import worker_inputs
+        # Features from the live feature store (schema features) unless SPATIAL_FEATURE_ROOT names files.
         try:
-            inputs = worker_inputs(conn, time_window, settings, config.db_schema)
-        except (ValueError, FileNotFoundError, KeyError):
+            reader = stack.enter_context(feature_reader(config.database))
+            inputs = worker_inputs(conn, time_window, settings, config.db_schema, reader=reader)
+        except (ValueError, FileNotFoundError, KeyError, psycopg.Error):
             log.warning("Model input preparation unavailable; use per-pollutant fallback")
             inputs = None
         summary = run_downscale_inference(

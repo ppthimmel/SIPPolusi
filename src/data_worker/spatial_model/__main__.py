@@ -15,6 +15,7 @@ Dari ``src/data_worker``:
 from __future__ import annotations
 
 import argparse
+import contextlib
 import dataclasses
 import datetime as dt
 import json
@@ -47,29 +48,33 @@ def _infer(args: argparse.Namespace) -> int:
         raise SystemExit("DATABASE_URL tidak diatur")
     window = _window(args.window_start)
     settings = load_idw_settings()
-    with psycopg.connect(source_dsn, options="-c default_transaction_read_only=on") as src:
-        ground_truth = load_ground_truth_window(src, window, settings["qc"], args.ground_truth_schema)
-        graph_version = cache.read_active_graph_version(src)
-        if graph_version is None:
-            raise SystemExit("tidak ada graf road network berstatus active")
-        edges = cache.read_road_edges(src, graph_version)
-        from spatial_model.inference.runtime import worker_inputs
+    from spatial_model.inference.runtime import feature_reader, worker_inputs
+    with contextlib.ExitStack() as stack:
+        with psycopg.connect(source_dsn, options="-c default_transaction_read_only=on") as src:
+            ground_truth = load_ground_truth_window(src, window, settings["qc"], args.ground_truth_schema)
+            graph_version = cache.read_active_graph_version(src)
+            if graph_version is None:
+                raise SystemExit("tidak ada graf road network berstatus active")
+            edges = cache.read_road_edges(src, graph_version)
+            # The feature reader stays open through inference, which reads features tile by tile.
+            try:
+                reader = stack.enter_context(feature_reader(source_dsn))
+                inputs = worker_inputs(src, window, settings, args.ground_truth_schema, reader=reader)
+            except (ValueError, FileNotFoundError, KeyError, psycopg.Error):
+                logging.getLogger(__name__).warning("Model inputs unavailable; per-pollutant IDW fallback")
+                inputs = None
+        out = pathlib.Path(args.out)
+        target = None
+        if args.write_cache:
+            target = psycopg.connect(os.environ.get("CACHE_DATABASE_URL") or source_dsn, autocommit=True)
         try:
-            inputs = worker_inputs(src, window, settings, args.ground_truth_schema)
-        except (ValueError, FileNotFoundError, KeyError):
-            logging.getLogger(__name__).warning("Model inputs unavailable; per-pollutant IDW fallback")
-            inputs = None
-    out = pathlib.Path(args.out)
-    target = None
-    if args.write_cache:
-        target = psycopg.connect(os.environ.get("CACHE_DATABASE_URL") or source_dsn, autocommit=True)
-    try:
-        summary = run_downscale_inference(window, ground_truth=ground_truth, edges=edges,
-                                          graph_version=graph_version, conn=target, artifact_dir=out,
-                                          settings=settings, force=args.force, pieces_cache_dir=out / "pieces", inputs=inputs)
-    finally:
-        if target is not None:
-            target.close()
+            summary = run_downscale_inference(window, ground_truth=ground_truth, edges=edges,
+                                              graph_version=graph_version, conn=target, artifact_dir=out,
+                                              settings=settings, force=args.force, pieces_cache_dir=out / "pieces",
+                                              inputs=inputs)
+        finally:
+            if target is not None:
+                target.close()
     print(json.dumps(dataclasses.asdict(summary), indent=2, ensure_ascii=False, default=str))
     return 0 if summary.status in ("complete", "skipped") else 1
 
