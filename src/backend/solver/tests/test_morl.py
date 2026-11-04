@@ -14,29 +14,27 @@ from pathlib import Path
 
 import httpx
 import pytest
+import torch
+from fastapi.testclient import TestClient
 
-torch = pytest.importorskip("torch")
+from osm.app import create_app
+from osm.tests.conftest import VERSION
+from public_api.schemas import RouteFeatureCollection
+from route_model.model_package import PackageError, package_digest, sha256_file
+from route_model.morl.infer import PolicyFailure, PolicyRoute, optimal_weighted_route, save_checkpoint
+from route_model.morl.features import FEATURE_VERSION
+from route_model.morl.packaging import package_policy_set
+from route_model.morl.policy import ActorCritic
+from solver import morl
+from solver.config import SolverSettings
+from solver.morl import MorlSolver, SubgraphRouter
+from solver.orchestrator import solve_route_request
+from solver.paths import shortest_path
+from solver.registry import RegistryClient, RegistryError
 
-from fastapi.testclient import TestClient  # noqa: E402
-
-from osm.app import create_app  # noqa: E402
-from osm.tests.conftest import VERSION  # noqa: E402
-from public_api.schemas import RouteFeatureCollection  # noqa: E402
-from route_model.model_package import PackageError, package_digest, sha256_file  # noqa: E402
-from route_model.morl.infer import PolicyFailure, PolicyRoute, optimal_weighted_route, save_checkpoint  # noqa: E402
-from route_model.morl.features import FEATURE_VERSION  # noqa: E402
-from route_model.morl.packaging import package_policy_set  # noqa: E402
-from route_model.morl.policy import ActorCritic  # noqa: E402
-from solver import morl  # noqa: E402
-from solver.config import SolverSettings  # noqa: E402
-from solver.morl import MorlSolver, SubgraphRouter  # noqa: E402
-from solver.orchestrator import solve_route_request  # noqa: E402
-from solver.paths import shortest_path  # noqa: E402
-from solver.registry import RegistryClient, RegistryError  # noqa: E402
-
-from .biggrid import grid_input  # noqa: E402
-from .conftest import request_body  # noqa: E402
-from .test_geojson import INTERNAL_HINTS, assert_valid_geojson  # noqa: E402
+from .biggrid import grid_input
+from .conftest import request_body
+from .test_geojson import INTERNAL_HINTS, assert_valid_geojson
 
 FAST = dict(budget_ms=4000, response_margin_ms=0, grace_ms=200)
 
