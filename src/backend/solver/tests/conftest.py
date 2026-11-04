@@ -22,6 +22,14 @@ from solver.contract import SolveRequest
 from solver.mock import MockSolver
 
 
+
+def pytest_ignore_collect(collection_path, config):
+    """The cache-flow job (pytest -m cacheflow) installs no PyTorch, and test_morl.py has no cache-flow
+    tests: leave it out there instead of recording a skip, which that job counts as a failure."""
+    if collection_path.name == "test_morl.py" and config.getoption("markexpr") == "cacheflow":
+        return True
+    return None
+
 @pytest.fixture
 def solver_settings() -> SolverSettings:
     return SolverSettings(_env_file=None)

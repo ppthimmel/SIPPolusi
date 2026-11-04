@@ -98,10 +98,13 @@ class SolverReply:
     model_version: str | None
     recommended: tuple[int, ...] = ()
     comparison: tuple[int, ...] = ()
+    # Which model produced the route (MorlSolver: name, version, package_sha256, policy_family,
+    # member_alpha, inference_ms, compatibility); goes to metadata.route_model.
+    details: dict | None = None
 
 
 class RouteSolver(Protocol):
-    """IRouteSolve. Implementations: MockSolver, BaselineSolver, HttpSolver."""
+    """IRouteSolve. Implementations: MockSolver, BaselineSolver, HttpSolver, MorlSolver."""
 
     name: str
 
@@ -186,3 +189,5 @@ class SolveResult:
     context: SolveContext
     notes: list[str] = field(default_factory=list)
     fallback: FallbackInfo | None = None
+    # The route model behind the recommendation, or the one that could not be used (fallback).
+    route_model: dict | None = None

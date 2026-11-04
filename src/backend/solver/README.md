@@ -61,7 +61,53 @@ Dipilih dengan `ROUTE_SOLVER_PROVIDER`; endpoint-nya tidak berubah.
 |---|---|---|
 | `mock` (bawaan) | Deterministik. Pembanding = Dijkstra waktu tempuh; rekomendasi = Dijkstra pada α·τ/T_ref + β·I·τ/E_ref; `route_source: policy`, `model_version: mock-1`. `ROUTE_SOLVER_FAULT` = `timeout`, `error`, `no_route`, atau `invalid` menyuntikkan galat | Pembanding rute deterministik untuk MORL serta pengembangan dan uji integrasi |
 | `baseline` | A* rute tercepat dari `route_model` (TI-AI-07), dijalankan di proses ini pada subgraf dan simpul snap yang sama. `route_source: baseline`, `fallback_reason: policy_unavailable` | Rute nyata sebelum MORL tersedia |
-| `http` | Klien `POST {ROUTE_SOLVER_URL}/internal/v1/solve`, JSON gzip (Kode 3.3) | Layanan Multi-Objective Route Model produksi |
+| `http` | Klien `POST {ROUTE_SOLVER_URL}/internal/v1/solve`, JSON gzip (Kode 3.3) | Layanan Multi-Objective Route Model terpisah |
+| `morl` | *Policy* MORL terdaftar (`morl-route-policy@production`) dimuat di proses ini ([`morl.py`](morl.py)); rute rekomendasi dari *policy*, pembanding = rute tercepat. `model_version: morl-route-policy:<versi>` dan `metadata.route_model` | Railway: MORL sesungguhnya (TI-SE-07b) |
+
+### Penyedia `morl` (TI-SE-07b)
+
+- **Sumber paket.** [`registry.py`](registry.py) memakai REST MLflow lewat *private networking*
+  (`MLFLOW_TRACKING_URI` saja, tanpa kredensial S3 dan tanpa paket `mlflow`): alias atau nomor versi,
+  daftar berkas dan unduhan lewat *artifact proxy*. Versi wajib bertag `package_sha256`. Paket diunduh ke
+  direktori sementara, diperiksa (hash setiap berkas, tidak ada berkas tak terdaftar, SHA-256
+  `package.json` = tag), baru dipindah ke `ROUTE_SOLVER_MODEL_CACHE_DIR/<nama>/<versi>/<sha256>`. Paket di
+  *cache* diperiksa ulang sebelum dipakai; yang berubah, terpotong, atau tidak terbaca dihapus dan langsung
+  diunduh lagi.
+  `ROUTE_SOLVER_MODEL_DIR` memuat paket lokal.
+- **Pemuatan di latar belakang.** *Start-up* tidak menunggu registry (registry tidur bila tidak ada lalu lintas,
+  10–30 detik untuk bangun). Setiap panggilan HTTP dibatasi `ROUTE_SOLVER_REGISTRY_TIMEOUT_S` dan
+  `ROUTE_SOLVER_REGISTRY_ATTEMPTS`. Kegagalan yang dapat pulih sendiri (timeout, 5xx saat registry bangun, 408, 429) diulang
+  dengan jeda berlipat sampai `ROUTE_SOLVER_MODEL_RETRY_MAX_S`. Kegagalan lain (4xx, tag hilang atau salah, paket
+  berubah, family tanpa loader, kontrak mayor lain) menghentikan percobaan dengan status `unavailable` dan alasannya
+  di log: perlu perubahan di registry lalu *redeploy*, dan registry tidak terus dipanggil. Pemuatan berjalan di
+  thread *daemon* dan berhenti saat *shutdown*, jadi registry yang tidur tidak menahan *deploy*. Selama belum
+  termuat, rute dilayani fallback A* bertanda `model_unavailable`, dan `/health/ready` melaporkan `route_model`
+  (`loading`, `ready`, `rejected`, `unavailable`) tanpa memengaruhi kesiapan. Versi yang sudah termuat dipakai
+  sampai *restart*, kecuali saat graf berganti (lihat bawah).
+- **Loader dari `policy_family`.** `package.json` `inference.policy_family` memilih loader di `morl.LOADERS`
+  (`fixed_preference_set` = set TI-AI-09 PIC B). Family tanpa loader tidak dimuat. *Policy* PIC A cukup
+  ditambahkan sebagai entri baru.
+- **Per permintaan.** Kontrak paket diperiksa terhadap `graph_version` permintaan dan `CONTRACT_VERSION`
+  (`require_compatible`): ditolak = fallback `model_unavailable` dan status `rejected`. `/health/ready` juga
+  memeriksa graf aktif, jadi status itu terlihat sebelum ada permintaan. Selama `rejected`, alias di registry
+  di-*resolve* lagi segera lalu setiap `ROUTE_SOLVER_MODEL_RECHECK_S` (bawaan 15 menit), juga setelah registry
+  gagal, sehingga paket untuk graf baru terpakai tanpa *redeploy*, kapan pun didaftarkan. Setiap pemeriksaan dapat
+  membangunkan registry, karena itu jedanya lambat dan hanya berjalan selama `rejected`. *Flagged* dicatat di log
+  dan `route_model.compatibility` rute yang dilayani; pada fallback field itu `null`. `lineage.upstream_model` (model spasial
+  asal medan pelatihan) tidak diperiksa: cache polusi menyimpan `model_version` gabungan per time window, bukan
+  SHA-256 bundel terdaftar, dan paket saat ini tidak mencatatnya; bila tercatat, nilainya ditulis di log saat
+  pemuatan. Moda yang berbeda dari moda pelatihan (`contract.mode`, set saat ini `bike`)
+  juga fallback `model_unavailable`. Dekode berjalan di thread pekerja, paling banyak
+  `ROUTE_SOLVER_MODEL_CONCURRENCY` sekaligus, dengan sisa `deadline_ms` setelah menunggu giliran. Permintaan yang
+  dibatalkan menghentikan dekodenya di langkah berikutnya dan baru melepas gilirannya setelah itu. Rute tercepat
+  dicari sekali dan dipakai sebagai pembanding sekaligus acuan dekoder;
+  `PolicyFailure` `timeout` = `model_timeout`, `dead_end`/`step_limit` = `model_no_route`. Rute *policy*
+  tetap diperiksa orkestrator (`trace_route`), jadi kegagalan tidak pernah tampil sebagai rute sukses.
+- **`metadata.route_model`:** `name`, `version`, `package_sha256`, `package_version`, `policy_family`,
+  `status`, `member_alpha` (anggota set yang melayani), `inference_ms` (dekode *policy* saja), `compatibility`. Saat fallback, model
+  yang tidak dapat dipakai tetap disebut dengan `member_alpha`/`inference_ms` null.
+- **Sumber daya.** PyTorch CPU (`torch==2.15.0`) dipasang di `osm/Dockerfile`. Paket set PIC B 2 MB; memuatnya
+  ±1,4 s dan RSS proses ±210 MB. Inferensi pada subgraf nyata Jakarta 45–165 ms (15 permintaan sepeda).
 
 ## Batas waktu dan pembatalan
 
@@ -95,8 +141,17 @@ Penyedia `http` tidak memakai thread: permintaan HTTP dibatalkan langsung oleh `
 
 | Variabel | Bawaan | Keterangan |
 |---|---|---|
-| `ROUTE_SOLVER_PROVIDER` | `mock` | `mock`, `baseline`, atau `http` |
+| `ROUTE_SOLVER_PROVIDER` | `mock` | `mock`, `baseline`, `http`, atau `morl` |
 | `ROUTE_SOLVER_URL` | – | Wajib untuk `http` |
+| `MLFLOW_TRACKING_URI` | – | `morl`: registry (Railway: `http://modelregistry.railway.internal:5000`); `ROUTE_SOLVER_REGISTRY_URL` menimpanya |
+| `ROUTE_SOLVER_MODEL_NAME` | `morl-route-policy` | `morl`: nama model di registry |
+| `ROUTE_SOLVER_MODEL_SELECTOR` | `production` | `morl`: alias atau nomor versi |
+| `ROUTE_SOLVER_MODEL_DIR` | – | `morl`: paket lokal, menggantikan registry |
+| `ROUTE_SOLVER_MODEL_CACHE_DIR` | `/tmp/sippolusi/route-models` | `morl`: *cache* paket terverifikasi |
+| `ROUTE_SOLVER_REGISTRY_TIMEOUT_S` / `_ATTEMPTS` | `30` / `3` | `morl`: batas per panggilan registry dan jumlah percobaan |
+| `ROUTE_SOLVER_MODEL_RETRY_INITIAL_S` / `_MAX_S` | `10` / `300` | `morl`: jeda awal dan maksimum pengulangan pemuatan yang gagal |
+| `ROUTE_SOLVER_MODEL_RECHECK_S` | `900` | `morl`: jeda pemeriksaan registry selama paket ditolak oleh graf aktif |
+| `ROUTE_SOLVER_TORCH_THREADS` / `ROUTE_SOLVER_MODEL_CONCURRENCY` | `2` / `2` | `morl`: thread PyTorch dan dekode paralel |
 | `ROUTE_SOLVER_FAULT` | `none` | Khusus `mock`: `timeout`, `error`, `no_route`, `invalid` |
 | `ROUTE_SOLVER_BUDGET_MS` | `8000` | Batas latensi Backend |
 | `ROUTE_SOLVER_RESPONSE_MARGIN_MS` | `500` | Waktu yang disisihkan untuk menyusun respons |

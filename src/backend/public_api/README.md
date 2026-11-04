@@ -1,6 +1,6 @@
 # `public_api`: API publik SIPPolusi (TI-SE-08)
 
-Kontrak lintas komponen versi 1.0.0 (TI-SE-01), skema JSON dan pemetaan cache:
+Kontrak lintas komponen versi 1.1.0 (TI-SE-01), skema JSON dan pemetaan cache:
 [`data-contracts-TI-SE-01.md`](../../../docs/software/data-contracts-TI-SE-01.md).
 
 Endpoint yang dipakai Frontend lewat API Gateway, dengan kontrak yang stabil dan

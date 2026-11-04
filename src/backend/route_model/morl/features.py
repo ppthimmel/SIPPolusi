@@ -62,14 +62,27 @@ class EpisodeContext:
         self.initial_distance_m = max(self.initial_distance_m, 1.0)
 
 
-@lru_cache(maxsize=2)
 def reverse_arcs(router):
-    """node -> [(predecessor, seconds, edge_id)]; built once per router."""
+    """node -> [(predecessor, seconds, edge_id)]; built once per router.
+
+    A router that is built per request (the Backend's SubgraphRouter) carries its own map as
+    `reverse_arcs`, so the cache below does not keep finished requests' subgraphs alive.
+    """
+    own = getattr(router, "reverse_arcs", None)
+    return own if own is not None else _cached_reverse_arcs(router)
+
+
+def build_reverse_arcs(router) -> dict:
     reverse = {}
     for u, arcs in router.arcs.items():
         for v, seconds, edge_id, _ in arcs:
             reverse.setdefault(v, []).append((u, seconds, edge_id))
     return reverse
+
+
+@lru_cache(maxsize=2)
+def _cached_reverse_arcs(router):
+    return build_reverse_arcs(router)
 
 
 def cost_to_go(router, goal, start, cost_of):

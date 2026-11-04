@@ -97,6 +97,7 @@ def build_geojson_response(result: SolveResult) -> dict[str, Any]:
             "missing_edge_count": c.missing_edge_count,
             "graph_version": c.graph_version,
             "model_version": {"downscaling": c.pollution_model_version, "route_policy": result.model_version},
+            "route_model": result.route_model,
             "estimation": estimation_summary(c.estimation_sources, c.downscaling_fallback),
             "solver": result.solver,
             "comparison": {
