@@ -14,7 +14,8 @@ Otomatisasinya dilacak di #91.
    Muat model spasial membutuhkan Python 3.12 dan `torch-geometric`.
 2. **Unggah foldernya ke *bucket*** `minio` (environment *development*), misalnya ke
    `packaged/spatial/pm25/<model_version>/` atau `packaged/route/<model_version>/`. Cara termudah: tab **Files**
-   pada *bucket*. Jangan menempelkan kunci S3 di *chat* atau repositori. Unggah folder apa adanya.
+   pada *bucket*. Awalan pada langkah 4 harus diakhiri `/` (skrip menolaknya bila tidak), dan "folder" kosong yang
+   dibuat tab Files dilewati. Jangan menempelkan kunci S3 di *chat* atau repositori. Unggah folder apa adanya.
 3. **Bangunkan registry** (ia *sleeping* bila tidak ada lalu lintas; Console dan SSH tidak membangunkannya). Di Console
    layanan `cache-api`:
    `curl -m 90 -sS -o /dev/null -w "%{http_code}\n" http://modelregistry.railway.internal:5000/health`

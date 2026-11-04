@@ -24,6 +24,7 @@ import shutil
 import tempfile
 
 PREFIX = os.environ["REGISTER_PREFIX"]
+assert PREFIX.endswith("/"), "REGISTER_PREFIX must end with /"  # else it also matches sibling folders and keys start with /
 ALIASES = [a.strip() for a in os.environ.get("REGISTER_ALIASES", "candidate").split(",") if a.strip()]
 NAMES = {"spatial-downscaling-pm25", "spatial-downscaling-no2", "morl-route-policy"}
 sha = lambda p: hashlib.sha256(pathlib.Path(p).read_bytes()).hexdigest()
@@ -42,6 +43,8 @@ else:
     n = 0
     for page in s3.get_paginator("list_objects_v2").paginate(Bucket=bucket, Prefix=PREFIX):
         for obj in page.get("Contents", []):
+            if obj["Key"].endswith("/"):  # folder placeholder made by the bucket's Files tab (0 bytes)
+                continue
             dest = root / obj["Key"][len(PREFIX):]
             dest.parent.mkdir(parents=True, exist_ok=True)
             s3.download_file(bucket, obj["Key"], str(dest))
