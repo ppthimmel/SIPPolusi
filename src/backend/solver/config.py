@@ -45,6 +45,9 @@ class SolverSettings(BaseSettings):
     # A failed load is retried in the background, doubling up to model_retry_max_s.
     model_retry_initial_s: float = Field(10.0, gt=0)
     model_retry_max_s: float = Field(300.0, gt=0)
+    # While the active graph rejects the loaded package, the registry is asked again this often for
+    # one it accepts. Each check may wake the (sleeping) registry, so it is slow.
+    model_recheck_s: float = Field(900.0, gt=0)
     torch_threads: int = Field(2, ge=1)
     model_concurrency: int = Field(2, ge=1)
     # Mock only: make every call fail in a given way (FAULT_INJECTION, IT-K-04).

@@ -176,7 +176,8 @@ async def test_unusable_model_falls_back_labelled(tmp_path, osm_repo, pollution_
     # A package the active graph rejects is reported as such, not as ready.
     assert result.route_model["status"] == {"not_loaded": "unavailable", "other_graph": "rejected",
                                             "other_mode": "ready"}[case]
-    assert result.route_model["member_alpha"] is None
+    # Fields that describe a served route are null on a fallback, as the schema says.
+    assert result.route_model["member_alpha"] is None and result.route_model["compatibility"] is None
     assert not any(hint in " ".join(result.notes) for hint in INTERNAL_HINTS)
     await solver.close()
 
@@ -251,8 +252,9 @@ def test_registry_url_comes_from_mlflow_tracking_uri(monkeypatch):
 class FakeRegistry:
     """MLflow REST and artifact proxy over one package directory."""
 
-    def __init__(self, package: Path, tag=None, source="mlflow-artifacts:/2/run123/artifacts/package", fail_first=0):
-        self.package, self.source, self.fail_first = package, source, fail_first
+    def __init__(self, package: Path, tag=None, source="mlflow-artifacts:/2/run123/artifacts/package", fail_first=0,
+                 fail_status=503):
+        self.package, self.source, self.fail_first, self.fail_status = package, source, fail_first, fail_status
         self.tag = package_digest(package) if tag is None else tag
         self.requests: list[str] = []
 
@@ -260,7 +262,7 @@ class FakeRegistry:
         self.requests.append(request.url.path)
         if self.fail_first:
             self.fail_first -= 1
-            return httpx.Response(503)
+            return httpx.Response(self.fail_status)
         path = request.url.path
         if path == "/api/2.0/mlflow/registered-models/alias":
             assert request.url.params["name"] == "morl-route-policy"
@@ -316,14 +318,19 @@ def test_registry_retries_a_waking_registry_but_not_forever(tmp_path):
         FakeRegistry(package, fail_first=5).client(attempts=3).resolve("morl-route-policy", "production", tmp_path / "b")
 
 
-def test_cached_package_altered_on_disk_is_discarded(tmp_path):
+@pytest.mark.parametrize("damage", ["altered file", "truncated package.json"])
+def test_cached_package_damaged_on_disk_is_downloaded_again(tmp_path, damage):
     package = build_package(tmp_path / "src")
     resolved = FakeRegistry(package).client().resolve("morl-route-policy", "production", tmp_path / "cache")
-    (resolved.directory / "od_pairs.json").write_text("{}tampered")
-    with pytest.raises(PackageError):
-        FakeRegistry(package).client().resolve("morl-route-policy", "production", tmp_path / "cache")
-    assert not resolved.directory.exists()
-    assert FakeRegistry(package).client().resolve("morl-route-policy", "production", tmp_path / "cache").directory.exists()
+    if damage == "altered file":
+        (resolved.directory / "od_pairs.json").write_text("{}tampered")
+    else:
+        manifest = resolved.directory / "package.json"
+        manifest.write_text(manifest.read_text()[:100])
+    registry = FakeRegistry(package)
+    again = registry.client().resolve("morl-route-policy", "production", tmp_path / "cache")
+    assert again.directory == resolved.directory and package_digest(again.directory) == package_digest(package)
+    assert registry.requests.count("/api/2.0/mlflow-artifacts/artifacts") >= 1  # fetched again, not reused
 
 
 async def test_solver_loads_from_the_registry(tmp_path, osm_repo, pollution_repo, settings, oracle_family):
@@ -355,51 +362,99 @@ async def test_permanent_load_failure_is_not_retried(tmp_path, monkeypatch, erro
     assert attempts == [1] and solver.state == "unavailable"
 
 
-async def test_graph_change_rejects_and_resolves_the_registry_once(tmp_path, osm_repo, pollution_repo, settings,
-                                                                     oracle_family):
-    """The active graph moves on: the package is rejected and reported, and the alias is resolved again once."""
+def registry_solver(tmp_path, registry, **kw) -> MorlSolver:
+    return MorlSolver(morl_settings(registry_url="http://registry:5000", model_cache_dir=str(tmp_path / "cache"),
+                                    registry_attempts=1, **kw),
+                      data_contracts_version="1.0.0", registry_transport=httpx.MockTransport(registry.handler))
+
+
+async def until(condition, seconds=10):
+    deadline = time.perf_counter() + seconds
+    while not condition():
+        assert time.perf_counter() < deadline, "condition not reached"
+        await asyncio.sleep(0.01)
+
+
+async def test_graph_change_is_reported_and_rechecked_until_a_package_arrives(tmp_path, osm_repo, pollution_repo,
+                                                                              settings, oracle_family):
+    """The active graph moves on, and the package for it is registered only later: it is still picked up."""
     registry = FakeRegistry(build_package(tmp_path / "old", graph="jakarta-old", family=oracle_family))
-    solver = MorlSolver(morl_settings(registry_url="http://registry:5000", model_cache_dir=str(tmp_path / "cache"),
-                                      registry_attempts=1),
-                        data_contracts_version="1.0.0", registry_transport=httpx.MockTransport(registry.handler))
+    solver = registry_solver(tmp_path, registry, model_recheck_s=0.05)
     assert await solver.load_once()
     first = await solve(solver, osm_repo, pollution_repo, settings)
     assert (first.route_source, first.fallback_reason, first.route_model["status"]) == (
         "baseline", "model_unavailable", "rejected")
-    await asyncio.wait_for(solver._recheck, 30)
-    lookups = registry.requests.count("/api/2.0/mlflow/registered-models/alias")
-    assert lookups == 2 and solver.state == "rejected"  # the registry still serves the old package
-    await solve(solver, osm_repo, pollution_repo, settings)
-    assert registry.requests.count("/api/2.0/mlflow/registered-models/alias") == lookups  # once per graph
+    await until(lambda: registry.requests.count("/api/2.0/mlflow/registered-models/alias") >= 3)
+    assert solver.state == "rejected"  # the registry still serves the old package, checked again and again
+    new = build_package(tmp_path / "new", family=oracle_family)
+    registry.package, registry.tag = new, package_digest(new)  # registered after the graph change
+    await until(lambda: solver.state == "ready")
+    result = await solve(solver, osm_repo, pollution_repo, settings)
+    assert result.route_source == "policy" and result.route_model["package_sha256"] == package_digest(new)
     await solver.close()
 
 
 async def test_package_for_the_new_graph_is_picked_up_without_a_redeploy(tmp_path, osm_repo, pollution_repo, settings,
                                                                           oracle_family):
     registry = FakeRegistry(build_package(tmp_path / "old", graph="jakarta-old", family=oracle_family))
-    solver = MorlSolver(morl_settings(registry_url="http://registry:5000", model_cache_dir=str(tmp_path / "cache"),
-                                      registry_attempts=1),
-                        data_contracts_version="1.0.0", registry_transport=httpx.MockTransport(registry.handler))
+    solver = registry_solver(tmp_path, registry)
     assert await solver.load_once()
     new = build_package(tmp_path / "new", family=oracle_family)  # registered for the active graph
     registry.package, registry.tag = new, package_digest(new)
     assert (await solve(solver, osm_repo, pollution_repo, settings)).route_source == "baseline"
-    await asyncio.wait_for(solver._recheck, 30)
-    assert solver.state == "ready"
+    await until(lambda: solver.state == "ready")
     result = await solve(solver, osm_repo, pollution_repo, settings)
     assert result.route_source == "policy" and result.route_model["package_sha256"] == package_digest(new)
     await solver.close()
 
 
-def test_corrupt_cached_manifest_is_discarded(tmp_path):
+async def test_registry_failure_during_a_recheck_is_tried_again(tmp_path, osm_repo, pollution_repo, settings,
+                                                                oracle_family):
+    registry = FakeRegistry(build_package(tmp_path / "old", graph="jakarta-old", family=oracle_family))
+    solver = registry_solver(tmp_path, registry, model_recheck_s=0.05)
+    assert await solver.load_once()
+    new = build_package(tmp_path / "new", family=oracle_family)
+    registry.package, registry.tag, registry.fail_first = new, package_digest(new), 1  # one 503 on the re-check
+    await solve(solver, osm_repo, pollution_repo, settings)
+    await until(lambda: solver.state == "ready")
+    await solver.close()
+
+
+async def test_readiness_reports_a_rejected_package_before_any_request(tmp_path, osm_repo, pollution_repo, settings,
+                                                                       oracle_family):
+    registry = FakeRegistry(build_package(tmp_path / "old", graph="jakarta-old", family=oracle_family))
+    solver = registry_solver(tmp_path, registry, model_recheck_s=60)
+    assert await solver.load_once()
+    app = create_app(repository=osm_repo, settings=settings, pollution_repository=pollution_repo, solver=solver,
+                     solver_settings=solver.settings)
+    with TestClient(app) as client:
+        ready = client.get("/health/ready").json()
+    assert ready["checks"]["route_model"] == "rejected"
+
+
+async def test_corrupt_cached_package_is_downloaded_again_by_the_load_loop(tmp_path):
     package = build_package(tmp_path / "src")
-    resolved = FakeRegistry(package).client().resolve("morl-route-policy", "production", tmp_path / "cache")
+    registry = FakeRegistry(package)
+    resolved = registry.client().resolve("morl-route-policy", "production", tmp_path / "cache")
     manifest = resolved.directory / "package.json"
-    manifest.write_text(manifest.read_text()[:100])  # truncated
-    with pytest.raises(ValueError):
-        FakeRegistry(package).client().resolve("morl-route-policy", "production", tmp_path / "cache")
-    assert not resolved.directory.exists()
-    assert FakeRegistry(package).client().resolve("morl-route-policy", "production", tmp_path / "cache").directory.exists()
+    manifest.write_text(manifest.read_text()[:100])  # truncated on disk
+    solver = registry_solver(tmp_path, registry)
+    await solver.start()
+    await asyncio.wait_for(solver._task, 30)
+    assert solver.state == "ready"
+    assert package_digest(resolved.directory) == package_digest(package)  # downloaded again in place
+    await solver.close()
+
+
+@pytest.mark.parametrize("status", [408, 429])
+def test_temporary_client_errors_are_retried(tmp_path, status):
+    package = build_package(tmp_path / "src")
+    registry = FakeRegistry(package, fail_first=1, fail_status=status)
+    assert registry.client(attempts=2).resolve("morl-route-policy", "production", tmp_path / "cache").version == "1"
+    with pytest.raises(RegistryError) as error:
+        FakeRegistry(package, fail_first=1, fail_status=404).client(attempts=2).resolve(
+            "morl-route-policy", "production", tmp_path / "other")
+    assert error.value.retryable is False
 
 
 def slow_family(monkeypatch, seconds, record):

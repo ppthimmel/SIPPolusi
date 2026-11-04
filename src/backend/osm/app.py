@@ -196,9 +196,14 @@ def create_app(
             checks.update(database="unavailable", graph="unknown", pollution="unknown")
         else:
             try:
-                await repo.get_active_version()
+                graph_version = (await repo.get_active_version()).version
             except CacheUnavailable as exc:
                 checks["graph"] = "empty" if exc.reason == CacheUnavailable.CACHE_EMPTY else "unavailable"
+            else:
+                # A route model the active graph rejects shows here before any request is routed.
+                observe = getattr(app.state.route_solver, "observe_graph", None)
+                if observe is not None:
+                    observe(graph_version)
             pollution: PollutionRepository | None = app.state.pollution_repository
             if pollution is not None:
                 try:

@@ -17,9 +17,11 @@ sleeping registry never delays shutdown.
 
 Per request:
     contract  package graph_version and data contract major against the request's graph
-              (route_model.model_package.require_compatible). Rejected -> model_unavailable,
-              status "rejected", and the registry alias is resolved once more for that graph
-              (a package for a new graph is picked up without a redeploy)
+              (route_model.model_package.require_compatible). Rejected -> model_unavailable and
+              status "rejected". While rejected, the registry alias is resolved again every
+              ROUTE_SOLVER_MODEL_RECHECK_S (first at once), so a package for the new graph is picked
+              up without a redeploy, whenever it is registered. /health/ready checks the active
+              graph too, so a mismatch shows before the first request
     mode      the travel mode the policy was trained for; another mode -> model_unavailable
     decode    nearest-alpha member, greedy decoding on the planner's subgraph within what is
               left of deadline_ms after waiting for a decode slot. PolicyFailure timeout ->
@@ -243,8 +245,8 @@ class MorlSolver:
         self._loaded: _Loaded | None = None
         self._task: asyncio.Task | None = None
         self._recheck: asyncio.Task | None = None
-        self._rechecked_graphs: set[str] = set()
-        self._graph: str | None = None    # graph of the latest request
+        self._graph: str | None = None    # the active graph, from the latest request or readiness check
+        self._reported: set[tuple[str, str]] = set()  # (package, graph) rejections already logged
         self._stop = threading.Event()
         self._registry_transport = registry_transport  # tests inject httpx.MockTransport
         self._slots = asyncio.Semaphore(max(1, settings.model_concurrency))
@@ -310,21 +312,27 @@ class MorlSolver:
             await asyncio.sleep(delay)
             delay = min(delay * 2, self.settings.model_retry_max_s)
 
-    async def _recheck_for_graph(self, graph_version: str) -> None:
-        """Resolve the alias once more after the active graph rejected the loaded package."""
-        loaded, exc = await self._attempt_load()
-        if loaded is None:
-            self._log_failure(exc, False)
-            return
-        try:
-            require_compatible(loaded.manifest, self._runtime(graph_version))
-        except PackageIncompatible as incompatible:
-            logger.warning("route_model_contract status=rejected model=%s graph_version=%s reasons=%s "
-                           "(registry has no package for this graph)", loaded.identity, graph_version,
-                           incompatible.reasons)
-            return
-        self._loaded, self.state = loaded, "ready"
-        logger.info("route_model_reload outcome=ok model=%s graph_version=%s", loaded.identity, graph_version)
+    async def _recheck_while_rejected(self) -> None:
+        """Resolve the alias again, at once and then every model_recheck_s, until the registry holds a
+        package the active graph accepts (or the graph returns to the loaded package's)."""
+        while self.state == "rejected" and not self._stop.is_set():
+            graph = self._graph
+            loaded, exc = await self._attempt_load()
+            if loaded is None:
+                self._log_failure(exc, True)
+            elif graph is not None:
+                try:
+                    require_compatible(loaded.manifest, self._runtime(graph))
+                except PackageIncompatible as incompatible:
+                    logger.info("route_model_recheck model=%s graph_version=%s: no package for this graph yet (%s); "
+                                "next check in %.0f s", loaded.identity, graph, "; ".join(incompatible.reasons),
+                                self.settings.model_recheck_s)
+                else:
+                    if self.state == "rejected":
+                        self._loaded, self.state = loaded, "ready"
+                        logger.info("route_model_reload outcome=ok model=%s graph_version=%s", loaded.identity, graph)
+                    return
+            await asyncio.sleep(self.settings.model_recheck_s)
 
     async def start(self) -> None:
         """Load in the background; requests are answered by the fallback until it is ready."""
@@ -339,10 +347,20 @@ class MorlSolver:
                 await asyncio.gather(task, return_exceptions=True)
         self._task = self._recheck = None
 
+    def observe_graph(self, graph_version: str) -> None:
+        """The active graph, from the readiness check: a package it rejects is reported (and re-checked)
+        before any request arrives."""
+        self._graph = graph_version
+        if self._loaded is not None:
+            try:
+                self._compatibility(self._loaded, graph_version)
+            except PackageIncompatible:
+                pass  # recorded by _compatibility
+
     def describe(self) -> dict[str, Any]:
-        """Which policy this solver serves (or tried to), for response metadata and readiness. No error text."""
+        """Which policy this solver serves (or tried to), for fallback metadata and readiness. No error text.
+        member_alpha, inference_ms and compatibility describe a served route, so they are null here."""
         loaded = self._loaded
-        compatibility = loaded.compatibility.get(self._graph) if loaded and self._graph else None
         return {
             "name": loaded.name if loaded else self.settings.model_name,
             "version": loaded.version if loaded else None,
@@ -352,7 +370,7 @@ class MorlSolver:
             "status": self.state,
             "member_alpha": None,
             "inference_ms": None,
-            "compatibility": compatibility.status if compatibility and self.state == "ready" else None,
+            "compatibility": None,
         }
 
     # ---------------------------------------------------------------- solving
@@ -373,17 +391,21 @@ class MorlSolver:
             loaded.compatibility[graph_version] = result
             if result.status == "flagged":
                 logger.warning("route_model_contract status=flagged model=%s reasons=%s", loaded.identity, result.reasons)
+        if self.state == "rejected" and self._loaded is loaded:
+            self.state = "ready"  # the graph went back to one this package was built for
         return result
 
     def _reject(self, loaded: _Loaded, graph_version: str, exc: PackageIncompatible) -> None:
-        if self._loaded is loaded:
-            self.state = "rejected"
-        if graph_version in self._rechecked_graphs:
+        if self._loaded is not loaded:
             return
-        self._rechecked_graphs.add(graph_version)
-        logger.warning("route_model_contract status=rejected model=%s graph_version=%s reasons=%s; "
-                       "resolving the registry again", loaded.identity, graph_version, exc.reasons)
-        self._recheck = asyncio.create_task(self._recheck_for_graph(graph_version), name="route-model-recheck")
+        self.state = "rejected"
+        if (loaded.package_sha256, graph_version) not in self._reported:
+            self._reported.add((loaded.package_sha256, graph_version))
+            logger.warning("route_model_contract status=rejected model=%s graph_version=%s reasons=%s; "
+                           "checking the registry every %.0f s", loaded.identity, graph_version, exc.reasons,
+                           self.settings.model_recheck_s)
+        if self._recheck is None or self._recheck.done():
+            self._recheck = asyncio.create_task(self._recheck_while_rejected(), name="route-model-recheck")
 
     async def solve(self, request: SolveRequest) -> SolverReply:
         entered = time.perf_counter()
@@ -396,8 +418,6 @@ class MorlSolver:
             compatibility = self._compatibility(loaded, si.source.graph_version)
         except PackageIncompatible as exc:
             raise SolverError(SOLVER_UNREACHABLE, f"MORL package rejected: {exc}") from exc
-        if self.state == "rejected" and self._loaded is loaded:
-            self.state = "ready"  # the graph went back to one this package was built for
         if loaded.mode and si.mode.value != loaded.mode:
             raise SolverError(SOLVER_UNREACHABLE, f"MORL policy was trained for mode {loaded.mode}, not {si.mode.value}")
         async with self._slots:

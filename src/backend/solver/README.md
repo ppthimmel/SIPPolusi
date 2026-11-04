@@ -71,11 +71,12 @@ Dipilih dengan `ROUTE_SOLVER_PROVIDER`; endpoint-nya tidak berubah.
   daftar berkas dan unduhan lewat *artifact proxy*. Versi wajib bertag `package_sha256`. Paket diunduh ke
   direktori sementara, diperiksa (hash setiap berkas, tidak ada berkas tak terdaftar, SHA-256
   `package.json` = tag), baru dipindah ke `ROUTE_SOLVER_MODEL_CACHE_DIR/<nama>/<versi>/<sha256>`. Paket di
-  *cache* diperiksa ulang sebelum dipakai; yang berubah, terpotong, atau tidak terbaca dihapus.
+  *cache* diperiksa ulang sebelum dipakai; yang berubah, terpotong, atau tidak terbaca dihapus dan langsung
+  diunduh lagi.
   `ROUTE_SOLVER_MODEL_DIR` memuat paket lokal.
 - **Pemuatan di latar belakang.** *Start-up* tidak menunggu registry (registry tidur bila tidak ada lalu lintas,
   10–30 detik untuk bangun). Setiap panggilan HTTP dibatasi `ROUTE_SOLVER_REGISTRY_TIMEOUT_S` dan
-  `ROUTE_SOLVER_REGISTRY_ATTEMPTS`. Kegagalan yang dapat pulih sendiri (timeout, 5xx saat registry bangun) diulang
+  `ROUTE_SOLVER_REGISTRY_ATTEMPTS`. Kegagalan yang dapat pulih sendiri (timeout, 5xx saat registry bangun, 408, 429) diulang
   dengan jeda berlipat sampai `ROUTE_SOLVER_MODEL_RETRY_MAX_S`. Kegagalan lain (4xx, tag hilang atau salah, paket
   berubah, family tanpa loader, kontrak mayor lain) menghentikan percobaan dengan status `unavailable` dan alasannya
   di log: perlu perubahan di registry lalu *redeploy*, dan registry tidak terus dipanggil. Pemuatan berjalan di
@@ -87,9 +88,12 @@ Dipilih dengan `ROUTE_SOLVER_PROVIDER`; endpoint-nya tidak berubah.
   (`fixed_preference_set` = set TI-AI-09 PIC B). Family tanpa loader tidak dimuat. *Policy* PIC A cukup
   ditambahkan sebagai entri baru.
 - **Per permintaan.** Kontrak paket diperiksa terhadap `graph_version` permintaan dan `CONTRACT_VERSION`
-  (`require_compatible`): ditolak = fallback `model_unavailable` dan status `rejected` (juga di `/health/ready`),
-  lalu alias di registry di-*resolve* sekali lagi untuk graf itu, sehingga paket untuk graf baru terpakai tanpa
-  *redeploy*. *Flagged* dicatat di log dan `route_model.compatibility`. `lineage.upstream_model` (model spasial
+  (`require_compatible`): ditolak = fallback `model_unavailable` dan status `rejected`. `/health/ready` juga
+  memeriksa graf aktif, jadi status itu terlihat sebelum ada permintaan. Selama `rejected`, alias di registry
+  di-*resolve* lagi segera lalu setiap `ROUTE_SOLVER_MODEL_RECHECK_S` (bawaan 15 menit), juga setelah registry
+  gagal, sehingga paket untuk graf baru terpakai tanpa *redeploy*, kapan pun didaftarkan. Setiap pemeriksaan dapat
+  membangunkan registry, karena itu jedanya lambat dan hanya berjalan selama `rejected`. *Flagged* dicatat di log
+  dan `route_model.compatibility` rute yang dilayani; pada fallback field itu `null`. `lineage.upstream_model` (model spasial
   asal medan pelatihan) tidak diperiksa: cache polusi menyimpan `model_version` gabungan per time window, bukan
   SHA-256 bundel terdaftar, dan paket saat ini tidak mencatatnya; bila tercatat, nilainya ditulis di log saat
   pemuatan. Moda yang berbeda dari moda pelatihan (`contract.mode`, set saat ini `bike`)
@@ -146,6 +150,7 @@ Penyedia `http` tidak memakai thread: permintaan HTTP dibatalkan langsung oleh `
 | `ROUTE_SOLVER_MODEL_CACHE_DIR` | `/tmp/sippolusi/route-models` | `morl`: *cache* paket terverifikasi |
 | `ROUTE_SOLVER_REGISTRY_TIMEOUT_S` / `_ATTEMPTS` | `30` / `3` | `morl`: batas per panggilan registry dan jumlah percobaan |
 | `ROUTE_SOLVER_MODEL_RETRY_INITIAL_S` / `_MAX_S` | `10` / `300` | `morl`: jeda awal dan maksimum pengulangan pemuatan yang gagal |
+| `ROUTE_SOLVER_MODEL_RECHECK_S` | `900` | `morl`: jeda pemeriksaan registry selama paket ditolak oleh graf aktif |
 | `ROUTE_SOLVER_TORCH_THREADS` / `ROUTE_SOLVER_MODEL_CONCURRENCY` | `2` / `2` | `morl`: thread PyTorch dan dekode paralel |
 | `ROUTE_SOLVER_FAULT` | `none` | Khusus `mock`: `timeout`, `error`, `no_route`, `invalid` |
 | `ROUTE_SOLVER_BUDGET_MS` | `8000` | Batas latensi Backend |

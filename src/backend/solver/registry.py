@@ -15,8 +15,8 @@ SHA-256 of package.json equal to the tag) and only then moved to
 altered package. A cached package is checked again before use.
 
 Timeouts and connection errors are retried a bounded number of times (the registry
-sleeps when idle and takes 10-30 s to wake); 4xx answers are not, and are marked
-retryable=False so the caller does not ask again. A `stop` event (set at shutdown) ends
+sleeps when idle and takes 10-30 s to wake), and so are 408 and 429; other 4xx answers are
+not, and are marked retryable=False so the caller does not ask again. A `stop` event (set at shutdown) ends
 the retries and their waits at once.
 """
 from __future__ import annotations
@@ -36,6 +36,8 @@ from route_model.model_package import PackageError, package_digest, validate_pac
 
 _SHA256 = re.compile(r"^[0-9a-f]{64}$")
 _ARTIFACTS = "/api/2.0/mlflow-artifacts/artifacts"
+# Client errors that say "later", not "never".
+_TEMPORARY = (408, 429)
 
 
 class RegistryError(Exception):
@@ -82,7 +84,7 @@ class RegistryClient:
             else:
                 if response.status_code == 200:
                     return response
-                if response.status_code < 500:
+                if response.status_code < 500 and response.status_code not in _TEMPORARY:
                     raise RegistryError(f"registry answered HTTP {response.status_code} for {url}", retryable=False)
                 last = RegistryError(f"registry answered HTTP {response.status_code}")
             if attempt + 1 < self.attempts and self._stop.wait(self.backoff_s * (2 ** attempt)):
@@ -133,21 +135,21 @@ class RegistryClient:
             remote = re.sub(r"^mlflow-artifacts:(//[^/]+)?/*", "", source).rstrip("/")
             resolved = ResolvedPackage(Path(cache_dir) / name / str(version["version"]) / expected, name,
                                        str(version["version"]), expected)
-            if not resolved.directory.exists():
-                resolved.directory.parent.mkdir(parents=True, exist_ok=True)
-                with tempfile.TemporaryDirectory(dir=resolved.directory.parent) as tmp:
-                    staging = Path(tmp) / "package"
-                    staging.mkdir()
-                    self._download(client, remote, staging)
-                    _verify(staging, expected)
-                    os.replace(staging, resolved.directory)
-        try:
-            _verify(resolved.directory, expected)
-        except ValueError:
-            # Altered, truncated or unreadable on disk (PackageError, JSONDecodeError and
-            # UnicodeDecodeError are all ValueError): download again next time.
-            shutil.rmtree(resolved.directory, ignore_errors=True)
-            raise
+            if resolved.directory.exists():
+                try:
+                    _verify(resolved.directory, expected)
+                    return resolved
+                except ValueError:
+                    # Altered, truncated or unreadable on disk (PackageError, JSONDecodeError and
+                    # UnicodeDecodeError are all ValueError): discard it and download it again now.
+                    shutil.rmtree(resolved.directory, ignore_errors=True)
+            resolved.directory.parent.mkdir(parents=True, exist_ok=True)
+            with tempfile.TemporaryDirectory(dir=resolved.directory.parent) as tmp:
+                staging = Path(tmp) / "package"
+                staging.mkdir()
+                self._download(client, remote, staging)
+                _verify(staging, expected)  # a bad download is the registry's package: not retried
+                os.replace(staging, resolved.directory)
         return resolved
 
 
