@@ -6,7 +6,8 @@
 - Checkpoint selection uses validation from the other groups, never test metrics.
 - Configuration is fixed across folds; no per-fold hyperparameter search.
 - GPU input caching is checked against original preprocessing before training each fold.
-- Complete artifacts/checkpoints: `D:/Github/SIPPolusi/checkpoints/spatial_model/stgnn/pm25/loso/loso_pm25_gpu_seed42_20261014_a7eabc1b` (local; not committed).
+- Complete artifacts/checkpoints: `D:/Github/SIPPolusi/graphify-out/stgnn-ds-v0.3.0/loso_pm25_gpu_seed42_20261014_a7eabc1b` (local; not committed).
+- Relocation note (2026-11-03): artifacts moved to `checkpoints/spatial_model/stgnn/pm25/loso/loso_pm25_gpu_seed42_20261014_a7eabc1b/`; the path above records the original run location.
 - Historical run configuration and source hashes are recorded in the adjacent manifest. Maintained training entry points: `python -m spatial_model.training` and `notebooks/spatial_model/`.
 
 ## Pooled test metrics

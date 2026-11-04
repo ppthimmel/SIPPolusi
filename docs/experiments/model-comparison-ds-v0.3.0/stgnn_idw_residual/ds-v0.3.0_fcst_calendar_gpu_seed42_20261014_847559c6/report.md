@@ -5,7 +5,8 @@
 - GPU: NVIDIA GeForce RTX 3050 Laptop GPU; PyTorch 2.10.0+cu128; PyG 2.8.1.
 - Training: 13 epochs; best epoch 1; patience 12; strict deterministic algorithms.
 - Runtime: 170.7 seconds; peak tensor allocation 378.0 MiB.
-- Checkpoint and full prediction artifacts: `D:/Github/SIPPolusi/checkpoints/spatial_model/stgnn/pm25/fixed_split/fcst_calendar_gpu_seed42_20261014_847559c6` (local, not committed).
+- Checkpoint and full prediction artifacts: `D:/Github/SIPPolusi/graphify-out/stgnn-ds-v0.3.0/fcst_calendar_gpu_seed42_20261014_847559c6` (local, not committed).
+- Relocation note (2026-11-03): artifacts moved to `checkpoints/spatial_model/stgnn/pm25/fixed_split/fcst_calendar_gpu_seed42_20261014_847559c6/`; the path above records the original run location.
 - Historical run configuration and source hashes are recorded in the adjacent manifest. Maintained training entry points: `python -m spatial_model.training` and `notebooks/spatial_model/`.
 
 | Split | Method | n | MAE | RMSE | Bias | R2 |

@@ -27,8 +27,8 @@ from run_xgboost_fixed import verify_snapshot_windows
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parents[2]
 FIXED_XGB = HERE / "xgboost_fixed/pm25_gpu_seed42_20261014_202354_090525"
-FIXED_GNN = REPO / "checkpoints/spatial_model/stgnn/pm25/fixed_split/fcst_calendar_gpu_seed42_20261014_847559c6"
-LOSO_GNN = REPO / "checkpoints/spatial_model/stgnn/pm25/loso/loso_pm25_gpu_seed42_20261014_a7eabc1b"
+FIXED_GNN = REPO / "graphify-out/stgnn-ds-v0.3.0/fcst_calendar_gpu_seed42_20261014_847559c6"
+LOSO_GNN = REPO / "graphify-out/stgnn-ds-v0.3.0/loso_pm25_gpu_seed42_20261014_a7eabc1b"
 
 
 def save_json(path, value):
@@ -143,7 +143,7 @@ def main():
     folds = folds[(folds.target == "pm25") & folds.group_id.isin(groups)]
     folds = folds[["fold", "group_id"]].drop_duplicates().sort_values("fold")
     assert len(folds) == 95
-    root = args.resume or (REPO / "checkpoints/spatial_model/xgboost/pm25/loso" /
+    root = args.resume or (REPO / "graphify-out/xgboost-ds-v0.3.0" /
                           datetime.now().strftime("loso_pm25_gpu_seed42_%Y%m%d_%H%M%S_%f"))
     if args.resume:
         manifest = json.loads((root / "run_manifest.json").read_text())

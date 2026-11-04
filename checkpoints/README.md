@@ -1,5 +1,9 @@
 # Local model checkpoints
 
+This inventory records the TI-AI-05 workstation as of 2026-11-03. Ignored model
+files, `.cache/` receipts and status files are local evidence and are not included
+in another clone. Training status below is a dated observation, not a live job monitor.
+
 Store local training artifacts under `checkpoints/spatial_model/<family>/<target>/<protocol>/<run-id>/`.
 Use `fixed_split` for held-out evaluation, `loso` for leave-one-group-out evaluation,
 and `serving_fit` for a fit using all training stations. These protocols are not interchangeable.
@@ -59,6 +63,9 @@ including fold `best.ubj` models, predictions, runner snapshots and manifests.
 All 294 files retained their SHA-256 hashes during relocation on 2026-11-03.
 The maintained comparison runner now defaults to this checkpoint location.
 Historical path strings inside preserved artifacts describe their original location.
+The updated live runners have different source hashes, so `--resume` against this
+completed historical XGBoost LOSO run is rejected by the existing provenance check.
+Use a fresh run directory for new training; keep the saved runner and manifest unchanged.
 
 ## PM2.5 held-out XGBoost run on 2026-11-03
 
@@ -73,7 +80,8 @@ all transferred artifact hashes were verified. No retraining occurred during tra
 
 ## Notebook training started on 2026-11-03
 
-The missing combinations supported by the maintained notebooks are being trained:
+At the time of this inventory on 2026-11-03, training had been started for these
+combinations supported by the maintained notebooks:
 
 | Family | Target | Protocol | Scope |
 | --- | --- | --- | --- |
@@ -96,7 +104,7 @@ NO2 fixed held-out is unsupported by the maintained notebooks. No XGBoost traini
 notebook exists, so NO2 XGBoost has not been launched using a substitute trainer.
 These are workflow limitations, not completed or queued runs.
 
-For current state, read `.cache/full-training-20261103/lightgbm-status.json` and
+On the original workstation, inspect `.cache/full-training-20261103/lightgbm-status.json` and
 `.cache/full-training-20261103/stgnn-status.json`. A queued or running job is not an
 available completed checkpoint set. Historical LightGBM results above remain
 separate from these new full-feature fixed-configuration fits.
