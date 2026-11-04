@@ -259,6 +259,35 @@ button:disabled { cursor: not-allowed; }
 .detail-list dt { color: var(--muted); }
 .detail-list dd { margin: 0; word-break: break-word; }
 .detail-disclaimer { color: var(--muted); font-size: 12px; }
+.route-card .nav-start { display: inline-flex; align-items: center; justify-content: center; gap: 6px; width: 100%; margin-top: 12px; }
+
+/* -------------------------------------------------------------- navigation */
+#use-location { margin-top: 6px; }
+.nav-instruction {
+  display: flex; align-items: center; gap: 14px; background: var(--green); color: #fff; border-radius: var(--radius);
+  padding: 14px 16px; margin: 4px 0 12px;
+}
+.nav-turn-icon { display: inline-flex; flex: none; }
+.nav-action { display: block; font-size: 20px; line-height: 1.2; }
+.nav-when { display: block; font-size: 15px; font-weight: 600; opacity: 0.9; }
+.nav-when:empty { display: none; }
+.nav-metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); margin-bottom: 4px; }
+.nav-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+.nav-actions .secondary { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+.nav-actions .nav-end { margin-top: 0; }
+.notice-done { background: var(--green-soft); border-color: #b8d6c8; color: #0a4d3a; }
+
+.marker-user { position: relative; width: 22px; height: 22px; }
+.marker-user::after {
+  content: ""; position: absolute; inset: 0; border-radius: 50%; background: #1a73e8; border: 3px solid #fff;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.45);
+}
+/* A wedge pointing the way the user is heading; the marker itself is rotated. */
+.marker-user-heading {
+  display: none; position: absolute; left: 50%; top: -13px; width: 0; height: 0; transform: translateX(-50%);
+  border-left: 8px solid transparent; border-right: 8px solid transparent; border-bottom: 14px solid #1a73e8;
+}
+.marker-user.has-heading .marker-user-heading { display: block; }
 
 /* --------------------------------------------------------------------- map */
 .map-buttons { position: absolute; top: 12px; right: 12px; display: grid; gap: 8px; z-index: 2; }

@@ -22,6 +22,7 @@ di Cache API, diteruskan API Gateway) dan antarmuka sudah diuji terhadapnya (lih
 | Alasan fallback | `policy_timeout`, `policy_error`, `invalid_route` (contoh Kode 3.2). | **Disesuaikan**: Backend mengirim `model_timeout`, `model_unavailable`, `model_error`, `model_invalid_response`, `model_no_route`, `policy_unavailable`. Semua kini punya teks sendiri. |
 | Versi data jalan | Tidak ditampilkan. | **Ditambahkan**: `metadata.graph_version` tampil sebagai "Versi data jalan (OpenStreetMap)". |
 | Asal/tujuan | Dipilih di peta, diseret, atau diketik sebagai `lat, lon`. Pencarian nama tempat (geocoding) tidak ada di kontrak, jadi belum ada. | Ditambahkan oleh TI-SE-12, lihat [`ti-se-12-geocoding.md`](ti-se-12-geocoding.md). |
+| Navigasi | Rute hanya ditampilkan statis, tanpa pelacakan posisi. | Ditambahkan oleh TI-SE-13, lihat [`ti-se-13-navigasi.md`](ti-se-13-navigasi.md). |
 
 ## Keadaan yang diuji
 

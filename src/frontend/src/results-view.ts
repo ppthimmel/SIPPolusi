@@ -39,6 +39,10 @@ export interface ResultViewOptions {
   /** Names of the points, when known; otherwise the header shows their coordinates. */
   places: { origin: string | null; destination: string | null };
   onBack: () => void;
+  /** Starts navigation along one of the routes (TI-SE-13). */
+  onNavigate: (role: RouteResult["role"]) => void;
+  /** Shown above the routes, e.g. why navigation could not start. */
+  notice?: { title: string; text: string } | null;
 }
 
 /** Rebuilds the result panel (Gambar 3.1b, 3.4). Returns the heading so the
@@ -78,6 +82,8 @@ export function renderResult(container: HTMLElement, opts: ResultViewOptions): H
     h("div", { class: "title-row" }, heading, wib && h("span", { class: "time-chip" }, icon("clock", 14), `Data kualitas udara ${wib}`)),
   );
 
+  if (opts.notice) container.append(notice("warn", opts.notice.title, opts.notice.text, "alert"));
+
   if (metadata.dataStale) {
     container.append(
       notice(
@@ -111,17 +117,17 @@ export function renderResult(container: HTMLElement, opts: ResultViewOptions): H
     container.append(notice("info", "Prioritas belum diterapkan", "Server menandai bahwa prioritas waktu-paparan tidak diterapkan pada rute ini."));
   }
 
-  container.append(comparisonBanner(cmp), ...routeCards(response, isFallback));
+  container.append(comparisonBanner(cmp), ...routeCards(response, isFallback, opts.onNavigate));
 
   const detail = detailSection(response);
   container.append(detail);
   return heading;
 }
 
-function notice(kind: "warn" | "info", title: string, text: string): HTMLElement {
+function notice(kind: "warn" | "info", title: string, text: string, role?: "alert"): HTMLElement {
   return h(
     "div",
-    { class: `notice notice-${kind}`, role: kind === "warn" ? "status" : undefined },
+    { class: `notice notice-${kind}`, role: role ?? (kind === "warn" ? "status" : undefined) },
     icon(kind === "warn" ? "warn" : "info", 18),
     h("div", {}, h("strong", {}, title), h("p", {}, text)),
   );
@@ -156,11 +162,11 @@ function banner(big: string, text: string, tone: "good" | "neutral"): HTMLElemen
   return h("div", { class: `delta-banner delta-${tone}` }, h("span", { class: "delta-big mono" }, big), h("span", { class: "delta-text" }, text));
 }
 
-function routeCards(resp: RouteResponse, isFallback: boolean): HTMLElement[] {
+function routeCards(resp: RouteResponse, isFallback: boolean, onNavigate: ResultViewOptions["onNavigate"]): HTMLElement[] {
   const cards: HTMLElement[] = [];
   const identical = compareRoutes(resp).kind === "identical";
   cards.push(
-    routeCard(resp.recommended, resp, {
+    routeCard(resp.recommended, resp, onNavigate, {
       title: isFallback ? "Rute rekomendasi" : "Rute rendah paparan",
       sub: "Rekomendasi",
       swatch: "solid",
@@ -169,7 +175,9 @@ function routeCards(resp: RouteResponse, isFallback: boolean): HTMLElement[] {
     }),
   );
   if (resp.comparison && !identical) {
-    cards.push(routeCard(resp.comparison, resp, { title: "Rute tercepat", sub: "Pembanding", swatch: "dashed", fallbackChip: false, recommended: false }));
+    cards.push(
+      routeCard(resp.comparison, resp, onNavigate, { title: "Rute tercepat", sub: "Pembanding", swatch: "dashed", fallbackChip: false, recommended: false }),
+    );
   }
   return cards;
 }
@@ -177,6 +185,7 @@ function routeCards(resp: RouteResponse, isFallback: boolean): HTMLElement[] {
 function routeCard(
   r: RouteResult,
   resp: RouteResponse,
+  onNavigate: ResultViewOptions["onNavigate"],
   o: { title: string; sub: string; swatch: "solid" | "dashed"; fallbackChip: boolean; recommended: boolean },
 ): HTMLElement {
   const unit = exposureUnitLabel(resp.exposureUnit);
@@ -192,6 +201,17 @@ function routeCard(
       metric("Waktu tempuh", fmtMinutes(r.travelTimeMin)),
       metric("Jarak", fmtDistance(r.distanceM)),
       metric(exposureLabel, fmtExposure(r.exposure), unit),
+    ),
+    h(
+      "button",
+      {
+        type: "button",
+        class: o.recommended ? "primary nav-start" : "secondary nav-start",
+        "aria-label": `Mulai navigasi: ${o.title}`,
+        onclick: () => onNavigate(r.role),
+      },
+      icon("navigate", 18),
+      o.recommended ? " Mulai navigasi" : " Navigasi rute ini",
     ),
   );
 }
