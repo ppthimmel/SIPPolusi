@@ -376,4 +376,11 @@ async def solve_route_request(
         ),
         notes=notes,
         fallback=fallback,
+        route_model=reply.details if not fallback else _describe(solver),
     )
+
+
+def _describe(solver: RouteSolver) -> dict | None:
+    """The model a failed solver serves when it has one (MorlSolver.describe), for metadata.route_model."""
+    describe = getattr(solver, "describe", None)
+    return describe() if describe else None

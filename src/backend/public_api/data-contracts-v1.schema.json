@@ -1009,11 +1009,23 @@
         "model_version": {
           "$ref": "#/$defs/ModelVersion"
         },
+        "route_model": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RouteModelInfo"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Model rute di balik rekomendasi (provider morl), atau model yang tidak dapat dipakai saat fallback; null untuk penyedia lain"
+        },
         "estimation": {
           "$ref": "#/$defs/Estimation"
         },
         "solver": {
-          "description": "Penyedia yang menghasilkan rute: mock, baseline, atau http",
+          "description": "Penyedia yang menghasilkan rute: mock, baseline, http, atau morl",
           "title": "Solver",
           "type": "string"
         },
@@ -1087,6 +1099,127 @@
         "disclaimer"
       ],
       "title": "RouteMetadata",
+      "type": "object"
+    },
+    "RouteModelInfo": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "description": "Nama model rute di registry, mis. morl-route-policy",
+          "title": "Name",
+          "type": "string"
+        },
+        "version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Versi registry (local bila dimuat dari direktori paket)",
+          "title": "Version"
+        },
+        "package_sha256": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "SHA-256 package.json paket model; mengunci setiap berkasnya",
+          "title": "Package Sha256"
+        },
+        "package_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "model_version pada package.json (ID set policy)",
+          "title": "Package Version"
+        },
+        "policy_family": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Jenis policy pada paket, mis. fixed_preference_set",
+          "title": "Policy Family"
+        },
+        "status": {
+          "description": "ready = model termuat; loading = masih dimuat; unavailable = registry atau paket tidak dapat dipakai",
+          "enum": [
+            "ready",
+            "loading",
+            "unavailable"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "member_alpha": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "α anggota set policy yang melayani permintaan; null saat fallback",
+          "title": "Member Alpha"
+        },
+        "inference_ms": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Durasi inferensi policy, ms; null saat fallback",
+          "title": "Inference Ms"
+        },
+        "compatibility": {
+          "anyOf": [
+            {
+              "enum": [
+                "compatible",
+                "flagged"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Hasil pemeriksaan kontrak paket terhadap graf dan kontrak data permintaan; null saat fallback",
+          "title": "Compatibility"
+        }
+      },
+      "required": [
+        "name",
+        "version",
+        "package_sha256",
+        "package_version",
+        "policy_family",
+        "status",
+        "member_alpha",
+        "inference_ms",
+        "compatibility"
+      ],
+      "title": "RouteModelInfo",
       "type": "object"
     },
     "RouteOutput": {

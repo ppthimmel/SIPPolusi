@@ -2567,13 +2567,24 @@
           "model_version": {
             "$ref": "#/components/schemas/ModelVersion"
           },
+          "route_model": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RouteModelInfo"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Model rute di balik rekomendasi (provider morl), atau model yang tidak dapat dipakai saat fallback; null untuk penyedia lain"
+          },
           "estimation": {
             "$ref": "#/components/schemas/Estimation"
           },
           "solver": {
             "type": "string",
             "title": "Solver",
-            "description": "Penyedia yang menghasilkan rute: mock, baseline, atau http"
+            "description": "Penyedia yang menghasilkan rute: mock, baseline, http, atau morl"
           },
           "comparison": {
             "$ref": "#/components/schemas/ComparisonSummary"
@@ -2647,6 +2658,127 @@
           "disclaimer"
         ],
         "title": "RouteMetadata"
+      },
+      "RouteModelInfo": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "description": "Nama model rute di registry, mis. morl-route-policy"
+          },
+          "version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Version",
+            "description": "Versi registry (local bila dimuat dari direktori paket)"
+          },
+          "package_sha256": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Package Sha256",
+            "description": "SHA-256 package.json paket model; mengunci setiap berkasnya"
+          },
+          "package_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Package Version",
+            "description": "model_version pada package.json (ID set policy)"
+          },
+          "policy_family": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Policy Family",
+            "description": "Jenis policy pada paket, mis. fixed_preference_set"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ready",
+              "loading",
+              "unavailable"
+            ],
+            "title": "Status",
+            "description": "ready = model termuat; loading = masih dimuat; unavailable = registry atau paket tidak dapat dipakai"
+          },
+          "member_alpha": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Member Alpha",
+            "description": "α anggota set policy yang melayani permintaan; null saat fallback"
+          },
+          "inference_ms": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Inference Ms",
+            "description": "Durasi inferensi policy, ms; null saat fallback"
+          },
+          "compatibility": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "compatible",
+                  "flagged"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Compatibility",
+            "description": "Hasil pemeriksaan kontrak paket terhadap graf dan kontrak data permintaan; null saat fallback"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name",
+          "version",
+          "package_sha256",
+          "package_version",
+          "policy_family",
+          "status",
+          "member_alpha",
+          "inference_ms",
+          "compatibility"
+        ],
+        "title": "RouteModelInfo"
       },
       "RouteProperties": {
         "properties": {

@@ -78,6 +78,22 @@ class ModelVersion(BaseModel):
     route_policy: str | None = Field(description="Versi Route Model, atau astar-baseline saat fallback")
 
 
+class RouteModelInfo(BaseModel):
+    model_config = _STRICT
+
+    name: str = Field(description="Nama model rute di registry, mis. morl-route-policy")
+    version: str | None = Field(description="Versi registry (local bila dimuat dari direktori paket)")
+    package_sha256: str | None = Field(description="SHA-256 package.json paket model; mengunci setiap berkasnya")
+    package_version: str | None = Field(description="model_version pada package.json (ID set policy)")
+    policy_family: str | None = Field(description="Jenis policy pada paket, mis. fixed_preference_set")
+    status: Literal["ready", "loading", "unavailable"] = Field(description=(
+        "ready = model termuat; loading = masih dimuat; unavailable = registry atau paket tidak dapat dipakai"))
+    member_alpha: float | None = Field(description="α anggota set policy yang melayani permintaan; null saat fallback")
+    inference_ms: float | None = Field(description="Durasi inferensi policy, ms; null saat fallback")
+    compatibility: Literal["compatible", "flagged"] | None = Field(description=(
+        "Hasil pemeriksaan kontrak paket terhadap graf dan kontrak data permintaan; null saat fallback"))
+
+
 class Estimation(BaseModel):
     model_config = _STRICT
 
@@ -112,8 +128,11 @@ class RouteMetadata(BaseModel):
     missing_edge_count: int = Field(description="Ruas subgraf tanpa estimasi polusi")
     graph_version: str = Field(description="Versi road graph OSM Cache DB")
     model_version: ModelVersion
+    route_model: RouteModelInfo | None = Field(None, description=(
+        "Model rute di balik rekomendasi (provider morl), atau model yang tidak dapat dipakai saat fallback; "
+        "null untuk penyedia lain"))
     estimation: Estimation
-    solver: str = Field(description="Penyedia yang menghasilkan rute: mock, baseline, atau http")
+    solver: str = Field(description="Penyedia yang menghasilkan rute: mock, baseline, http, atau morl")
     comparison: ComparisonSummary
     notes: list[str] = Field(description="Keterangan untuk pengguna: fallback, data kedaluwarsa, ruas tanpa estimasi")
     crs: Literal["urn:ogc:def:crs:OGC::CRS84"] = Field(description="Sistem acuan koordinat (RFC 7946: WGS 84)")

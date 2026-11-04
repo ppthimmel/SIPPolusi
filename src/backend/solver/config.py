@@ -4,12 +4,12 @@ from __future__ import annotations
 from functools import lru_cache
 from typing import Literal
 
-from pydantic import Field, model_validator
+from pydantic import AliasChoices, Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from osm.config import BACKEND_DIR
 
-Provider = Literal["mock", "baseline", "http"]
+Provider = Literal["mock", "baseline", "http", "morl"]
 Fault = Literal["none", "timeout", "error", "no_route", "invalid"]
 Fallback = Literal["baseline", "none"]
 
@@ -20,13 +20,33 @@ class SolverSettings(BaseSettings):
         env_file=BACKEND_DIR / ".env",
         env_file_encoding="utf-8",
         extra="ignore",
+        populate_by_name=True,
     )
 
     # mock: deterministic, no AI service needed; baseline: fastest route with the
     # A* of route_model (TI-AI-07) in this process; http: the Multi-Objective Route
-    # Model service (IRouteSolve, POST /internal/v1/solve).
+    # Model service (IRouteSolve, POST /internal/v1/solve); morl: the registered MORL
+    # policy package loaded into this process (TI-SE-07b, solver.morl).
     provider: Provider = "mock"
     url: str | None = Field(None, description="Base URL of the Route Model service, for provider=http")
+
+    # provider=morl: which registered version, and where it comes from. The registry is reached
+    # through MLFLOW_TRACKING_URI (private networking, artifact proxy); model_dir loads a local
+    # package instead (tests, local docker without a registry).
+    model_name: str = "morl-route-policy"
+    model_selector: str = Field("production", description="Registry alias, or a version number")
+    model_dir: str | None = None
+    model_cache_dir: str = "/tmp/sippolusi/route-models"
+    registry_url: str | None = Field(
+        None, validation_alias=AliasChoices("ROUTE_SOLVER_REGISTRY_URL", "MLFLOW_TRACKING_URI", "registry_url"))
+    # The registry sleeps when idle and takes 10-30 s to wake: per call, then bounded retries.
+    registry_timeout_s: float = Field(30.0, gt=0)
+    registry_attempts: int = Field(3, ge=1)
+    # A failed load is retried in the background, doubling up to model_retry_max_s.
+    model_retry_initial_s: float = Field(10.0, gt=0)
+    model_retry_max_s: float = Field(300.0, gt=0)
+    torch_threads: int = Field(2, ge=1)
+    model_concurrency: int = Field(2, ge=1)
     # Mock only: make every call fail in a given way (FAULT_INJECTION, IT-K-04).
     fault: Fault = "none"
 
@@ -51,6 +71,9 @@ class SolverSettings(BaseSettings):
     def _url_for_http(self) -> SolverSettings:
         if self.provider == "http" and not self.url:
             raise ValueError("ROUTE_SOLVER_URL wajib diisi bila ROUTE_SOLVER_PROVIDER=http")
+        if self.provider == "morl" and not (self.registry_url or self.model_dir):
+            raise ValueError("ROUTE_SOLVER_PROVIDER=morl membutuhkan MLFLOW_TRACKING_URI (registry) "
+                             "atau ROUTE_SOLVER_MODEL_DIR (paket lokal)")
         return self
 
 

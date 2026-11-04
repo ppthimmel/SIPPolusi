@@ -73,10 +73,25 @@ async def osm_lifespan(app: FastAPI) -> AsyncIterator[None]:
     app.state.solver_settings = solver_settings
     app.state.route_solver = make_solver(solver_settings)
     logger.info("Route solver provider: %s", app.state.route_solver.name)
+    await _start_solver(app.state.route_solver)
     try:
         yield
     finally:
+        await _close_solver(app.state.route_solver)
         await db.close()
+
+
+async def _start_solver(solver: RouteSolver) -> None:
+    """Solvers that load a model (MorlSolver) start loading in the background; start-up does not wait."""
+    start = getattr(solver, "start", None)
+    if start is not None:
+        await start()
+
+
+async def _close_solver(solver: RouteSolver) -> None:
+    close = getattr(solver, "close", None)
+    if close is not None:
+        await close()
 
 
 def create_app(
@@ -99,7 +114,11 @@ def create_app(
             app.state.pollution_repository = pollution_repository
             app.state.solver_settings = solver_settings or SolverSettings(_env_file=None)
             app.state.route_solver = solver or make_solver(app.state.solver_settings)
-            yield
+            await _start_solver(app.state.route_solver)
+            try:
+                yield
+            finally:
+                await _close_solver(app.state.route_solver)
 
     @asynccontextmanager
     async def lifespan_with_geocoder(app: FastAPI) -> AsyncIterator[None]:
@@ -188,6 +207,10 @@ def create_app(
                     window = None
                 checks["pollution"] = ("empty" if window is None
                                        else "stale" if pollution.staleness(window)[0] else "ok")
+        # Reported, not gating: without the model, routes are still served by the labelled baseline.
+        describe = getattr(app.state.route_solver, "describe", None)
+        if describe is not None:
+            checks["route_model"] = describe()["status"]
         ready = checks["database"] == "ok" and checks["graph"] == "ok"
         if not ready:
             logger.warning("readiness failed: %s", checks)

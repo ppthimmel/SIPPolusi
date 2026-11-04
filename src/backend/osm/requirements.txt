@@ -7,3 +7,6 @@ pydantic-settings>=2.4
 # Route solving (src/backend/solver): HTTP client for IRouteSolve, A* baseline of route_model.
 httpx>=0.27
 networkx>=3.2
+# MORL route policy (solver.morl, ROUTE_SOLVER_PROVIDER=morl). PyTorch itself is installed from the
+# CPU wheel index in osm/Dockerfile (and in CI), not from here, to avoid the multi-GB CUDA build.
+numpy>=1.26

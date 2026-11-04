@@ -73,7 +73,7 @@ class FallbackOut(BaseModel):
 
 
 class SolveResultOut(BaseModel):
-    solver: str = Field(description="Penyedia solver: mock, baseline, atau http")
+    solver: str = Field(description="Penyedia solver: mock, baseline, http, atau morl")
     route_source: Literal["policy", "baseline"]
     preference_applied: bool
     fallback_reason: str | None
@@ -86,6 +86,7 @@ class SolveResultOut(BaseModel):
     context: SolveContextOut
     notes: list[str]
     fallback: FallbackOut | None = Field(None, description="Terisi bila Backend memakai baseline karena solver gagal")
+    route_model: dict | None = Field(None, description="Model rute (provider morl): nama, versi, package_sha256")
 
     @classmethod
     def of(cls, s: SolveResult) -> SolveResultOut:
@@ -111,4 +112,5 @@ class SolveResultOut(BaseModel):
             fallback=(FallbackOut(from_solver=s.fallback.from_solver, failure_reason=s.fallback.failure_reason,
                                   primary_elapsed_ms=round(s.fallback.primary_elapsed_ms, 1))
                       if s.fallback else None),
+            route_model=s.route_model,
         )

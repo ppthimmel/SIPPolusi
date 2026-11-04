@@ -19,6 +19,8 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 # Packages are imported as `osm`, `pollution`, `planner`, `solver`, `public_api` and `route_model`,
 # so they live under /app with /app as cwd.
 WORKDIR /app
+# CPU-only PyTorch for the MORL route policy (solver.morl); same pin as CI. Railway has no GPU.
+RUN pip install --index-url https://download.pytorch.org/whl/cpu torch==2.15.0
 COPY osm/requirements.txt osm/requirements.txt
 RUN pip install -r osm/requirements.txt
 
@@ -32,6 +34,7 @@ COPY planner/ planner/
 COPY solver/ solver/
 COPY public_api/ public_api/
 COPY route_model/*.py route_model/
+COPY route_model/morl/*.py route_model/morl/
 COPY log_config.py telemetry.py ./
 # Integration tests also run when DATABASE_URL is passed (docker run -e/--env-file).
 # Cache-flow tests (TEST_DATABASE_URL + src/data_worker) are skipped in this image.
@@ -45,12 +48,14 @@ COPY planner/*.py planner/
 COPY solver/*.py solver/
 COPY public_api/*.py public_api/
 COPY route_model/*.py route_model/
+COPY route_model/morl/*.py route_model/morl/
 # Redacting JSON logs and the request-ID/latency middleware, shared with src/backend/main.py (TI-DO-08).
 COPY log_config.py telemetry.py ./
 RUN useradd --create-home --uid 10001 app
 USER app
 
-# Configuration comes from environment variables (DATABASE_URL, OSM_*, POLLUTION_*, ROUTE_SOLVER_*, API_*),
+# Configuration comes from environment variables (DATABASE_URL, OSM_*, POLLUTION_*, ROUTE_SOLVER_*, API_*,
+# MLFLOW_TRACKING_URI for ROUTE_SOLVER_PROVIDER=morl),
 # not a baked-in .env. Railway provides PORT.
 EXPOSE 8000
 # Liveness only: a database outage shows on /health/ready (503) instead of restarting the container.
