@@ -6,28 +6,45 @@ verifies it and loads it with the loader its package.json names
 (inference.policy_family). Start-up never waits for the registry: until the policy
 is loaded, and whenever it cannot be used, solve() raises SolverError and the
 orchestrator answers with the A* baseline, labelled (route_source "baseline",
-fallback_reason "model_*"). A failed load is retried with a capped backoff; a
-version that loaded stays in use until the next restart.
+fallback_reason "model_*").
+
+Loading: a failure the registry or the package can fix by itself (timeout, 5xx while it
+wakes) is retried with a capped backoff. Anything else (4xx, a missing or wrong tag, an
+altered package, an unknown policy family, another contract major) stops the attempts
+with status "unavailable", and the cause is logged; it needs a registry change and a
+redeploy. Loads run in a daemon thread and check a stop event, so a load stuck on a
+sleeping registry never delays shutdown.
 
 Per request:
     contract  package graph_version and data contract major against the request's graph
-              (route_model.model_package.require_compatible); rejected -> model_unavailable
+              (route_model.model_package.require_compatible). Rejected -> model_unavailable,
+              status "rejected", and the registry alias is resolved once more for that graph
+              (a package for a new graph is picked up without a redeploy)
     mode      the travel mode the policy was trained for; another mode -> model_unavailable
-    decode    nearest-alpha member, greedy decoding on the planner's subgraph within
-              deadline_ms; PolicyFailure timeout -> model_timeout, dead_end/step_limit
-              -> model_no_route
+    decode    nearest-alpha member, greedy decoding on the planner's subgraph within what is
+              left of deadline_ms after waiting for a decode slot. PolicyFailure timeout ->
+              model_timeout, dead_end/step_limit -> model_no_route. A cancelled request stops
+              its decode at the next step, and keeps its slot until then, so no more than
+              model_concurrency decodes ever run
     reply     recommended = the policy's route, comparison = fastest route of the subgraph
 
 The decoder reads the RoadRouter interface (coords, edges, arcs, search). SubgraphRouter
 provides it from the solver input, so the policy sees the same edges, travel times
 and exposure the Backend checks the route against and draws.
+
+Not enforced here: the package's lineage.upstream_model (the spatial model its training
+fields came from). The pollution cache identifies a window by a composite model_version,
+not by the registered bundle's SHA-256, so the Backend has nothing to compare it with; the
+current package records no upstream model either. A recorded one is logged at load.
 """
 from __future__ import annotations
 
 import asyncio
+import heapq
 import json
 import logging
 import math
+import threading
 import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -35,18 +52,19 @@ from pathlib import Path
 from typing import Any
 
 from planner.models import SolverInput
-from route_model.model_package import Compatibility, load_manifest, package_digest, require_compatible
+from route_model.model_package import (
+    Compatibility, PackageIncompatible, load_manifest, package_digest, require_compatible,
+)
 
-from .cancel import CHECK_EVERY, CancelToken, run_cancellable
+from .cancel import CHECK_EVERY, CancelToken
 from .config import SolverSettings
 from .contract import SOLVER_NO_ROUTE, SOLVER_TIMEOUT, SOLVER_UNREACHABLE, SolveRequest, SolverError, SolverReply
-from .paths import shortest_path
 
 logger = logging.getLogger("solver")
 
 
 class UnusablePackage(Exception):
-    """The package loaded but cannot serve (unknown policy family, refused contract)."""
+    """The package loaded but cannot serve (unknown policy family)."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -56,9 +74,15 @@ class _Edge:
 
 
 class SubgraphRouter:
-    """The part of route_model.astar_osm.RoadRouter the MORL decoder reads, built from one solver input."""
+    """The part of route_model.astar_osm.RoadRouter the MORL decoder reads, built from one solver input.
+
+    It also carries its own reverse arcs (features.reverse_arcs uses them instead of its
+    module-level cache), and remembers its searches, so the fastest route the reply needs
+    and the reference the decoder computes are one search.
+    """
 
     def __init__(self, si: SolverInput, token: CancelToken | None = None):
+        self.token = token
         self.coords = {node: (p.lon, p.lat) for node, p in si.nodes.items()}
         self.edges: dict[int, _Edge] = {}
         self.arcs: dict[int, list[tuple[int, float, int, bool]]] = {}
@@ -73,12 +97,24 @@ class SubgraphRouter:
                 self.arcs.setdefault(e.v, []).append((e.u, e.travel_time_s, e.edge_id, False))
         for arcs in self.arcs.values():
             arcs.sort()  # RoadRouter order: the policy's action index depends on it
+        self.reverse_arcs: dict[int, list[tuple[int, float, int]]] = {}
+        for u, arcs in self.arcs.items():
+            for v, seconds, edge_id, _ in arcs:
+                self.reverse_arcs.setdefault(v, []).append((u, seconds, edge_id))
+        self._searches: dict[tuple[int, int], tuple] = {}
 
     def search(self, start: int, end: int):
         """Dijkstra on travel time; (path [(edge_id, forward)], seconds, settled) like RoadRouter.search."""
-        import heapq
+        key = (start, end)
+        if key not in self._searches:
+            self._searches[key] = self._search(start, end)
+        return self._searches[key]
+
+    def _search(self, start: int, end: int):
         best, previous, settled, queue = {start: 0.0}, {}, set(), [(0.0, start)]
         while queue:
+            if self.token is not None:
+                self.token.check()
             cost, node = heapq.heappop(queue)
             if node in settled or cost > best[node]:
                 continue
@@ -98,7 +134,7 @@ class SubgraphRouter:
         return None, None, len(settled)
 
 
-# decode(router, exposure, start, end, (alpha, beta), timeout_ms) -> (member alpha or None, PolicyRoute)
+# decode(router, exposure, start, end, (alpha, beta), timeout_ms, cancel_check) -> (member alpha or None, PolicyRoute)
 Decoder = Callable[..., tuple[float | None, Any]]
 
 
@@ -113,9 +149,9 @@ def _load_fixed_preference_set(directory: Path, manifest: dict, data_contracts_v
     env = json.loads((directory / "set_manifest.json").read_text(encoding="utf-8")).get("config", {}).get("env", {})
     limits = {"max_steps": env.get("max_steps", 1000), "max_steps_factor": env.get("max_steps_factor", 3.0)}
 
-    def decode(router, exposure, start, end, preference, timeout_ms):
+    def decode(router, exposure, start, end, preference, timeout_ms, cancel_check=None):
         return decode_for_preference(policies, router, exposure, start, end, preference, timeout_ms=timeout_ms,
-                                     **limits)
+                                     cancel_check=cancel_check, **limits)
     return decode
 
 
@@ -159,6 +195,41 @@ def load_package(directory: Path, name: str, version: str, data_contracts_versio
     return _Loaded(name, version, package_digest(directory), manifest, decode)
 
 
+def _retryable(exc: BaseException) -> bool:
+    """Whether asking again can succeed without anyone changing the registry or the package."""
+    from .registry import RegistryError
+    if isinstance(exc, RegistryError):
+        return exc.retryable
+    return isinstance(exc, OSError)  # disk or network trouble below the registry client
+
+
+async def _in_daemon_thread(fn: Callable[[], Any]) -> Any:
+    """fn() in a daemon thread: unlike asyncio.to_thread, interpreter shutdown does not wait for it."""
+    loop = asyncio.get_running_loop()
+    future = loop.create_future()
+
+    def deliver(setter, value):
+        if not future.done():
+            setter(value)
+
+    def hand_over(setter, value):
+        try:
+            loop.call_soon_threadsafe(deliver, setter, value)
+        except RuntimeError:
+            pass  # the loop closed (shutdown): nobody is waiting any more
+
+    def run():
+        try:
+            result = fn()
+        except BaseException as exc:  # noqa: BLE001 - handed to the awaiting task
+            hand_over(future.set_exception, exc)
+        else:
+            hand_over(future.set_result, result)
+
+    threading.Thread(target=run, name="route-model-load", daemon=True).start()
+    return await future
+
+
 class MorlSolver:
     name = "morl"
 
@@ -168,9 +239,13 @@ class MorlSolver:
             from public_api.data_contracts import CONTRACT_VERSION as data_contracts_version
         self.settings = settings
         self.data_contracts_version = data_contracts_version
-        self.state = "loading"            # loading | ready | unavailable
+        self.state = "loading"            # loading | ready | rejected | unavailable
         self._loaded: _Loaded | None = None
         self._task: asyncio.Task | None = None
+        self._recheck: asyncio.Task | None = None
+        self._rechecked_graphs: set[str] = set()
+        self._graph: str | None = None    # graph of the latest request
+        self._stop = threading.Event()
         self._registry_transport = registry_transport  # tests inject httpx.MockTransport
         self._slots = asyncio.Semaphore(max(1, settings.model_concurrency))
 
@@ -187,32 +262,69 @@ class MorlSolver:
             return load_package(directory, s.model_name, "local", self.data_contracts_version)
         from .registry import RegistryClient
         client = RegistryClient(s.registry_url, timeout_s=s.registry_timeout_s, attempts=s.registry_attempts,
-                                transport=self._registry_transport)
+                                transport=self._registry_transport, stop=self._stop)
         resolved = client.resolve(s.model_name, s.model_selector, s.model_cache_dir)
         return load_package(resolved.directory, resolved.name, resolved.version, self.data_contracts_version)
 
-    async def load_once(self) -> bool:
-        """One load attempt; True when the policy is ready. Failures are logged, never raised."""
+    async def _attempt_load(self) -> tuple[_Loaded | None, BaseException | None]:
         started = time.perf_counter()
         try:
-            loaded = await asyncio.to_thread(self._load)
+            loaded = await _in_daemon_thread(self._load)
         except Exception as exc:  # noqa: BLE001 - any failure leaves the baseline fallback in place
+            return None, exc
+        upstream = loaded.manifest.get("lineage", {}).get("upstream_model")
+        logger.info("route_model_load outcome=ok model=%s package_sha256=%s package_version=%s policy_family=%s "
+                    "graph_version=%s mode=%s upstream_model=%s (recorded, not checked) load_ms=%.0f",
+                    loaded.identity, loaded.package_sha256, loaded.manifest.get("model_version"), loaded.family,
+                    loaded.manifest["contract"].get("graph_version"), loaded.mode, upstream,
+                    (time.perf_counter() - started) * 1000)
+        return loaded, None
+
+    def _log_failure(self, exc: BaseException, retry: bool) -> None:
+        logger.warning("route_model_load outcome=failed model=%s@%s error=%s: %s action=%s", self.settings.model_name,
+                       self.settings.model_selector, type(exc).__name__, exc,
+                       "retry" if retry else "stop (needs a registry change and a redeploy)")
+
+    async def load_once(self) -> bool:
+        """One load attempt; True when the policy is ready. Failures are logged, never raised."""
+        loaded, exc = await self._attempt_load()
+        if loaded is None:
             self.state = "unavailable"
-            logger.warning("route_model_load outcome=failed model=%s@%s error=%s: %s", self.settings.model_name,
-                           self.settings.model_selector, type(exc).__name__, exc)
+            self._log_failure(exc, _retryable(exc))
             return False
         self._loaded, self.state = loaded, "ready"
-        logger.info("route_model_load outcome=ok model=%s package_sha256=%s package_version=%s policy_family=%s "
-                    "graph_version=%s mode=%s load_ms=%.0f", loaded.identity, loaded.package_sha256,
-                    loaded.manifest.get("model_version"), loaded.family, loaded.manifest["contract"].get("graph_version"),
-                    loaded.mode, (time.perf_counter() - started) * 1000)
         return True
 
     async def _load_until_ready(self) -> None:
         delay = self.settings.model_retry_initial_s
-        while not await self.load_once():
+        while True:
+            loaded, exc = await self._attempt_load()
+            if loaded is not None:
+                self._loaded, self.state = loaded, "ready"
+                return
+            self.state = "unavailable"
+            retry = _retryable(exc) and not self._stop.is_set()
+            self._log_failure(exc, retry)
+            if not retry:
+                return
             await asyncio.sleep(delay)
             delay = min(delay * 2, self.settings.model_retry_max_s)
+
+    async def _recheck_for_graph(self, graph_version: str) -> None:
+        """Resolve the alias once more after the active graph rejected the loaded package."""
+        loaded, exc = await self._attempt_load()
+        if loaded is None:
+            self._log_failure(exc, False)
+            return
+        try:
+            require_compatible(loaded.manifest, self._runtime(graph_version))
+        except PackageIncompatible as incompatible:
+            logger.warning("route_model_contract status=rejected model=%s graph_version=%s reasons=%s "
+                           "(registry has no package for this graph)", loaded.identity, graph_version,
+                           incompatible.reasons)
+            return
+        self._loaded, self.state = loaded, "ready"
+        logger.info("route_model_reload outcome=ok model=%s graph_version=%s", loaded.identity, graph_version)
 
     async def start(self) -> None:
         """Load in the background; requests are answered by the fallback until it is ready."""
@@ -220,14 +332,17 @@ class MorlSolver:
             self._task = asyncio.create_task(self._load_until_ready(), name="route-model-load")
 
     async def close(self) -> None:
-        if self._task is not None:
-            self._task.cancel()
-            await asyncio.gather(self._task, return_exceptions=True)
-            self._task = None
+        self._stop.set()  # ends registry retries and their waits in the load thread
+        for task in (self._task, self._recheck):
+            if task is not None:
+                task.cancel()
+                await asyncio.gather(task, return_exceptions=True)
+        self._task = self._recheck = None
 
     def describe(self) -> dict[str, Any]:
         """Which policy this solver serves (or tried to), for response metadata and readiness. No error text."""
         loaded = self._loaded
+        compatibility = loaded.compatibility.get(self._graph) if loaded and self._graph else None
         return {
             "name": loaded.name if loaded else self.settings.model_name,
             "version": loaded.version if loaded else None,
@@ -237,51 +352,88 @@ class MorlSolver:
             "status": self.state,
             "member_alpha": None,
             "inference_ms": None,
-            "compatibility": None,
+            "compatibility": compatibility.status if compatibility and self.state == "ready" else None,
         }
 
     # ---------------------------------------------------------------- solving
 
+    def _runtime(self, graph_version: str) -> dict:
+        from route_model.morl.packaging import runtime_contract
+        return runtime_contract(graph_version, self.data_contracts_version)
+
     def _compatibility(self, loaded: _Loaded, graph_version: str) -> Compatibility:
+        """Compatibility with this graph; raises PackageIncompatible, after marking the solver rejected."""
         result = loaded.compatibility.get(graph_version)
         if result is None:
-            from route_model.morl.packaging import runtime_contract
-            result = loaded.compatibility[graph_version] = require_compatible(
-                loaded.manifest, runtime_contract(graph_version, self.data_contracts_version))
+            try:
+                result = require_compatible(loaded.manifest, self._runtime(graph_version))
+            except PackageIncompatible as exc:
+                self._reject(loaded, graph_version, exc)
+                raise
+            loaded.compatibility[graph_version] = result
             if result.status == "flagged":
                 logger.warning("route_model_contract status=flagged model=%s reasons=%s", loaded.identity, result.reasons)
         return result
 
+    def _reject(self, loaded: _Loaded, graph_version: str, exc: PackageIncompatible) -> None:
+        if self._loaded is loaded:
+            self.state = "rejected"
+        if graph_version in self._rechecked_graphs:
+            return
+        self._rechecked_graphs.add(graph_version)
+        logger.warning("route_model_contract status=rejected model=%s graph_version=%s reasons=%s; "
+                       "resolving the registry again", loaded.identity, graph_version, exc.reasons)
+        self._recheck = asyncio.create_task(self._recheck_for_graph(graph_version), name="route-model-recheck")
+
     async def solve(self, request: SolveRequest) -> SolverReply:
+        entered = time.perf_counter()
         loaded = self._loaded
         if loaded is None:
             raise SolverError(SOLVER_UNREACHABLE, f"MORL policy not loaded (state {self.state})")
         si = request.solver_input
+        self._graph = si.source.graph_version
         try:
             compatibility = self._compatibility(loaded, si.source.graph_version)
-        except ValueError as exc:  # PackageIncompatible
+        except PackageIncompatible as exc:
             raise SolverError(SOLVER_UNREACHABLE, f"MORL package rejected: {exc}") from exc
+        if self.state == "rejected" and self._loaded is loaded:
+            self.state = "ready"  # the graph went back to one this package was built for
         if loaded.mode and si.mode.value != loaded.mode:
             raise SolverError(SOLVER_UNREACHABLE, f"MORL policy was trained for mode {loaded.mode}, not {si.mode.value}")
         async with self._slots:
-            return await run_cancellable(_decode, loaded, compatibility, request)
+            budget_ms = request.deadline_ms - (time.perf_counter() - entered) * 1000
+            if budget_ms <= 0:
+                raise SolverError(SOLVER_TIMEOUT, "No time left after waiting for a decode slot")
+            token = CancelToken()
+            task = asyncio.ensure_future(asyncio.to_thread(_decode, token, loaded, compatibility, request, budget_ms))
+            try:
+                return await asyncio.shield(task)
+            finally:
+                if not task.done():
+                    # Cancelled (deadline, client gone): stop the decode at its next step and keep
+                    # the slot until it has, so no more than model_concurrency decodes run.
+                    token.cancel()
+                    await asyncio.gather(task, return_exceptions=True)
 
 
-def _decode(token: CancelToken, loaded: _Loaded, compatibility: Compatibility, request: SolveRequest) -> SolverReply:
+def _decode(token: CancelToken, loaded: _Loaded, compatibility: Compatibility, request: SolveRequest,
+            budget_ms: float) -> SolverReply:
     from route_model.morl.infer import PolicyFailure
 
     si = request.solver_input
     started = time.perf_counter()
-    fastest = shortest_path(si, lambda e: e.travel_time_s, token)
-    if fastest is None:
-        return SolverReply("no_route", "policy", False, None, loaded.identity)
     router = SubgraphRouter(si, token)
+    path, _, _ = router.search(si.origin.node_id, si.destination.node_id)
+    if path is None:
+        return SolverReply("no_route", "policy", False, None, loaded.identity)
+    fastest = tuple(edge_id for edge_id, _ in path)
     exposure = {e.edge_id: e.exposure_index for e in si.edges}
-    token.check()
-    remaining_ms = request.deadline_ms - (time.perf_counter() - started) * 1000
+    decode_started = time.perf_counter()
+    remaining_ms = budget_ms - (decode_started - started) * 1000
     try:
         member, route = loaded.decode(router, exposure, si.origin.node_id, si.destination.node_id,
-                                      (si.preference.alpha, si.preference.beta), timeout_ms=max(remaining_ms, 1.0))
+                                      (si.preference.alpha, si.preference.beta), timeout_ms=max(remaining_ms, 1.0),
+                                      cancel_check=token.check)
     except PolicyFailure as failure:
         reason = SOLVER_TIMEOUT if failure.reason == "timeout" else SOLVER_NO_ROUTE
         raise SolverError(reason, f"MORL policy {failure.reason}: {failure}") from failure
@@ -289,6 +441,7 @@ def _decode(token: CancelToken, loaded: _Loaded, compatibility: Compatibility, r
         "name": loaded.name, "version": loaded.version, "package_sha256": loaded.package_sha256,
         "package_version": loaded.manifest.get("model_version"), "policy_family": loaded.family,
         "status": "ready", "member_alpha": member,
-        "inference_ms": round((time.perf_counter() - started) * 1000, 1), "compatibility": compatibility.status,
+        # The policy's own work (its reference search is the one above, already done).
+        "inference_ms": round((time.perf_counter() - decode_started) * 1000, 1), "compatibility": compatibility.status,
     }
     return SolverReply("ok", "policy", True, None, loaded.identity, tuple(route.edge_ids), fastest, details)

@@ -9,6 +9,8 @@ from __future__ import annotations
 
 import asyncio
 import json
+import threading
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -26,7 +28,9 @@ from route_model.morl.features import FEATURE_VERSION
 from route_model.morl.packaging import package_policy_set
 from route_model.morl.policy import ActorCritic
 from solver import morl
+from route_model.morl import features
 from solver.config import SolverSettings
+from solver.contract import SolveRequest, SolverError
 from solver.morl import MorlSolver, SubgraphRouter
 from solver.orchestrator import solve_route_request
 from solver.paths import shortest_path
@@ -70,7 +74,7 @@ def build_package(root: Path, graph=VERSION, mode="bike", contract="1.0.0", fami
 def oracle_family(monkeypatch):
     """A policy family whose 'policy' is the exact optimum for the preference: always reaches the goal."""
     def loader(directory, manifest, data_contracts_version):
-        def decode(router, exposure, start, end, preference, timeout_ms):
+        def decode(router, exposure, start, end, preference, timeout_ms, cancel_check=None):
             path, _, _ = router.search(start, end)
             t_ref = sum(router.edges[e].time_s for e, _ in path)
             e_ref = sum(exposure[e] * router.edges[e].time_s for e, _ in path)
@@ -169,9 +173,12 @@ async def test_unusable_model_falls_back_labelled(tmp_path, osm_repo, pollution_
     assert (result.route_source, result.preference_applied, result.fallback_reason) == ("baseline", False, "model_unavailable")
     assert result.solver == "baseline" and result.fallback.from_solver == "morl"
     assert result.recommended.edge_ids == result.comparison.edge_ids
-    assert result.route_model["status"] == ("unavailable" if case == "not_loaded" else "ready")
+    # A package the active graph rejects is reported as such, not as ready.
+    assert result.route_model["status"] == {"not_loaded": "unavailable", "other_graph": "rejected",
+                                            "other_mode": "ready"}[case]
     assert result.route_model["member_alpha"] is None
     assert not any(hint in " ".join(result.notes) for hint in INTERNAL_HINTS)
+    await solver.close()
 
 
 @pytest.mark.parametrize("failure, fallback_reason", [("timeout", "model_timeout"), ("dead_end", "model_no_route"),
@@ -226,7 +233,9 @@ async def test_failed_load_is_retried(tmp_path, monkeypatch):
     assert solver.state == "ready" and len(attempts) == 3
 
 
-def test_morl_needs_a_registry_or_a_package():
+def test_morl_needs_a_registry_or_a_package(monkeypatch):
+    for variable in ("MLFLOW_TRACKING_URI", "ROUTE_SOLVER_REGISTRY_URL"):
+        monkeypatch.delenv(variable, raising=False)
     with pytest.raises(ValueError, match="MLFLOW_TRACKING_URI"):
         SolverSettings(_env_file=None, provider="morl")
     assert SolverSettings(_env_file=None, provider="morl", registry_url="http://r:5000").registry_url == "http://r:5000"
@@ -327,3 +336,160 @@ async def test_solver_loads_from_the_registry(tmp_path, osm_repo, pollution_repo
     result = await solve(solver, osm_repo, pollution_repo, settings)
     assert result.route_source == "policy" and result.model_version == "morl-route-policy:1"
     assert result.route_model["version"] == "1" and result.route_model["package_sha256"] == package_digest(package)
+
+
+# ------------------------------------------------------------------ review fixes
+
+@pytest.mark.parametrize("error", [RegistryError("no package_sha256 tag", retryable=False),
+                                   PackageError("package.json does not match the registered package_sha256")])
+async def test_permanent_load_failure_is_not_retried(tmp_path, monkeypatch, error):
+    attempts = []
+
+    def failing(self):
+        attempts.append(1)
+        raise error
+    monkeypatch.setattr(MorlSolver, "_load", failing)
+    solver = MorlSolver(morl_settings(model_dir=str(tmp_path), model_retry_initial_s=0.01), data_contracts_version="1.0.0")
+    await solver.start()
+    await asyncio.wait_for(solver._task, 5)
+    assert attempts == [1] and solver.state == "unavailable"
+
+
+async def test_graph_change_rejects_and_resolves_the_registry_once(tmp_path, osm_repo, pollution_repo, settings,
+                                                                     oracle_family):
+    """The active graph moves on: the package is rejected and reported, and the alias is resolved again once."""
+    registry = FakeRegistry(build_package(tmp_path / "old", graph="jakarta-old", family=oracle_family))
+    solver = MorlSolver(morl_settings(registry_url="http://registry:5000", model_cache_dir=str(tmp_path / "cache"),
+                                      registry_attempts=1),
+                        data_contracts_version="1.0.0", registry_transport=httpx.MockTransport(registry.handler))
+    assert await solver.load_once()
+    first = await solve(solver, osm_repo, pollution_repo, settings)
+    assert (first.route_source, first.fallback_reason, first.route_model["status"]) == (
+        "baseline", "model_unavailable", "rejected")
+    await asyncio.wait_for(solver._recheck, 30)
+    lookups = registry.requests.count("/api/2.0/mlflow/registered-models/alias")
+    assert lookups == 2 and solver.state == "rejected"  # the registry still serves the old package
+    await solve(solver, osm_repo, pollution_repo, settings)
+    assert registry.requests.count("/api/2.0/mlflow/registered-models/alias") == lookups  # once per graph
+    await solver.close()
+
+
+async def test_package_for_the_new_graph_is_picked_up_without_a_redeploy(tmp_path, osm_repo, pollution_repo, settings,
+                                                                          oracle_family):
+    registry = FakeRegistry(build_package(tmp_path / "old", graph="jakarta-old", family=oracle_family))
+    solver = MorlSolver(morl_settings(registry_url="http://registry:5000", model_cache_dir=str(tmp_path / "cache"),
+                                      registry_attempts=1),
+                        data_contracts_version="1.0.0", registry_transport=httpx.MockTransport(registry.handler))
+    assert await solver.load_once()
+    new = build_package(tmp_path / "new", family=oracle_family)  # registered for the active graph
+    registry.package, registry.tag = new, package_digest(new)
+    assert (await solve(solver, osm_repo, pollution_repo, settings)).route_source == "baseline"
+    await asyncio.wait_for(solver._recheck, 30)
+    assert solver.state == "ready"
+    result = await solve(solver, osm_repo, pollution_repo, settings)
+    assert result.route_source == "policy" and result.route_model["package_sha256"] == package_digest(new)
+    await solver.close()
+
+
+def test_corrupt_cached_manifest_is_discarded(tmp_path):
+    package = build_package(tmp_path / "src")
+    resolved = FakeRegistry(package).client().resolve("morl-route-policy", "production", tmp_path / "cache")
+    manifest = resolved.directory / "package.json"
+    manifest.write_text(manifest.read_text()[:100])  # truncated
+    with pytest.raises(ValueError):
+        FakeRegistry(package).client().resolve("morl-route-policy", "production", tmp_path / "cache")
+    assert not resolved.directory.exists()
+    assert FakeRegistry(package).client().resolve("morl-route-policy", "production", tmp_path / "cache").directory.exists()
+
+
+def slow_family(monkeypatch, seconds, record):
+    """A policy that works for `seconds`, checking cancel_check like the real decoder does per step."""
+    def loader(directory, manifest, data_contracts_version):
+        def decode(router, exposure, start, end, preference, timeout_ms, cancel_check=None):
+            record.append({"timeout_ms": timeout_ms, "running": True})
+            entry = record[-1]
+            try:
+                stop = time.perf_counter() + seconds
+                while time.perf_counter() < stop:
+                    cancel_check()
+                    time.sleep(0.005)
+                path, _, _ = router.search(start, end)
+                return preference[0], PolicyRoute(tuple(e for e, _ in path), (), 0.0, 0.0)
+            finally:
+                entry["running"] = False
+        return decode
+    monkeypatch.setitem(morl.LOADERS, "slow", loader)
+    return "slow"
+
+
+def grid_request(deadline_ms):
+    si = grid_input(6, reachable=True)
+    return SolveRequest(si, deadline_ms)
+
+
+async def test_cancelled_decode_stops_before_its_slot_is_freed(tmp_path, monkeypatch):
+    record = []
+    family = slow_family(monkeypatch, 5.0, record)
+    solver = await ready_solver(build_package(tmp_path, graph="grid", mode="walk", family=family), model_concurrency=1)
+    with pytest.raises(asyncio.TimeoutError):
+        await asyncio.wait_for(solver.solve(grid_request(8_000)), 0.2)
+    # The thread stopped at its next cancel check, before the slot went back.
+    assert record and record[0]["running"] is False
+    assert not solver._slots.locked()
+
+
+async def test_waiting_for_a_slot_is_taken_from_the_deadline(tmp_path, monkeypatch):
+    record = []
+    family = slow_family(monkeypatch, 0.3, record)
+    solver = await ready_solver(build_package(tmp_path, graph="grid", mode="walk", family=family), model_concurrency=1)
+    first, second = await asyncio.gather(solver.solve(grid_request(1_000)), solver.solve(grid_request(1_000)))
+    assert first.status == second.status == "ok"
+    assert record[0]["timeout_ms"] > 900
+    assert record[1]["timeout_ms"] < 750  # about 300 ms were spent waiting for the first decode
+
+
+async def test_no_time_left_after_waiting_is_a_timeout(tmp_path, monkeypatch):
+    family = slow_family(monkeypatch, 0.3, [])
+    solver = await ready_solver(build_package(tmp_path, graph="grid", mode="walk", family=family), model_concurrency=1)
+    results = await asyncio.gather(solver.solve(grid_request(2_000)), solver.solve(grid_request(100)),
+                                   return_exceptions=True)
+    assert isinstance(results[1], SolverError) and results[1].reason == "solver_timeout"
+
+
+def test_subgraph_router_searches_once_and_keeps_its_own_reverse_arcs():
+    si = grid_input(5, reachable=True)
+    router = SubgraphRouter(si)
+    assert router.search(si.origin.node_id, si.destination.node_id) is router.search(si.origin.node_id,
+                                                                                     si.destination.node_id)
+    assert features.reverse_arcs(router) is router.reverse_arcs
+    assert router.reverse_arcs == features.build_reverse_arcs(router)
+
+
+async def test_decoding_does_not_fill_the_module_cache(tmp_path, osm_repo, pollution_repo, settings):
+    solver = await ready_solver(build_package(tmp_path))
+    before = features._cached_reverse_arcs.cache_info().currsize
+    await solve(solver, osm_repo, pollution_repo, settings)
+    assert features._cached_reverse_arcs.cache_info().currsize == before
+
+
+async def test_close_does_not_wait_for_a_sleeping_registry(tmp_path):
+    """Shutdown neither waits for a load stuck on the registry nor lets it keep retrying."""
+    release, calls = threading.Event(), []
+
+    def asleep(request):
+        calls.append(request.url.path)
+        release.wait(10)
+        return httpx.Response(503)
+    solver = MorlSolver(morl_settings(registry_url="http://registry:5000", model_cache_dir=str(tmp_path / "cache"),
+                                      registry_attempts=5),
+                        data_contracts_version="1.0.0", registry_transport=httpx.MockTransport(asleep))
+    await solver.start()
+    await asyncio.sleep(0.1)
+    loader = next(t for t in threading.enumerate() if t.name == "route-model-load")
+    assert loader.daemon  # interpreter shutdown does not join it, unlike asyncio.to_thread's executor
+    started = time.perf_counter()
+    await solver.close()
+    assert time.perf_counter() - started < 1.0
+    release.set()
+    loader.join(5)
+    assert not loader.is_alive() and len(calls) == 1  # the stop event ended the remaining 4 attempts

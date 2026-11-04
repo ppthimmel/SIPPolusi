@@ -86,8 +86,9 @@ class RouteModelInfo(BaseModel):
     package_sha256: str | None = Field(description="SHA-256 package.json paket model; mengunci setiap berkasnya")
     package_version: str | None = Field(description="model_version pada package.json (ID set policy)")
     policy_family: str | None = Field(description="Jenis policy pada paket, mis. fixed_preference_set")
-    status: Literal["ready", "loading", "unavailable"] = Field(description=(
-        "ready = model termuat; loading = masih dimuat; unavailable = registry atau paket tidak dapat dipakai"))
+    status: Literal["ready", "loading", "rejected", "unavailable"] = Field(description=(
+        "ready = model termuat; loading = masih dimuat; rejected = paket termuat tetapi kontraknya ditolak "
+        "untuk graf aktif; unavailable = registry atau paket tidak dapat dipakai"))
     member_alpha: float | None = Field(description="α anggota set policy yang melayani permintaan; null saat fallback")
     inference_ms: float | None = Field(description="Durasi inferensi policy, ms; null saat fallback")
     compatibility: Literal["compatible", "flagged"] | None = Field(description=(

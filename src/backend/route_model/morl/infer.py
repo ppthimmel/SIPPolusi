@@ -124,8 +124,12 @@ def decode_for_preference(policy_set, router, exposure, start, end, preference, 
 
 @torch.inference_mode()
 def decode_route(model: ActorCritic, router, exposure, start, end, *, step_limit=None,
-                 max_steps=1000, max_steps_factor=3.0, timeout_ms=None, device="cpu") -> PolicyRoute:
-    """One member's greedy route from start to end; raises PolicyFailure."""
+                 max_steps=1000, max_steps_factor=3.0, timeout_ms=None, device="cpu", cancel_check=None) -> PolicyRoute:
+    """One member's greedy route from start to end; raises PolicyFailure.
+
+    cancel_check, when given, is called before each step and may raise to stop decoding
+    (the Backend passes its CancelToken.check, so a cancelled request frees its thread).
+    """
     started = time.perf_counter()
     if start == end:
         raise PolicyFailure("same_node", "Origin and destination are the same node")
@@ -137,6 +141,8 @@ def decode_route(model: ActorCritic, router, exposure, start, end, *, step_limit
     seconds_total = exposure_total = 0.0
     config = model.config
     for steps in range(step_limit):
+        if cancel_check is not None:
+            cancel_check()
         if timeout_ms is not None and (time.perf_counter() - started) * 1000 > timeout_ms:
             raise PolicyFailure("timeout", f"Inference exceeded {timeout_ms} ms")
         sample = build_sample(router, exposure, context, node, visited, seconds_total, exposure_total, steps,

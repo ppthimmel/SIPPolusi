@@ -71,24 +71,36 @@ Dipilih dengan `ROUTE_SOLVER_PROVIDER`; endpoint-nya tidak berubah.
   daftar berkas dan unduhan lewat *artifact proxy*. Versi wajib bertag `package_sha256`. Paket diunduh ke
   direktori sementara, diperiksa (hash setiap berkas, tidak ada berkas tak terdaftar, SHA-256
   `package.json` = tag), baru dipindah ke `ROUTE_SOLVER_MODEL_CACHE_DIR/<nama>/<versi>/<sha256>`. Paket di
-  *cache* diperiksa ulang sebelum dipakai; yang berubah dihapus. `ROUTE_SOLVER_MODEL_DIR` memuat paket lokal.
+  *cache* diperiksa ulang sebelum dipakai; yang berubah, terpotong, atau tidak terbaca dihapus.
+  `ROUTE_SOLVER_MODEL_DIR` memuat paket lokal.
 - **Pemuatan di latar belakang.** *Start-up* tidak menunggu registry (registry tidur bila tidak ada lalu lintas,
   10–30 detik untuk bangun). Setiap panggilan HTTP dibatasi `ROUTE_SOLVER_REGISTRY_TIMEOUT_S` dan
-  `ROUTE_SOLVER_REGISTRY_ATTEMPTS`; pemuatan yang gagal diulang dengan jeda berlipat sampai
-  `ROUTE_SOLVER_MODEL_RETRY_MAX_S`. Selama belum termuat, rute dilayani fallback A* bertanda
-  `model_unavailable`, dan `/health/ready` melaporkan `route_model` (`loading`, `ready`, `unavailable`) tanpa
-  memengaruhi kesiapan. Versi yang sudah termuat dipakai sampai *restart*; alias baru berlaku setelah *redeploy*.
+  `ROUTE_SOLVER_REGISTRY_ATTEMPTS`. Kegagalan yang dapat pulih sendiri (timeout, 5xx saat registry bangun) diulang
+  dengan jeda berlipat sampai `ROUTE_SOLVER_MODEL_RETRY_MAX_S`. Kegagalan lain (4xx, tag hilang atau salah, paket
+  berubah, family tanpa loader, kontrak mayor lain) menghentikan percobaan dengan status `unavailable` dan alasannya
+  di log: perlu perubahan di registry lalu *redeploy*, dan registry tidak terus dipanggil. Pemuatan berjalan di
+  thread *daemon* dan berhenti saat *shutdown*, jadi registry yang tidur tidak menahan *deploy*. Selama belum
+  termuat, rute dilayani fallback A* bertanda `model_unavailable`, dan `/health/ready` melaporkan `route_model`
+  (`loading`, `ready`, `rejected`, `unavailable`) tanpa memengaruhi kesiapan. Versi yang sudah termuat dipakai
+  sampai *restart*, kecuali saat graf berganti (lihat bawah).
 - **Loader dari `policy_family`.** `package.json` `inference.policy_family` memilih loader di `morl.LOADERS`
   (`fixed_preference_set` = set TI-AI-09 PIC B). Family tanpa loader tidak dimuat. *Policy* PIC A cukup
   ditambahkan sebagai entri baru.
 - **Per permintaan.** Kontrak paket diperiksa terhadap `graph_version` permintaan dan `CONTRACT_VERSION`
-  (`require_compatible`): ditolak = fallback `model_unavailable`; *flagged* dicatat di log dan
-  `route_model.compatibility`. Moda yang berbeda dari moda pelatihan (`contract.mode`, set saat ini `bike`)
-  juga fallback `model_unavailable`. Dekode berjalan di thread pekerja dengan batas `deadline_ms`;
+  (`require_compatible`): ditolak = fallback `model_unavailable` dan status `rejected` (juga di `/health/ready`),
+  lalu alias di registry di-*resolve* sekali lagi untuk graf itu, sehingga paket untuk graf baru terpakai tanpa
+  *redeploy*. *Flagged* dicatat di log dan `route_model.compatibility`. `lineage.upstream_model` (model spasial
+  asal medan pelatihan) tidak diperiksa: cache polusi menyimpan `model_version` gabungan per time window, bukan
+  SHA-256 bundel terdaftar, dan paket saat ini tidak mencatatnya; bila tercatat, nilainya ditulis di log saat
+  pemuatan. Moda yang berbeda dari moda pelatihan (`contract.mode`, set saat ini `bike`)
+  juga fallback `model_unavailable`. Dekode berjalan di thread pekerja, paling banyak
+  `ROUTE_SOLVER_MODEL_CONCURRENCY` sekaligus, dengan sisa `deadline_ms` setelah menunggu giliran. Permintaan yang
+  dibatalkan menghentikan dekodenya di langkah berikutnya dan baru melepas gilirannya setelah itu. Rute tercepat
+  dicari sekali dan dipakai sebagai pembanding sekaligus acuan dekoder;
   `PolicyFailure` `timeout` = `model_timeout`, `dead_end`/`step_limit` = `model_no_route`. Rute *policy*
   tetap diperiksa orkestrator (`trace_route`), jadi kegagalan tidak pernah tampil sebagai rute sukses.
 - **`metadata.route_model`:** `name`, `version`, `package_sha256`, `package_version`, `policy_family`,
-  `status`, `member_alpha` (anggota set yang melayani), `inference_ms`, `compatibility`. Saat fallback, model
+  `status`, `member_alpha` (anggota set yang melayani), `inference_ms` (dekode *policy* saja), `compatibility`. Saat fallback, model
   yang tidak dapat dipakai tetap disebut dengan `member_alpha`/`inference_ms` null.
 - **Sumber daya.** PyTorch CPU (`torch==2.15.0`) dipasang di `osm/Dockerfile`. Paket set PIC B 2 MB; memuatnya
   ±1,4 s dan RSS proses ±210 MB. Inferensi pada subgraf nyata Jakarta 45–165 ms (15 permintaan sepeda).

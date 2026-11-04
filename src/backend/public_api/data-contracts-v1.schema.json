@@ -1158,10 +1158,11 @@
           "title": "Policy Family"
         },
         "status": {
-          "description": "ready = model termuat; loading = masih dimuat; unavailable = registry atau paket tidak dapat dipakai",
+          "description": "ready = model termuat; loading = masih dimuat; rejected = paket termuat tetapi kontraknya ditolak untuk graf aktif; unavailable = registry atau paket tidak dapat dipakai",
           "enum": [
             "ready",
             "loading",
+            "rejected",
             "unavailable"
           ],
           "title": "Status",

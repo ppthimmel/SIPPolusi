@@ -15,7 +15,9 @@ SHA-256 of package.json equal to the tag) and only then moved to
 altered package. A cached package is checked again before use.
 
 Timeouts and connection errors are retried a bounded number of times (the registry
-sleeps when idle and takes 10-30 s to wake); 4xx answers are not.
+sleeps when idle and takes 10-30 s to wake); 4xx answers are not, and are marked
+retryable=False so the caller does not ask again. A `stop` event (set at shutdown) ends
+the retries and their waits at once.
 """
 from __future__ import annotations
 
@@ -23,7 +25,7 @@ import os
 import re
 import shutil
 import tempfile
-import time
+import threading
 from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import quote
@@ -37,7 +39,9 @@ _ARTIFACTS = "/api/2.0/mlflow-artifacts/artifacts"
 
 
 class RegistryError(Exception):
-    """The registry could not be reached, or did not hold a usable version. ``retryable`` says whether to try again."""
+    """The registry could not be reached, or did not hold a usable version. ``retryable`` says whether
+    asking again can help (timeouts, 5xx), or the registry's answer has to change first (4xx, a missing
+    tag, artifacts outside the proxy)."""
 
     def __init__(self, message: str, retryable: bool = True):
         super().__init__(message)
@@ -58,16 +62,19 @@ class ResolvedPackage:
 
 class RegistryClient:
     def __init__(self, base_url: str, *, timeout_s: float = 30.0, attempts: int = 3, backoff_s: float = 2.0,
-                 transport: httpx.BaseTransport | None = None):
+                 transport: httpx.BaseTransport | None = None, stop: threading.Event | None = None):
         self.base_url = base_url.rstrip("/")
         self.timeout_s = timeout_s
         self.attempts = max(1, attempts)
         self.backoff_s = backoff_s
         self._transport = transport  # tests inject httpx.MockTransport
+        self._stop = stop or threading.Event()
 
     def _get(self, client: httpx.Client, url: str, **params) -> httpx.Response:
         last = None
         for attempt in range(self.attempts):
+            if self._stop.is_set():
+                raise RegistryError("stopped (shutting down)")
             try:
                 response = client.get(url, params=params or None)
             except (httpx.TimeoutException, httpx.TransportError) as exc:
@@ -78,8 +85,8 @@ class RegistryClient:
                 if response.status_code < 500:
                     raise RegistryError(f"registry answered HTTP {response.status_code} for {url}", retryable=False)
                 last = RegistryError(f"registry answered HTTP {response.status_code}")
-            if attempt + 1 < self.attempts:
-                time.sleep(self.backoff_s * (2 ** attempt))
+            if attempt + 1 < self.attempts and self._stop.wait(self.backoff_s * (2 ** attempt)):
+                raise RegistryError("stopped (shutting down)")
         raise last
 
     def _version(self, client: httpx.Client, name: str, selector: str) -> dict:
@@ -136,8 +143,10 @@ class RegistryClient:
                     os.replace(staging, resolved.directory)
         try:
             _verify(resolved.directory, expected)
-        except PackageError:
-            shutil.rmtree(resolved.directory, ignore_errors=True)  # altered on disk: download again next time
+        except ValueError:
+            # Altered, truncated or unreadable on disk (PackageError, JSONDecodeError and
+            # UnicodeDecodeError are all ValueError): download again next time.
+            shutil.rmtree(resolved.directory, ignore_errors=True)
             raise
         return resolved
 
