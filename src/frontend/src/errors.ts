@@ -26,6 +26,14 @@ export function fieldFromMessage(message: string): ErrorField {
 
 const RETRY_HINT = "Periksa koneksi, lalu coba lagi.";
 
+/** A failed place search never blocks the form: the map and coordinates still work. */
+export function describePlaceError(err: unknown): string {
+  if (err instanceof ApiError && (err.code === "rate_limited" || err.status === 429)) {
+    return "Terlalu banyak pencarian. Tunggu sebentar, lalu ketik lagi, atau pilih titik di peta.";
+  }
+  return "Pencarian lokasi sedang tidak tersedia. Pilih titik di peta atau ketik koordinat lat, lon.";
+}
+
 /** Maps an API failure to the text and recovery action shown to the user
  *  (Tabel 3.12, 3.15, 3.16). Server messages are shown only for errors the user
  *  can act on (4xx); server-side failures get our own wording. */

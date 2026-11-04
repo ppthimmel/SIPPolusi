@@ -1,11 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { ApiError, parseExposureSurface, parseRouteResponse } from "./api";
-import { describeRouteError } from "./errors";
+import { ApiError, parseExposureSurface, parsePlaceSearch, parseReversePlace, parseRouteResponse } from "./api";
+import { describePlaceError, describeRouteError } from "./errors";
 import errors from "./fixtures/ti-se-08/errors.json";
 import routeFallback from "./fixtures/ti-se-08/route_fallback.json";
 import routePolicy from "./fixtures/ti-se-08/route_policy.json";
 import surfaceEdges from "./fixtures/ti-se-08/surface_edges_z15.json";
 import surfaceGrid from "./fixtures/ti-se-08/surface_grid_z13.json";
+import reverseMonas from "./fixtures/ti-se-12/reverse_monas.json";
+import searchMonas from "./fixtures/ti-se-12/search_monas.json";
+import searchNotFound from "./fixtures/ti-se-12/search_not_found.json";
+import searchOutside from "./fixtures/ti-se-12/search_outside.json";
+import { validatePoint } from "./validation";
 
 // Real responses of the Backend's public API (TI-SE-08), see fixtures/ti-se-08/README.md.
 
@@ -58,5 +63,40 @@ describe("contract with the Backend (TI-SE-08 responses)", () => {
     const snap = errors["422_point_not_on_network"].body.error;
     const view = describeRouteError(new ApiError("http", snap.message, { status: 422, code: snap.code }));
     expect(view.field).toBe("destination"); // "Titik tujuan: …" outlines the destination field
+  });
+});
+
+describe("contract with the Backend (TI-SE-12 responses)", () => {
+  it("reads places that can be sent as route points", () => {
+    const { places, outsideStudyArea } = parsePlaceSearch(searchMonas);
+    expect(places.length).toBeGreaterThan(0);
+    expect(outsideStudyArea).toBe(false);
+    for (const place of places) {
+      expect(place.name).not.toBe("");
+      expect(validatePoint(place, "asal")).toBeNull();
+    }
+  });
+
+  it("tells a place outside the area from one not found", () => {
+    expect(parsePlaceSearch(searchOutside)).toEqual({ places: [], outsideStudyArea: true });
+    expect(parsePlaceSearch(searchNotFound)).toEqual({ places: [], outsideStudyArea: false });
+  });
+
+  it("reads the name of a map point", () => {
+    expect(parseReversePlace(reverseMonas)?.name).toBe("Monumen Nasional");
+    expect(parseReversePlace({ place: null })).toBeNull();
+  });
+
+  it("refuses answers that break the contract", () => {
+    for (const body of [{}, { results: "x" }, { results: [{ name: "x" }] }, []]) {
+      expect(() => parsePlaceSearch(body)).toThrow(ApiError);
+    }
+    for (const body of [{}, { place: { name: "x", lat: "a", lon: 1 } }, []]) {
+      expect(() => parseReversePlace(body)).toThrow(ApiError);
+    }
+  });
+
+  it("explains geocoding errors of the contract", () => {
+    expect(describePlaceError(new ApiError("http", "x", { status: 503, code: "geocoding_unavailable" }))).toMatch(/peta/);
   });
 });

@@ -12,7 +12,8 @@ import pandas as pd
 log = logging.getLogger(__name__)
 
 
-def infer_registered(time_window, ground_truth, spec, settings, inputs=None, resolver=None, versions=None):
+def infer_registered(time_window, ground_truth, spec, settings, inputs=None, resolver=None, versions=None,
+                     runtime_contract=None):
     from spatial_model.artifacts import registry
     from .fallback import run_idw_fallback
     from .exposure import exposure_index
@@ -36,7 +37,7 @@ def infer_registered(time_window, ground_truth, spec, settings, inputs=None, res
             bundle, identity = resolver(target, versions.get(target, os.environ.get(f"SPATIAL_{target.upper()}_VERSION", "production")))
             requested = identity
             stage = "load_bundle"
-            loaded = load_model(bundle, target)
+            loaded = load_model(bundle, target, runtime_contract)
             stage = "prepare_inputs"
             if inputs is None:
                 raise ValueError("Environmental features and sensor history are unavailable")
@@ -51,10 +52,15 @@ def infer_registered(time_window, ground_truth, spec, settings, inputs=None, res
             if target == "pm25" and loaded.metadata.get("estimation_source") == "idw":
                 item["source"] = "idw"
                 item["note"] = "Validation selected epoch-zero IDW"
+            compatibility = getattr(loaded, "compatibility", None)
+            if compatibility is not None and compatibility.status != "compatible":
+                item["compatibility"] = compatibility.as_dict()
             grid.loc[valid, f"{target}_source"] = item["source"]
         except Exception as exc:
             # A failure in one pollutant must not discard the other's successful model.
             log.warning("%s model fallback (%s)", target, type(exc).__name__)
+            if type(exc).__name__ == "PackageIncompatible":
+                log.warning("%s model rejected: %s", target, exc)
             # Keep details out of persisted API-facing metadata (URLs may contain credentials).
             item = dict(source="idw", model_version=idw_model_version(settings["power"], settings["neighbors"]),
                         fallback_reason=f"{stage}:{type(exc).__name__}", requested_model_version=requested)

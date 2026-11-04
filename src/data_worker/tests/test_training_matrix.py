@@ -60,6 +60,9 @@ def test_lightgbm_training_and_saved_evaluation_matrix(target, protocol, fold, t
     bundle = train(SNAPSHOT, tmp_path / "run", target=target, protocol=protocol, fold=fold)
     metadata = json.loads((bundle / "metadata.json").read_text())
     assert metadata["target"] == target and metadata["protocol"] == protocol
+    from spatial_model.configs import load_model_config
+    config = load_model_config("lightgbm")
+    assert metadata["hyperparameters"] == config.get("targets", {}).get(target, {}).get("hp", config["hp"])
     stations = pd.read_parquet(SNAPSHOT / "stations.parquet")
     if protocol == "fixed_split":
         assert set(metadata["sensor_stations"]) == set(stations.loc[stations.station_split == "train", "uuid"])
@@ -73,6 +76,16 @@ def test_lightgbm_training_and_saved_evaluation_matrix(target, protocol, fold, t
         saved = pd.read_parquet(tmp_path / "evaluation" / f"{split}_predictions.parquet")
         np.testing.assert_array_equal(original.predicted, saved.predicted)
         assert len(saved) > 0
+
+
+def test_no2_lightgbm_uses_the_model_selected_in_the_comparison():
+    """The NO2 model reported in model-comparison-ds-v0.3.0 is the direct all-feature LightGBM."""
+    from spatial_model.configs import load_model_config
+    state = json.loads((ROOT / "docs/experiments/model-comparison-ds-v0.3.0/results/fixed_state.json").read_text())
+    selected = state["best_cfg"]["lgbm_allfeat_direct"]
+    config = load_model_config("lightgbm")
+    assert config["targets"]["no2"]["hp"] == selected["hp"]
+    assert config["target"] == selected["target"]
 
 
 def test_stgnn_fold_without_test_labels_is_trainable():

@@ -64,6 +64,13 @@ services:
     volumes: ["./:/e2e:ro"]
     networks: [internal]
 
+  # Geocoding provider stand-in (TI-SE-12): the same API as Photon, without the internet.
+  photon:
+    image: python:3.11-slim
+    command: ["python", "/e2e/photon_stub.py"]
+    volumes: ["./:/e2e:ro"]
+    networks: [internal]
+
   route_model:
     build:
       context: ../../src/backend
@@ -72,7 +79,11 @@ services:
     command: ["sh", "-c", "cd /e2e && exec uvicorn route_model_stub:app --host 0.0.0.0 --port 8100"]
     volumes: ["./:/e2e:ro"]
     ports: ["127.0.0.1:18100:8100"]
-    healthcheck: { disable: true }
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8100/__mode', timeout=3)"]
+      interval: 2s
+      timeout: 4s
+      retries: 30
     networks: [internal, edge]
 
   cache_api:
@@ -86,6 +97,7 @@ services:
       ROUTE_SOLVER_PROVIDER: ${E2E_SOLVER:-http}
       ROUTE_SOLVER_URL: http://route_model:8100
       ROUTE_SOLVER_FALLBACK: ${E2E_FALLBACK:-baseline}
+      API_GEOCODING_URL: ${E2E_GEOCODING_URL:-http://photon:2322}
       LOG_FORMAT: json  # as on Railway (RAILWAY_ENVIRONMENT_NAME switches it on there)
     ports: ["127.0.0.1:18001:8000"]
     depends_on: { db: { condition: service_healthy } }

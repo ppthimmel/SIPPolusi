@@ -122,3 +122,25 @@ async def test_other_postgres_errors_are_not_masked():
     db, _ = _database(asyncpg.UndefinedColumnError('column "built_at" does not exist'))
     with pytest.raises(asyncpg.UndefinedColumnError):
         await _query(db)
+
+
+async def test_connection_acquisition_timeout_is_database_unavailable():
+    db, _ = _database(RuntimeError("query must not run"))
+
+    class UnreachablePool:
+        @asynccontextmanager
+        async def acquire(self, timeout=None):
+            raise TimeoutError("connection acquisition timed out")
+            yield  # pragma: no cover
+
+    db._pool = UnreachablePool()
+    with pytest.raises(CacheUnavailable) as info:
+        await _query(db)
+    assert info.value.reason == CacheUnavailable.DATABASE_UNAVAILABLE
+
+
+async def test_client_query_timeout_keeps_its_reason():
+    db, _ = _database(TimeoutError("query timed out"))
+    with pytest.raises(CacheUnavailable) as info:
+        await _query(db)
+    assert info.value.reason == CacheUnavailable.QUERY_TIMEOUT

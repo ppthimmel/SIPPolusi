@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "SIPPolusi Public API",
-    "description": "Kontrak publik SIPPolusi, diakses lewat API Gateway (`https://<gateway>/v1/...`).\n\n- **Koordinat** selalu [lon, lat] WGS 84 (`urn:ogc:def:crs:OGC::CRS84`, RFC 7946). Respons GeoJSON\n  menyatakannya di `metadata.crs` dan `metadata.coordinate_order`.\n- **Satuan** setiap metrik numerik ada di `metadata.units` (menit, meter, indeks·menit, µg·min/m³, µg/m³).\n- **Galat** memakai skema seragam `{\"error\": {\"code\", \"message\", \"request_id\", \"reason\"?}}` dengan kode\n  pada Tabel 3.16. 429, 502, dan 504 dihasilkan API Gateway.\n- **Batas ukuran body** 16 KiB (413 `payload_too_large`).\n- Setiap respons membawa header `X-Request-ID` untuk penelusuran log.\n\nData jalan © OpenStreetMap contributors, ODbL (https://www.openstreetmap.org/copyright).\n",
+    "description": "Kontrak publik SIPPolusi, diakses lewat API Gateway (`https://<gateway>/v1/...`).\n\n- **Koordinat** selalu [lon, lat] WGS 84 (`urn:ogc:def:crs:OGC::CRS84`, RFC 7946). Respons GeoJSON\n  menyatakannya di `metadata.crs` dan `metadata.coordinate_order`.\n- **Satuan** setiap metrik numerik ada di `metadata.units` (menit, meter, indeks·menit, µg·min/m³, µg/m³).\n- **Galat** memakai skema seragam `{\"error\": {\"code\", \"message\", \"request_id\", \"reason\"?}}` dengan kode\n  pada Tabel 3.16. 429, 502, dan 504 dihasilkan API Gateway.\n- **Batas ukuran body** 16 KiB (413 `payload_too_large`).\n- Setiap respons membawa header `X-Request-ID` untuk penelusuran log.\n\nData jalan dan tempat © OpenStreetMap contributors, ODbL (https://www.openstreetmap.org/copyright).\n",
     "version": "1.2.0",
     "x-generator": "fastapi 0.162.0"
   },
@@ -622,7 +622,7 @@
             }
           },
           "429": {
-            "description": "Dari API Gateway: rate limit terlampaui; header Retry-After menyatakan detik tunggu (Tabel 3.15): 20 per menit per alamat IP (burst 5) untuk /v1/routes, 60 per menit (burst 10) untuk /v1/exposure-surface.",
+            "description": "Dari API Gateway: rate limit terlampaui; header Retry-After menyatakan detik tunggu (Tabel 3.15): 20 per menit per alamat IP (burst 5) untuk /v1/routes, 60 per menit (burst 10) untuk /v1/exposure-surface dan /v1/geocode/*, ditambah 5 per detik (burst 10) untuk seluruh pengguna /v1/geocode/*.",
             "headers": {
               "X-Request-ID": {
                 "description": "Penanda request untuk penelusuran log",
@@ -1141,7 +1141,7 @@
             }
           },
           "429": {
-            "description": "Dari API Gateway: rate limit terlampaui; header Retry-After menyatakan detik tunggu (Tabel 3.15): 20 per menit per alamat IP (burst 5) untuk /v1/routes, 60 per menit (burst 10) untuk /v1/exposure-surface.",
+            "description": "Dari API Gateway: rate limit terlampaui; header Retry-After menyatakan detik tunggu (Tabel 3.15): 20 per menit per alamat IP (burst 5) untuk /v1/routes, 60 per menit (burst 10) untuk /v1/exposure-surface dan /v1/geocode/*, ditambah 5 per detik (burst 10) untuk seluruh pengguna /v1/geocode/*.",
             "headers": {
               "X-Request-ID": {
                 "description": "Penanda request untuk penelusuran log",
@@ -1252,6 +1252,537 @@
                 },
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Galat lain dengan skema seragam (Tabel 3.16)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/geocode/search": {
+      "post": {
+        "tags": [
+          "public"
+        ],
+        "summary": "Cari tempat di wilayah studi dari nama atau alamat",
+        "description": "Saran tempat untuk kolom asal dan tujuan.\n\nPOST agar teks pencarian berada di body, bukan di baris permintaan yang tercatat di log\n(PNF-06). Teks hanya diteruskan ke penyedia geocoding dan tidak disimpan.",
+        "operationId": "searchPlaces",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GeocodeSearchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Tempat di dalam wilayah studi. Hasil kosong dibedakan dengan outside_study_area.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Penanda request untuk penelusuran log",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Cache-Control": {
+                "description": "no-store: berisi data lokasi (PNF-06)",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GeocodeSearchResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "query kosong, lebih dari 200 karakter, atau JSON rusak",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Penanda request untuk penelusuran log",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "query_pendek": {
+                    "value": {
+                      "error": {
+                        "code": "invalid_request",
+                        "message": "query: String should have at least 2 characters",
+                        "request_id": "7f3c2a9e-51d4-4b8e-9a0f-2c1e5d6b8a13"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Layanan pencarian lokasi belum dikonfigurasi, tidak merespons, atau bermasalah. Formulir rute tetap dapat dipakai lewat klik peta dan koordinat",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Penanda request untuk penelusuran log",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "not_configured": {
+                    "value": {
+                      "error": {
+                        "code": "geocoding_unavailable",
+                        "message": "Pencarian lokasi belum dikonfigurasi di server.",
+                        "request_id": "7f3c2a9e-51d4-4b8e-9a0f-2c1e5d6b8a13",
+                        "reason": "not_configured"
+                      }
+                    }
+                  },
+                  "provider_timeout": {
+                    "value": {
+                      "error": {
+                        "code": "geocoding_unavailable",
+                        "message": "Layanan pencarian lokasi tidak merespons tepat waktu.",
+                        "request_id": "7f3c2a9e-51d4-4b8e-9a0f-2c1e5d6b8a13",
+                        "reason": "provider_timeout"
+                      }
+                    }
+                  },
+                  "provider_error": {
+                    "value": {
+                      "error": {
+                        "code": "geocoding_unavailable",
+                        "message": "Layanan pencarian lokasi sedang bermasalah.",
+                        "request_id": "7f3c2a9e-51d4-4b8e-9a0f-2c1e5d6b8a13",
+                        "reason": "provider_error"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Dari API Gateway: rate limit terlampaui; header Retry-After menyatakan detik tunggu (Tabel 3.15): 20 per menit per alamat IP (burst 5) untuk /v1/routes, 60 per menit (burst 10) untuk /v1/exposure-surface dan /v1/geocode/*, ditambah 5 per detik (burst 10) untuk seluruh pengguna /v1/geocode/*.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Penanda request untuk penelusuran log",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "rate_limited": {
+                    "value": {
+                      "error": {
+                        "code": "rate_limited",
+                        "message": "Terlalu banyak permintaan. Coba lagi dalam 3 detik.",
+                        "request_id": "7f3c2a9e-51d4-4b8e-9a0f-2c1e5d6b8a13"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Galat internal yang tidak terduga",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Penanda request untuk penelusuran log",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "internal_error": {
+                    "value": {
+                      "error": {
+                        "code": "internal_error",
+                        "message": "Terjadi galat internal pada server.",
+                        "request_id": "7f3c2a9e-51d4-4b8e-9a0f-2c1e5d6b8a13"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Dari API Gateway: Cache API tidak dapat dihubungi",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Penanda request untuk penelusuran log",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "upstream_unavailable": {
+                    "value": {
+                      "error": {
+                        "code": "upstream_unavailable",
+                        "message": "Layanan sedang tidak dapat dihubungi. Silakan coba lagi.",
+                        "request_id": "7f3c2a9e-51d4-4b8e-9a0f-2c1e5d6b8a13"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Dari API Gateway: Cache API tidak merespons dalam 10 detik",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Penanda request untuk penelusuran log",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "upstream_timeout": {
+                    "value": {
+                      "error": {
+                        "code": "upstream_timeout",
+                        "message": "Layanan tidak merespons tepat waktu. Silakan coba lagi.",
+                        "request_id": "7f3c2a9e-51d4-4b8e-9a0f-2c1e5d6b8a13"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Galat lain dengan skema seragam (Tabel 3.16)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/geocode/reverse": {
+      "post": {
+        "tags": [
+          "public"
+        ],
+        "summary": "Nama tempat terdekat dari sebuah titik",
+        "description": "Nama yang ditampilkan untuk titik hasil klik peta.\n\nTitik di luar wilayah studi ditolak tanpa diteruskan ke penyedia geocoding.",
+        "operationId": "reversePlace",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GeocodeReverseRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Tempat terdekat, atau place null bila tidak ada yang bernama dalam radius 500 m.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Penanda request untuk penelusuran log",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Cache-Control": {
+                "description": "no-store: berisi data lokasi (PNF-06)",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GeocodeReverseResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "lat atau lon di luar rentang, atau JSON rusak",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Penanda request untuk penelusuran log",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "lat": {
+                    "value": {
+                      "error": {
+                        "code": "invalid_request",
+                        "message": "lat: Input should be less than or equal to 90",
+                        "request_id": "7f3c2a9e-51d4-4b8e-9a0f-2c1e5d6b8a13"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Titik di luar wilayah studi; tidak diteruskan ke penyedia",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Penanda request untuk penelusuran log",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "outside_study_area": {
+                    "value": {
+                      "error": {
+                        "code": "outside_study_area",
+                        "message": "Titik berada di luar wilayah studi (DKI Jakarta).",
+                        "request_id": "7f3c2a9e-51d4-4b8e-9a0f-2c1e5d6b8a13"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Layanan pencarian lokasi belum dikonfigurasi, tidak merespons, atau bermasalah. Formulir rute tetap dapat dipakai lewat klik peta dan koordinat",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Penanda request untuk penelusuran log",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "not_configured": {
+                    "value": {
+                      "error": {
+                        "code": "geocoding_unavailable",
+                        "message": "Pencarian lokasi belum dikonfigurasi di server.",
+                        "request_id": "7f3c2a9e-51d4-4b8e-9a0f-2c1e5d6b8a13",
+                        "reason": "not_configured"
+                      }
+                    }
+                  },
+                  "provider_timeout": {
+                    "value": {
+                      "error": {
+                        "code": "geocoding_unavailable",
+                        "message": "Layanan pencarian lokasi tidak merespons tepat waktu.",
+                        "request_id": "7f3c2a9e-51d4-4b8e-9a0f-2c1e5d6b8a13",
+                        "reason": "provider_timeout"
+                      }
+                    }
+                  },
+                  "provider_error": {
+                    "value": {
+                      "error": {
+                        "code": "geocoding_unavailable",
+                        "message": "Layanan pencarian lokasi sedang bermasalah.",
+                        "request_id": "7f3c2a9e-51d4-4b8e-9a0f-2c1e5d6b8a13",
+                        "reason": "provider_error"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Dari API Gateway: rate limit terlampaui; header Retry-After menyatakan detik tunggu (Tabel 3.15): 20 per menit per alamat IP (burst 5) untuk /v1/routes, 60 per menit (burst 10) untuk /v1/exposure-surface dan /v1/geocode/*, ditambah 5 per detik (burst 10) untuk seluruh pengguna /v1/geocode/*.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Penanda request untuk penelusuran log",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "rate_limited": {
+                    "value": {
+                      "error": {
+                        "code": "rate_limited",
+                        "message": "Terlalu banyak permintaan. Coba lagi dalam 3 detik.",
+                        "request_id": "7f3c2a9e-51d4-4b8e-9a0f-2c1e5d6b8a13"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Galat internal yang tidak terduga",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Penanda request untuk penelusuran log",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "internal_error": {
+                    "value": {
+                      "error": {
+                        "code": "internal_error",
+                        "message": "Terjadi galat internal pada server.",
+                        "request_id": "7f3c2a9e-51d4-4b8e-9a0f-2c1e5d6b8a13"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Dari API Gateway: Cache API tidak dapat dihubungi",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Penanda request untuk penelusuran log",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "upstream_unavailable": {
+                    "value": {
+                      "error": {
+                        "code": "upstream_unavailable",
+                        "message": "Layanan sedang tidak dapat dihubungi. Silakan coba lagi.",
+                        "request_id": "7f3c2a9e-51d4-4b8e-9a0f-2c1e5d6b8a13"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Dari API Gateway: Cache API tidak merespons dalam 10 detik",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Penanda request untuk penelusuran log",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "upstream_timeout": {
+                    "value": {
+                      "error": {
+                        "code": "upstream_timeout",
+                        "message": "Layanan tidak merespons tepat waktu. Silakan coba lagi.",
+                        "request_id": "7f3c2a9e-51d4-4b8e-9a0f-2c1e5d6b8a13"
+                      }
+                    }
+                  }
                 }
               }
             }
@@ -1600,6 +2131,94 @@
         ],
         "title": "Estimation"
       },
+      "GeocodeReverseRequest": {
+        "properties": {
+          "lat": {
+            "type": "number",
+            "maximum": 90.0,
+            "minimum": -90.0,
+            "title": "Lat",
+            "description": "Lintang WGS 84; tidak dicatat di log dan tidak disimpan (PNF-06)"
+          },
+          "lon": {
+            "type": "number",
+            "maximum": 180.0,
+            "minimum": -180.0,
+            "title": "Lon",
+            "description": "Bujur WGS 84; tidak dicatat di log dan tidak disimpan (PNF-06)"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "lat",
+          "lon"
+        ],
+        "title": "GeocodeReverseRequest"
+      },
+      "GeocodeReverseResponse": {
+        "properties": {
+          "place": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Place"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Tempat terdekat dalam radius 500 m, null bila tidak ada"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "place"
+        ],
+        "title": "GeocodeReverseResponse"
+      },
+      "GeocodeSearchRequest": {
+        "properties": {
+          "query": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 2,
+            "title": "Query",
+            "description": "Nama tempat atau alamat; tidak dicatat di log dan tidak disimpan (PNF-06)"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "query"
+        ],
+        "title": "GeocodeSearchRequest"
+      },
+      "GeocodeSearchResponse": {
+        "properties": {
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/Place"
+            },
+            "type": "array",
+            "maxItems": 5,
+            "title": "Results",
+            "description": "Tempat di dalam wilayah studi, paling relevan lebih dulu"
+          },
+          "outside_study_area": {
+            "type": "boolean",
+            "title": "Outside Study Area",
+            "description": "true bila tidak ada hasil di wilayah studi tetapi tempat itu ditemukan di luar wilayah; false bila tidak ditemukan sama sekali"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "results",
+          "outside_study_area"
+        ],
+        "title": "GeocodeSearchResponse"
+      },
       "LineString": {
         "properties": {
           "type": {
@@ -1609,10 +2228,22 @@
           },
           "coordinates": {
             "items": {
-              "items": {
-                "type": "number"
-              },
-              "type": "array"
+              "prefixItems": [
+                {
+                  "type": "number",
+                  "maximum": 180.0,
+                  "minimum": -180.0
+                },
+                {
+                  "type": "number",
+                  "maximum": 90.0,
+                  "minimum": -90.0
+                }
+              ],
+              "items": false,
+              "type": "array",
+              "maxItems": 2,
+              "minItems": 2
             },
             "type": "array",
             "minItems": 2,
@@ -1672,19 +2303,54 @@
         ],
         "title": "ModelVersion"
       },
+      "Place": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "description": "Nama tempat yang dapat dibaca"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description",
+            "description": "Jalan, kecamatan, dan kota; kosong bila tidak diketahui"
+          },
+          "lat": {
+            "type": "number",
+            "title": "Lat",
+            "description": "Lintang WGS 84, di dalam wilayah studi"
+          },
+          "lon": {
+            "type": "number",
+            "title": "Lon",
+            "description": "Bujur WGS 84, di dalam wilayah studi"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name",
+          "description",
+          "lat",
+          "lon"
+        ],
+        "title": "Place"
+      },
       "PointModel": {
         "properties": {
           "lat": {
             "type": "number",
             "maximum": 90.0,
             "minimum": -90.0,
-            "title": "Lat"
+            "title": "Lat",
+            "description": "Latitude WGS 84, degrees"
           },
           "lon": {
             "type": "number",
             "maximum": 180.0,
             "minimum": -180.0,
-            "title": "Lon"
+            "title": "Lon",
+            "description": "Longitude WGS 84, degrees"
           }
         },
         "type": "object",
@@ -1704,10 +2370,22 @@
           "coordinates": {
             "items": {
               "items": {
-                "items": {
-                  "type": "number"
-                },
-                "type": "array"
+                "prefixItems": [
+                  {
+                    "type": "number",
+                    "maximum": 180.0,
+                    "minimum": -180.0
+                  },
+                  {
+                    "type": "number",
+                    "maximum": 90.0,
+                    "minimum": -90.0
+                  }
+                ],
+                "items": false,
+                "type": "array",
+                "maxItems": 2,
+                "minItems": 2
               },
               "type": "array"
             },
@@ -1731,14 +2409,14 @@
             "maximum": 1.0,
             "minimum": 0.0,
             "title": "Alpha",
-            "description": "Bobot waktu tempuh α, 0–1"
+            "description": "Bobot waktu tempuh α, tanpa satuan, 0–1"
           },
           "beta": {
             "type": "number",
             "maximum": 1.0,
             "minimum": 0.0,
             "title": "Beta",
-            "description": "Bobot paparan β, 0–1; α + β = 1"
+            "description": "Bobot paparan β, tanpa satuan, 0–1; α + β = 1 (toleransi 1e-6)"
           }
         },
         "type": "object",
@@ -1866,6 +2544,8 @@
           },
           "time_window_start": {
             "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}[Tt]\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?(?:[Zz]|[+-](?:[01]\\d|2[0-3]):[0-5]\\d)$",
+            "format": "date-time",
             "title": "Time Window Start",
             "description": "Awal time window polusi (ISO 8601, UTC)"
           },
@@ -1995,23 +2675,27 @@
           },
           "travel_time_min": {
             "type": "number",
+            "minimum": 0.0,
             "title": "Travel Time Min",
             "description": "T(R), menit"
           },
           "distance_m": {
             "type": "number",
+            "minimum": 0.0,
             "title": "Distance M",
             "description": "Panjang rute, meter"
           },
           "exposure_index_min": {
             "type": "number",
+            "minimum": 0.0,
             "title": "Exposure Index Min",
             "description": "E(R) = Σ Iₑ·τₑ, indeks·menit"
           },
           "exposure_ug_min_m3": {
             "anyOf": [
               {
-                "type": "number"
+                "type": "number",
+                "minimum": 0.0
               },
               {
                 "type": "null"
@@ -2022,16 +2706,21 @@
           },
           "concentration_coverage": {
             "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
             "title": "Concentration Coverage",
             "description": "Bagian ruas yang memiliki konsentrasi, 0–1"
           },
           "confidence_score": {
             "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
             "title": "Confidence Score",
             "description": "Rata-rata confidence ruas berbobot paparan, 0–1"
           },
           "imputed_edge_count": {
             "type": "integer",
+            "minimum": 0.0,
             "title": "Imputed Edge Count",
             "description": "Jumlah ruas yang indeksnya diisi median wilayah"
           },

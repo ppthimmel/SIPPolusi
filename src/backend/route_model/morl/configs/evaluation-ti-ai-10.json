@@ -1,0 +1,22 @@
+{
+  "name": "ti-ai-10-multi-policy-bike-v1",
+  "seed": 42,
+  "threads": 1,
+  "set_dir": "docs/experiments/TI-AI-09/set",
+  "strata": [
+    {"name": "trained-range", "pairs": 200, "seed": 1010, "min_distance_m": 500.0, "max_distance_m": 3000.0, "primary": true},
+    {"name": "longer-trips", "pairs": 50, "seed": 1011, "min_distance_m": 3000.0, "max_distance_m": 8000.0, "primary": false}
+  ],
+  "alphas": [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0],
+  "perturbed_seed": 2010,
+  "criteria": {
+    "default_alpha": 0.5,
+    "route_validity_min": 1.0,
+    "success_rate_min": 0.95,
+    "inference_budget_ms": 4500,
+    "inference_p95_max_ms": 4500,
+    "eai04_median_exposure_reduction_min_pct": 4.0,
+    "eai04_median_added_time_max_pct": 20.0,
+    "eai05_fulfilled_min": 0.8
+  }
+}

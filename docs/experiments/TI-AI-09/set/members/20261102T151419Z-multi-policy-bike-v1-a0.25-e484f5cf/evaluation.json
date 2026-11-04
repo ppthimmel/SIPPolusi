@@ -1,0 +1,64 @@
+{
+  "checkpoint": {
+    "update": 60,
+    "sha256": "c7181b3d576c1e87482777f384eb063e5eb9d625da2a7e1bc27c2e1aa5f745ba"
+  },
+  "split": "val",
+  "alpha": 0.25,
+  "summary": {
+    "episodes": 150,
+    "mean_return": -1.0449354107662943,
+    "success_rate": 0.9866666666666667,
+    "outcomes": {
+      "reached": 148,
+      "dead_end": 2,
+      "truncated": 0
+    },
+    "mean_steps": 70.26666666666667,
+    "by_alpha": {
+      "0.25": {
+        "episodes": 150,
+        "success_rate": 0.9866666666666667,
+        "mean_return": -1.0449354107662943,
+        "time_ratio": 1.00669268884214,
+        "exposure_ratio": 1.0044385777277924,
+        "weighted_cost": 1.0050021055063794,
+        "oracle_time_ratio": 1.001527279472803,
+        "oracle_exposure_ratio": 0.9984283380217431
+      }
+    },
+    "mean_optimality_gap": 0.0055689387138171285
+  },
+  "reload_check": {
+    "od_pairs": 150,
+    "identical": true,
+    "routes_reached": 148
+  },
+  "perturbed_fields": {
+    "note": "Synthetic perturbation of the validation fields; not used to select the checkpoint.",
+    "summary": {
+      "episodes": 150,
+      "mean_return": -1.0377771132033002,
+      "success_rate": 0.9866666666666667,
+      "outcomes": {
+        "reached": 148,
+        "dead_end": 2,
+        "truncated": 0
+      },
+      "mean_steps": 71.20666666666666,
+      "by_alpha": {
+        "0.25": {
+          "episodes": 150,
+          "success_rate": 0.9866666666666667,
+          "mean_return": -1.0377771132033002,
+          "time_ratio": 1.014399417485078,
+          "exposure_ratio": 0.9921962930950196,
+          "weighted_cost": 0.9977470741925341,
+          "oracle_time_ratio": 1.0108182387942286,
+          "oracle_exposure_ratio": 0.9829091926860717
+        }
+      },
+      "mean_optimality_gap": 0.007678560549943845
+    }
+  }
+}

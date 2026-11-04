@@ -1,0 +1,12 @@
+# MORL policy training (TI-AI-09), on the GPU server or locally. On a CPU-only machine,
+# install torch from https://download.pytorch.org/whl/cpu first.
+networkx
+numpy
+pandas>=2.1
+pyarrow>=15
+torch>=2.2
+# route_model.morl.fields only: the Data Worker's grid and edge aggregation
+pyproj
+shapely
+# Notebook charts
+matplotlib

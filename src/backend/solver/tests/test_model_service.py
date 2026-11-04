@@ -7,6 +7,7 @@ import gzip
 import json
 import logging
 import socket
+import sys
 import threading
 import time
 
@@ -121,11 +122,15 @@ def test_bad_model_without_fallback_is_structured(service_url, settings, osm_rep
     assert not any(hint in error["message"] for hint in INTERNAL_HINTS), error["message"]
 
 
-def test_unavailable_model(settings, osm_repo, pollution_repo, caplog):
+def test_unavailable_model(settings, osm_repo, pollution_repo, caplog, monkeypatch):
+    # Windows may take about two seconds to report a refused TCP connection.
+    # Keep this a connection-error test; timeout behavior is exercised separately.
+    if sys.platform == "win32":
+        monkeypatch.setitem(SETTINGS, "budget_ms", 4000)
     caplog.set_level(logging.WARNING, logger="solver")
     closed = f"http://127.0.0.1:{_free_port()}"  # nothing listens here
     fb, elapsed = call(closed, settings, osm_repo, pollution_repo, "valid", "baseline")
-    assert fb.status_code == 200 and elapsed < 2.5
+    assert fb.status_code == 200 and elapsed < (5 if sys.platform == "win32" else 2.5)
     assert fb.json()["metadata"]["fallback_reason"] == "model_unavailable"
     err, _ = call(closed, settings, osm_repo, pollution_repo, "valid", "none")
     error = err.json()["error"]

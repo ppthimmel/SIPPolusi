@@ -10,7 +10,22 @@
     "min_split_gain": 1.0
   },
   "target": "direct",
-  "hyperparameter_origin": "PM2.5 blocked CV parameters reused for NO2; target and full-feature choice selected on NO2 LOSO validation",
+  "hyperparameter_origin": "PM2.5 blocked CV parameters of the tuned all-feature LightGBM (model-comparison-ds-v0.3.0 fixed_state.json best_cfg.lgbm_allfeat_tuned); LightGBM is not the selected PM2.5 model",
   "selection": "Full-feature direct NO2 model selected on LOSO validation; hyperparameters from fixed_state.json",
+  "targets": {
+    "no2": {
+      "hp": {
+        "n_estimators": 150,
+        "learning_rate": 0.02,
+        "num_leaves": 63,
+        "min_child_samples": 50,
+        "subsample": 0.6,
+        "colsample_bytree": 0.4,
+        "reg_lambda": 50,
+        "min_split_gain": 0
+      },
+      "hyperparameter_origin": "PM2.5 blocked CV parameters of the direct all-feature LightGBM (model-comparison-ds-v0.3.0 fixed_state.json best_cfg.lgbm_allfeat_direct), reused for NO2; this model was selected on NO2 LOSO validation (val RMSE 28.92, test 27.43)"
+    }
+  },
   "threads": 8
 }

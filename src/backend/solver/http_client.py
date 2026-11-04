@@ -3,8 +3,8 @@
 POST {ROUTE_SOLVER_URL}/internal/v1/solve with the solver input as JSON,
 gzip-compressed (Tabel 3.14, 3.15, Kode 3.3). Failures are classified:
 
-    timeout                  -> SolverError(solver_timeout)
-    connection refused/DNS   -> SolverError(solver_unreachable)
+    read/write/pool timeout  -> SolverError(solver_timeout)
+    connect timeout/refused/DNS -> SolverError(solver_unreachable)
     5xx or unexpected 4xx    -> SolverError(solver_error)
     422 no_route_found       -> SolverReply(status="no_route")
     body breaks the contract -> SolverError(invalid_solver_response)
@@ -80,11 +80,16 @@ class HttpSolver:
     async def solve(self, request: SolveRequest) -> SolverReply:
         payload = gzip.compress(json.dumps(request_body(request)).encode())
         timeout = (request.deadline_ms + self.grace_ms) / 1000
+        # Leave time for connection failure classification before the outer solve deadline.
+        request_timeout = httpx.Timeout(timeout, connect=min(5.0, timeout / 2))
         headers = {"Content-Type": "application/json", "Content-Encoding": "gzip",
                    "X-Request-ID": request.request_id}
         try:
-            async with httpx.AsyncClient(base_url=self.base_url, timeout=timeout, transport=self._transport) as client:
+            async with httpx.AsyncClient(base_url=self.base_url, timeout=request_timeout,
+                                         transport=self._transport) as client:
                 resp = await client.post(SOLVE_PATH, content=payload, headers=headers)
+        except httpx.ConnectTimeout as exc:
+            raise SolverError(SOLVER_UNREACHABLE, "Route Model tidak dapat dihubungi (ConnectTimeout).") from exc
         except httpx.TimeoutException as exc:
             raise SolverError(SOLVER_TIMEOUT, "Route Model tidak merespons dalam batas waktu.") from exc
         except httpx.TransportError as exc:

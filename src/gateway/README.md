@@ -10,9 +10,10 @@ the Cache API over Railway's private network. Nothing else is exposed.
 | `GET /healthz` | Gateway liveness, answered by NGINX itself (Railway health check). Never touches an upstream; not rate limited. |
 | `POST /v1/routes` (exact path; `OPTIONS` also passes, any other method gets `405`) | Rate limited, then proxied to `CACHE_API_UPSTREAM` (IRouteQuery, TI-SE-08). Body at most 16 KiB. |
 | `GET /v1/exposure-surface` (exact path; `OPTIONS` also passes, any other method gets `405`) | Rate limited, then proxied to `CACHE_API_UPSTREAM` (IExposureSurface, TI-SE-08). |
+| `POST /v1/geocode/search`, `POST /v1/geocode/reverse` (exact paths; `OPTIONS` also passes, any other method gets `405`) | Rate limited per client and over all clients, then proxied to `CACHE_API_UPSTREAM` (TI-SE-12). Body at most 2 KiB. |
 | anything else | `404 not_found`, answered by the gateway. This includes the Cache API's `/v1/osm/*` and `/v1/pollution/*` reads, its `/v1/routes/*` inspection endpoints (`/solve`, `/plan`, `/solver-input`), `/docs`, every `/health*`, and the backend. |
 
-Those two paths are the whole public contract (`src/backend/public_api`,
+Those paths are the whole public contract (`src/backend/public_api`,
 `openapi.json`); they are what the Frontend calls. Internal services reach the
 Cache API and the backend directly over the private network (TI-DO-04).
 
@@ -37,6 +38,8 @@ bucket: the burst passes at once, then one request per refill interval.
 |---|---|---|---|---|
 | `POST /v1/routes` | 20 per minute (1 per 3 s) | 5 | 6 | `3` |
 | `GET /v1/exposure-surface` | 60 per minute (1 per s) | 10 | 11 | `1` |
+| `POST /v1/geocode/*`, per client (one bucket for both paths) | 60 per minute (1 per s) | 10 | 11 | `1` |
+| `POST /v1/geocode/*`, all clients together | 5 per s | 10 | 11 | `1` |
 
 Table 3.15 gives no burst for the heatmap; 10 covers a few quick pans after the
 Frontend's 500 ms debounce. A refused request gets `429 rate_limited` with

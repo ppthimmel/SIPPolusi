@@ -1,5 +1,8 @@
 # `osm`: Akses OSM Cache DB untuk Backend
 
+Kontrak Point/RoadGraph lintas komponen dan skema berversi (TI-SE-01):
+[`data-contracts-TI-SE-01.md`](../../../docs/software/data-contracts-TI-SE-01.md).
+
 Modul baca-saja ke schema `osm` (jaringan jalan DKI Jakarta). Modul ini mengikuti
 skema database yang sebenarnya (`handoff_database.md`) dan Dokumen Desain:
 

@@ -112,6 +112,24 @@ button:disabled { cursor: not-allowed; }
 .field input::placeholder { font-weight: 400; color: #7b857e; }
 .field-error { margin: 2px 0 4px; font-size: 13px; color: var(--red); font-weight: 600; }
 
+.field { position: relative; }
+.field:focus-within { z-index: 3; }
+.place-menu {
+  position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 4; max-height: 320px; overflow-y: auto;
+  background: var(--surface); border: 1px solid var(--ink); border-radius: var(--radius);
+  box-shadow: 0 8px 24px rgba(23, 33, 30, 0.18);
+}
+.place-menu[hidden], .place-menu [hidden] { display: none; }
+/* The bottom sheet is short: the field being typed in has to stay in view above the list. */
+@media (max-width: 899px) { .place-menu { max-height: 220px; } }
+.place-menu ul { list-style: none; margin: 0; padding: 4px; }
+.place-option { display: grid; gap: 2px; min-height: 44px; align-content: center; padding: 6px 10px; border-radius: 8px; cursor: pointer; }
+.place-option:hover, .place-option[aria-selected="true"] { background: var(--green-soft); }
+.place-name { font-weight: 600; }
+.place-description { font-size: 13px; color: var(--muted); }
+.place-status { margin: 0; padding: 12px 14px; font-size: 14px; }
+.place-notice { margin: 8px 0 0; font-size: 12px; line-height: 1.4; color: var(--muted); }
+
 .pick-btn, .icon-btn, .map-btn {
   display: inline-grid; place-items: center; min-width: 44px; min-height: 44px; border-radius: 10px;
   border: 1px solid transparent; background: transparent; color: var(--ink);

@@ -4,15 +4,23 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from osm.models import Mode
 from osm.schemas import PointModel
 
+PREFERENCE_TOLERANCE = 1e-6
+
 
 class PreferenceIn(BaseModel):
-    alpha: float = Field(ge=0, le=1, description="Bobot waktu tempuh α, 0–1")
-    beta: float = Field(ge=0, le=1, description="Bobot paparan β, 0–1; α + β = 1")
+    alpha: float = Field(ge=0, le=1, strict=True, description="Bobot waktu tempuh α, tanpa satuan, 0–1")
+    beta: float = Field(ge=0, le=1, strict=True, description="Bobot paparan β, tanpa satuan, 0–1; α + β = 1 (toleransi 1e-6)")
+
+    @model_validator(mode="after")
+    def validate_sum(self) -> PreferenceIn:
+        if abs(self.alpha + self.beta - 1) > PREFERENCE_TOLERANCE:
+            raise ValueError(f"preference.alpha + preference.beta harus 1 (sekarang {self.alpha + self.beta:g}).")
+        return self
 
 
 class RouteRequestIn(BaseModel):

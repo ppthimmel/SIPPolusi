@@ -220,3 +220,6 @@ docs/experiments/ds-v0.1.0.zip
 # Local training artifacts; keep the checkpoint inventory in Git.
 /checkpoints/*
 !/checkpoints/README.md
+
+# MORL exposure fields and training runs (TI-AI-09); selected evidence goes to docs/experiments/TI-AI-09
+/src/backend/route_model/runs/

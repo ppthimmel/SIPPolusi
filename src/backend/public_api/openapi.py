@@ -3,7 +3,7 @@
     python -m public_api.openapi            print to stdout
     python -m public_api.openapi --write    update public_api/openapi.json
 
-Only gateway-routed paths are kept (POST /v1/routes, GET /v1/exposure-surface);
+Only gateway-routed paths are kept (POST /v1/routes, GET /v1/exposure-surface, POST /v1/geocode/*);
 the Cache API's /v1/osm/* and /v1/pollution/* reads, the inspection endpoints
 (/v1/routes/solve, /plan, /solver-input) and /health are internal (TI-DO-05). tests/test_openapi.py fails when
 openapi.json is out of date, so the committed file always matches the code.
@@ -16,7 +16,7 @@ import pathlib
 from typing import Any
 
 SPEC_PATH = pathlib.Path(__file__).with_name("openapi.json")
-PUBLIC_PATHS = {"/v1/routes", "/v1/exposure-surface"}
+PUBLIC_PATHS = {"/v1/routes", "/v1/exposure-surface", "/v1/geocode/search", "/v1/geocode/reverse"}
 
 DESCRIPTION = """\
 Kontrak publik SIPPolusi, diakses lewat API Gateway (`https://<gateway>/v1/...`).
@@ -29,7 +29,7 @@ Kontrak publik SIPPolusi, diakses lewat API Gateway (`https://<gateway>/v1/...`)
 - **Batas ukuran body** 16 KiB (413 `payload_too_large`).
 - Setiap respons membawa header `X-Request-ID` untuk penelusuran log.
 
-Data jalan © OpenStreetMap contributors, ODbL (https://www.openstreetmap.org/copyright).
+Data jalan dan tempat © OpenStreetMap contributors, ODbL (https://www.openstreetmap.org/copyright).
 """
 
 

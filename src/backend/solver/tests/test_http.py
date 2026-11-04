@@ -26,12 +26,14 @@ async def test_request_body_is_gzip_json_with_contract_fields(solve_request):
     seen = {}
 
     def handler(request: httpx.Request):
+        seen["timeout"] = request.extensions["timeout"]
         seen["headers"] = request.headers
         seen["body"] = json.loads(gzip.decompress(request.content))
         return httpx.Response(200, json={"route_source": "baseline", "fallback_reason": "policy_timeout",
                                          "recommended": {"edge_ids": [1]}, "comparison": {"edge_ids": [1]}})
 
     reply = await HttpSolver("http://svc", transport=httpx.MockTransport(handler)).solve(solve_request)
+    assert seen["timeout"]["connect"] < seen["timeout"]["read"]
     body = seen["body"]
     assert seen["headers"]["content-encoding"] == "gzip" and seen["headers"]["x-request-id"] == "req-h"
     assert {"request_id", "mode", "deadline_ms", "preference", "origin_node", "destination_node", "nodes", "edges"} <= set(body)
@@ -42,6 +44,7 @@ async def test_request_body_is_gzip_json_with_contract_fields(solve_request):
 
 @pytest.mark.parametrize("fault, reason", [
     ("timeout", "solver_timeout"), ("unreachable", "solver_unreachable"),
+    ("connect_timeout", "solver_unreachable"), ("pool_timeout", "solver_timeout"),
     ("error", "solver_error"), ("invalid", "invalid_solver_response"),
 ])
 async def test_failures_are_classified(solve_request, fault, reason):

@@ -1,6 +1,9 @@
 # `public_api`: API publik SIPPolusi (TI-SE-08)
 
-Dua endpoint yang dipakai Frontend lewat API Gateway, dengan kontrak yang stabil dan
+Kontrak lintas komponen versi 1.0.0 (TI-SE-01), skema JSON dan pemetaan cache:
+[`data-contracts-TI-SE-01.md`](../../../docs/software/data-contracts-TI-SE-01.md).
+
+Endpoint yang dipakai Frontend lewat API Gateway, dengan kontrak yang stabil dan
 terdokumentasi. Rujukan desain: Tabel 3.14–3.16, Kode 3.1 dan 3.2, `get_exposure_surface` di
 Tabel 3.6, dan Subbab 3.1 (skala warna heatmap).
 
@@ -8,9 +11,10 @@ Tabel 3.6, dan Subbab 3.1 (skala warna heatmap).
 |---|---|---|
 | `POST /v1/routes` | IRouteQuery | RouteRequest (Kode 3.1) → GeoJSON rute rekomendasi dan rute pembanding (Kode 3.2) |
 | `GET /v1/exposure-surface` | IExposureSurface | bbox + zoom → GeoJSON ruas atau sel grid untuk heatmap |
+| `POST /v1/geocode/search`, `POST /v1/geocode/reverse` | TI-SE-12 | Nama tempat → tempat di wilayah studi; titik → nama tempat terdekat |
 
-Kedua endpoint berjalan di Cache API (`osm.app`) dan memakai planner (TI-SE-05) serta solver
-(TI-SE-06, TI-SE-07) yang sudah ada. API Gateway meneruskan **hanya** dua path ini (exact match)
+Semuanya berjalan di Cache API (`osm.app`); rute dan heatmap memakai planner (TI-SE-05) serta solver
+(TI-SE-06, TI-SE-07) yang sudah ada. API Gateway meneruskan **hanya** path ini (exact match)
 ke Cache API, dengan rate limit per alamat IP. Endpoint inspeksi `/v1/routes/solve`, `/plan`, dan
 `/solver-input`, serta baca internal `/v1/osm/*` dan `/v1/pollution/*`, tidak dapat diakses lewat
 gateway (TI-DO-05, lihat [`src/gateway/README.md`](../../gateway/README.md)).
@@ -129,6 +133,25 @@ Respons 200 (`application/geo+json`, `Cache-Control: no-store` karena berisi koo
   Ini menyimpang dari Tabel 3.15 (`max-age` sampai akhir time window): `max-age` membuat cache
   menyimpan window lama sampai satu jam setelah window baru selesai (masukan QA).
 
+## `POST /v1/geocode/search` dan `POST /v1/geocode/reverse`
+
+Pencarian nama tempat untuk kolom asal dan tujuan (TI-SE-12). Penyedia, kebijakan penggunaan, dan
+perlakuan data lokasi ada di [`docs/ti-se-12-geocoding.md`](../../../docs/ti-se-12-geocoding.md).
+
+```jsonc
+// POST /v1/geocode/search  {"query": "monas"}
+{"results": [{"name": "Monumen Nasional", "description": "Jalan Medan Merdeka Utara, Gambir, Jakarta",
+              "lat": -6.1754024, "lon": 106.8271692}],
+ "outside_study_area": false}
+// POST /v1/geocode/reverse  {"lat": -6.1754, "lon": 106.8272}
+{"place": {"name": "Monumen Nasional", "description": "Jalan Medan Merdeka Utara, Gambir, Jakarta",
+           "lat": -6.1754024, "lon": 106.8271692}}
+```
+
+Hasil selalu berada di wilayah studi. `outside_study_area: true` berarti tempat itu hanya ditemukan di
+luar wilayah. Titik di luar wilayah pada `/reverse` dijawab 422 `outside_study_area` tanpa diteruskan ke penyedia.
+Keduanya POST agar teks dan koordinat tidak masuk baris permintaan yang tercatat di log (PNF-06).
+
 ## Galat
 
 Semua galat memakai skema `{"error": {"code", "message", "request_id", "reason"?}}` dengan
@@ -142,8 +165,9 @@ Semua galat memakai skema `{"error": {"code", "message", "request_id", "reason"?
 | 422 | `outside_study_area` | – | Titik di luar DKI Jakarta | Cache API |
 | 422 | `point_not_on_network` | – | Tidak ada simpul yang dapat dilalui dalam 200 m | Cache API |
 | 422 | `no_route_found` | `same_node` | Asal dan tujuan ter-snap ke simpul yang sama | Cache API |
-| 429 | `rate_limited` | – | Rate limit per alamat IP (Tabel 3.15): `/v1/routes` 20/menit, burst 5; `/v1/exposure-surface` 60/menit, burst 10. Header `Retry-After` (3 atau 1 detik) | Gateway |
+| 429 | `rate_limited` | – | Rate limit per alamat IP (Tabel 3.15): `/v1/routes` 20/menit, burst 5; `/v1/exposure-surface` 60/menit, burst 10; `/v1/geocode/*` 60/menit, burst 10, ditambah 5/detik untuk seluruh pengguna. Header `Retry-After` (3 atau 1 detik) | Gateway |
 | 500 | `internal_error` | – | Galat tak terduga; detail hanya di log | Cache API |
+| 503 | `geocoding_unavailable` | `not_configured`, `provider_timeout`, `provider_error` | Pencarian lokasi tidak tersedia; rute tetap dapat dicari lewat peta dan koordinat | Cache API |
 | 502 | `upstream_unavailable` | – | Cache API tidak dapat dihubungi | Gateway |
 | 503 | `cache_unavailable` | `cache_empty`, `database_unavailable`, `query_timeout` | Cache kosong (belum ada time window complete) atau tidak dapat dibaca | Cache API |
 | 503 | `route_service_unavailable` | `solver_timeout`, `solver_unreachable`, `solver_error`, `invalid_solver_response`, `solver_no_route`, `deadline_exceeded` | Route Model gagal dan fallback tidak tersedia. `solver_no_route`: model tidak menemukan rute padahal planner sudah memastikan tujuan dapat dicapai | Cache API |
@@ -204,6 +228,8 @@ body heatmap tidak memuat `request_id`.
 | `API_SURFACE_EDGE_MAX_KM2` | `25` | Luas bbox terbesar untuk zoom ≥ 14 |
 | `API_SURFACE_MAX_CELLS` | `10000` | Jumlah sel terbanyak untuk zoom < 14 |
 | `API_CORS_ORIGINS` | kosong | Origin Frontend yang diizinkan CORS, dipisah koma; kosong = CORS mati |
+| `API_GEOCODING_URL` | kosong | URL dasar server Photon (TI-SE-12); kosong = tidak ada data yang keluar dan `/v1/geocode/*` menjawab 503 |
+| `API_GEOCODING_TIMEOUT_S` | `3` | Batas waktu satu panggilan ke penyedia geocoding |
 
 ## Menguji
 

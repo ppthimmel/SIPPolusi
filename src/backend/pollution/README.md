@@ -1,5 +1,8 @@
 # `pollution`: Akses Spatial Pollution Cache DB untuk Backend
 
+Kontrak TimeWindow/EdgeWeight, satuan dan pemetaan writer/reader (TI-SE-01):
+[`data-contracts-TI-SE-01.md`](../../../docs/software/data-contracts-TI-SE-01.md).
+
 Modul baca-saja ke schema `pollution` (estimasi PM2.5/NO₂ per ruas per time window). Modul ini
 adalah pasangan dari [`../osm`](../osm/README.md): pool koneksi, skema galat, dan aplikasinya
 (`osm.app`) dipakai bersama. Rujukan Dokumen Desain: Tabel 3.3 (`TimeWindow`, `EdgeWeight`),

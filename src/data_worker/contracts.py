@@ -39,10 +39,13 @@ class TimeWindow:
             value = getattr(self, name)
             if value.tzinfo is None:
                 raise ValueError(f"TimeWindow.{name} wajib memiliki zona waktu")
-        if self.start.astimezone(UTC) != _floor_hour(self.start):
+        start, end = self.start.astimezone(UTC), self.end.astimezone(UTC)
+        if start != _floor_hour(start):
             raise ValueError("TimeWindow.start wajib tepat di awal jam")
-        if self.end - self.start != dt.timedelta(hours=1):
+        if end - start != dt.timedelta(hours=1):
             raise ValueError("TimeWindow wajib berdurasi satu jam")
+        object.__setattr__(self, "start", start)
+        object.__setattr__(self, "end", end)
 
     @classmethod
     def starting_at(cls, start: dt.datetime) -> "TimeWindow":

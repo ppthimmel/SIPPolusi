@@ -36,6 +36,8 @@ export function priorityLabel(beta: number): string {
 export interface ResultViewOptions {
   response: RouteResponse;
   request: RouteRequest;
+  /** Names of the points, when known; otherwise the header shows their coordinates. */
+  places: { origin: string | null; destination: string | null };
   onBack: () => void;
 }
 
@@ -65,7 +67,7 @@ export function renderResult(container: HTMLElement, opts: ResultViewOptions): H
       h(
         "div",
         { class: "trip-summary" },
-        h("div", { class: "trip-line" }, fmtCoord(request.origin), " → ", fmtCoord(request.destination)),
+        h("div", { class: "trip-line" }, opts.places.origin ?? fmtCoord(request.origin), " → ", opts.places.destination ?? fmtCoord(request.destination)),
         h(
           "div",
           { class: "trip-sub" },
