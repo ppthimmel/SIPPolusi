@@ -67,6 +67,7 @@ MANIFEST
 
 # Virtual environments
 venv/
+.venv/
 .venv-spatial/
 .cache/
 mlruns/
