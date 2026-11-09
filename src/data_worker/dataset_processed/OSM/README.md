@@ -258,9 +258,9 @@ CSV elsewhere, rebuild the geometry with `ST_GeomFromText(geom_wkt, 4326)` for s
 4. Calculated length, one-way direction (roads tagged `oneway=-1` are flipped so they run `u` to `v`),
    and walking and cycling permission.
 
-The original export scripts (`/root/osm-jakarta`) are not part of this repo. To load this export into the cache database, see [`src/data_worker/osm_cache/README.md`](../osm_cache/README.md) and [`scripts/local/seed_graph.py`](../../../scripts/local/seed_graph.py).
+The original export scripts (`/root/osm-jakarta`) are not part of this repo. To load this export into the cache database, see [`src/data_worker/osm_cache/README.md`](../../osm_cache/README.md) and [`scripts/local/seed_graph.py`](../../../../scripts/local/seed_graph.py).
 
 ## See also
 
-- [`src/backend/osm/README.md`](../../backend/osm/README.md): Cache API that serves the graph
-- [`src/backend/osm/VERIFICATION.md`](../../backend/osm/VERIFICATION.md): statistics of the active graph
+- [`src/backend/osm/README.md`](../../../backend/osm/README.md): Cache API that serves the graph
+- [`src/backend/osm/VERIFICATION.md`](../../../backend/osm/VERIFICATION.md): statistics of the active graph

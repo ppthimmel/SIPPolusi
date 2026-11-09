@@ -5,7 +5,7 @@ Panduan membangun, menjalankan, dan memeriksa empat layanan pada tabel di bawah:
 Di Railway *development* layanan Backend saat ini tidak punya *deployment* yang
 berjalan; *gateway* hanya meneruskan ke Cache API
 ([local-railway-parity.md](local-railway-parity.md)).
-Hasil uji ada di [`smoke-test-TI-DO-02.md`](smoke-test-TI-DO-02.md).
+Hasil uji ada di [`verification-TI-DO-02-build-runtime.md`](verification-TI-DO-02-build-runtime.md).
 Pipeline CI/CD dan aturan deployment: [`ci-cd.md`](ci-cd.md).
 
 Konfigurasi ini tidak bergantung pada Traefik atau K3s: build memakai
@@ -33,7 +33,7 @@ lewat *Dockerfile Path* di dashboard
 Railway membaca `src/backend/railway.json` untuk kedua service, jadi berkas itu
 tidak boleh memuat `dockerfilePath`.
 Skema log, correlation ID, metrik, dan arti setiap pemeriksaan ada di
-[`observability-TI-DO-08.md`](observability-TI-DO-08.md).
+[`observability.md`](observability.md).
 
 > **Config as Code dihentikan Railway.** Berkas `railway.json` yang sudah
 > dipakai tetap berlaku sampai **1 Desember 2026**; sejak 28 Agustus 2026
@@ -91,7 +91,7 @@ mendapat batas waktu, `X-Request-ID`, dan rate limit yang sama dengan klien lain
 | Cache API | `ROUTE_SOLVER_PROVIDER` | tidak (bawaan `mock`) | `morl` |
 | Cache API | `MLFLOW_TRACKING_URI` | ya bila `morl` | `http://modelregistry.railway.internal:5000` |
 | Cache API | `ROUTE_SOLVER_BUDGET_MS`, `ROUTE_SOLVER_FALLBACK_TIMEOUT_MS`, `ROUTE_SOLVER_GATEWAY_TIMEOUT_MS` | tidak | `40000`, `20000`, `43000`; daftar lengkap `ROUTE_SOLVER_*` di [`src/backend/solver/README.md`](../../src/backend/solver/README.md) |
-| Cache API | `API_GEOCODING_URL` | tidak; kosong = pencarian lokasi nonaktif | `https://photon.komoot.io`, lihat [`ti-se-12-geocoding.md`](../ti-se-12-geocoding.md) |
+| Cache API | `API_GEOCODING_URL` | tidak; kosong = pencarian lokasi nonaktif | `https://photon.komoot.io`, lihat [`docs/ti-se-12/README.md`](../ti-se-12/README.md) |
 | Frontend | `GATEWAY_UPSTREAM` | tidak (bawaan `http://gateway:8080`) | `http://${{gateway.RAILWAY_PRIVATE_DOMAIN}}:${{gateway.PORT}}` |
 | Data Worker | `DATABASE_URL` | ya | `${{database.DATABASE_URL}}` |
 | Data Worker | `SPKU_*` | tidak | lihat [`src/data_worker/README.md`](../../src/data_worker/README.md) |

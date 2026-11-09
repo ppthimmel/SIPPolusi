@@ -37,7 +37,7 @@ Yang sudah berjalan:
 | `connectors/` | Konektor sumber sekunder (Open-Meteo, GEOS-CF, Landsat, VIIRS, Sentinel-5P): HTTP dengan timeout dan coba ulang, parser, QA |
 | `feature_store/` | Skema `features`, pembaca FeatureMatrix PostgreSQL, langkah siklus TI-SE-02, `python main.py features ...`; lihat [README-nya](feature_store/README.md) |
 | `feature_matrix/` | Pembangun FeatureMatrix offline dari `dataset_processed/` (`python -m feature_matrix`); lihat [README-nya](feature_matrix/README.md) |
-| `dataset_processed/` | Dataset sumber sekunder terproses TI-AI-01 (GEOS-CF, Landsat, Open-Meteo, Sentinel-5P, VIIRS, OSM); spesifikasi fitur di `docs/*_FEATURE_SPEC.md` |
+| `dataset_processed/` | Dataset sumber sekunder terproses TI-AI-01 (GEOS-CF, Landsat, Open-Meteo, Sentinel-5P, VIIRS, OSM); spesifikasi fitur di `dataset_processed/<sumber>/README.md` |
 | `osm_cache/` | Penulisan graf jalan ke skema `osm` (`write_road_graph`); lihat [README-nya](osm_cache/README.md) |
 | `ground_truth.py` | `fetch_ground_truth(provider, bbox, time_window)` |
 | `contracts.py` | `TimeWindow`, `BBox`, `GroundTruthMeasurement`, `GroundTruthBatch` (Tabel 3.3) |
@@ -256,7 +256,7 @@ sungguhan (`FEATURES_SOURCES=none` pada `conftest.py`). Untuk menjalankan uji di
 
 - [`src/data_worker/feature_matrix/README.md`](feature_matrix/README.md): FeatureMatrix offline
 - [`src/data_worker/osm_cache/README.md`](osm_cache/README.md): penulisan graf jalan ke cache
-- [`docs/devops/observability-TI-DO-08.md`](../../docs/devops/observability-TI-DO-08.md): perintah `health` dan log terstruktur
+- [`docs/devops/observability.md`](../../docs/devops/observability.md): perintah `health` dan log terstruktur
 - [`docs/devops/local-railway-parity.md`](../../docs/devops/local-railway-parity.md): stack lokal setara Railway
 - [`docs/software/technical-runbook.md`](../../docs/software/technical-runbook.md): runbook operasional
 - [`src/data_worker/tests/DOCKER.md`](tests/DOCKER.md): menjalankan uji di Docker

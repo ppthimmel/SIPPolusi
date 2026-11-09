@@ -40,5 +40,5 @@ Hasil berisi **2.239.488 baris**, dari 243 tanggal produk antara 1 Januari–20 
 
 ## Lihat juga
 
-- [`src/data_worker/feature_matrix/README.md`](../feature_matrix/README.md): join per jam dan aturan sel VIIRS yang berlaku
-- [`src/data_worker/feature_store/README.md`](../feature_store/README.md): konektor dan tabel feature store
+- [`src/data_worker/feature_matrix/README.md`](../../feature_matrix/README.md): join per jam dan aturan sel VIIRS yang berlaku
+- [`src/data_worker/feature_store/README.md`](../../feature_store/README.md): konektor dan tabel feature store

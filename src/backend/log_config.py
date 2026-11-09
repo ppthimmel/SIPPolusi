@@ -11,7 +11,7 @@ Correlation (TI-DO-08): code that handles one request or one job runs inside
 that ``correlation_id``. ``log_event`` writes one structured event: in JSON
 its fields are top-level keys (filterable in Railway as ``@status:failed``),
 in text they read as ``event key=value ...``. The log schema is documented
-in docs/devops/observability-TI-DO-08.md.
+in docs/devops/observability.md.
 
 Kept identical in src/backend and src/data_worker because each service is
 built from its own Docker context.

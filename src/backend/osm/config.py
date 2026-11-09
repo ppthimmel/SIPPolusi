@@ -54,7 +54,7 @@ class OsmSettings(BaseSettings):
 
     # ModeProfile speeds (Tabel 3.3), configurable via OSM_WALK_SPEED_MPS and
     # OSM_BIKE_SPEED_MPS. When changing defaults, check route_model/astar_osm.py
-    # and docs/route-time-exposure.md so standalone runs and documentation agree.
+    # and docs/experiments/TI-AI-06/README.md so standalone runs and documentation agree.
     walk_speed_mps: float = Field(1.3, gt=0)
     bike_speed_mps: float = Field(4.2, gt=0)
 

@@ -77,7 +77,7 @@ bisa menindaklanjutinya dengan memindahkan titik. Kedua cache tetap dibaca bersa
 **Keadaan saat ini.** Cache polusi di Railway `development` diisi sejak 27 Okt
 (`DOWNSCALE_WRITE_CACHE=1`, [`docs/ti-se-10/LAPORAN.md`](../../../docs/ti-se-10/LAPORAN.md)).
 Selama basis data belum punya time window `complete`, permintaan yang valid menghasilkan 503
-`cache_empty`. Uji yang berhasil (200) di [VERIFICATION.md](VERIFICATION.md) berjalan di basis
+`cache_empty`. Uji yang berhasil (200) di [VERIFICATION.md](VERIFICATION_TI-SE-05.md) berjalan di basis
 data lokal yang diisi Data Worker.
 
 ## Menguji
@@ -95,5 +95,5 @@ Uji `cacheflow` memakai basis data uji lokal ([`../testdb`](../testdb/docker-com
 
 ## Lihat juga
 
-- [`docs/route-time-exposure.md`](../../../docs/route-time-exposure.md): kecepatan dan rumus paparan
+- [`docs/experiments/TI-AI-06/README.md`](../../../docs/experiments/TI-AI-06/README.md): kecepatan dan rumus paparan
 - [`src/backend/route_model/README.md`](../route_model/README.md): baseline rute tercepat (TI-AI-07)

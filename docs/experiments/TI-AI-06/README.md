@@ -28,8 +28,8 @@ box, marked `imputed_median`, and assigned zero confidence. The response counts
 imputed edges. If there are no usable estimates for a median, the planner returns
 `cache_empty`; it does not silently substitute zero. Missing pollutant
 concentrations are not imputed. Stale data is flagged rather than silently
-presented as fresh. See [planner details](../src/backend/planner/README.md) and
-[baseline details](../src/backend/route_model/README.md).
+presented as fresh. See [planner details](../../../src/backend/planner/README.md) and
+[baseline details](../../../src/backend/route_model/README.md).
 
 The `mock` solver is the default deterministic weighted Dijkstra comparator for MORL.
 Despite its name, it searches the real planner graph using the dimensionless objective
@@ -46,20 +46,20 @@ is served by the separate `morl` provider, which loads the registered
 provider calls an external route model service instead. The API's `route_source: policy`
 means preference-applied, not necessarily MORL; `solver: mock` and model version
 `mock-1` identify this comparator. See
-[solver providers](../src/backend/solver/README.md).
+[solver providers](../../../src/backend/solver/README.md).
 
-The shared numeric functions in [`costs.py`](../src/backend/route_model/costs.py)
+The shared numeric functions in [`costs.py`](../../../src/backend/route_model/costs.py)
 return raw seconds, index-seconds and dimensionless costs. The planner uses the
 time function, backend and standalone route metrics use the exposure function,
 and the deterministic comparator uses the cost functions. A future MORL model
 can consume them without API formatting. The weighted search accepts the same
 `SolverInput` as the planner. Its lower-bound proof and reproducible Dijkstra
-comparison are in [the verification notebook](../notebooks/weighted_astar_verification.ipynb).
+comparison are in [the verification notebook](../../../notebooks/weighted_astar_verification.ipynb).
 The weighted A* implementation remains available for research comparisons; it
 is not the default comparator. On provider failure, the automatic fallback
 is the time-only A* baseline, with preferences explicitly marked as unapplied.
 
-The baseline's [small-graph test](../src/backend/tests/test_baseline.py) gives
+The baseline's [small-graph test](../../../src/backend/tests/test_baseline.py) gives
 an example: two edges each take 10 s, with concentrations 10 and 20 µg/m³.
 Thus `T(R) = 20 s` and `E(R) = 10 × 10 + 20 × 10 = 300 µg·s/m³`.
 
@@ -68,13 +68,13 @@ and `E_ref = 80 index·s`, while a cleaner route has `T = 30 s` and
 `E = 30 index·s`. Their normalized values are `(1, 1)` and `(1.5, 0.375)`.
 With `(α, β) = (0.8, 0.2)` their costs are 1 and 1.275, so the fastest
 route wins. With `(0.2, 0.8)` the costs are 1 and 0.6, so the cleaner
-route wins. The [mock solver test](../src/backend/solver/tests/test_mock.py)
+route wins. The [mock solver test](../../../src/backend/solver/tests/test_mock.py)
 checks both calculations and choices against this two-route graph.
 
 ## See also
 
-- [`docs/ti-ai-06-verification.md`](ti-ai-06-verification.md): verification of this cost function
-- [`src/backend/route_model/TRAINING_ENV.md`](../src/backend/route_model/TRAINING_ENV.md): the same objective in the RL reward
-- [`docs/experiments/TI-AI-07/README.md`](experiments/TI-AI-07/README.md): fastest-route baseline regression
-- [`docs/experiments/TI-AI-10/PROTOCOL.md`](experiments/TI-AI-10/PROTOCOL.md): route model evaluation protocol
-- [`src/backend/solver/README.md`](../src/backend/solver/README.md#penyedia-morl-ti-se-07b): the in-process `morl` provider
+- [`docs/experiments/TI-AI-06/VERIFICATION.md`](VERIFICATION.md): verification of this cost function
+- [`src/backend/route_model/TRAINING_ENV.md`](../../../src/backend/route_model/TRAINING_ENV.md): the same objective in the RL reward
+- [`docs/experiments/TI-AI-07/README.md`](../TI-AI-07/README.md): fastest-route baseline regression
+- [`docs/experiments/TI-AI-10/PROTOCOL.md`](../TI-AI-10/PROTOCOL.md): route model evaluation protocol
+- [`src/backend/solver/README.md`](../../../src/backend/solver/README.md#penyedia-morl-ti-se-07b): the in-process `morl` provider

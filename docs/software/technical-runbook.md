@@ -17,7 +17,7 @@ support model registration and artifacts.
 - [OpenAPI snapshot](../../src/backend/public_api/openapi.json)
 - [Solver settings and fallback](../../src/backend/solver/README.md)
 - [Build/runtime and deployment](../devops/build-runtime.md)
-- [Observability](../devops/observability-TI-DO-08.md)
+- [Observability](../devops/observability.md)
 
 ## Reproduce a controlled local pipeline
 

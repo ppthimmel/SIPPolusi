@@ -24,5 +24,5 @@ Tabel utama: `src/data_worker/dataset_processed/open_meteo/hourly.parquet`. Seti
 
 ## Lihat juga
 
-- [`src/data_worker/feature_matrix/README.md`](../feature_matrix/README.md): aturan waktu tersedia cuaca yang berlaku (menggantikan asumsi di atas)
-- [`src/data_worker/feature_store/README.md`](../feature_store/README.md): konektor dan tabel feature store
+- [`src/data_worker/feature_matrix/README.md`](../../feature_matrix/README.md): aturan waktu tersedia cuaca yang berlaku (menggantikan asumsi di atas)
+- [`src/data_worker/feature_store/README.md`](../../feature_store/README.md): konektor dan tabel feature store

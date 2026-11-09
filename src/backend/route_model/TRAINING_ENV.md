@@ -224,4 +224,4 @@ The smoke script runs on the Jakarta export and writes `od_pairs.json`,
 ## See also
 
 - [`docs/experiments/TI-AI-08/README.md`](../../../docs/experiments/TI-AI-08/README.md): smoke verification of this environment
-- [`docs/route-time-exposure.md`](../../../docs/route-time-exposure.md): time and exposure objective
+- [`docs/experiments/TI-AI-06/README.md`](../../../docs/experiments/TI-AI-06/README.md): time and exposure objective

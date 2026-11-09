@@ -72,5 +72,5 @@ Langkahnya ada di [`src/backend/pollution/README.md`](../../backend/pollution/RE
 
 ## Lihat juga
 
-- [`src/data_worker/docs/OSM_FEATURE_SPEC.md`](../docs/OSM_FEATURE_SPEC.md): kamus kolom ekspor CSV graf jalan
+- [`src/data_worker/dataset_processed/OSM/README.md`](../dataset_processed/OSM/README.md): kamus kolom ekspor CSV graf jalan
 - [`docs/software/data-contracts-TI-SE-01.md`](../../../docs/software/data-contracts-TI-SE-01.md): kontrak RoadGraph

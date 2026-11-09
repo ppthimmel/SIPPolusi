@@ -88,6 +88,6 @@ end before the step limit.
 
 ## See also
 
-- [`docs/route-time-exposure.md`](../../route-time-exposure.md): cost function (`costs.py` is now in `route_model`)
-- [`docs/ti-ai-06-verification.md`](../../ti-ai-06-verification.md): cost function verification
+- [`docs/experiments/TI-AI-06/README.md`](../TI-AI-06/README.md): cost function (`costs.py` is now in `route_model`)
+- [`docs/experiments/TI-AI-06/VERIFICATION.md`](../TI-AI-06/VERIFICATION.md): cost function verification
 - [`docs/experiments/TI-AI-09/README.md`](../TI-AI-09/README.md): next step: policies trained on this environment

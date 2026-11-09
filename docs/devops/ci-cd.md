@@ -4,7 +4,7 @@ Pipeline membangun, menguji, dan menjalankan regresi untuk setiap PR dan
 setiap commit di `dev`/`main`. Deployment Railway yang dipicu dari GitHub
 hanya terjadi setelah pipeline commit tersebut lulus; deploy manual tidak
 melewati gerbang ini (lihat [Aturan deployment](#aturan-deployment)). Definisi: [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml).
-Bukti run: [`ci-cd-evidence-TI-DO-06.md`](ci-cd-evidence-TI-DO-06.md).
+Bukti run: [`verification-TI-DO-06-ci-cd.md`](verification-TI-DO-06-ci-cd.md).
 Build dan runtime tiap layanan: [`build-runtime.md`](build-runtime.md).
 
 ```

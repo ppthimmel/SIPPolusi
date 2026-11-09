@@ -36,5 +36,5 @@ independently reproduced and is not inferred from the number of components.
 ## See also
 
 - [`src/backend/route_model/README.md`](../../../src/backend/route_model/README.md): baseline method
-- [`docs/route-time-exposure.md`](../../route-time-exposure.md): time and exposure cost definitions
+- [`docs/experiments/TI-AI-06/README.md`](../TI-AI-06/README.md): time and exposure cost definitions
 - [`src/backend/solver/README.md`](../../../src/backend/solver/README.md): `baseline` solver provider

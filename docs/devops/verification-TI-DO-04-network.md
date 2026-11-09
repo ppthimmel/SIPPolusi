@@ -22,7 +22,7 @@ baru yang kosong.
 
 Catatan 2026-11-09: baris cache-api di atas kemudian terselesaikan. Setelah redeploy #58, cache-api development
 menjalankan image osm dan `POST /v1/routes` serta `GET /v1/exposure-surface` lewat gateway sampai ke Cache API
-(dicek 27 Oktober 2026, tercatat di [`gateway-TI-DO-05.md`](gateway-TI-DO-05.md#catatan)). Hasil di dokumen ini
+(dicek 27 Oktober 2026, tercatat di [`verification-TI-DO-05-gateway.md`](verification-TI-DO-05-gateway.md#catatan)). Hasil di dokumen ini
 tidak diubah.
 
 ## 1. Port host setelah override
@@ -591,7 +591,7 @@ cache-api dianggap lulus.
 
 Catatan 2026-11-09: langkah ini kemudian selesai. cache-api development menjalankan image osm sejak redeploy #58
 dan kedua jalur publik sampai ke Cache API (503 `cache_empty` saat itu), dicek 27 Oktober 2026 dan tercatat di
-[`gateway-TI-DO-05.md`](gateway-TI-DO-05.md#catatan), bukan di sini. Pemeriksaan `/v1/osm/version` di atas
+[`verification-TI-DO-05-gateway.md`](verification-TI-DO-05-gateway.md#catatan), bukan di sini. Pemeriksaan `/v1/osm/version` di atas
 kini memang diharapkan 404 dari gateway (jalur internal, TI-DO-05).
 
 ### 8.3 Rotasi kata sandi PostgreSQL: belum
@@ -614,4 +614,4 @@ yang memuat kata sandi sebagai teks. Langkah rotasi ada di
 
 ## Lihat juga
 
-- [`docs/devops/gateway-TI-DO-05.md`](gateway-TI-DO-05.md): catatan lanjutan: cache-api memakai image osm sejak redeploy #58
+- [`docs/devops/verification-TI-DO-05-gateway.md`](verification-TI-DO-05-gateway.md): catatan lanjutan: cache-api memakai image osm sejak redeploy #58

@@ -23,7 +23,7 @@ Pollution Cache DB) dari modul [`../pollution`](../pollution/README.md),
 `GET /v1/exposure-surface` (TI-SE-08), dan `POST /v1/geocode/search` serta
 `POST /v1/geocode/reverse` (TI-SE-12) dari modul [`../public_api`](../public_api/README.md).
 Semua modul memakai pool koneksi dan skema galat yang sama. Bukti TI-SE-04 ada di
-[`../pollution/VERIFICATION.md`](../pollution/VERIFICATION.md).
+[`src/backend/pollution/VERIFICATION_TI-SE-04.md`](../pollution/VERIFICATION_TI-SE-04.md).
 
 ## Menjalankan dan menguji
 
@@ -572,7 +572,7 @@ naikkan `OSM_STATEMENT_TIMEOUT_MS` bila perlu.
 
 - [`docs/devops/local-railway-parity.md`](../../../docs/devops/local-railway-parity.md): stack lokal dan `src/backend/osm/.env`
 - [`docs/devops/private-networking.md`](../../../docs/devops/private-networking.md): paparan jaringan di Railway
-- [`docs/devops/observability-TI-DO-08.md`](../../../docs/devops/observability-TI-DO-08.md): `/health/*` dan `/metrics`
+- [`docs/devops/observability.md`](../../../docs/devops/observability.md): `/health/*` dan `/metrics`
 - [`src/data_worker/osm_cache/README.md`](../../data_worker/osm_cache/README.md): penulis graf ke skema `osm`
 - [`src/gateway/README.md`](../../gateway/README.md): jalur publik di depan Cache API
-- [`docs/route-time-exposure.md`](../../../docs/route-time-exposure.md): kecepatan dan definisi paparan
+- [`docs/experiments/TI-AI-06/README.md`](../../../docs/experiments/TI-AI-06/README.md): kecepatan dan definisi paparan

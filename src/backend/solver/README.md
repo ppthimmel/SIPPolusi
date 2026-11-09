@@ -273,7 +273,7 @@ dan `exposure_index_definition`.
 **Keadaan saat ini.** Cache polusi Railway `development` diisi sejak 27 Okt
 (`DOWNSCALE_WRITE_CACHE=1`, [`docs/ti-se-10/LAPORAN.md`](../../../docs/ti-se-10/LAPORAN.md)).
 Pada basis data tanpa time window `complete`, permintaan valid menjawab 503 `cache_empty`.
-Hasil 200 dibuktikan di basis data lokal: [VERIFICATION.md](VERIFICATION.md) (TI-SE-06) dan
+Hasil 200 dibuktikan di basis data lokal: [VERIFICATION.md](VERIFICATION_TI-SE-06.md) (TI-SE-06) dan
 [VERIFICATION_TI-SE-07.md](VERIFICATION_TI-SE-07.md) (integrasi model, fallback, GeoJSON).
 
 ## Menguji
@@ -304,4 +304,4 @@ Hasil terbaru ada di CI ([`docs/devops/ci-cd.md`](../../../docs/devops/ci-cd.md)
 - [`src/backend/route_model/morl/README.md`](../route_model/morl/README.md): modul MORL
 - [`docs/experiments/TI-AI-09/README.md`](../../../docs/experiments/TI-AI-09/README.md): set policy PIC B yang dilayani
 - [`docs/devops/local-railway-parity.md`](../../../docs/devops/local-railway-parity.md): stack lokal dengan penyedia `morl`
-- [`docs/route-time-exposure.md`](../../../docs/route-time-exposure.md): definisi waktu dan paparan
+- [`docs/experiments/TI-AI-06/README.md`](../../../docs/experiments/TI-AI-06/README.md): definisi waktu dan paparan

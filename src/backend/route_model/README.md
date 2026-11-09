@@ -191,6 +191,6 @@ failure rate. See the experiment report for measured results and limitations.
 ## See also
 
 - [`src/backend/solver/README.md`](../solver/README.md): how public `POST /v1/routes` is served today (Cache API solver providers)
-- [`docs/route-time-exposure.md`](../../../docs/route-time-exposure.md): time and exposure cost definitions
+- [`docs/experiments/TI-AI-06/README.md`](../../../docs/experiments/TI-AI-06/README.md): time and exposure cost definitions
 - [`docs/experiments/TI-AI-07/README.md`](../../../docs/experiments/TI-AI-07/README.md): Jakarta regression for this baseline
 - [`src/backend/planner/README.md`](../planner/README.md): route request to solver input

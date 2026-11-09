@@ -379,4 +379,4 @@ isinya sama.
 ## Lihat juga
 
 - [`docs/devops/private-networking.md`](private-networking.md): matriks paparan jaringan
-- [`docs/ti-se-12-geocoding.md`](../ti-se-12-geocoding.md): jalur `/v1/geocode/*` yang ditambahkan kemudian
+- [`docs/ti-se-12/README.md`](../ti-se-12/README.md): jalur `/v1/geocode/*` yang ditambahkan kemudian

@@ -21,7 +21,7 @@ What is scraped today:
   the Cache API, which serves its own `GET /metrics`; to scrape it, point
   `BACKEND_TARGET` at it (locally `cache_api:8000`). Metric names and the reason
   `/metrics` has no authentication:
-  [observability-TI-DO-08.md](../../docs/devops/observability-TI-DO-08.md#metrics).
+  [docs/devops/observability.md](../../docs/devops/observability.md#metrics).
 - **`data_worker` and `pushgateway` jobs**: the Pushgateway. Nothing in
   `src/data_worker` pushes metrics yet, so the Data Worker (which also runs
   Spatial Downscaling Model inference) is observed through its structured logs
@@ -35,5 +35,5 @@ Railway's logs.
 
 ## See also
 
-- [`docs/devops/observability-TI-DO-08.md`](../../docs/devops/observability-TI-DO-08.md): log schema, health checks and metrics
+- [`docs/devops/observability.md`](../../docs/devops/observability.md): log schema, health checks and metrics
 - [`docs/devops/private-networking.md`](../../docs/devops/private-networking.md): Grafana public domain exception

@@ -2,7 +2,7 @@
 
 Panduan operasional jadwal Data Worker: kapan siklus berjalan, apa yang dicatat setiap eksekusi, arti setiap
 status, dan cara membedakan keterlambatan, kegagalan, serta jadwal yang tidak berjalan. Bukti verifikasi:
-[`verification-TI-DO-07.md`](verification-TI-DO-07.md).
+[`verification-TI-DO-07-data-worker-schedule.md`](verification-TI-DO-07-data-worker-schedule.md).
 
 ## Jadwal
 
@@ -165,7 +165,7 @@ eksekusi ulang manual. Ini ukuran EDO-04 (target ≥ 98%).
 
 ## Lihat juga
 
-- [`docs/devops/observability-TI-DO-08.md`](observability-TI-DO-08.md): cron `status` dan `health`, sinyal tidak sehat
+- [`docs/devops/observability.md`](observability.md): cron `status` dan `health`, sinyal tidak sehat
 - [`docs/devops/build-runtime.md`](build-runtime.md): build dan konfigurasi layanan di Railway
 - [`src/data_worker/README.md`](../../src/data_worker/README.md): ikhtisar Data Worker
 - [`docs/devops/local-railway-parity.md`](local-railway-parity.md): menjalankan `serve --now` secara lokal

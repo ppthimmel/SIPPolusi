@@ -150,4 +150,4 @@ NDVI/NDBI baru terisi setelah scene cerah berikutnya.
 - [`docs/software/data-contracts-TI-SE-01.md`](../../../docs/software/data-contracts-TI-SE-01.md): kontrak data
 - [`docs/devops/data-worker-schedule.md`](../../../docs/devops/data-worker-schedule.md): jadwal siklus
 - [`docs/experiments/TI-AI-05/source_reader_cache.md`](../../../docs/experiments/TI-AI-05/source_reader_cache.md): cache pembaca sumber
-- [`src/data_worker/docs/GEOS_CF_FEATURE_SPEC.md`](../docs/GEOS_CF_FEATURE_SPEC.md): spesifikasi fitur per sumber (GEOS-CF; berkas lain di folder yang sama)
+- [`src/data_worker/dataset_processed/geos-cf/README.md`](../dataset_processed/geos-cf/README.md): spesifikasi fitur per sumber (GEOS-CF; berkas lain di folder yang sama)

@@ -4,7 +4,7 @@ Komunikasi antarlayanan SIPPolusi berjalan di jaringan privat Railway
 (`*.railway.internal`), dan hanya komponen yang memang dipakai klien yang
 diberi domain publik. Dokumen ini memuat diagram jaringan, konfigurasi
 (teredaksi), dan prosedur uji. Hasil uji ada di
-[`network-test-TI-DO-04.md`](network-test-TI-DO-04.md); build dan runtime
+[`verification-TI-DO-04-network.md`](verification-TI-DO-04-network.md); build dan runtime
 tiap layanan ada di [`build-runtime.md`](build-runtime.md).
 
 ## Diagram jaringan
@@ -294,7 +294,7 @@ lalu jalankan `python /tmp/nt.py ...`.
 | Jalur internal tidak memerlukan endpoint publik | variabel memakai referensi privat; uji 2–3 lulus tanpa domain publik backend |
 | Cache-api memuat model rute dari registry lewat jaringan privat | `MLFLOW_TRACKING_URI` memakai referensi privat; log `route_model_load outcome=ok` |
 | Komponen non-publik tidak dapat diakses dari jalur publik | uji 1 (`--closed`) lulus |
-| Bukti uji mencakup jalur diizinkan dan ditolak | [`network-test-TI-DO-04.md`](network-test-TI-DO-04.md) |
+| Bukti uji mencakup jalur diizinkan dan ditolak | [`verification-TI-DO-04-network.md`](verification-TI-DO-04-network.md) |
 
 ## Lihat juga
 

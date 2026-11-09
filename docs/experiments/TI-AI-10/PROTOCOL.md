@@ -106,5 +106,5 @@ the optimum's saving does it capture? Could the target be met at all on these fi
 
 ## See also
 
-- [`docs/route-time-exposure.md`](../../route-time-exposure.md): time and exposure definitions
+- [`docs/experiments/TI-AI-06/README.md`](../TI-AI-06/README.md): time and exposure definitions
 - [`docs/PROTOKOL_EVALUASI.md`](../../PROTOKOL_EVALUASI.md): spatial model evaluation protocol (counterpart)

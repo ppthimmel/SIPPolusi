@@ -21,8 +21,8 @@ di Cache API, diteruskan API Gateway) dan antarmuka sudah diuji terhadapnya (lih
 | Nama jalan | `properties.name` pada fitur exposure-surface (opsional). | Backend tidak mengirim nama jalan; label nama tidak tampil. |
 | Alasan fallback | `policy_timeout`, `policy_error`, `invalid_route` (contoh Kode 3.2). | **Disesuaikan**: Backend mengirim `model_timeout`, `model_unavailable`, `model_error`, `model_invalid_response`, `model_no_route`, `policy_unavailable`. Semua kini punya teks sendiri. |
 | Versi data jalan | Tidak ditampilkan. | **Ditambahkan**: `metadata.graph_version` tampil sebagai "Versi data jalan (OpenStreetMap)". |
-| Asal/tujuan | Dipilih di peta, diseret, atau diketik sebagai `lat, lon`. Pencarian nama tempat (geocoding) tidak ada di kontrak, jadi belum ada. | Ditambahkan oleh TI-SE-12, lihat [`ti-se-12-geocoding.md`](ti-se-12-geocoding.md). |
-| Navigasi | Rute hanya ditampilkan statis, tanpa pelacakan posisi. | Ditambahkan oleh TI-SE-13, lihat [`ti-se-13-navigasi.md`](ti-se-13-navigasi.md). |
+| Asal/tujuan | Dipilih di peta, diseret, atau diketik sebagai `lat, lon`. Pencarian nama tempat (geocoding) tidak ada di kontrak, jadi belum ada. | Ditambahkan oleh TI-SE-12, lihat [`docs/ti-se-12/README.md`](../ti-se-12/README.md). |
+| Navigasi | Rute hanya ditampilkan statis, tanpa pelacakan posisi. | Ditambahkan oleh TI-SE-13, lihat [`docs/ti-se-13/README.md`](../ti-se-13/README.md). |
 
 ## Keadaan yang diuji
 
@@ -32,7 +32,7 @@ terhadap mock; hasil dibaca dari DOM/peta dan, untuk tata letak, dari tangkapan 
 
 > Catatan 2026-11-09: 102 adalah jumlah kasus Vitest saat pencatatan. Jumlah saat ini dilihat
 > dengan menjalankan `npm test` di `src/frontend`; CI belum menjalankan uji frontend
-> ([`devops/ci-cd.md`](devops/ci-cd.md)).
+> ([`devops/ci-cd.md`](../devops/ci-cd.md)).
 
 ### Pemuatan dan status
 
@@ -104,13 +104,13 @@ ditulis kode Data Worker. Graf ini memiliki satu time window complete dengan pit
 
 | # | Keadaan | Hasil | Tangkapan layar |
 |---|---|---|---|
-| 1 | Isian perjalanan, prioritas condong ke bersih (α 0,20 · β 0,80) | Tombol aktif setelah dua titik valid | [01](ti-se-09/01-isian-perjalanan.jpg) |
-| 2 | Rute ditemukan | Banner "−12,7% paparan … waktu tempuh yang sama"; kartu rute rendah paparan (garis hijau) dan rute tercepat (garis putus-putus) dengan satuan menit, km, indeks·menit; heatmap per ruas dengan legenda | [02](ti-se-09/02-dua-rute-dan-heatmap.jpg) |
-| 3 | Sumber data dan versi | Jam data (20.00 WIB), sumber rute, versi model downscaling dan rute, versi data jalan, ID permintaan dari gateway, disclaimer server | [03](ti-se-09/03-sumber-data-dan-versi.jpg) |
-| 4 | Model rute galat (`ROUTE_SOLVER_FAULT=error`) → fallback Backend | "Memakai metode cadangan: Model utama mengalami galat …"; lencana "Metode cadangan"; tidak ada klaim prioritas diterapkan | [04](ti-se-09/04-fallback-model-galat.jpg) |
-| 5 | Tujuan jauh dari jalan → 422 `point_not_on_network` | Kolom Tujuan berbingkai merah dengan pesan Backend dan saran menggeser titik | [05](ti-se-09/05-galat-titik-tujuan.jpg) |
-| 6 | Window ditandai `writing` → 503 `cache_unavailable` | "Data kualitas udara belum tersedia" dengan ID permintaan; tidak ada rute digambar; heatmap lama diredupkan dan diberi label "data lama (20.00 WIB), bukan kondisi terbaru" | [06](ti-se-09/06-cache-kosong-heatmap-lama.jpg) |
-| 7 | Tampilan ponsel (375 × 812) | Lembar bawah dengan kartu rute; peta dengan kedua rute dan heatmap | [07](ti-se-09/07-ponsel-hasil-rute.jpg) |
+| 1 | Isian perjalanan, prioritas condong ke bersih (α 0,20 · β 0,80) | Tombol aktif setelah dua titik valid | [01](01-isian-perjalanan.jpg) |
+| 2 | Rute ditemukan | Banner "−12,7% paparan … waktu tempuh yang sama"; kartu rute rendah paparan (garis hijau) dan rute tercepat (garis putus-putus) dengan satuan menit, km, indeks·menit; heatmap per ruas dengan legenda | [02](02-dua-rute-dan-heatmap.jpg) |
+| 3 | Sumber data dan versi | Jam data (20.00 WIB), sumber rute, versi model downscaling dan rute, versi data jalan, ID permintaan dari gateway, disclaimer server | [03](03-sumber-data-dan-versi.jpg) |
+| 4 | Model rute galat (`ROUTE_SOLVER_FAULT=error`) → fallback Backend | "Memakai metode cadangan: Model utama mengalami galat …"; lencana "Metode cadangan"; tidak ada klaim prioritas diterapkan | [04](04-fallback-model-galat.jpg) |
+| 5 | Tujuan jauh dari jalan → 422 `point_not_on_network` | Kolom Tujuan berbingkai merah dengan pesan Backend dan saran menggeser titik | [05](05-galat-titik-tujuan.jpg) |
+| 6 | Window ditandai `writing` → 503 `cache_unavailable` | "Data kualitas udara belum tersedia" dengan ID permintaan; tidak ada rute digambar; heatmap lama diredupkan dan diberi label "data lama (20.00 WIB), bukan kondisi terbaru" | [06](06-cache-kosong-heatmap-lama.jpg) |
+| 7 | Tampilan ponsel (375 × 812) | Lembar bawah dengan kartu rute; peta dengan kedua rute dan heatmap | [07](07-ponsel-hasil-rute.jpg) |
 
 Pemeriksaan tambahan di peramban:
 - Permintaan heatmap pada layar 1920 × 1080 dan 2560 × 1440 saat peta diperkecil semuanya 200.
@@ -123,7 +123,7 @@ akan menampilkan keadaan nomor 6 sampai Data Worker menulis window pertama.
 
 > Catatan 2026-11-09: keadaan Railway di atas sudah berubah. `DOWNSCALE_WRITE_CACHE=1` aktif di
 > environment `development` sejak 27 Okt, sehingga Data Worker mengisi cache polusi di sana
-> (lihat [`ti-se-10/LAPORAN.md`](ti-se-10/LAPORAN.md)).
+> (lihat [`ti-se-10/LAPORAN.md`](../ti-se-10/LAPORAN.md)).
 
 ## Yang belum bisa dibuktikan dari sini
 
@@ -140,6 +140,6 @@ akan menampilkan keadaan nomor 6 sampai Data Worker menulis window pertama.
 
 ## Lihat juga
 
-- [`src/backend/public_api/README.md`](../src/backend/public_api/README.md): kontrak API yang dipakai frontend
-- [`src/frontend/src/fixtures/ti-se-08/README.md`](../src/frontend/src/fixtures/ti-se-08/README.md): fixture uji kontrak
-- [`docs/ti-se-10/LAPORAN.md`](ti-se-10/LAPORAN.md): uji end-to-end
+- [`src/backend/public_api/README.md`](../../src/backend/public_api/README.md): kontrak API yang dipakai frontend
+- [`src/frontend/src/fixtures/ti-se-08/README.md`](../../src/frontend/src/fixtures/ti-se-08/README.md): fixture uji kontrak
+- [`docs/ti-se-10/LAPORAN.md`](../ti-se-10/LAPORAN.md): uji end-to-end

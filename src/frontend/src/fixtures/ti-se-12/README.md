@@ -6,4 +6,4 @@ Datanya © OpenStreetMap contributors, ODbL. Ambil ulang bila kontrak backend be
 
 ## Lihat juga
 
-- [`docs/ti-se-12-geocoding.md`](../../../../../docs/ti-se-12-geocoding.md): desain pencarian lokasi
+- [`docs/ti-se-12/README.md`](../../../../../docs/ti-se-12/README.md): desain pencarian lokasi

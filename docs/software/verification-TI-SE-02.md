@@ -217,4 +217,4 @@ Folder `tests/` memang dikecualikan dari image (`.dockerignore`).
 
 - [`docs/experiments/TI-AI-05/source_reader_cache.md`](../experiments/TI-AI-05/source_reader_cache.md): pembaca sumber dan cache snapshot
 - [`docs/devops/data-worker-schedule.md`](../devops/data-worker-schedule.md): jadwal siklus Data Worker
-- [`docs/devops/verification-TI-DO-07.md`](../devops/verification-TI-DO-07.md): verifikasi jadwal Data Worker
+- [`docs/devops/verification-TI-DO-07-data-worker-schedule.md`](../devops/verification-TI-DO-07-data-worker-schedule.md): verifikasi jadwal Data Worker

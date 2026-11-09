@@ -50,5 +50,5 @@ Sentinel: `observations.parquet` menyimpan pengamatan dan produksi per granule/s
 
 ## Lihat juga
 
-- [`src/data_worker/feature_matrix/README.md`](../feature_matrix/README.md): fitur yang dipakai model
-- [`src/data_worker/feature_store/README.md`](../feature_store/README.md): konektor dan tabel feature store
+- [`src/data_worker/feature_matrix/README.md`](../../feature_matrix/README.md): fitur yang dipakai model
+- [`src/data_worker/feature_store/README.md`](../../feature_store/README.md): konektor dan tabel feature store

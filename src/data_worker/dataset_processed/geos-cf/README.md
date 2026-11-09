@@ -3,7 +3,7 @@
 Sumber: **GEOS-CF v2 analysis**, `aqc_tavg_1hr_glo_L1440x721_slv`, NASA NCCS. Tabel utama `src/data_worker/dataset_processed/geos-cf/geoscf_cell_hourly.parquet`: **9 sel sumber × 6.552 jam UTC**, Januari–September 2026. Grid asli 0,25° (sekitar 25 km); `grid100m_geoscf_lookup.parquet` memetakan ke grid target 100 m melalui koordinat UTM EPSG:32748.
 
 **Peran aktif (revisi 27 Oktober 2026):** fitur atmosfer regional pada pelatihan dan operasi
-ds-v0.3.0, mengikuti [spesifikasi model](../../../docs/SPATIAL_MODEL_SPEC.md). GEOS-CF tidak
+ds-v0.3.0, mengikuti [spesifikasi model](../../../../docs/SPATIAL_MODEL_SPEC.md). GEOS-CF tidak
 dijumlahkan setelah prediksi sebagai suku latar terpisah. Tidak ada pergantian AOD/MERRA-2
 pada kontrak aktif. Bukan target sensor darat. NO₂ permukaan ini berbeda dari kolom atmosfer
 Sentinel-5P. Pemetaan ke 100 m tidak menghasilkan pengukuran baru 100 m.
@@ -44,5 +44,5 @@ Tabel `src/data_worker/dataset_processed/geos-cf/geoscf_fcst_cell_hourly.parquet
 
 ## Lihat juga
 
-- [`src/data_worker/feature_matrix/README.md`](../feature_matrix/README.md): aturan ketersediaan fitur
-- [`src/data_worker/feature_store/README.md`](../feature_store/README.md): konektor dan tabel feature store
+- [`src/data_worker/feature_matrix/README.md`](../../feature_matrix/README.md): aturan ketersediaan fitur
+- [`src/data_worker/feature_store/README.md`](../../feature_store/README.md): konektor dan tabel feature store

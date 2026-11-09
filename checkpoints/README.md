@@ -112,6 +112,6 @@ separate from these new full-feature fixed-configuration fits.
 ## See also
 
 - [`notebooks/spatial_model/README.md`](../notebooks/spatial_model/README.md): notebooks that write runs into this folder
-- [`notebooks/spatial_model/NAMING_CONVENTION.md`](../notebooks/spatial_model/NAMING_CONVENTION.md): run and model naming convention
+- [`src/model_registry/NAMING_CONVENTION.md`](../src/model_registry/NAMING_CONVENTION.md): run and model naming convention
 - [`docs/experiments/model-comparison-ds-v0.3.0/README.md`](../docs/experiments/model-comparison-ds-v0.3.0/README.md): model comparison these runs belong to
 - [`docs/experiments/TI-AI-05/README.md`](../docs/experiments/TI-AI-05/README.md): evidence for the deployed spatial model

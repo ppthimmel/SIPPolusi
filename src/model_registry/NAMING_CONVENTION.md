@@ -87,6 +87,6 @@ of documenting this convention.
 
 ## See also
 
-- [`src/model_registry/README.md`](../../src/model_registry/README.md): registry service
+- [`src/model_registry/README.md`](README.md): registry service
 - [`checkpoints/README.md`](../../checkpoints/README.md): checkpoint layout
 - [`docs/experiments/TI-AI-11/README.md`](../../docs/experiments/TI-AI-11/README.md): registered model names in use today

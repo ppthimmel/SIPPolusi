@@ -26,7 +26,7 @@ gateway (TI-DO-05, lihat [`src/gateway/README.md`](../../gateway/README.md)).
 | Spesifikasi OpenAPI (request, respons sukses, respons galat, satuan, CRS) | [`openapi.json`](openapi.json); juga `/docs` di Cache API |
 | Koleksi uji | [`smoke.py`](smoke.py) (dapat dijalankan ke URL mana pun) dan [`requests.http`](requests.http) (VS Code REST Client / JetBrains) |
 | Contoh respons GeoJSON | [`examples/`](examples/): `route_policy`, `route_fallback`, `surface_edges_z15`, `surface_grid_z13`, `errors.json` |
-| Hasil uji | [`VERIFICATION.md`](VERIFICATION.md) |
+| Hasil uji | [`VERIFICATION.md`](VERIFICATION_TI-SE-08.md) |
 
 ## Koordinat dan satuan
 
@@ -136,7 +136,7 @@ Respons 200 (`application/geo+json`, `Cache-Control: no-store` karena berisi koo
 ## `POST /v1/geocode/search` dan `POST /v1/geocode/reverse`
 
 Pencarian nama tempat untuk kolom asal dan tujuan (TI-SE-12). Penyedia, kebijakan penggunaan, dan
-perlakuan data lokasi ada di [`docs/ti-se-12-geocoding.md`](../../../docs/ti-se-12-geocoding.md).
+perlakuan data lokasi ada di [`docs/ti-se-12/README.md`](../../../docs/ti-se-12/README.md).
 
 ```jsonc
 // POST /v1/geocode/search  {"query": "monas"}
@@ -251,8 +251,8 @@ Untuk menulis ulang contoh, jalankan dengan `UPDATE_EXAMPLES=1`.
 
 ## Lihat juga
 
-- [`docs/ti-se-09-verifikasi-frontend.md`](../../../docs/ti-se-09-verifikasi-frontend.md): frontend sebagai pemakai API
-- [`docs/ti-se-13-navigasi.md`](../../../docs/ti-se-13-navigasi.md): navigasi yang memanggil ulang `/v1/routes`
-- [`docs/devops/gateway-TI-DO-05.md`](../../../docs/devops/gateway-TI-DO-05.md): bukti rate limit gateway
+- [`docs/ti-se-09/README.md`](../../../docs/ti-se-09/README.md): frontend sebagai pemakai API
+- [`docs/ti-se-13/README.md`](../../../docs/ti-se-13/README.md): navigasi yang memanggil ulang `/v1/routes`
+- [`docs/devops/verification-TI-DO-05-gateway.md`](../../../docs/devops/verification-TI-DO-05-gateway.md): bukti rate limit gateway
 - [`docs/software/technical-runbook.md`](../../../docs/software/technical-runbook.md): runbook operasional
-- [`docs/route-time-exposure.md`](../../../docs/route-time-exposure.md): definisi paparan
+- [`docs/experiments/TI-AI-06/README.md`](../../../docs/experiments/TI-AI-06/README.md): definisi paparan

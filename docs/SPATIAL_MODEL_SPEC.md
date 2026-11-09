@@ -96,5 +96,5 @@ Ini bukti integrasi lokal, bukan klaim akurasi seluruh kota atau deployment Rail
 - [`docs/experiments/model-comparison-ds-v0.3.0/stgnn_idw_residual/ds-v0.3.0_loso_pm25_gpu_seed42_20261014_a7eabc1b/report.md`](experiments/model-comparison-ds-v0.3.0/stgnn_idw_residual/ds-v0.3.0_loso_pm25_gpu_seed42_20261014_a7eabc1b/report.md): ST-GNN PM2.5 LOSO (a7eabc1b)
 - [`docs/experiments/model-comparison-ds-v0.3.0/stgnn_idw_residual/ds-v0.3.0_fcst_calendar_gpu_seed42_20261014_847559c6/report.md`](experiments/model-comparison-ds-v0.3.0/stgnn_idw_residual/ds-v0.3.0_fcst_calendar_gpu_seed42_20261014_847559c6/report.md): ST-GNN PM2.5 split tetap (847559c6), checkpoint yang terdaftar
 - [`src/data_worker/spatial_model/README.md`](../src/data_worker/spatial_model/README.md): kode training, inferensi, dan cache
-- [`src/data_worker/docs/GEOS_CF_FEATURE_SPEC.md`](../src/data_worker/docs/GEOS_CF_FEATURE_SPEC.md): fitur GEOS-CF
+- [`src/data_worker/dataset_processed/geos-cf/README.md`](../src/data_worker/dataset_processed/geos-cf/README.md): fitur GEOS-CF
 - [`src/backend/pollution/README.md`](../src/backend/pollution/README.md): pembaca cache polusi di Cache API

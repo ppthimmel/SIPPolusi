@@ -29,7 +29,7 @@ def _concentration(weight: EdgeWeight | None, pollutant: str) -> float | None:
 def _travel_time_s(edge: RoadEdge, profile: ModeProfile) -> float:
     # profile.speed_mps comes from the configurable OSM mode speed settings.
     # Keep defaults and assumptions aligned with route_model/astar_osm.py and
-    # docs/route-time-exposure.md when changing the time calculation.
+    # docs/experiments/TI-AI-06/README.md when changing the time calculation.
     return travel_time(edge.length_m, profile.speed_mps)
 
 

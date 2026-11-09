@@ -125,7 +125,7 @@ all-station refit." A missing fold (`fold=None`) does not establish that all
 stations were used for training. The registration guard rejects LOSO folds; it
 does not require every accepted checkpoint to be an all-station fit. Upload and
 registration do not themselves promote a model to production. See the
-[naming convention](NAMING_CONVENTION.md) for separate evaluation, training-scope,
+[naming convention](../../src/model_registry/NAMING_CONVENTION.md) for separate evaluation, training-scope,
 and deployment labels.
 
 Registration/promotion flags default to false. The shared `register()` API rejects

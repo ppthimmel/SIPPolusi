@@ -20,7 +20,7 @@ REVERSE = "/v1/geocode/reverse"
 
 
 def feature(name=None, lon=106.8271692, lat=-6.1754024, **props):
-    # The shape of a real Photon answer, see docs/ti-se-12-geocoding.md.
+    # The shape of a real Photon answer, see docs/ti-se-12/README.md.
     return {"type": "Feature", "geometry": {"type": "Point", "coordinates": [lon, lat]},
             "properties": {"osm_type": "W", "osm_id": 1, "type": "house", "country": "Indonesia", "countrycode": "ID",
                            **({"name": name} if name else {}), **props}}
@@ -137,7 +137,7 @@ def names_for(client_for, query, *features):
 
 
 def test_the_landmark_comes_before_stops_and_parks_of_the_same_name(client_for):
-    # The order of the real provider for "monas" (docs/ti-se-12-geocoding.md).
+    # The order of the real provider for "monas" (docs/ti-se-12/README.md).
     assert names_for(client_for, "monas", *[tagged(f"Monas {i}", "highway", "bus_stop") for i in (1, 2, 3)],
                      tagged("Monas Barat", "leisure", "park"), tagged("Monas Timur", "leisure", "park"),
                      tagged("Monas Selatan", "leisure", "park"), tagged("Monas Utara", "leisure", "park"),

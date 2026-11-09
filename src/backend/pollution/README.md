@@ -12,7 +12,7 @@ Baris ditulis oleh Spatial Downscaling Model lewat
 [`src/data_worker/spatial_model/inference/cache.py`](../../data_worker/spatial_model/inference/cache.py)
 (`write_pollution_weight`, TI-AI-05). Graf OSM ditulis oleh
 [`src/data_worker/osm_cache`](../../data_worker/osm_cache/README.md) (`write_road_graph`).
-Bukti TI-SE-04: [VERIFICATION.md](VERIFICATION.md).
+Bukti TI-SE-04: [VERIFICATION.md](VERIFICATION_TI-SE-04.md).
 
 ## Trace sel sumber
 
@@ -67,7 +67,7 @@ dan batas interpretasi confidence.
 - `graph_version`: `active` (default), `all` (tanpa filter), atau nama versi.
 - `bbox` sama dengan `/v1/osm` (maks. `OSM_MAX_BBOX_KM2`, default 25 km²).
 
-Contoh respons ada di [VERIFICATION.md](VERIFICATION.md). Cache polusi di Railway
+Contoh respons ada di [VERIFICATION.md](VERIFICATION_TI-SE-04.md). Cache polusi di Railway
 `development` diisi sejak 27 Okt (`DOWNSCALE_WRITE_CACHE=1`,
 [`docs/ti-se-10/LAPORAN.md`](../../../docs/ti-se-10/LAPORAN.md)). Pada basis data yang belum
 punya time window `complete` (misalnya basis data lokal baru), `/edge-weights` menjawab 503

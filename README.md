@@ -205,7 +205,7 @@ The mock serves one scenario at a time (fallback, stale data, partial data,
 every error code, timeouts, ...). List them and switch with
 `GET /__mock/scenario` and `GET /__mock/scenario?name=<scenario>`; the dev
 server proxies `/__mock`, so `http://localhost:5173/__mock/scenario?name=fallback`
-works too. See [docs/ti-se-09-verifikasi-frontend.md](docs/ti-se-09-verifikasi-frontend.md)
+works too. See [docs/ti-se-09/README.md](docs/ti-se-09/README.md)
 for the states that were exercised.
 
 The map background is OpenStreetMap raster tiles by default (development use

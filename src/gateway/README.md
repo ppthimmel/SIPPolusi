@@ -171,7 +171,7 @@ docker build --target test src/gateway
 ```
 
 Results, the same checks against the real Cache API in compose, and the
-diagram of the public path: [`docs/devops/gateway-TI-DO-05.md`](../../docs/devops/gateway-TI-DO-05.md).
+diagram of the public path: [`docs/devops/verification-TI-DO-05-gateway.md`](../../docs/devops/verification-TI-DO-05-gateway.md).
 
 ## Logs
 
@@ -196,5 +196,5 @@ written to a temporary file and logged as a warning with the client address.
 
 - [`docs/devops/private-networking.md`](../../docs/devops/private-networking.md): network exposure matrix
 - [`docs/devops/local-railway-parity.md`](../../docs/devops/local-railway-parity.md): timeout chain used in development (43 s)
-- [`docs/ti-se-12-geocoding.md`](../../docs/ti-se-12-geocoding.md): geocoding design behind `/v1/geocode/*`
+- [`docs/ti-se-12/README.md`](../../docs/ti-se-12/README.md): geocoding design behind `/v1/geocode/*`
 - [`src/backend/solver/README.md`](../backend/solver/README.md): solver time budget variables

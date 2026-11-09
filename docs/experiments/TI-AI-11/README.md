@@ -131,4 +131,4 @@ see [`src/model_registry/README.md`](../../../src/model_registry/README.md).
 - [`docs/devops/local-railway-parity.md`](../../devops/local-railway-parity.md): local `package_route` and `register_models` jobs
 - [`docs/software/data-contracts-TI-SE-01.md`](../../software/data-contracts-TI-SE-01.md): data contract versioning
 - [`scripts/railway/README.md`](../../../scripts/railway/README.md): registering packages on Railway
-- [`notebooks/spatial_model/NAMING_CONVENTION.md`](../../../notebooks/spatial_model/NAMING_CONVENTION.md): planned naming convention
+- [`src/model_registry/NAMING_CONVENTION.md`](../../../src/model_registry/NAMING_CONVENTION.md): planned naming convention
