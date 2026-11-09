@@ -230,3 +230,9 @@ python scripts/smoke_test.py --gateway https://<domain-gateway> --backend https:
 Data Worker tidak memiliki endpoint HTTP; smoke test-nya adalah
 `python main.py check` di dalam image yang sama (lokal) dan status keluar
 eksekusi cron terakhir di Railway (`railway logs --service data_worker`).
+
+## Lihat juga
+
+- [`docs/software/technical-runbook.md`](../software/technical-runbook.md): runbook operasional dan stack E2E
+- [`src/model_registry/README.md`](../../src/model_registry/README.md): registry model (MLflow)
+- [`src/backend/solver/README.md`](../../src/backend/solver/README.md): penyedia rute dan variabel `ROUTE_SOLVER_*`

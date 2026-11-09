@@ -112,3 +112,10 @@ ulang dan diverifikasi terhadap keluaran bundle:
     (`read_stgnn_batch(..., sensors=...)`).
 - **Split bundle kronologis dan transduktif:** stasiun yang sama muncul di ketiga split. Protokol evaluasi
   lokasi tak terlihat dikerjakan pada TI-AI-03.
+
+## Lihat juga
+
+- [`docs/experiments/ds-v0.3.0/stgnn/quality_report.md`](../ds-v0.3.0/stgnn/quality_report.md): FeatureMatrix penerus (89 kolom)
+- [`docs/experiments/ds-v0.3.0/README.md`](../ds-v0.3.0/README.md): snapshot ds-v0.3.0
+- [`src/data_worker/docs/DATA.md`](../../../src/data_worker/docs/DATA.md): data ground truth dan satuan ISPU
+- [`src/data_worker/spatial_model/data/snapshot/README.md`](../../../src/data_worker/spatial_model/data/snapshot/README.md): pembangun snapshot

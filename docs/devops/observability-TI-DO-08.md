@@ -198,3 +198,11 @@ python -m pytest src/backend/tests                      # dari root repo
 cd src/backend/osm && python -m pytest                  # juga pollution, planner, solver
 cd src/data_worker && python -m pytest tests/test_observability.py tests/test_preflight.py tests/test_data_worker.py
 ```
+
+## Lihat juga
+
+- [`docs/devops/build-runtime.md`](build-runtime.md): logging per layanan
+- [`docs/devops/data-worker-schedule.md`](data-worker-schedule.md): jadwal dan status siklus Data Worker
+- [`src/observability/README.md`](../../src/observability/README.md): konfigurasi Prometheus, Pushgateway, dan Grafana
+- [`src/gateway/README.md`](../../src/gateway/README.md#logs): log gateway
+- [`src/backend/solver/README.md`](../../src/backend/solver/README.md#penyedia-morl-ti-se-07b): event `route_model_load` dari penyedia `morl`

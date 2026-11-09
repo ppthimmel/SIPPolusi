@@ -87,3 +87,8 @@ berada di `.cache/`, tidak di-commit. Pengujian database memakai
 
 Setelah integrasi `dev`: **331 passed, 0 skipped** pada suite Worker lengkap,
 termasuk sembilan regresi cache. Detail dicatat pada bagian `post_merge` di JSON.
+
+## Lihat juga
+
+- [`src/data_worker/feature_store/README.md`](../../../src/data_worker/feature_store/README.md): `StoreSourceReader`, sumber fitur inferensi di Railway
+- [`docs/superpowers/plans/2026-10-27-source-reader-cache.md`](../../superpowers/plans/2026-10-27-source-reader-cache.md): rencana implementasi

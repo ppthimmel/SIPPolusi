@@ -205,3 +205,13 @@ for the states that were exercised.
 The map background is OpenStreetMap raster tiles by default (development use
 only); set `VITE_BASEMAP_TILES` in `src/frontend/.env` (or as a Docker build
 arg) to use another tile service.
+
+## See also
+
+- [`docs/README.md`](docs/README.md): index of all project documentation, grouped by topic
+- [`src/gateway/README.md`](src/gateway/README.md): public paths, rate limits and timeouts of the gateway
+- [`src/backend/osm/README.md`](src/backend/osm/README.md): Cache API: serves `/v1/*` behind the gateway
+- [`src/backend/public_api/README.md`](src/backend/public_api/README.md): public API contract (`/v1/routes`, `/v1/exposure-surface`, geocoding)
+- [`src/backend/solver/README.md`](src/backend/solver/README.md): route solver providers, including `morl`
+- [`docs/devops/private-networking.md`](docs/devops/private-networking.md): network exposure on Railway
+- [`tests/e2e/README.md`](tests/e2e/README.md): end-to-end test harness

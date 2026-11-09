@@ -298,3 +298,9 @@ lalu jalankan `python /tmp/nt.py ...`.
 | Backend memanggil inferensi final lewat jaringan privat | uji Railway nomor 4 (menunggu layanan inferensi) |
 | Komponen non-publik tidak dapat diakses dari jalur publik | uji 1 (`--closed`) lulus |
 | Bukti uji mencakup jalur diizinkan dan ditolak | [`network-test-TI-DO-04.md`](network-test-TI-DO-04.md) |
+
+## Lihat juga
+
+- [`src/gateway/README.md`](../../src/gateway/README.md): daftar jalur publik terkini (termasuk `/v1/geocode/*`)
+- [`src/model_registry/README.md`](../../src/model_registry/README.md): registry model dan klien `MLFLOW_TRACKING_URI`
+- [`docs/devops/local-railway-parity.md`](local-railway-parity.md): stack lokal setara Railway development

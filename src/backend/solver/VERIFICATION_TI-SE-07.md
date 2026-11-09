@@ -141,3 +141,9 @@ Hasil `src/backend/solver` setelah perbaikan dan merge `dev`: **98 passed** (92 
   IMetricsSink) belum dibuat. Saat ini pencatatan dilakukan lewat log.
 - **Di Railway** cache polusi masih kosong, jadi permintaan valid menjawab 503 `cache_empty` sebelum
   model dipanggil.
+
+## Lihat juga
+
+- [`src/backend/solver/README.md`](README.md#penyedia-morl-ti-se-07b): penerus: penyedia `morl` in-process (TI-SE-07b) menggantikan konfigurasi `http` di atas untuk Railway
+- [`docs/experiments/TI-AI-11/README.md`](../../../docs/experiments/TI-AI-11/README.md): pemaketan policy rute
+- [`docs/ti-se-10/LAPORAN.md`](../../../docs/ti-se-10/LAPORAN.md): uji end-to-end

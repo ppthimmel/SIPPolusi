@@ -363,3 +363,14 @@ runner yang diberi opsi `--target`, `--data`, `--out`, dan `--device`. Hasil dan
 - Masukan ST-GNN hanya memuat sebagian geometri sensor (jarak ke stasiun sumber terdekat dan jumlah sumber), tanpa
   kerapatan sensor yang paling berperan pada LightGBM seluruh fitur (27,43).
 - Satu seed pada data test yang sudah pernah diperiksa; hasil eksploratif.
+
+## Lihat juga
+
+- [`docs/SPATIAL_MODEL_SPEC.md`](../../SPATIAL_MODEL_SPEC.md): keputusan model yang dipasang
+- [`docs/experiments/model-comparison-ds-v0.3.0/stgnn_idw_residual/ds-v0.3.0_loso_pm25_gpu_seed42_20261014_a7eabc1b/report.md`](stgnn_idw_residual/ds-v0.3.0_loso_pm25_gpu_seed42_20261014_a7eabc1b/report.md): laporan run ST-GNN PM2.5 LOSO (a7eabc1b)
+- [`docs/experiments/model-comparison-ds-v0.3.0/stgnn_idw_residual/ds-v0.3.0_fcst_calendar_gpu_seed42_20261014_847559c6/report.md`](stgnn_idw_residual/ds-v0.3.0_fcst_calendar_gpu_seed42_20261014_847559c6/report.md): laporan run ST-GNN PM2.5 split tetap (847559c6)
+- [`docs/experiments/model-comparison-ds-v0.3.0/xgboost_fixed/pm25_gpu_seed42_20261014_202354_090525/report.md`](xgboost_fixed/pm25_gpu_seed42_20261014_202354_090525/report.md): laporan run XGBoost split tetap
+- [`docs/experiments/model-comparison-ds-v0.3.0/idw_hybrid_comparison/loso_pm25_gpu_seed42_20261014_202942_555758/report.md`](idw_hybrid_comparison/loso_pm25_gpu_seed42_20261014_202942_555758/report.md): laporan perbandingan hibrida IDW
+- [`checkpoints/README.md`](../../../checkpoints/README.md): lokasi checkpoint lokal
+- [`docs/experiments/TI-AI-04/README.md`](../TI-AI-04/README.md): baseline IDW
+- [`docs/experiments/TI-AI-05/README.md`](../TI-AI-05/README.md): integrasi model ke pipeline

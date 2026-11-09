@@ -288,3 +288,14 @@ TEST_DATABASE_URL=postgresql://test:test@localhost:55432/test pytest         # s
 - **Uji integrasi** (`tests/test_model_service.py`) menjalankan server Route Model tiruan
   sungguhan (uvicorn di port lokal) untuk jawaban valid, malformat, lambat, galat, dan layanan
   mati.
+
+## Lihat juga
+
+- [`docs/experiments/TI-AI-11/README.md`](../../../docs/experiments/TI-AI-11/README.md): format paket policy rute
+- [`docs/experiments/TI-AI-11/railway_registry_evidence.md`](../../../docs/experiments/TI-AI-11/railway_registry_evidence.md): bukti registry di Railway
+- [`src/model_registry/README.md`](../../model_registry/README.md): registry model
+- [`src/backend/route_model/README.md`](../route_model/README.md): baseline A*
+- [`src/backend/route_model/morl/README.md`](../route_model/morl/README.md): modul MORL
+- [`docs/experiments/TI-AI-09/README.md`](../../../docs/experiments/TI-AI-09/README.md): set policy PIC B yang dilayani
+- [`docs/devops/local-railway-parity.md`](../../../docs/devops/local-railway-parity.md): stack lokal dengan penyedia `morl`
+- [`docs/route-time-exposure.md`](../../../docs/route-time-exposure.md): definisi waktu dan paparan

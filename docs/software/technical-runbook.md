@@ -107,3 +107,11 @@ MinIO creates the configured buckets via `MINIO_DEFAULT_BUCKETS`.
 
 Keep request IDs, Worker run IDs, artifact versions and redacted logs with a
 verification report. Never include private DSNs or travel coordinates in logs.
+
+## See also
+
+- [`docs/devops/local-railway-parity.md`](../devops/local-railway-parity.md): local stack matching Railway development (newer than the full-stack section here)
+- [`src/gateway/README.md`](../../src/gateway/README.md): current public paths
+- [`docs/devops/ci-cd.md`](../devops/ci-cd.md): CI/CD pipeline
+- [`src/model_registry/README.md`](../../src/model_registry/README.md): model registry
+- [`docs/ti-se-11/VERIFICATION.md`](../ti-se-11/VERIFICATION.md): ticket that introduced this runbook

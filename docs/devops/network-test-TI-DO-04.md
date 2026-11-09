@@ -601,3 +601,7 @@ yang memuat kata sandi sebagai teks. Langkah rotasi ada di
 - Grafana development (`grafana-development-8ad2`) dan service
   `observability` staging masih publik; dicatat sebagai pengecualian di matriks
   eksposur, ditangani di TI-DO-08.
+
+## Lihat juga
+
+- [`docs/devops/gateway-TI-DO-05.md`](gateway-TI-DO-05.md): catatan lanjutan: cache-api memakai image osm sejak redeploy #58

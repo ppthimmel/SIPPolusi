@@ -197,3 +197,10 @@ export TEST_DATABASE_URL=postgresql://test:test@localhost:55432/test
 docker compose up -d --build --no-deps --wait postgres backend cache_api gateway
 python scripts/smoke_test.py --gateway http://localhost:8081 --backend http://localhost:8000
 ```
+
+## Lihat juga
+
+- [`tests/e2e/README.md`](../../tests/e2e/README.md): harness E2E lengkap (tidak dijalankan di CI)
+- [`src/data_worker/tests/DOCKER.md`](../../src/data_worker/tests/DOCKER.md): menjalankan uji Data Worker di Docker
+- [`src/gateway/README.md`](../../src/gateway/README.md): uji gateway
+- [`docs/devops/local-railway-parity.md`](local-railway-parity.md): stack lokal setara Railway development

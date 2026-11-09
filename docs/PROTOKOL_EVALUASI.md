@@ -102,3 +102,14 @@ IDW power = 2, neighbors = 8, jarak meter pada EPSG:32748 (Tabel 3.8).
   - PM2.5: power = 1 dengan seluruh stasiun (RMSE test 22,18 µg/m³, R² 0,11).
   - NO2: power = 2 dengan seluruh stasiun (RMSE test 44,66 µg/m³, R² 0,22).
 - Seluruh perbandingan memakai stasiun, jam, dan versi dataset yang sama.
+
+## Lihat juga
+
+- [`docs/experiments/TI-AI-05/README.md`](experiments/TI-AI-05/README.md): model spasial yang dipasang
+- [`notebooks/spatial_model/README.md`](../notebooks/spatial_model/README.md): menjalankan protokol lewat notebook
+- [`docs/experiments/model-comparison-ds-v0.3.0/stgnn_idw_residual/ds-v0.3.0_loso_pm25_gpu_seed42_20261014_a7eabc1b/report.md`](experiments/model-comparison-ds-v0.3.0/stgnn_idw_residual/ds-v0.3.0_loso_pm25_gpu_seed42_20261014_a7eabc1b/report.md): ST-GNN PM2.5 LOSO (run a7eabc1b)
+- [`docs/experiments/model-comparison-ds-v0.3.0/stgnn_idw_residual/ds-v0.3.0_fcst_calendar_gpu_seed42_20261014_847559c6/report.md`](experiments/model-comparison-ds-v0.3.0/stgnn_idw_residual/ds-v0.3.0_fcst_calendar_gpu_seed42_20261014_847559c6/report.md): ST-GNN PM2.5 split tetap (run 847559c6)
+- [`docs/experiments/ds-v0.3.0/leakage_report.md`](experiments/ds-v0.3.0/leakage_report.md): laporan pemeriksaan kebocoran
+- [`docs/experiments/ds-v0.3.0/split_stats.md`](experiments/ds-v0.3.0/split_stats.md): statistik pembagian data
+- [`src/data_worker/spatial_model/data/snapshot/README.md`](../src/data_worker/spatial_model/data/snapshot/README.md): pembangun snapshot dataset
+- [`docs/experiments/TI-AI-10/PROTOCOL.md`](experiments/TI-AI-10/PROTOCOL.md): protokol evaluasi model rute (MORL)

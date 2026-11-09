@@ -41,3 +41,8 @@ Tabel `processed/geos-cf/geoscf_fcst_cell_hourly.parquet`: satu baris per (run, 
   waktu inferensi (lead 11–34 jam). Pada 13–30 September 2026, korelasi rerata kota per jam SPKU dengan
   prakiraan ini 0,55, dibanding 0,10 untuk `ana` *as-of* dan 0,58 untuk `ana` jam yang sama (tidak tersedia pada
   waktu inferensi).
+
+## Lihat juga
+
+- [`src/data_worker/feature_matrix/README.md`](../feature_matrix/README.md): aturan ketersediaan fitur
+- [`src/data_worker/feature_store/README.md`](../feature_store/README.md): konektor dan tabel feature store

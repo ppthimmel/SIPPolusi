@@ -68,3 +68,11 @@ With `(α, β) = (0.8, 0.2)` their costs are 1 and 1.275, so the fastest
 route wins. With `(0.2, 0.8)` the costs are 1 and 0.6, so the cleaner
 route wins. The [mock solver test](../src/backend/solver/tests/test_mock.py)
 checks both calculations and choices against this two-route graph.
+
+## See also
+
+- [`docs/ti-ai-06-verification.md`](ti-ai-06-verification.md): verification of this cost function
+- [`src/backend/route_model/TRAINING_ENV.md`](../src/backend/route_model/TRAINING_ENV.md): the same objective in the RL reward
+- [`docs/experiments/TI-AI-07/README.md`](experiments/TI-AI-07/README.md): fastest-route baseline regression
+- [`docs/experiments/TI-AI-10/PROTOCOL.md`](experiments/TI-AI-10/PROTOCOL.md): route model evaluation protocol
+- [`src/backend/solver/README.md`](../src/backend/solver/README.md#penyedia-morl-ti-se-07b): the in-process `morl` provider

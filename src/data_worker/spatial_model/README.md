@@ -200,3 +200,14 @@ python scripts/verify_spatial_models.py --pm25 .cache/training/pm25 --no2 .cache
 
 `TEST_DATABASE_URL` wajib menunjuk database lokal `spatial_test`. Script menolak host/database lain.
 Laporan ringkas disimpan pada `docs/experiments/TI-AI-05/registered_verification.json`.
+
+## Lihat juga
+
+- [`docs/PROTOKOL_EVALUASI.md`](../../../docs/PROTOKOL_EVALUASI.md): protokol evaluasi
+- [`src/data_worker/spatial_model/data/snapshot/README.md`](data/snapshot/README.md): pembangun snapshot
+- [`src/data_worker/spatial_model/evaluation/idw/README.md`](evaluation/idw/README.md): baseline IDW
+- [`checkpoints/README.md`](../../../checkpoints/README.md): lokasi checkpoint lokal
+- [`docs/experiments/TI-AI-11/README.md`](../../../docs/experiments/TI-AI-11/README.md): pemaketan model (`package`, `register-route`)
+- [`src/model_registry/README.md`](../../model_registry/README.md): registry model
+- [`src/data_worker/feature_store/README.md`](../feature_store/README.md): feature store, sumber fitur inferensi
+- [`src/backend/pollution/README.md`](../../backend/pollution/README.md): pembaca cache di Cache API

@@ -122,3 +122,8 @@ tetap:
   Worker menulis window pertama.
 - **CORS mati secara bawaan.** Isi `API_CORS_ORIGINS` dengan domain Frontend saat sudah ada.
 - **Respons dikompresi gzip** bila klien mengirim `Accept-Encoding: gzip` (respons ≥ 1 KiB).
+
+## Lihat juga
+
+- [`src/gateway/README.md`](../../gateway/README.md): konfigurasi gateway terkini
+- [`docs/ti-se-10/LAPORAN.md`](../../../docs/ti-se-10/LAPORAN.md): uji end-to-end

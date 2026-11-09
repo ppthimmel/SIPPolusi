@@ -45,3 +45,9 @@ Validate notebook schema and code syntax. Update the existing notebook tests so 
 ## Success criteria
 
 A reader can set paths and training parameters, verify inputs, train either model, inspect actual evaluation results, and find its saved bundle without editing implementation modules or configuring MLflow. Default execution has no registration or promotion side effects.
+
+## See also
+
+- [`docs/superpowers/plans/2026-11-02-manual-training-notebooks.md`](../plans/2026-11-02-manual-training-notebooks.md): implementation plan
+- [`notebooks/spatial_model/README.md`](../../../notebooks/spatial_model/README.md): result: notebook guide
+- [`docs/PROTOKOL_EVALUASI.md`](../../PROTOKOL_EVALUASI.md): evaluation protocol

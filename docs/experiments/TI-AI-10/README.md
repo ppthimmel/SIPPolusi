@@ -183,3 +183,9 @@ python -m src.backend.route_model.morl.evaluate_candidate \
 # Summaries only, from the recorded routes: reads no field and runs no policy
 python -m src.backend.route_model.morl.evaluate_candidate --rebuild --out docs/experiments/TI-AI-10/results
 ```
+
+## See also
+
+- [`src/backend/solver/README.md`](../../../src/backend/solver/README.md#penyedia-morl-ti-se-07b): later: the set is now served by the `morl` provider (TI-SE-07b)
+- [`docs/experiments/TI-AI-11/README.md`](../TI-AI-11/README.md): packaging and registry
+- [`docs/ti-se-10/LAPORAN.md`](../../ti-se-10/LAPORAN.md): end-to-end report citing these results

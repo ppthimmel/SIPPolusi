@@ -38,3 +38,7 @@ Hasil berisi **2.239.488 baris**, dari 243 tanggal produk antara 1 Januari–20 
 
 **Asumsi waktu:** `produced_at` dipakai sebagai waktu tersedia. Gabungkan berdasarkan pengamatan dan filter `produced_at <= waktu inferensi`.
 
+## Lihat juga
+
+- [`src/data_worker/feature_matrix/README.md`](../feature_matrix/README.md): join per jam dan aturan sel VIIRS yang berlaku
+- [`src/data_worker/feature_store/README.md`](../feature_store/README.md): konektor dan tabel feature store

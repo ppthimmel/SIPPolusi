@@ -78,3 +78,10 @@ an unbiased estimate.
 - No component reads `morl-route-policy` yet; the backend still uses a route stub (tracked in #90).
 - Whether the Data Worker uses the PM2.5 model in a cycle depends on its inputs being available
   (`model_metadata.pm25.source`); this was not checked here.
+
+## See also
+
+- [`src/backend/solver/README.md`](../../../src/backend/solver/README.md#penyedia-morl-ti-se-07b): later: the Cache API now reads `morl-route-policy` (TI-SE-07b)
+- [`src/model_registry/README.md`](../../../src/model_registry/README.md): registry service
+- [`scripts/railway/README.md`](../../../scripts/railway/README.md): registration procedure
+- [`docs/devops/private-networking.md`](../../devops/private-networking.md): network exposure on Railway

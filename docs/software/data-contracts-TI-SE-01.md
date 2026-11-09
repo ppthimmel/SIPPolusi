@@ -248,3 +248,10 @@ python -m public_api.openapi --write
 
 Uji membandingkan bundle tersimpan dengan model runtime, memeriksa corpus valid
 dan tidak valid, serializer aktual, kontrak frontend, dan alur writer/reader PostGIS.
+
+## Lihat juga
+
+- [`docs/superpowers/specs/2026-10-27-shared-data-contracts-design.md`](../superpowers/specs/2026-10-27-shared-data-contracts-design.md): rasional desain
+- [`docs/superpowers/plans/2026-10-27-shared-data-contracts.md`](../superpowers/plans/2026-10-27-shared-data-contracts.md): rencana implementasi
+- [`docs/experiments/TI-AI-11/README.md`](../experiments/TI-AI-11/README.md): matriks kompatibilitas paket model terhadap versi kontrak
+- [`docs/route-time-exposure.md`](../route-time-exposure.md): definisi waktu dan paparan

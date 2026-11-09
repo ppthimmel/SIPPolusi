@@ -48,3 +48,7 @@ Nilai kosong dipertahankan sebagai `NaN`. Jika model membutuhkan imputasi/normal
 
 Landsat: tabel per scene menyimpan `observed_at` dan `produced_at`.
 
+## Lihat juga
+
+- [`src/data_worker/feature_matrix/README.md`](../feature_matrix/README.md): fitur yang dipakai model (`lst_c` kini dikecualikan)
+- [`src/data_worker/feature_store/README.md`](../feature_store/README.md): konektor dan tabel feature store

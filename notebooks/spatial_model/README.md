@@ -142,3 +142,10 @@ calibrated uncertainty, or historical benchmark equivalence.
 
 Recorded workflow checks and their limits are in
 [`notebook_verification.json`](../../docs/experiments/TI-AI-05/notebook_verification.json).
+
+## See also
+
+- [`src/data_worker/spatial_model/README.md`](../../src/data_worker/spatial_model/README.md): the Python training and inference API
+- [`checkpoints/README.md`](../../checkpoints/README.md): checkpoint layout
+- [`docs/PROTOKOL_EVALUASI.md`](../../docs/PROTOKOL_EVALUASI.md): evaluation protocol
+- [`docs/superpowers/specs/2026-11-02-manual-training-notebooks-design.md`](../../docs/superpowers/specs/2026-11-02-manual-training-notebooks-design.md): design rationale

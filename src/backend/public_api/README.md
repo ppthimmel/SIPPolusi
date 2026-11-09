@@ -244,3 +244,11 @@ Uji `cacheflow` memakai PostGIS lokal ([`../testdb`](../testdb/docker-compose.ym
 Worker untuk menulis graf dan time window. Uji ini memeriksa ruas per zoom, agregasi grid terhadap
 perhitungan independen di Python, versi graf aktif, window `writing`, serta contoh di `examples/`.
 Untuk menulis ulang contoh, jalankan dengan `UPDATE_EXAMPLES=1`.
+
+## Lihat juga
+
+- [`docs/ti-se-09-verifikasi-frontend.md`](../../../docs/ti-se-09-verifikasi-frontend.md): frontend sebagai pemakai API
+- [`docs/ti-se-13-navigasi.md`](../../../docs/ti-se-13-navigasi.md): navigasi yang memanggil ulang `/v1/routes`
+- [`docs/devops/gateway-TI-DO-05.md`](../../../docs/devops/gateway-TI-DO-05.md): bukti rate limit gateway
+- [`docs/software/technical-runbook.md`](../../../docs/software/technical-runbook.md): runbook operasional
+- [`docs/route-time-exposure.md`](../../../docs/route-time-exposure.md): definisi paparan

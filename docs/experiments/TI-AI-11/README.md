@@ -115,3 +115,11 @@ it has no `set_manifest.json`. If TI-AI-12 picks it, the follow-up is `package_c
 refuses a download whose `package.json` does not match the tag. Registering the route model uses the
 same pattern and still needs the registry fix below. Production serving of the registry on Railway:
 see [`src/model_registry/README.md`](../../../src/model_registry/README.md).
+
+## See also
+
+- [`src/backend/solver/README.md`](../../../src/backend/solver/README.md#penyedia-morl-ti-se-07b): the `morl` provider that loads the packaged route policy
+- [`docs/devops/local-railway-parity.md`](../../devops/local-railway-parity.md): local `package_route` and `register_models` jobs
+- [`docs/software/data-contracts-TI-SE-01.md`](../../software/data-contracts-TI-SE-01.md): data contract versioning
+- [`scripts/railway/README.md`](../../../scripts/railway/README.md): registering packages on Railway
+- [`notebooks/spatial_model/NAMING_CONVENTION.md`](../../../notebooks/spatial_model/NAMING_CONVENTION.md): planned naming convention

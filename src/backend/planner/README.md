@@ -88,3 +88,8 @@ TEST_DATABASE_URL=postgresql://test:test@localhost:55432/test pytest         # s
 ```
 
 Uji `cacheflow` memakai basis data uji lokal ([`../testdb`](../testdb/docker-compose.yml)).
+
+## Lihat juga
+
+- [`docs/route-time-exposure.md`](../../../docs/route-time-exposure.md): kecepatan dan rumus paparan
+- [`src/backend/route_model/README.md`](../route_model/README.md): baseline rute tercepat (TI-AI-07)

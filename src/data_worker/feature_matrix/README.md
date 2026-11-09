@@ -179,3 +179,15 @@ antar-tile. Perbandingan keluaran, waktu, dan penggunaan memori:
   yang diasumsikan.
 - **OSM hanya dipakai setelah prediksi** (`grid_predictions_to_roads`), dengan asumsi jalan tidak berubah sejak
   snapshot 5 Oktober.
+
+## Lihat juga
+
+- [`src/data_worker/docs/GEOS_CF_FEATURE_SPEC.md`](../docs/GEOS_CF_FEATURE_SPEC.md): spesifikasi fitur GEOS-CF
+- [`src/data_worker/docs/LANDSAT_FEATURE_SPEC.md`](../docs/LANDSAT_FEATURE_SPEC.md): spesifikasi fitur Landsat
+- [`src/data_worker/docs/OPEN_METEO_FEATURE_SPEC.md`](../docs/OPEN_METEO_FEATURE_SPEC.md): spesifikasi fitur Open-Meteo
+- [`src/data_worker/docs/SENTINEL5P_FEATURE_SPEC.md`](../docs/SENTINEL5P_FEATURE_SPEC.md): spesifikasi fitur Sentinel-5P
+- [`src/data_worker/docs/VIIRS_FEATURE_SPEC.md`](../docs/VIIRS_FEATURE_SPEC.md): spesifikasi fitur VIIRS
+- [`src/data_worker/feature_store/README.md`](../feature_store/README.md): feature store (`StoreSourceReader`, dipakai inferensi di Railway)
+- [`src/data_worker/docs/DATA.md`](../docs/DATA.md): data ground truth
+- [`docs/experiments/ds-v0.3.0/README.md`](../../../docs/experiments/ds-v0.3.0/README.md): snapshot ds-v0.3.0
+- [`src/data_worker/spatial_model/data/snapshot/README.md`](../spatial_model/data/snapshot/README.md): pembangun snapshot

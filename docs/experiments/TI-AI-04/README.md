@@ -9,3 +9,7 @@ Run terverifikasi: [laporan](runs/20261013T101200Z-idw-ds-v0.3.0-f6f15b8f/report
 | Fixed split | PM2.5 | 689 | 18.745 | 0.141 |
 
 Konfigurasi pembanding: IDW power 2, 8 tetangga. Lihat [protokol](../../PROTOKOL_EVALUASI.md) dan [perbandingan model](../model-comparison-ds-v0.3.0/README.md).
+
+## Lihat juga
+
+- [`src/data_worker/spatial_model/evaluation/idw/README.md`](../../../src/data_worker/spatial_model/evaluation/idw/README.md): kode baseline IDW

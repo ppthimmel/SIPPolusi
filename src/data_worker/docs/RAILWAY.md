@@ -188,3 +188,9 @@ Sejak itu, setiap penggabungan ke `dev` yang menyentuh `src/data_worker/**`
   (termasuk contoh Kelapa Gading 21 September) menunjukkan label WIB pada
   seluruh periode. Skrip migrasi mengikuti temuan kedua; selaraskan sebelum
   data dipakai untuk pelatihan.
+
+## Lihat juga
+
+- [`docs/devops/build-runtime.md`](../../../docs/devops/build-runtime.md): konfigurasi layanan Railway terkini
+- [`docs/devops/data-worker-schedule.md`](../../../docs/devops/data-worker-schedule.md): jadwal cron dan status siklus
+- [`docs/devops/private-networking.md`](../../../docs/devops/private-networking.md): TCP Proxy basis data kini ditutup; lihat sebelum mengikuti langkah 1

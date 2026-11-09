@@ -162,3 +162,10 @@ eksekusi ulang manual. Ini ukuran EDO-04 (target ≥ 98%).
   Railway. Pembuatan ini idempoten dan tidak menyentuh skema lain.
 - **Pemantauan:** jalankan `python main.py status` secara berkala, atau dari pemeriksaan kesehatan TI-DO-08; kode
   keluar 1 dan 3 menandai kegagalan dan jadwal yang tidak berjalan.
+
+## Lihat juga
+
+- [`docs/devops/observability-TI-DO-08.md`](observability-TI-DO-08.md): cron `status` dan `health`, sinyal tidak sehat
+- [`docs/devops/build-runtime.md`](build-runtime.md): build dan konfigurasi layanan di Railway
+- [`src/data_worker/README.md`](../../src/data_worker/README.md): ikhtisar Data Worker
+- [`docs/devops/local-railway-parity.md`](local-railway-parity.md): menjalankan `serve --now` secara lokal

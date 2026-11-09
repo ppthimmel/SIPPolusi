@@ -157,3 +157,8 @@ Dari root repo:
 
 Di Mac Apple Silicon, image `postgis/postgis` berjalan lewat emulasi amd64
 (`platform: linux/amd64`). Start pertama butuh beberapa detik lebih lama.
+
+## Lihat juga
+
+- [`src/data_worker/spatial_model/README.md`](../../data_worker/spatial_model/README.md): sisi penulis cache
+- [`docs/experiments/TI-AI-05/README.md`](../../../docs/experiments/TI-AI-05/README.md): bukti EdgeWeight dan jejak inferensi

@@ -136,3 +136,10 @@ dilaporkan sebagai berimpit.
 | Split | Dari TI-AI-03 | Provisional v1 dibuat di sini | TI-AI-03 belum ada |
 | Masker daratan | Sel grid wilayah studi (±66 ribu sel) | Seluruh bbox (≈ 110 ribu sel) | Batas daratan belum tersedia |
 | Integrasi siklus | `run_idw_fallback` saat ST-GNN gagal | Fungsi tersedia, belum dipanggil `acquisition.py` | Penulisan `pollution.*` dan agregasi ke ruas adalah lingkup TI-AI-05 |
+
+## Lihat juga
+
+- [`docs/PROTOKOL_EVALUASI.md`](../../../../../docs/PROTOKOL_EVALUASI.md): protokol evaluasi
+- [`docs/experiments/ds-v0.3.0/exclusion_rules.md`](../../../../../docs/experiments/ds-v0.3.0/exclusion_rules.md): aturan eksklusi lengkap ds-v0.3.0
+- [`docs/experiments/TI-AI-04/runs/20261013T101200Z-idw-ds-v0.3.0-f6f15b8f/report.md`](../../../../../docs/experiments/TI-AI-04/runs/20261013T101200Z-idw-ds-v0.3.0-f6f15b8f/report.md): laporan run resmi
+- [`docs/experiments/model-comparison-ds-v0.3.0/README.md`](../../../../../docs/experiments/model-comparison-ds-v0.3.0/README.md): perbandingan dengan model lain

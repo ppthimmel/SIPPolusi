@@ -60,3 +60,10 @@ Selama stack berjalan:
 
 Pemeriksaan `no_false_success` dijalankan pada setiap respons rute: respons 200 wajib punya
 paparan > 0, dan setiap kegagalan wajib berupa galat terstruktur non-200.
+
+## Lihat juga
+
+- [`docs/ti-se-10/MATRIKS.md`](../../docs/ti-se-10/MATRIKS.md): matriks per pemeriksaan
+- [`docs/ti-se-11/VERIFICATION.md`](../../docs/ti-se-11/VERIFICATION.md): run ulang terbaru (64/64)
+- [`docs/software/technical-runbook.md`](../../docs/software/technical-runbook.md): runbook operasional
+- [`docs/devops/ci-cd.md`](../../docs/devops/ci-cd.md): pipeline CI (harness ini tidak dijalankan di CI)

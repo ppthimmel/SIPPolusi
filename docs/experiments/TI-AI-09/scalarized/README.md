@@ -211,3 +211,9 @@ to report on the finished run.
 - **Exact search remains the benchmark.** The features already run two Dijkstra searches per request, and the
   weighted A* of TI-AI-06 never dead-ends. TI-AI-10 should compare with it as well.
 - **Fields are IDW only**, trips are 0.5–3 km, and only bike mode is trained.
+
+## See also
+
+- [`docs/experiments/TI-AI-09/README.md`](../README.md): PIC B multi-policy set
+- [`docs/experiments/TI-AI-10/README.md`](../../TI-AI-10/README.md): TI-AI-10 evaluation (PIC B only)
+- [`docs/experiments/TI-AI-11/README.md`](../../TI-AI-11/README.md): packaging (no packager for PIC A yet)

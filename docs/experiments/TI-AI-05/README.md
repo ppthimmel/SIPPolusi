@@ -124,7 +124,7 @@ dicatat di `edges_without_estimate`.
 Setiap ruas dipotong tepat pada batas sel grid. Nilai ruas adalah rata-rata nilai sel yang dilalui,
 dibobot panjang potongan ruas di setiap sel. Indeks paparan dihitung setelah agregasi dari polutan yang
 tersedia. Rinciannya ada di
-[README modul](../../../src/data_worker/spatial_model/README.md#definisi-agregasi-grid-ke-ruas) dan
+[README modul](../../../src/data_worker/spatial_model/README.md#inferensi-dan-cache) dan
 diuji oleh UT-SDM-07 (a)–(e).
 
 Pada time window ini, tabel potongan memuat 574.809 pasangan ruas-sel dengan panjang total 17.317 km,
@@ -254,3 +254,11 @@ historis tanpa trace. Tidak dibuat riwayat sintetis untuk baris lama.
 Ruang lingkup lokal TI-AI-05 mengikuti [spesifikasi revisi](../../SPATIAL_MODEL_SPEC.md).
 Confidence tetap provisional; ketelitian grid seluruh kota, kalibrasi, UI, dan deployment Railway
 tidak disimpulkan dari bukti replay ini.
+
+## Lihat juga
+
+- [`docs/software/data-contracts-TI-SE-01.md`](../../software/data-contracts-TI-SE-01.md): kontrak data resmi (kini 1.1.0)
+- [`docs/experiments/TI-AI-11/README.md`](../TI-AI-11/README.md): pemaketan dan registry model
+- [`src/data_worker/feature_store/README.md`](../../../src/data_worker/feature_store/README.md): inferensi kini membaca fitur dari feature store
+- [`checkpoints/README.md`](../../../checkpoints/README.md): lokasi checkpoint lokal
+- [`src/backend/pollution/README.md`](../../../src/backend/pollution/README.md): pembaca cache polusi

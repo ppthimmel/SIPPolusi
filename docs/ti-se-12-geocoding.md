@@ -161,3 +161,10 @@ Respons nyata melalui kode backend ke Photon publik disimpan di
 - **Photon sendiri** belum dicoba.
 - **Pembaca layar sungguhan** belum dicoba; yang dipenuhi adalah pola ARIA combobox dan `role="status"`.
 - **Ponsel sungguhan dengan papan ketik terbuka** belum dicoba; tampilan ponsel diuji dengan emulasi tanpa papan ketik.
+
+## Lihat juga
+
+- [`src/backend/public_api/README.md`](../src/backend/public_api/README.md): kontrak endpoint geocode
+- [`src/gateway/README.md`](../src/gateway/README.md): batas laju gateway
+- [`docs/devops/gateway-TI-DO-05.md`](devops/gateway-TI-DO-05.md): bukti gateway
+- [`docs/ti-se-09-verifikasi-frontend.md`](ti-se-09-verifikasi-frontend.md): verifikasi frontend

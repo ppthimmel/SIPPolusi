@@ -129,3 +129,9 @@ akan menampilkan keadaan nomor 6 sampai Data Worker menulis window pertama.
 - Belum diperiksa dengan pembaca layar sungguhan; yang dipenuhi: elemen form
   standar, label untuk setiap kontrol, target sentuh ≥ 44 px, fokus terlihat,
   pesan galat `role="alert"`, dan pembeda rute yang tidak hanya bergantung warna.
+
+## Lihat juga
+
+- [`src/backend/public_api/README.md`](../src/backend/public_api/README.md): kontrak API yang dipakai frontend
+- [`src/frontend/src/fixtures/ti-se-08/README.md`](../src/frontend/src/fixtures/ti-se-08/README.md): fixture uji kontrak
+- [`docs/ti-se-10/LAPORAN.md`](ti-se-10/LAPORAN.md): uji end-to-end

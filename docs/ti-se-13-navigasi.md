@@ -127,3 +127,9 @@ Contoh: `http://localhost:5173/?simulasi=keluar&kecepatan=25`. Untuk melihat rut
 - **Halaman harus terbuka.** Peramban menghentikan `watchPosition` saat halaman di latar belakang atau layar mati;
   navigasi berlanjut saat halaman dibuka lagi.
 - **HTTPS.** Geolocation hanya tersedia lewat HTTPS (atau `localhost`), seperti deployment Railway.
+
+## Lihat juga
+
+- [`docs/ti-se-09-verifikasi-frontend.md`](ti-se-09-verifikasi-frontend.md): verifikasi frontend
+- [`src/backend/public_api/README.md`](../src/backend/public_api/README.md): `/v1/routes` yang dipanggil saat rute ulang
+- [`src/gateway/README.md`](../src/gateway/README.md): batas laju gateway

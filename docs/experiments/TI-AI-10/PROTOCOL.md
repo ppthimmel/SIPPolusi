@@ -103,3 +103,8 @@ the optimum's saving does it capture? Could the target be met at all on these fi
 
 `results/candidate.json` tells TI-SE-07 and TI-AI-12 what to load and its constraints.
 `results/scenario_od_pairs.json` and `results/manifest.json` let TI-AI-12 repeat the same scenarios.
+
+## See also
+
+- [`docs/route-time-exposure.md`](../../route-time-exposure.md): time and exposure definitions
+- [`docs/PROTOKOL_EVALUASI.md`](../../PROTOKOL_EVALUASI.md): spatial model evaluation protocol (counterpart)

@@ -167,3 +167,8 @@ Ulangi kapan saja:
 ```bash
 python scripts/smoke_test.py --gateway https://gateway-staging-9379.up.railway.app --backend https://backend-staging-fe40.up.railway.app
 ```
+
+## Lihat juga
+
+- [`src/gateway/README.md`](../../src/gateway/README.md): konfigurasi gateway terkini (`BACKEND_UPSTREAM` tidak lagi dipakai)
+- [`docs/devops/private-networking.md`](private-networking.md): Backend tidak lagi punya domain publik

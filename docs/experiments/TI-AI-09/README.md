@@ -117,3 +117,9 @@ python -m src.backend.route_model.morl.verify_set --set docs/experiments/TI-AI-0
 
 Field files are not committed; [`fields_manifest.json`](fields_manifest.json) holds their hashes.
 Training machine paths in the copied manifests were made relative to the repo root.
+
+## See also
+
+- [`docs/experiments/TI-AI-10/README.md`](../TI-AI-10/README.md): next step: test-split evaluation
+- [`docs/experiments/TI-AI-11/README.md`](../TI-AI-11/README.md): next step: packaging; registered as `morl-route-policy`
+- [`src/backend/solver/README.md`](../../../src/backend/solver/README.md#penyedia-morl-ti-se-07b): serving: the `morl` provider (TI-SE-07b)

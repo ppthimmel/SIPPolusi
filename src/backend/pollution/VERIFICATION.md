@@ -171,3 +171,8 @@ GET /v1/pollution/edge-weights?bbox=…&time_window_start=2026-10-12T01:00:00Z
   - memasang bobot ke subgraf (`attach_edge_weights`, isi median dan `missing_edge_count`);
   - `validate_route_request` dengan preferensi α/β.
 - **TI-SE-08:** endpoint publik `/v1/exposure-surface` (heatmap).
+
+## Lihat juga
+
+- [`src/data_worker/osm_cache/README.md`](../../data_worker/osm_cache/README.md): penulis cache OSM
+- [`docs/SPATIAL_MODEL_SPEC.md`](../../../docs/SPATIAL_MODEL_SPEC.md): skema cache polusi terkini (tabel jejak inferensi)

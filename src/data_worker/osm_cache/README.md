@@ -63,3 +63,8 @@ with psycopg.connect(dsn, autocommit=True) as conn:
 Uji: [`tests/test_osm_cache_writer.py`](../tests/test_osm_cache_writer.py), dijalankan ke
 basis data lokal ([`src/backend/testdb`](../../backend/testdb/docker-compose.yml)).
 Langkahnya ada di [`src/backend/pollution/README.md`](../../backend/pollution/README.md#menguji).
+
+## Lihat juga
+
+- [`src/data_worker/docs/OSM_FEATURE_SPEC.md`](../docs/OSM_FEATURE_SPEC.md): kamus kolom ekspor CSV graf jalan
+- [`docs/software/data-contracts-TI-SE-01.md`](../../../docs/software/data-contracts-TI-SE-01.md): kontrak RoadGraph

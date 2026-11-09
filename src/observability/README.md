@@ -18,3 +18,8 @@ Model, Spatial Downscaling Model, Data Worker, and (when deployed) the API
 Gateway layer. Since API Gateway is Railway's built-in gateway rather than a
 component this repo builds, its metrics come from Railway's own observability
 rather than this stack.
+
+## See also
+
+- [`docs/devops/observability-TI-DO-08.md`](../../docs/devops/observability-TI-DO-08.md): log schema, health checks and metrics
+- [`docs/devops/private-networking.md`](../../docs/devops/private-networking.md): Grafana public domain exception

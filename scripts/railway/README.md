@@ -42,3 +42,10 @@ Otomatisasinya dilacak di #91.
 - Registry tidak memakai autentikasi. Jangan beri domain publik.
 - Pengujian lokal skrip ini (tanpa *bucket*): `REGISTER_LOCAL_DIR=<folder paket>` dengan `MLFLOW_TRACKING_URI` ke
   penyimpanan berkas lokal dan `MLFLOW_ALLOW_FILE_STORE=true`.
+
+## Lihat juga
+
+- [`src/model_registry/README.md`](../../src/model_registry/README.md): layanan registry dan perintah pendaftaran
+- [`docs/devops/local-railway-parity.md`](../../docs/devops/local-railway-parity.md): padanan lokal: job `register_models`
+- [`docs/experiments/TI-AI-11/README.md`](../../docs/experiments/TI-AI-11/README.md): format paket model yang didaftarkan
+- [`docs/experiments/TI-AI-11/railway_registry_evidence.md`](../../docs/experiments/TI-AI-11/railway_registry_evidence.md): bukti pendaftaran di Railway

@@ -207,3 +207,12 @@ UT-SDM-01, UT-SDM-06, UT-SDM-07, UT-OPS-01, dan UT-OPS-02;
 `tests/test_connectors.py` dan `tests/test_feature_store.py` memuat uji konektor TI-SE-02 dengan respons
 rekaman (`tests/fixtures/sources`) dan uji penyimpanan `features`. Uji tidak menghubungi sumber sekunder
 sungguhan (`FEATURES_SOURCES=none` pada `conftest.py`).
+
+## Lihat juga
+
+- [`src/data_worker/feature_matrix/README.md`](feature_matrix/README.md): FeatureMatrix offline
+- [`src/data_worker/osm_cache/README.md`](osm_cache/README.md): penulisan graf jalan ke cache
+- [`docs/devops/observability-TI-DO-08.md`](../../docs/devops/observability-TI-DO-08.md): perintah `health` dan log terstruktur
+- [`docs/devops/local-railway-parity.md`](../../docs/devops/local-railway-parity.md): stack lokal setara Railway
+- [`docs/software/technical-runbook.md`](../../docs/software/technical-runbook.md): runbook operasional
+- [`src/data_worker/tests/DOCKER.md`](tests/DOCKER.md): menjalankan uji di Docker

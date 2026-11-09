@@ -366,3 +366,8 @@ isinya sama.
   klien dan baris request; dengan `X-Real-IP` alamat itu kini alamat pengguna,
   bukan alamat edge. Formatnya tetap dari NGINX; log akses tidak memuat alamat
   klien.
+
+## Lihat juga
+
+- [`docs/devops/private-networking.md`](private-networking.md): matriks paparan jaringan
+- [`docs/ti-se-12-geocoding.md`](../ti-se-12-geocoding.md): jalur `/v1/geocode/*` yang ditambahkan kemudian

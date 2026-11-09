@@ -59,3 +59,9 @@ Tidak mengubah algoritme rute, model AI, UI, atau format publik secara breaking.
 Tidak menutup issue atau mengirim komentar GitHub sebelum hasil diverifikasi.
 Pilihan teknis rutin dan detail pemetaan diselesaikan implementer mengikuti kode
 aktual; perubahan yang menuntut migrasi data atau kontrak publik dibahas kembali.
+
+## Lihat juga
+
+- [`docs/superpowers/plans/2026-10-27-shared-data-contracts.md`](../plans/2026-10-27-shared-data-contracts.md): rencana implementasi
+- [`docs/software/data-contracts-TI-SE-01.md`](../../software/data-contracts-TI-SE-01.md): hasil: dokumen kontrak data
+- [`docs/software/verification-TI-SE-01.md`](../../software/verification-TI-SE-01.md): verifikasi

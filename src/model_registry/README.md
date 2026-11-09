@@ -62,3 +62,10 @@ Ini hanya dapat diterima selama `model_registry` tidak punya domain publik di Ra
 `register_route_package` / `resolve_route_package` berada di Data Worker. Backend adalah kontainer terpisah dan tidak
 dapat mengimpornya, jadi TI-SE-07 membutuhkan *resolve* di sisi backend (unduh dari *registry* lalu
 `load_packaged_policy_set`).
+
+## Lihat juga
+
+- [`scripts/railway/README.md`](../../scripts/railway/README.md): prosedur pendaftaran dari bucket Railway
+- [`docs/experiments/TI-AI-11/railway_registry_evidence.md`](../../docs/experiments/TI-AI-11/railway_registry_evidence.md): bukti registry di Railway
+- [`src/backend/solver/README.md`](../backend/solver/README.md#penyedia-morl-ti-se-07b): pemakai registry: penyedia `morl` di Cache API
+- [`notebooks/spatial_model/NAMING_CONVENTION.md`](../../notebooks/spatial_model/NAMING_CONVENTION.md): konvensi nama run dan model

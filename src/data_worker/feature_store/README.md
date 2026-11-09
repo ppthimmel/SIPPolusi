@@ -142,3 +142,12 @@ NDVI/NDBI baru terisi setelah scene cerah berikutnya.
 | `FEATURES_SOURCES` | `all` | `all`, `none`, atau daftar dari `open_meteo,geoscf_ana,geoscf_fcst,sentinel5p,landsat,viirs` |
 | `FEATURES_DB_SCHEMA` | `features` | Skema tabel penyimpanan |
 | `FEATURE_STORE_DIR` | kosong | Bila diatur, Parquet dan `manifest.json` FeatureMatrix per time window ditulis ke sini |
+
+## Lihat juga
+
+- [`src/data_worker/feature_matrix/README.md`](../feature_matrix/README.md): FeatureMatrix offline
+- [`src/data_worker/spatial_model/README.md`](../spatial_model/README.md): inferensi yang membaca feature store
+- [`docs/software/data-contracts-TI-SE-01.md`](../../../docs/software/data-contracts-TI-SE-01.md): kontrak data
+- [`docs/devops/data-worker-schedule.md`](../../../docs/devops/data-worker-schedule.md): jadwal siklus
+- [`docs/experiments/TI-AI-05/source_reader_cache.md`](../../../docs/experiments/TI-AI-05/source_reader_cache.md): cache pembaca sumber
+- [`src/data_worker/docs/GEOS_CF_FEATURE_SPEC.md`](../docs/GEOS_CF_FEATURE_SPEC.md): spesifikasi fitur per sumber (GEOS-CF; berkas lain di folder yang sama)

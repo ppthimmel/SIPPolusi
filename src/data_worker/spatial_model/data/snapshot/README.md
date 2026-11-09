@@ -62,3 +62,9 @@ deret macet yang dihitung ulang pada deret penuh dan jam tidak lengkap.
   - Statistik fitur di-fit pada jam masukan blok train di node grup train.
   - Target PM2.5 dan rasio GEOS-CF/SPKU dari split train.
   - Target NO2 di-fit per fold LOSO.
+
+## Lihat juga
+
+- [`src/data_worker/feature_matrix/README.md`](../../../feature_matrix/README.md): sumber FeatureMatrix
+- [`docs/experiments/TI-AI-02/README.md`](../../../../../docs/experiments/TI-AI-02/README.md): bukti FeatureMatrix pertama
+- [`docs/experiments/ds-v0.3.0/split_stats.md`](../../../../../docs/experiments/ds-v0.3.0/split_stats.md): statistik pembagian ds-v0.3.0

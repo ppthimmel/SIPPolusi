@@ -25,3 +25,8 @@ docker compose -f docker-compose.data-worker-tests.yml down
 
 The image remains available for future runs. Building requires access to Docker Hub,
 Debian, the PyTorch CPU wheel repository, and PyPI.
+
+## See also
+
+- [`src/data_worker/README.md`](../README.md): Data Worker overview
+- [`docs/devops/ci-cd.md`](../../../docs/devops/ci-cd.md): the same tests in CI

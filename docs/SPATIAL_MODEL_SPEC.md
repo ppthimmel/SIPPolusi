@@ -79,3 +79,12 @@ sebelum menjalankan backend/Worker baru pada basis data yang sudah ada.
 replay historis lokal dengan model nyata, MLflow/MinIO, dua sel, satu ruas multisel,
 cache PostgreSQL/PostGIS, pembacaan backend, dan rekonstruksi saat artefak lokal dimatikan.
 Ini bukti integrasi lokal, bukan klaim akurasi seluruh kota atau deployment Railway.
+
+## Lihat juga
+
+- [`docs/PROTOKOL_EVALUASI.md`](PROTOKOL_EVALUASI.md): protokol evaluasi dan status model
+- [`docs/experiments/model-comparison-ds-v0.3.0/README.md`](experiments/model-comparison-ds-v0.3.0/README.md): bukti perbandingan model (rekomendasinya IDW p=1)
+- [`docs/experiments/model-comparison-ds-v0.3.0/stgnn_idw_residual/ds-v0.3.0_loso_pm25_gpu_seed42_20261014_a7eabc1b/report.md`](experiments/model-comparison-ds-v0.3.0/stgnn_idw_residual/ds-v0.3.0_loso_pm25_gpu_seed42_20261014_a7eabc1b/report.md): ST-GNN PM2.5 LOSO, dasar model PM2.5 yang dipasang
+- [`src/data_worker/spatial_model/README.md`](../src/data_worker/spatial_model/README.md): kode training, inferensi, dan cache
+- [`src/data_worker/docs/GEOS_CF_FEATURE_SPEC.md`](../src/data_worker/docs/GEOS_CF_FEATURE_SPEC.md): fitur GEOS-CF
+- [`src/backend/pollution/README.md`](../src/backend/pollution/README.md): pembaca cache polusi di Cache API

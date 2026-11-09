@@ -202,3 +202,8 @@ Dengan perbaikan yang sama pada sumber merge tersebut, **15 passed**.
 Uji kontrak dan spatial_edgeweight pada head PR: **29 passed, 10 skipped**
 (database tidak dikonfigurasi). Uji yang memakai tmp_path dijalankan dengan
 basetemp di .cache repository karena direktori TEMP sandbox tidak dapat ditulis.
+
+## Lihat juga
+
+- [`docs/superpowers/plans/2026-10-27-shared-data-contracts.md`](../superpowers/plans/2026-10-27-shared-data-contracts.md): rencana implementasi
+- [`src/backend/public_api/README.md`](../../src/backend/public_api/README.md): API publik yang memakai kontrak

@@ -54,3 +54,8 @@ ini juga menerapkan aturan tersebut; kesesuaian ilmiah dan konsistensi saat
 evaluasi tetap perlu ditinjau. Untuk perbandingan adil, MORL dan pembanding
 deterministik harus berbagi graf, bobot, dan rute/nilai acuan yang sama,
 terutama jika beberapa rute tercepat dengan paparan berbeda memiliki waktu seri.
+
+## Lihat juga
+
+- [`src/backend/solver/VERIFICATION.md`](../src/backend/solver/VERIFICATION.md): verifikasi orkestrasi solver
+- [`docs/experiments/TI-AI-08/README.md`](experiments/TI-AI-08/README.md): lingkungan MORL yang memakai fungsi biaya ini
