@@ -30,6 +30,10 @@ di Cache API, diteruskan API Gateway) dan antarmuka sudah diuji terhadapnya (lih
 respons asli Backend di `src/fixtures/ti-se-08/`). "Browser" = dijalankan di peramban
 terhadap mock; hasil dibaca dari DOM/peta dan, untuk tata letak, dari tangkapan layar.
 
+> Catatan 2026-11-09: 102 adalah jumlah kasus Vitest saat pencatatan. Jumlah saat ini dilihat
+> dengan menjalankan `npm test` di `src/frontend`; CI belum menjalankan uji frontend
+> ([`devops/ci-cd.md`](devops/ci-cd.md)).
+
 ### Pemuatan dan status
 
 | Keadaan | Hasil yang diharapkan | Diuji |
@@ -116,6 +120,10 @@ Pemeriksaan tambahan di peramban:
 
 Di Railway, cache polusi belum memiliki time window complete, jadi permintaan rute di sana
 akan menampilkan keadaan nomor 6 sampai Data Worker menulis window pertama.
+
+> Catatan 2026-11-09: keadaan Railway di atas sudah berubah. `DOWNSCALE_WRITE_CACHE=1` aktif di
+> environment `development` sejak 27 Okt, sehingga Data Worker mengisi cache polusi di sana
+> (lihat [`ti-se-10/LAPORAN.md`](ti-se-10/LAPORAN.md)).
 
 ## Yang belum bisa dibuktikan dari sini
 

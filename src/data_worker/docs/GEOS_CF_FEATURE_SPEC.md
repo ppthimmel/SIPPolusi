@@ -1,6 +1,6 @@
 # Spesifikasi fitur GEOS-CF
 
-Sumber: **GEOS-CF v2 analysis**, `aqc_tavg_1hr_glo_L1440x721_slv`, NASA NCCS. Tabel utama `processed/geos-cf/geoscf_cell_hourly.parquet`: **9 sel sumber × 6.552 jam UTC**, Januari–September 2026. Grid asli 0,25° (sekitar 25 km); `grid100m_geoscf_lookup.parquet` memetakan ke grid target 100 m melalui koordinat UTM EPSG:32748.
+Sumber: **GEOS-CF v2 analysis**, `aqc_tavg_1hr_glo_L1440x721_slv`, NASA NCCS. Tabel utama `src/data_worker/dataset_processed/geos-cf/geoscf_cell_hourly.parquet`: **9 sel sumber × 6.552 jam UTC**, Januari–September 2026. Grid asli 0,25° (sekitar 25 km); `grid100m_geoscf_lookup.parquet` memetakan ke grid target 100 m melalui koordinat UTM EPSG:32748.
 
 **Peran aktif (revisi 27 Oktober 2026):** fitur atmosfer regional pada pelatihan dan operasi
 ds-v0.3.0, mengikuti [spesifikasi model](../../../docs/SPATIAL_MODEL_SPEC.md). GEOS-CF tidak
@@ -20,13 +20,13 @@ Sentinel-5P. Pemetaan ke 100 m tidak menghasilkan pengukuran baru 100 m.
 
 NO₂ dalam ppb dan µg/m³ adalah dua representasi variabel yang sama, bukan dua prediktor independen. Konversi acuan dipertahankan; belum memakai suhu/tekanan Open-Meteo. Tidak dilakukan imputasi nilai sumber.
 
-**Penggabungan:** pilih interval valid paling baru yang sudah selesai dan `available_at_utc <= time_utc`. Nilai dibawa maju; pengamatan lama yang terlambat datang tidak mengganti kondisi lebih baru. PM2.5 dan NO₂ dipilih independen berdasarkan mask. Metadata gabungan memakai awalan `geoscf_pm25_` / `geoscf_no2_`: `time_window_start`, `time_window_end`, `available_at_utc`, `latency_hours`, `age_hours`. Umur dihitung dari akhir interval. Sebelum ada sumber yang memenuhi syarat, nilai kosong dan mask `False`; batas umur opsional melalui `GEOS_CF_MAX_AGE_HOURS` di notebook.
+**Penggabungan:** pilih interval valid paling baru yang sudah selesai dan `available_at_utc <= time_utc`. Nilai dibawa maju; pengamatan lama yang terlambat datang tidak mengganti kondisi lebih baru. PM2.5 dan NO₂ dipilih independen berdasarkan mask. Metadata gabungan memakai awalan `geoscf_pm25_` / `geoscf_no2_`: `time_window_start`, `time_window_end`, `available_at_utc`, `latency_hours`, `age_hours`. Umur dihitung dari akhir interval. Sebelum ada sumber yang memenuhi syarat, nilai kosong dan mask `False`. FeatureMatrix tidak memakai batas umur maksimum; umur nilai dibaca dari `geoscf_*_age_hours`.
 
 **Asal dan risiko:** manifest mencatat produk, hash, QC, dan konversi. `Last-Modified` bukan bukti publikasi pertama atau waktu produksi; tidak dibuat `produced_at`. CSV bukti ketersediaan dan JSON mentah yang disebut manifest belum tersedia dalam folder proyek, sehingga provenance belum bisa diperiksa sepenuhnya. Akses melalui portal publik NASA; ketentuan lisensi spesifik belum dicatat dalam metadata lokal.
 
 ## Prakiraan GEOS-CF v2 (`fcst`)
 
-Tabel `processed/geos-cf/geoscf_fcst_cell_hourly.parquet`: satu baris per (run, awal jam valid, sel), untuk
+Tabel `src/data_worker/dataset_processed/geos-cf/geoscf_fcst_cell_hourly.parquet`: satu baris per (run, awal jam valid, sel), untuk
 9 sel yang sama dengan `ana`. Dibangun oleh `scripts/fetch_geoscf_fcst.py`; ringkasan di `fcst_manifest.json`.
 
 - **Produk:** `aqc_tavg_1hr_glo_L1440x721_slv` (sama dengan `ana`), satu run per hari pada 09z, 120 jam ke depan.

@@ -90,7 +90,7 @@ ulang dan diverifikasi terhadap keluaran bundle:
 | Kriteria | Bukti |
 |---|---|
 | Setiap baris dapat ditelusuri ke sel grid dan TimeWindow | Kunci (`grid_id`, `time_utc`) unik dan lengkap untuk 1.044 × 454; `node_index` ↔ `grid_id` di `nodes.parquet`; jam dan scene sumber setiap nilai tercatat (`*_observed_at`, `*_produced_at`, `*_scene_id`, `geoscf_*_time_window_*`, `geoscf_*_available_at_utc`, `weather_time_utc`, `weather_available_at_utc`) |
-| Kolom mengikuti data dictionary dengan tipe/satuan konsisten | [`feature_spec.json`](../../../src/data_worker/feature_matrix/feature_spec.json) merinci tipe, satuan, peran, sumber, dan penyelarasan 71 kolom fitur dan 16 kolom label; pemeriksaan skema lolos |
+| Kolom mengikuti data dictionary dengan tipe/satuan konsisten | [`feature_spec.json`](../../../src/data_worker/feature_matrix/feature_spec.json) merinci tipe, satuan, peran, sumber, dan penyelarasan 71 kolom fitur dan 16 kolom label; pemeriksaan skema lolos. Catatan 2026-11-09: 71 adalah jumlah pada saat bukti ini; `feature_spec.json` saat ini memuat 89 fitur sejak prakiraan GEOS-CF dan kalender ditambahkan (`ad5632a`) |
 | Missingness tercatat eksplisit | 15 penanda `<nilai>_available`, nilai hilang tetap NaN tanpa imputasi; 0 pelanggaran konsistensi |
 | Pemeriksaan melaporkan cakupan, duplikasi, dan proporsi nilai hilang | `quality_report.{json,md}`: cakupan sel × jam, kunci ganda, nilai hilang dan ketersediaan per fitur (total dan minimum per jam), kebocoran waktu (0), label per split |
 

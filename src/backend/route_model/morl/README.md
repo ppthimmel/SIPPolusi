@@ -43,6 +43,7 @@ Results, evidence and limitations: [`docs/experiments/TI-AI-09`](../../../../doc
 | `resources.py` | Memory, disk and thread limits |
 | `evaluate_candidate.py` | TI-AI-10: the set against the fastest route on the test split ([report](../../../../docs/experiments/TI-AI-10/README.md)) |
 | `verify_set.py` | Checks a trained set from its files: checksums, identical routes after reload, inference time |
+| `packaging.py` | TI-AI-11: `package_policy_set` turns a trained set into a verified model package; `load_packaged_policy_set` loads one. The Cache API's `morl` solver provider ([`solver/morl.py`](../../solver/morl.py)) serves the registered package this way |
 
 ## Choices the results depend on
 

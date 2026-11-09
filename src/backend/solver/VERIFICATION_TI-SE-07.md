@@ -24,6 +24,12 @@ dan memenuhi kontrak `IRouteSolve`. Data graf dan polusi ditulis kode Data Worke
 | `ROUTE_SOLVER_FALLBACK` | `baseline` | `none` = 503 sesuai Tabel 3.12 |
 | `ROUTE_SOLVER_FALLBACK_TIMEOUT_MS` / `GATEWAY_TIMEOUT_MS` | `1500` / `10000` | Batas fallback; total permintaan tetap di bawah timeout gateway |
 
+> Catatan 2026-11-09: tabel ini adalah konfigurasi saat uji 2026-10-26. Railway kini memakai
+> penyedia dalam proses `ROUTE_SOLVER_PROVIDER=morl` (TI-SE-07b), bukan `http` dengan
+> `ROUTE_SOLVER_URL`. Konfigurasi dan batas waktu yang berlaku ada di
+> [README.md#penyedia-morl-ti-se-07b](README.md#penyedia-morl-ti-se-07b) dan
+> [README.md#konfigurasi](README.md#konfigurasi).
+
 Kontrak jawaban yang diharapkan dari layanan (Kode 3.3):
 
 ```json

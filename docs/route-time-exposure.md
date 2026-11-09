@@ -40,8 +40,10 @@ zero, it uses 1.0 as its denominator (in the units of that reference). This
 preserves defined, nonnegative costs but is not relative normalization when the
 reference is zero. The mock uses Dijkstra for both the time-only reference and
 the weighted recommendation. A separate time-only A* baseline is used for the
-`baseline` provider and automatic fallback; it does not apply α/β. The HTTP
-solver is a separate provider intended for MORL. The API's `route_source: policy`
+`baseline` provider and automatic fallback; it does not apply α/β. The MORL policy
+is served by the separate `morl` provider, which loads the registered
+`morl-route-policy` package into the Cache API process (TI-SE-07b); the `http`
+provider calls an external route model service instead. The API's `route_source: policy`
 means preference-applied, not necessarily MORL; `solver: mock` and model version
 `mock-1` identify this comparator. See
 [solver providers](../src/backend/solver/README.md).

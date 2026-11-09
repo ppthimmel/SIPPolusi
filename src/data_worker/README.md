@@ -14,8 +14,9 @@ Yang sudah berjalan:
 - **Konektor sumber sekunder dan FeatureMatrix (TI-SE-02):** Open-Meteo, GEOS-CF `ana`/`fcst`,
   Landsat 8/9, VIIRS VNP46A2, dan Sentinel-5P NO2, lalu kendali mutu, penyelarasan ke grid 100 m, dan
   `write_features`. Data disimpan ke skema `features`; lihat [`feature_store/README.md`](feature_store/README.md).
-- **`trigger_downscale_inference`:** fallback IDW sampai EdgeWeight di cache; tersedia tetapi nonaktif kecuali
-  `DOWNSCALE_WRITE_CACHE=1`.
+- **`trigger_downscale_inference`:** model terdaftar di MLflow (koreksi PM2.5, LightGBM NO2) dengan fallback IDW
+  per pencemar, sampai EdgeWeight di cache. Fitur lingkungan dibaca dari feature store (skema `features`) lewat
+  `feature_reader()`. Tersedia tetapi nonaktif kecuali `DOWNSCALE_WRITE_CACHE=1`.
 
 > **Sebelum memakai datanya, baca [`docs/DATA.md`](docs/DATA.md).** Isinya:
 > arti setiap tabel dan bendera `qc`, stasiun yang diketahui bermasalah (dan
@@ -26,20 +27,28 @@ Yang sudah berjalan:
 
 | Berkas | Isi |
 |---|---|
-| `main.py` | Titik masuk: `cycle` (untuk cron), `serve` (proses menetap), `status` (pemeriksaan jadwal), `check`, `spku ...` |
+| `main.py` | Titik masuk: `cycle` (untuk cron), `serve` (proses menetap), `status` (pemeriksaan jadwal), `check`, `health` (kesegaran hasil job), `spku ...`, `features ...` |
 | `acquisition.py` | `schedule_acquisition(time_window)`: langkah berurutan, status per langkah |
 | `worker_runs.py` | Catatan eksekusi siklus (`worker.cycle_run`), kunci siklus, status jadwal; lihat [`docs/devops/data-worker-schedule.md`](../../docs/devops/data-worker-schedule.md) |
+| `preflight.py` | Pemeriksaan konfigurasi dan koneksi untuk `check`, `cycle`, dan `serve` |
+| `job_health.py` | Kesegaran hasil job untuk `python main.py health` (TI-DO-08) |
+| `log_config.py` | Log satu baris per kejadian ke stdout (JSON di Railway), kredensial disamarkan |
 | `db_session.py` | Keepalive TCP sisi server untuk setiap koneksi (`PGOPTIONS`), agar sesi dari kontainer yang dihentikan paksa tidak menahan kunci tabel |
 | `connectors/` | Konektor sumber sekunder (Open-Meteo, GEOS-CF, Landsat, VIIRS, Sentinel-5P): HTTP dengan timeout dan coba ulang, parser, QA |
 | `feature_store/` | Skema `features`, pembaca FeatureMatrix PostgreSQL, langkah siklus TI-SE-02, `python main.py features ...`; lihat [README-nya](feature_store/README.md) |
+| `feature_matrix/` | Pembangun FeatureMatrix offline dari `dataset_processed/` (`python -m feature_matrix`); lihat [README-nya](feature_matrix/README.md) |
+| `dataset_processed/` | Dataset sumber sekunder terproses TI-AI-01 (GEOS-CF, Landsat, Open-Meteo, Sentinel-5P, VIIRS, OSM); spesifikasi fitur di `docs/*_FEATURE_SPEC.md` |
+| `osm_cache/` | Penulisan graf jalan ke skema `osm` (`write_road_graph`); lihat [README-nya](osm_cache/README.md) |
 | `ground_truth.py` | `fetch_ground_truth(provider, bbox, time_window)` |
 | `contracts.py` | `TimeWindow`, `BBox`, `GroundTruthMeasurement`, `GroundTruthBatch` (Tabel 3.3) |
 | `spku/` | Kolektor SPKU, porting dari `udara-collector` (SQLite) ke PostgreSQL |
 | `spku/schema.sql` | Skema `ground_truth` (PostgreSQL 16 + PostGIS) |
 | `scripts/migrate_sqlite_to_postgres.py` | Pemindahan data historis dari `udara.sqlite` |
+| `scripts/check_ispu_units.py` | Verifikasi satuan konsentrasi SPKU terhadap ISPU portal |
+| `scripts/fetch_geoscf_fcst.py` | Akuisisi dan pemrosesan GEOS-CF *forecast* (`fcst`) untuk 9 sel Jakarta |
+| `scripts/preprocess_single_*.py` | Konversi satu scene Landsat, Sentinel-5P, atau VIIRS menjadi Parquet inferensi yang kompatibel dengan data latih |
 | `scripts/spku_stub_portal.py` | Portal SPKU tiruan (mode `ok`, `flaky`, `down`, `empty`) untuk uji jalur gagal lewat `SPKU_BASE_URL` |
 | `docs/DATA.md` | Kamus data, mutu data, dan catatan zona waktu |
-| `docs/RAILWAY.md` | Langkah deployment Railway, migrasi data historis, peralihan, catatan penggabungan `dev` |
 | `database/` | Model SQLAlchemy skema cache `pollution` dan `osm`; `init_db()` dipanggil di awal setiap siklus |
 | `spatial_model/` | Estimasi grid sampai `EdgeWeight` (langkah `trigger_downscale_inference`): fallback IDW, confidence score, agregasi ke ruas, Spatial Pollution Cache DB; lihat [README-nya](spatial_model/README.md) |
 | `spatial_model/evaluation/idw/` | Baseline IDW TI-AI-04: dataset beku, evaluasi *leave-one-station-out*, analisis galat; lihat [README-nya](spatial_model/evaluation/idw/README.md) |
@@ -122,6 +131,10 @@ Seluruhnya lewat variabel lingkungan:
 | `FEATURE_STORE_DIR` | tidak | Bila diatur, Parquet dan `manifest.json` FeatureMatrix per time window ditulis ke sini |
 | `DOWNSCALE_WRITE_CACHE` | tidak | `1` mengaktifkan penulisan EdgeWeight ke `pollution.edge_pollution` setiap siklus; bawaan nonaktif |
 | `DOWNSCALE_KEEP_WINDOWS` | tidak | Jumlah time window complete terakhir yang dipertahankan di cache; bawaan 6 (±0,55 GB, hingga ±1,1 GB sebelum autovacuum) |
+| `MLFLOW_TRACKING_URI` | tidak | Registry MLflow model spasial; kosong berarti model terdaftar tidak dapat dimuat dan inferensi memakai fallback IDW |
+| `SPATIAL_MODEL_CACHE` | tidak | Direktori cache bundle model yang diunduh dari registry; bawaan `.cache/spatial-models` |
+| `SPATIAL_FEATURE_ROOT` | tidak | Bila diatur, fitur inferensi dibaca dari berkas terproses di direktori ini (mis. `dataset_processed`), bukan dari feature store |
+| `CACHE_DATABASE_URL` | tidak | Hanya untuk `python -m spatial_model infer --write-cache`: basis data tujuan EdgeWeight; bawaan `DATABASE_URL` |
 | `SPATIAL_ARTIFACT_DIR` | tidak | Direktori artefak penelusuran per run inferensi; kosong berarti tidak disimpan |
 | `LOG_LEVEL` | tidak | Bawaan `INFO` |
 | `LOG_FORMAT` | tidak | `json` (bawaan di Railway, agar level log terbaca) atau `text` (bawaan lokal) |
@@ -132,7 +145,8 @@ IF NOT EXISTS ground_truth`).
 
 ## Deployment di Railway
 
-Langkah lengkap beserta status data saat ini: [`docs/RAILWAY.md`](docs/RAILWAY.md).
+Konfigurasi build, health check, dan logging semua layanan:
+[`docs/devops/build-runtime.md`](../../docs/devops/build-runtime.md).
 
 1. Tambahkan service PostgreSQL dengan PostGIS (template PostGIS, bukan
    template Postgres biasa, karena skema memakai `geometry` dan indeks GiST).
@@ -143,8 +157,9 @@ Langkah lengkap beserta status data saat ini: [`docs/RAILWAY.md`](docs/RAILWAY.m
    Bila Railway tidak membaca berkas tersebut, isi Config-as-code path dengan
    `/src/data_worker/railway.json` pada pengaturan service.
 3. Isi `DATABASE_URL` dengan referensi variabel service PostGIS.
-4. Sebelum cron pertama berjalan, jalankan migrasi data historis (bagian
-   berikut). Setelah itu kolektor lama di Mac boleh dihentikan.
+4. Migrasi data historis dari SQLite sudah dijalankan pada 30 September 2026
+   di environment `development`. Bagian berikut hanya diperlukan untuk basis
+   data baru atau pengisian ulang.
 
 Railway tidak memaksakan batas waktu pada cron job; bila satu lintasan masih
 berjalan ketika jadwal berikutnya tiba, jadwal tersebut dilewati. Setiap
@@ -186,8 +201,36 @@ diulang sebelum cron diaktifkan. Setelah itu migrasi ulang tidak diperlukan:
 setiap lintasan Data Worker mengambil riwayat 48 jam, sehingga pengukuran sejak
 migrasi terisi sendiri. Skrip menolak berjalan kecuali diberi `--force`, dan
 `--force` jangan dipakai karena baris tabel log SQLite yang `id`-nya sudah
-terpakai dilewati tanpa galat. Rinciannya, termasuk cara mengisi ulang dari
-nol, ada di [`docs/RAILWAY.md`](docs/RAILWAY.md) bagian 2 dan 3.
+terpakai dilewati tanpa galat (`ON CONFLICT (id) DO NOTHING`; lintasan Data
+Worker memakai `id` yang sama dengan kolektor lama). Periksa ulang tanpa
+menulis dengan `--verify-only`.
+
+Skrip dijalankan dari luar Railway, jadi butuh alamat publik basis data
+(`DATABASE_PUBLIC_URL`, muncul bila TCP Proxy service `database` aktif).
+TCP Proxy itu sengaja ditutup; aktifkan hanya selama migrasi lalu tutup dan
+rotasi kata sandi sesuai
+[`docs/devops/private-networking.md`](../../docs/devops/private-networking.md).
+Teruskan DSN lewat substitusi perintah, jangan ditempel ke terminal:
+`DATABASE_URL="$(railway variables --service database --kv | sed -n 's/^DATABASE_PUBLIC_URL=//p')"`.
+
+Mengisi ulang dari nol (hanya bila PostgreSQL boleh diisi ulang dari SQLite;
+ini juga menghapus lintasan Data Worker sejak migrasi, dan pengukuran 48 jam
+terakhir terisi kembali pada lintasan berikutnya):
+
+```sql
+-- Hentikan cron dulu dan ambil kunci yang sama dengan kolektor.
+BEGIN;
+SELECT pg_advisory_xact_lock(hashtext('spku-write:ground_truth'));
+TRUNCATE ground_truth.station, ground_truth.station_metric, ground_truth.observation,
+         ground_truth.observation_ispu, ground_truth.meteo, ground_truth.daily_ispu,
+         ground_truth.station_status, ground_truth.run, ground_truth.snapshot,
+         ground_truth.observation_revision, ground_truth.fetch_log,
+         ground_truth.roster_event, ground_truth.migration_log
+  RESTART IDENTITY CASCADE;
+COMMIT;
+```
+
+Lalu jalankan migrasi tanpa `--force`.
 
 ## Pengujian
 
@@ -206,7 +249,8 @@ dan UT-MTP-03 untuk baseline IDW; `tests/test_spatial_edgeweight.py` memuat
 UT-SDM-01, UT-SDM-06, UT-SDM-07, UT-OPS-01, dan UT-OPS-02;
 `tests/test_connectors.py` dan `tests/test_feature_store.py` memuat uji konektor TI-SE-02 dengan respons
 rekaman (`tests/fixtures/sources`) dan uji penyimpanan `features`. Uji tidak menghubungi sumber sekunder
-sungguhan (`FEATURES_SOURCES=none` pada `conftest.py`).
+sungguhan (`FEATURES_SOURCES=none` pada `conftest.py`). Untuk menjalankan uji di kontainer, lihat
+[`tests/DOCKER.md`](tests/DOCKER.md).
 
 ## Lihat juga
 

@@ -11,7 +11,7 @@ Pengambilan, transformasi, dan penyimpanan dipisah sehingga setiap tahap dapat d
 | Pengambilan | `connectors/http.py`, `connectors/stac.py` | Timeout, coba ulang, dan pencatatan per sumber (Tabel 3.19); katalog STAC dan token SAS Planetary Computer |
 | Transformasi | `connectors/<sumber>.py` | Parser respons dan granule → baris berskema data latih; validasi format, rentang fisik, dan duplikat |
 | Penyimpanan | `feature_store/store.py` | Skema PostgreSQL `features`; penulisan idempoten, revisi, dan retensi |
-| Pembaca fitur | `feature_store/reader.py` | `StoreSourceReader`: aturan as-of `SourceReader` TI-AI-02, sumber dari PostgreSQL |
+| Pembaca fitur | `feature_store/reader.py` | `StoreSourceReader`: aturan as-of `SourceReader` TI-AI-02, sumber dari PostgreSQL. Sejak commit 5e5c9bf menjadi masukan inferensi model spasial (`trigger_downscale_inference`) kecuali `SPATIAL_FEATURE_ROOT` diatur |
 | Langkah siklus | `feature_store/steps.py` | Enam langkah pada `acquisition.DEFAULT_STEPS` |
 | CLI | `feature_store/cli.py` | `python main.py features status/fetch/seed/rebuild` |
 

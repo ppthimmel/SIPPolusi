@@ -48,7 +48,6 @@ record a ticket's result on a given date. They are kept as history and are not u
 | Offline FeatureMatrix | [../src/data_worker/feature_matrix/README.md](../src/data_worker/feature_matrix/README.md) |
 | Per-source feature specs (TI-AI-01 dataset) | [GEOS-CF](../src/data_worker/docs/GEOS_CF_FEATURE_SPEC.md), [Landsat](../src/data_worker/docs/LANDSAT_FEATURE_SPEC.md), [Open-Meteo](../src/data_worker/docs/OPEN_METEO_FEATURE_SPEC.md), [Sentinel-5P](../src/data_worker/docs/SENTINEL5P_FEATURE_SPEC.md), [VIIRS](../src/data_worker/docs/VIIRS_FEATURE_SPEC.md), [OSM export](../src/data_worker/docs/OSM_FEATURE_SPEC.md) |
 | Road graph writer | [../src/data_worker/osm_cache/README.md](../src/data_worker/osm_cache/README.md) |
-| SQLite to Railway migration (Sep 2026) | [../src/data_worker/docs/RAILWAY.md](../src/data_worker/docs/RAILWAY.md) |
 | Running the tests in Docker | [../src/data_worker/tests/DOCKER.md](../src/data_worker/tests/DOCKER.md) |
 
 ## Spatial downscaling model

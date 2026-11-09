@@ -216,7 +216,9 @@ python -m public_api.smoke --export-http                        # perbarui reque
 Ada 17 kasus: rute valid (jalan kaki dan sepeda), validasi (α + β, moda, lintang, JSON rusak),
 413, wilayah studi, titik di laut, asal = tujuan, metode salah, heatmap pada zoom 15, 12, dan 11,
 serta bbox/zoom tidak valid. Kasus yang membaca cache polusi juga menerima 503 `cache_empty`,
-karena cache Railway belum terisi. Setiap respons diperiksa terhadap skema dan harus membawa
+agar koleksi tetap bisa dipakai pada basis data yang belum punya time window `complete`
+(misalnya stack lokal baru). Cache Railway `development` diisi sejak 27 Okt
+(`DOWNSCALE_WRITE_CACHE=1`, [`docs/ti-se-10/LAPORAN.md`](../../../docs/ti-se-10/LAPORAN.md)). Setiap respons diperiksa terhadap skema dan harus membawa
 tepat satu `X-Request-ID`. Untuk rute dan galat, header itu harus sama dengan `request_id` di body;
 body heatmap tidak memuat `request_id`.
 
@@ -236,9 +238,11 @@ body heatmap tidak memuat `request_id`.
 Dari `src/backend/public_api`, dengan venv dan dependensi dari [`../pollution`](../pollution/README.md#menguji):
 
 ```bash
-pytest -m "not cacheflow"                                                    # tanpa DB → 119 passed
-TEST_DATABASE_URL=postgresql://test:test@localhost:55432/test pytest         # semua → 126 passed
+pytest -m "not cacheflow"                                                    # tanpa DB
+TEST_DATABASE_URL=postgresql://test:test@localhost:55432/test pytest         # semua
 ```
+
+Hasil terbaru ada di CI ([`docs/devops/ci-cd.md`](../../../docs/devops/ci-cd.md)).
 
 Uji `cacheflow` memakai PostGIS lokal ([`../testdb`](../testdb/docker-compose.yml)) dan kode Data
 Worker untuk menulis graf dan time window. Uji ini memeriksa ruas per zoom, agregasi grid terhadap

@@ -50,6 +50,8 @@ fields, so the set's 54.5% is a shortfall of the set itself:
 
 - TI-SE-07 may connect the set to prove the integration path, with A* as the fallback. Users should not be told
   it lowers their exposure, or that their preference reliably changes the route, because on these fields neither holds.
+  Note 2026-11-09: done in TI-SE-07b, as the in-process `morl` solver provider
+  ([solver README](../../../src/backend/solver/README.md#penyedia-morl-ti-se-07b)).
 - **For EAI-04, test new fields.** Before TI-AI-12 fixes a final model, retrain and repeat this evaluation on fields
   from the registered models (ST-GNN, LightGBM). This shows whether a 4% median exists to be won; IDW fields cannot.
   It does not settle EAI-05.
@@ -172,6 +174,9 @@ The test split was not read again and no policy was run.
 
 The Multi-Objective Route Model service does not exist yet. `candidate.json` names the functions a service
 would wrap behind the `IRouteSolve` contract of TI-SE-07.
+Note 2026-11-09: superseded. TI-SE-07b serves the set inside the Cache API as the `morl` solver provider,
+loading the registered `morl-route-policy` package
+([solver README](../../../src/backend/solver/README.md#penyedia-morl-ti-se-07b)).
 
 ## Reproduce
 

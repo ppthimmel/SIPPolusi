@@ -270,8 +270,10 @@ respons yang sama dengan `/plan`. `/solve` dan `/plan` tetap sebagai endpoint in
 diteruskan oleh API Gateway. Metadata GeoJSON kini juga memuat `crs`, `coordinate_order`, `units`,
 dan `exposure_index_definition`.
 
-**Keadaan saat ini.** Selama cache polusi Railway masih kosong, permintaan valid menjawab 503
-`cache_empty`. Hasil 200 dibuktikan di basis data lokal: [VERIFICATION.md](VERIFICATION.md) (TI-SE-06) dan
+**Keadaan saat ini.** Cache polusi Railway `development` diisi sejak 27 Okt
+(`DOWNSCALE_WRITE_CACHE=1`, [`docs/ti-se-10/LAPORAN.md`](../../../docs/ti-se-10/LAPORAN.md)).
+Pada basis data tanpa time window `complete`, permintaan valid menjawab 503 `cache_empty`.
+Hasil 200 dibuktikan di basis data lokal: [VERIFICATION.md](VERIFICATION.md) (TI-SE-06) dan
 [VERIFICATION_TI-SE-07.md](VERIFICATION_TI-SE-07.md) (integrasi model, fallback, GeoJSON).
 
 ## Menguji
@@ -279,12 +281,16 @@ dan `exposure_index_definition`.
 Dari `src/backend/solver`, dengan venv dan dependensi dari [`../pollution`](../pollution/README.md#menguji):
 
 ```bash
-pytest -m "not cacheflow"                                                    # tanpa DB → 93 passed
-TEST_DATABASE_URL=postgresql://test:test@localhost:55432/test pytest         # semua → 99 passed
+pytest -m "not cacheflow"                                                    # tanpa DB
+TEST_DATABASE_URL=postgresql://test:test@localhost:55432/test pytest         # semua
 ```
 
-- **Uji kontrak** (`tests/test_contract.py`) menjalankan ketiga penyedia (mock, baseline, dan HTTP
-  ke layanan tiruan `httpx.MockTransport`) tanpa layanan AI.
+Hasil terbaru ada di CI ([`docs/devops/ci-cd.md`](../../../docs/devops/ci-cd.md)).
+
+- **Uji kontrak** (`tests/test_contract.py`) menjalankan penyedia mock, baseline, dan HTTP
+  (ke layanan tiruan `httpx.MockTransport`) tanpa layanan AI.
+- **Uji MORL** (`tests/test_morl.py`) menguji penyedia keempat, `morl` (TI-SE-07b): pemuatan
+  paket policy, hash, gerbang kontrak, dan unduhan registry, dengan policy kecil yang belum dilatih.
 - **Uji integrasi** (`tests/test_model_service.py`) menjalankan server Route Model tiruan
   sungguhan (uvicorn di port lokal) untuk jawaban valid, malformat, lambat, galat, dan layanan
   mati.

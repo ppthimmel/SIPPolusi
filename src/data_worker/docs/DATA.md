@@ -151,4 +151,3 @@ lebih dulu. Untuk membaca data historis, pakai kueri langsung seperti di atas.
 - [`src/data_worker/feature_matrix/README.md`](../feature_matrix/README.md): eksklusi stasiun dan satuan label yang lebih baru
 - [`docs/experiments/ds-v0.3.0/exclusion_rules.md`](../../../docs/experiments/ds-v0.3.0/exclusion_rules.md): aturan eksklusi ds-v0.3.0
 - [`docs/software/data-contracts-TI-SE-01.md`](../../../docs/software/data-contracts-TI-SE-01.md): kontrak data
-- [`src/data_worker/docs/RAILWAY.md`](RAILWAY.md): migrasi data historis ke Railway

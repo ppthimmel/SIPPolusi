@@ -69,8 +69,13 @@ commit yang dapat di-deploy:
 4. **Smoke test end-to-end**: `docker compose` menjalankan PostGIS 18 (versi
    yang sama dengan Railway, lewat
    [`.github/ci/docker-compose.ci.yml`](../../.github/ci/docker-compose.ci.yml);
-   compose lokal tetap 16 agar volume yang ada tetap jalan), Backend, Cache API,
-   dan gateway dari image hasil job build. Basis datanya kosong, tanpa skema
+   compose lokal juga 18), Backend, Cache API, dan gateway dari image hasil job
+   build. Env layanan disalin dari setiap `src/*/.env.example` dan
+   `src/*/*/.env.example` (termasuk `src/backend/osm/.env.example` milik Cache
+   API), karena compose membaca `env_file` semua layanan. Contoh env Cache API
+   memilih penyedia `morl`, tetapi CI tidak menjalankan registry, jadi override
+   CI memaksa `ROUTE_SOLVER_PROVIDER=mock` agar uji regresi tetap memakai solver
+   deterministik. Basis datanya kosong, tanpa skema
    cache, seperti environment baru sebelum siklus Data Worker pertama: Cache
    API harus tetap sehat (`degraded`) dan menjawab 503 `cache_empty`. Lalu
    [`scripts/smoke_test.py`](../../scripts/smoke_test.py) memeriksa
@@ -141,7 +146,8 @@ catat alasannya. Untuk perubahan yang akan menetap, lewat PR ke `dev`.
 
 - **CI tidak memakai rahasia platform.** Workflow hanya meminta
   `contents: read`. PostGIS di CI adalah container sementara dengan kredensial
-  uji (`test:test`); stack compose memakai `.env.example` apa adanya.
+  uji (`test:test`); stack compose memakai `.env.example` apa adanya, kecuali
+  `ROUTE_SOLVER_PROVIDER=mock` untuk Cache API (override CI).
 - **Rahasia deploy hanya di Railway**, per environment (tab Variables), dan
   dirujuk lewat referensi seperti `${{database.DATABASE_URL}}`. GitHub tidak
   menyimpan token Railway.

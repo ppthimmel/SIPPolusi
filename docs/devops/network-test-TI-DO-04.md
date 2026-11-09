@@ -20,6 +20,11 @@ baru yang kosong.
 | Backend → layanan inferensi final | — | menunggu layanan inferensi |
 | Rotasi kata sandi PostgreSQL setelah TCP proxy ditutup | — | **belum** (§8.3) |
 
+Catatan 2026-11-09: baris cache-api di atas kemudian terselesaikan. Setelah redeploy #58, cache-api development
+menjalankan image osm dan `POST /v1/routes` serta `GET /v1/exposure-surface` lewat gateway sampai ke Cache API
+(dicek 27 Oktober 2026, tercatat di [`gateway-TI-DO-05.md`](gateway-TI-DO-05.md#catatan)). Hasil di dokumen ini
+tidak diubah.
+
 ## 1. Port host setelah override
 
 Hanya gateway yang memetakan port ke host; layanan internal hanya
@@ -583,6 +588,11 @@ Langkah tersisa: deploy cache-api dari checkout cabang ini
 repositori) agar `src/backend/railway.json` tanpa `dockerfilePath` yang
 dibaca, lalu ulangi smoke test. Hasil dicatat di sini sebelum pemeriksaan
 cache-api dianggap lulus.
+
+Catatan 2026-11-09: langkah ini kemudian selesai. cache-api development menjalankan image osm sejak redeploy #58
+dan kedua jalur publik sampai ke Cache API (503 `cache_empty` saat itu), dicek 27 Oktober 2026 dan tercatat di
+[`gateway-TI-DO-05.md`](gateway-TI-DO-05.md#catatan), bukan di sini. Pemeriksaan `/v1/osm/version` di atas
+kini memang diharapkan 404 dari gateway (jalur internal, TI-DO-05).
 
 ### 8.3 Rotasi kata sandi PostgreSQL: belum
 

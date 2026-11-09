@@ -223,6 +223,19 @@ IDW p = 2, k = 8 pada kunci yang sama (689 stasiun-jam test):
   IDW.
 - **Kedua run overfitting sejak epoch 1–3,** sejalan dengan diagnostik di atas.
 
+### Run GPU lokal (prakiraan GEOS-CF dan kalender, seed 42)
+
+| Run | Protokol | n | RMSE IDW p = 2, k = 8 | RMSE IDW-ST-GNN | Selisih [IK 95%] |
+|---|---|---|---|---|---|
+| [`847559c6`](stgnn_idw_residual/ds-v0.3.0_fcst_calendar_gpu_seed42_20261014_847559c6/report.md) | Split tetap | 689 | 18,74 | 18,37 | [−0,58; −0,10] |
+| [`a7eabc1b`](stgnn_idw_residual/ds-v0.3.0_loso_pm25_gpu_seed42_20261014_a7eabc1b/report.md) | LOSO, 95 grup | 4.358 | 24,00 | 23,74 | −0,26 [−2,31; +1,85] |
+
+- **Split tetap:** epoch terbaik 1 dari 13; RMSE stasiun membaik pada 11 dari 15 stasiun test. Selisihnya
+  signifikan tetapi kecil (−1,99%); IDW ditambah konstanta koreksi rata-rata test sudah memberi 18,39.
+- **LOSO:** tidak signifikan terhadap IDW p = 2, k = 8, dan lebih buruk dari IDW p = 1 seluruh stasiun (22,18;
+  selisih +1,56, IK 95% [+0,27; +2,98]). Epoch terbaik median 9 (7–26).
+- Keduanya satu seed pada data test yang sudah pernah diperiksa; hasil eksploratif.
+
 ## Hasil lain
 
 - **GEOS-CF tidak membantu:**
@@ -249,6 +262,16 @@ IDW p = 2, k = 8 pada kunci yang sama (689 stasiun-jam test):
      kerapatan sensor ke grid.
 3. **ST-GNN:** batasan yang sama berlaku. Data tidak memuat informasi yang diperlukan untuk mengalahkan
    interpolasi halus PM2.5 di lokasi tanpa sensor.
+
+> **Catatan 2026-11-09, yang dipasang:** rekomendasi di atas adalah hasil historis dan angkanya tetap. Kode
+> sistem memakai **IDW p = 2, k = 8 + koreksi ST-GNN** untuk PM2.5 dan **LightGBM seluruh fitur** untuk NO2, dengan
+> IDW p = 2, k = 8 sebagai fallback per polutan ([spesifikasi aktif](../../SPATIAL_MODEL_SPEC.md)). Versi PM2.5 yang
+> terdaftar adalah checkpoint split tetap run `847559c6`
+> ([bukti registry TI-AI-11](../TI-AI-11/railway_registry_evidence.md)); bundle NO2 sudah dipaket tetapi belum
+> terdaftar menurut bukti tersebut. Dokumen proyek mencatat pilihan ini sebagai keputusan implementasi pemilik proyek
+> ([TI-AI-05](../TI-AI-05/README.md), [panduan model](../../../src/data_worker/spatial_model/README.md)) dan
+> menyatakan bahwa bukti tidak menunjukkan keunggulan konsisten ST-GNN terhadap interpolator yang disetel; alasan
+> lain tidak tercatat. Perubahan default IDW ke p = 1 belum dilakukan.
 
 ## Menjalankan ulang
 
@@ -286,6 +309,7 @@ python summarize.py > results/summary.md
 | `idw_correction.py` | Model koreksi IDW (observasi − IDW) dengan dua basis IDW; mode `direct` untuk LightGBM langsung |
 | `loso.py`, `no2_ablation.py` | LOSO blok val/test; ablasi NO2 |
 | `summarize.py` | Tabel ringkasan `results/summary.md` |
+| `summarize_stgnn_loso.py` | Ringkasan run ST-GNN LOSO yang selesai (`python summarize_stgnn_loso.py <folder-run>`): bootstrap berpasangan dan `report.md`, tanpa melatih model |
 | `results/` | Metrik per model, jejak seleksi (`fixed_state.json`), ringkasan CSV |
 
 Prediksi per baris (`results/*_predictions.parquet`, ~4 MB) tidak di-commit dan dapat dibangkitkan ulang

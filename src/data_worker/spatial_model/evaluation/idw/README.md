@@ -12,15 +12,20 @@ grid 100 m. Hasil run resmi ada di
 Dari `src/data_worker`:
 
 ```bash
-# 1. Bekukan snapshot dataset dan split (sekali). Sesi basis data read-only;
-#    DSN dibaca dari DATABASE_URL dan tidak pernah dicetak atau dicatat.
-python -m spatial_model.evaluation.idw build-dataset --from-db --out ../../docs/experiments/TI-AI-04/dataset
+# 1. (Opsional) Bekukan dataset stasiun-jam baseline ke folder baru. Sesi basis
+#    data read-only; DSN dibaca dari DATABASE_URL dan tidak pernah dicetak atau dicatat.
+python -m spatial_model.evaluation.idw build-dataset --from-db --out <folder-baru>
 
 # 2. Jalankan baseline dari manifest yang sama, kapan pun dan berapa kali pun.
+#    Run resmi memakai snapshot ds-v0.3.0.
 python -m spatial_model.evaluation.idw run \
-    --manifest ../../docs/experiments/TI-AI-04/dataset/manifest.json \
+    --manifest ../../docs/experiments/ds-v0.3.0/manifest.json \
     --out ../../docs/experiments/TI-AI-04/runs
 ```
+
+Snapshot resmi ds-v0.3.0 dibangun oleh `python -m spatial_model.data.snapshot`
+([README](../../data/snapshot/README.md)), bukan oleh `build-dataset`. `run`
+menerima kedua jenis manifest.
 
 `build-dataset --export-dir <dir>` membaca ekspor Parquet skema
 `ground_truth` sebagai pengganti basis data. Ekspor pukul 06.22Z dan basis
@@ -57,7 +62,7 @@ dibekukan ketika snapshot diperbarui.
 
 **Ground truth.** Pengukuran PM2.5 dan NO2 sensor darat SPKU pada skema
 `ground_truth`, sampai batas `snapshot_end_utc` (eksklusif). Satuan
-µg/m³, terverifikasi terhadap ISPU portal (lihat `docs/DATA.md`).
+µg/m³, terverifikasi terhadap ISPU portal (lihat `src/data_worker/docs/DATA.md`).
 
 **Kendali mutu** (urutan penerapan, jumlah baris terbuang per aturan
 tercatat pada manifest):
@@ -69,6 +74,11 @@ tercatat pada manifest):
 5. nilai > 2000 µg/m³;
 6. DKI_PM25_40 seluruhnya (macet 32,00) dan PM2.5 DKI_PM25_33 sejak
    2026-09-19T10:00Z (macet 14,00).
+
+Daftar ini adalah aturan `build-dataset` (`configs/idw_baseline.toml`).
+Snapshot ds-v0.3.0 yang dipakai run resmi menerapkan aturan eksklusi yang
+lebih luas, misalnya `shared_signal`; lihat
+[`docs/experiments/ds-v0.3.0/exclusion_rules.md`](../../../../../docs/experiments/ds-v0.3.0/exclusion_rules.md).
 
 Stasiun `DKI_PM25_*` bertipe Sensor dengan rerata PM2.5 < 10 µg/m³ pada
 split pelatihan ditandai `suspected_low_bias`, tidak dibuang, dan
@@ -115,27 +125,30 @@ dilaporkan sebagai berimpit.
 
 ## Reprodusibilitas
 
-- `dataset/manifest.json`: sumber dan batas kueri, aturan kendali mutu,
-  jumlah baris terbuang, batas split, ringkasan per split, SHA-256 berkas
-  dan SHA-256 isi (tidak bergantung versi pyarrow).
+- `manifest.json` keluaran `build-dataset`: sumber dan batas kueri, aturan
+  kendali mutu, jumlah baris terbuang, batas split, ringkasan per split,
+  SHA-256 berkas dan SHA-256 isi (tidak bergantung versi pyarrow). Snapshot
+  ds-v0.3.0 memakai manifest dan `CHECKSUMS.sha256` miliknya sendiri.
 - Setiap run menyimpan `config.toml`, salinan manifest dataset, dan
   `run_manifest.json` berisi seed 42, parameter, SHA-256 konfigurasi, commit
   git, versi pustaka, perangkat keras, durasi, serta SHA-256 prediksi.
   Dua run dari manifest dan konfigurasi yang sama menghasilkan SHA-256
   prediksi yang sama (diuji pada `tests/test_spatial_baseline.py`).
 - `run` menolak berjalan bila isi dataset tidak cocok dengan manifest.
-- Pencatatan ke MLflow belum dilakukan; isi direktori run sudah memuat
-  semua yang dibutuhkan dan dapat dicatat ke Model Registry pada TI-AI-11.
+- Run baseline ini tidak dicatat ke MLflow. TI-AI-11 mendaftarkan bundle
+  model terlatih (beserta metrik pembanding IDW dari `idw_comparison.csv`),
+  bukan run evaluasi IDW; isi direktori run tetap memuat semua yang
+  dibutuhkan untuk reproduksi.
 
 ## Perbedaan dengan Dokumen Desain
 
 | Butir | Dokumen Desain | Implementasi | Alasan |
 |---|---|---|---|
 | Metrik baseline | R² dan RMSE (4.3.2, EAI-01), MAE dan RMSE (4.4.1) | MAE, RMSE, R², bias | Gabungan keduanya |
-| Fitur makro | Prediksi dari sumber makro (isu TI-AI-04) | Hanya ground truth | Konektor makro belum ada; IDW per 4.4.1 hanya memakai sensor darat |
-| Split | Dari TI-AI-03 | Provisional v1 dibuat di sini | TI-AI-03 belum ada |
+| Fitur makro | Prediksi dari sumber makro (isu TI-AI-04) | Hanya ground truth | IDW per 4.4.1 hanya memakai sensor darat; sumber makro (`connectors/`, mis. GEOS-CF) kini menjadi fitur model terlatih, bukan baseline |
+| Split | Dari TI-AI-03 | Run resmi memakai split snapshot ds-v0.3.0 (TI-AI-03); `build-dataset` masih membuat split provisional sendiri | Split provisional dibuat sebelum TI-AI-03 tersedia |
 | Masker daratan | Sel grid wilayah studi (±66 ribu sel) | Seluruh bbox (≈ 110 ribu sel) | Batas daratan belum tersedia |
-| Integrasi siklus | `run_idw_fallback` saat ST-GNN gagal | Fungsi tersedia, belum dipanggil `acquisition.py` | Penulisan `pollution.*` dan agregasi ke ruas adalah lingkup TI-AI-05 |
+| Integrasi siklus | `run_idw_fallback` saat ST-GNN gagal | `inference/runtime.py` memanggil `run_idw_fallback` setiap run; polutan atau sel tanpa prediksi model memakai IDW | Diintegrasikan pada TI-AI-05 |
 
 ## Lihat juga
 

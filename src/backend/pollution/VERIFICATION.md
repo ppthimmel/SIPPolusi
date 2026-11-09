@@ -58,6 +58,11 @@ Struktur di Railway per 2026-10-13. Salinan DDL-nya:
 | `edge_pollution` | `(edge_id, time_window_start)`, kunci idempotensi *upsert* | `idx_edge_pollution_geom` GiST `(geom)` | CHECK `background_source` ∈ {aod, reanalysis}; `estimation_source` ∈ {stgnn, idw} |
 | `pollution_window` | `time_window_start` | – | CHECK `status` ∈ {writing, complete} |
 
+> Catatan 2026-11-09: tabel di atas adalah potret skema per 2026-10-13. Skema `pollution` saat
+> ini ada di [`src/data_worker/database/spatial_migration.sql`](../../data_worker/database/spatial_migration.sql):
+> `estimation_source` kini juga menerima `hybrid`, dan ada tabel tambahan seperti
+> `pollution.inference_run`, `pollution.edge_metadata`, `grid_prediction`, serta `edge_cell*`.
+
 ### Kunci, index, dan aturan versi
 
 | Kunci / index | Dipakai untuk |

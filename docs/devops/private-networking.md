@@ -27,8 +27,6 @@ flowchart LR
             registry[model_registry]
             db[(database<br/>PostGIS)]
             bucket[(object storage)]
-            inf1[inferensi spasial<br/>tahap final]
-            inf2[inferensi rute<br/>tahap final]
         end
     end
 
@@ -36,22 +34,27 @@ flowchart LR
     edge --> frontend
     edge --> gateway
     frontend -- "/v1/*" --> gateway
-    gateway -- "POST /v1/routes, GET /v1/exposure-surface" --> cache
+    gateway -- "POST /v1/routes, GET /v1/exposure-surface, POST /v1/geocode/*" --> cache
     backend --> db
     cache --> db
     worker --> db
     worker --> registry
+    cache --> registry
     backend --> registry
     registry --> db
     registry --> bucket
-    backend -. tahap final .-> inf1
-    backend -. tahap final .-> inf2
     worker -- "egress HTTPS" --> spku
 ```
 
-Garis putus-putus adalah jalur tahap final yang belum ada (layanan inferensi
-belum di-deploy). Arah panah adalah arah koneksi; tidak ada jalur masuk dari
-internet selain lewat Railway edge ke `frontend` dan `gateway`.
+Arah panah adalah arah koneksi; tidak ada jalur masuk dari internet selain
+lewat Railway edge ke `frontend` dan `gateway`. Tidak ada layanan inferensi
+terpisah: inferensi rute berjalan di dalam cache-api (penyedia `morl`, memuat
+`morl-route-policy` dari registry, lihat
+[`src/backend/solver/README.md`](../../src/backend/solver/README.md#penyedia-morl-ti-se-07b)),
+dan inferensi spasial berjalan di Data Worker. Cache-api juga memanggil
+penyedia geocoding eksternal (`API_GEOCODING_URL`) untuk `/v1/geocode/*`. Di
+Railway *development* service `backend` saat ini tidak punya *deployment* yang
+berjalan ([local-railway-parity.md](local-railway-parity.md)).
 
 ## Matriks eksposur
 
@@ -60,13 +63,11 @@ internet selain lewat Railway edge ke `frontend` dan `gateway`.
 | gateway | **ya** (titik masuk API) | frontend | MVP |
 | frontend | **ya** (aplikasi web) | — | MVP |
 | backend | tidak | — (tidak ada jalur gateway sejak TI-DO-05) | MVP |
-| cache-api | tidak | gateway (hanya `POST /v1/routes`, `GET /v1/exposure-surface`) | MVP |
+| cache-api | tidak | gateway (hanya `POST /v1/routes`, `GET /v1/exposure-surface`, `POST /v1/geocode/search`, `POST /v1/geocode/reverse`) | MVP |
 | database (PostGIS) | tidak (TCP proxy dimatikan) | backend, cache-api, data_worker, model_registry | MVP |
 | data_worker | tidak (cron, tanpa port) | — | MVP |
-| model_registry | tidak | backend, data_worker | MVP |
+| model_registry | tidak | cache-api (model rute), data_worker (model spasial), backend | MVP |
 | object storage | tidak | model_registry | MVP |
-| inferensi spasial (`spatial-downscaling`) | tidak | backend | final |
-| inferensi rute (`morl-route-policy`) | tidak | backend | final |
 
 | grafana / observability | **ya, belum ditutup** (`grafana-development-8ad2`, `observability-staging-a0ca`) | — | di luar TI-DO-04 |
 
@@ -113,15 +114,13 @@ sini; kredensial hanya lewat referensi.
 | gateway | `CACHE_API_UPSTREAM` | `http://${{cache-api.RAILWAY_PRIVATE_DOMAIN}}:${{cache-api.PORT}}` |
 | frontend | `GATEWAY_UPSTREAM` | `http://${{gateway.RAILWAY_PRIVATE_DOMAIN}}:${{gateway.PORT}}` |
 | backend, cache-api, data_worker | `DATABASE_URL` | `${{database.DATABASE_URL}}` |
-| backend, data_worker | `MLFLOW_TRACKING_URI` | `http://${{model_registry.RAILWAY_PRIVATE_DOMAIN}}:5000` (terurai menjadi `modelregistry.railway.internal`) |
-| backend (final) | URL layanan inferensi | `http://${{<inferensi>.RAILWAY_PRIVATE_DOMAIN}}:${{<inferensi>.PORT}}` |
+| backend, cache-api, data_worker | `MLFLOW_TRACKING_URI` | `http://${{model_registry.RAILWAY_PRIVATE_DOMAIN}}:5000` (terurai menjadi `modelregistry.railway.internal`) |
 
 Sesuaikan nama service (`cache-api`, `model_registry`) dengan nama di
 dashboard. Domain privat diturunkan dari nama service dan tidak selalu sama
 dengannya: service `model_registry` mendapat `modelregistry.railway.internal`
 (garis bawah dibuang). Selalu pakai referensi `RAILWAY_PRIVATE_DOMAIN`, atau
-cek nilainya dengan `railway variables --service <nama> --json`. Nama variabel URL inferensi ditetapkan bersama layanan inferensi;
-aturannya sama: referensi privat, `http://`, tanpa path.
+cek nilainya dengan `railway variables --service <nama> --json`.
 
 ## Menutup jalur publik di Railway
 
@@ -172,9 +171,9 @@ Untuk setiap service selain `gateway` dan `frontend`:
 5. Jalankan uji jalur publik dan jalur internal di bawah, lalu catat hasilnya
    di dokumen bukti.
 
-Untuk tahap final, layanan inferensi dibuat langsung **tanpa** domain publik
-(jangan klik *Generate Domain*), dengan health check di Settings → Deploy
-(Config as Code tidak bisa diaktifkan untuk service baru) dan listen `::`.
+Service baru dibuat langsung **tanpa** domain publik (jangan klik
+*Generate Domain*), dengan health check di Settings → Deploy (Config as Code
+tidak bisa diaktifkan untuk service baru) dan listen `::`.
 
 ## Prosedur uji
 
@@ -265,13 +264,11 @@ railway ssh --service backend --environment <env> -- python - \
     --open http://cache-api.railway.internal:8000/health \
     --open http://modelregistry.railway.internal:5000/health \
     < scripts/network_test.py
-
-# 4. Tahap final: backend ke kedua layanan inferensi.
-railway ssh --service backend --environment <env> -- python - \
-    --open http://<inferensi-spasial>.railway.internal:<port>/health \
-    --open http://<inferensi-rute>.railway.internal:<port>/health \
-    < scripts/network_test.py
 ```
+
+Langkah 3 butuh *deployment* backend yang berjalan; bila backend tidak
+di-deploy, jalankan pemeriksaan yang sama dari service lain yang berjalan
+(misalnya cache-api).
 
 Data Worker berjalan sebagai cron sehingga tidak bisa di-SSH di antara
 eksekusi; jalur Worker → basis data dibuktikan oleh `python main.py check`
@@ -285,17 +282,17 @@ lalu jalankan `python /tmp/nt.py ...`.
 
 | Skenario | Cara | Harapan |
 |---|---|---|
-| cache-api mati | hentikan/redeploy cache-api | gateway menjawab 502 dalam ±4 s (`proxy_connect_timeout 5s`), log akses `"level":"error"`, `/healthz` tetap 200 |
+| cache-api mati | hentikan/redeploy cache-api | gateway menjawab 502 dalam ±2 s (`proxy_connect_timeout 2s`), log akses `"level":"error"`, `/healthz` tetap 200 |
 | cache-api kembali dengan IP baru | redeploy cache-api | gateway pulih tanpa restart (DNS diurai ulang tiap 10 s) |
 | Basis data mati | hentikan database | backend `/health` 200, `/health/ready` 503 `{"database":"unavailable"}`; Worker `check` gagal dengan nama host |
-| Layanan inferensi mati (final) | hentikan layanan inferensi | backend memakai baseline dengan status fallback eksplisit (`route_source: fallback`), bukan 5xx |
+| Model rute tidak termuat (registry mati atau paket ditolak) | hentikan model_registry lalu mulai ulang cache-api | cache-api memakai fallback A* bertanda eksplisit (`route_source: baseline`, `fallback_reason: model_unavailable`), bukan 5xx; log `route_model_load outcome=failed` |
 
 ## Kriteria penerimaan
 
 | Kriteria | Bukti |
 |---|---|
 | Jalur internal tidak memerlukan endpoint publik | variabel memakai referensi privat; uji 2–3 lulus tanpa domain publik backend |
-| Backend memanggil inferensi final lewat jaringan privat | uji Railway nomor 4 (menunggu layanan inferensi) |
+| Cache-api memuat model rute dari registry lewat jaringan privat | `MLFLOW_TRACKING_URI` memakai referensi privat; log `route_model_load outcome=ok` |
 | Komponen non-publik tidak dapat diakses dari jalur publik | uji 1 (`--closed`) lulus |
 | Bukti uji mencakup jalur diizinkan dan ditolak | [`network-test-TI-DO-04.md`](network-test-TI-DO-04.md) |
 

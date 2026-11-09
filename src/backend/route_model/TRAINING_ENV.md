@@ -219,7 +219,7 @@ python -m src.backend.route_model.train_env_smoke
 
 The smoke script runs on the Jakarta export and writes `od_pairs.json`,
 `manifest.json`, `episodes.jsonl` and `summary.json` to
-`docs/experiments/TI-AI-08/`. See that folder's README for the results.
+`docs/experiments/TI-AI-08/`. See [that folder's README](../../../docs/experiments/TI-AI-08/README.md) for the results.
 
 ## See also
 

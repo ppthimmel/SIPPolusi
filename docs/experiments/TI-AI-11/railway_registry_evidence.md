@@ -76,6 +76,8 @@ an unbiased estimate.
 
 - Registering the NO2 bundle (it is packaged and loads, but is not in the registry).
 - No component reads `morl-route-policy` yet; the backend still uses a route stub (tracked in #90).
+  Note 2026-11-09: superseded by TI-SE-07b; the Cache API's `morl` solver provider now loads it
+  ([solver README](../../../src/backend/solver/README.md#penyedia-morl-ti-se-07b)).
 - Whether the Data Worker uses the PM2.5 model in a cycle depends on its inputs being available
   (`model_metadata.pm25.source`); this was not checked here.
 

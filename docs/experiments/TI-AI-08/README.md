@@ -81,6 +81,10 @@ end before the step limit.
   merged into `main` yet. This environment implements the same objective,
   `α·T/T_ref + β·E/E_ref` with the fastest route as reference and a zero reference
   normalised by 1. It should switch to the shared functions once TI-AI-06 is merged.
+  Note 2026-11-09: TI-AI-06 is merged. [`costs.py`](../../../src/backend/route_model/costs.py)
+  now lives in `route_model` and is used by the planner, the route metrics and the solver's
+  comparator, but `training_env.py` still has its own copy of the objective. Switching it is
+  an open to-do, no longer blocked.
 
 ## See also
 

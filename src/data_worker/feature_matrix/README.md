@@ -37,7 +37,9 @@ Keluaran ±3,3 MB dan tidak di-commit. Durasi bergantung pada pemuatan sumber pe
 `SourceReader` memuat snapshot sumber secara lazy sekali per instance, lalu memilih
 baris sel dari indeks untuk setiap tile/batch. Cache menyimpan kolom yang diperlukan
 dengan ID kategorikal; keluaran fitur seluruh kota tidak disimpan. Worker membuat reader
-baru setiap run, sehingga pembaruan berkas dibaca pada run berikutnya. Buat instance
+baru setiap run, sehingga pembaruan berkas dibaca pada run berikutnya. Di Railway, inferensi Worker
+memakai `StoreSourceReader` (feature store PostgreSQL, aturan as-of yang sama); `SourceReader` hanya
+dipakai bila `SPATIAL_FEATURE_ROOT` diatur (`spatial_model/inference/runtime.py`, `feature_reader`). Buat instance
 baru jika sumber atau konfigurasi reader berubah; jangan berbagi instance mutable
 antar-thread. Biaya pemuatan awal dan RAM ditukar dengan penghapusan I/O berulang
 antar-tile. Perbandingan keluaran, waktu, dan penggunaan memori:

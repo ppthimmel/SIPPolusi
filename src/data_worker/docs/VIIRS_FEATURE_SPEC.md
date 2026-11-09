@@ -1,8 +1,8 @@
 # Spesifikasi fitur VIIRS
 
-Tabel utama: `datasets/processed/viirs/daily.parquet`. Setiap baris mewakili **satu sel VIIRS × satu tanggal produk**. Sumbernya VNP46A2 Collection 2 (Black Marble), yaitu cahaya malam harian bergrid 15 detik busur, sekitar 500 m. Grid asli dipertahankan dengan koordinat EPSG:4326.
+Tabel utama: `src/data_worker/dataset_processed/viirs/daily.parquet`. Setiap baris mewakili **satu sel VIIRS × satu tanggal produk**. Sumbernya VNP46A2 Collection 2 (Black Marble), yaitu cahaya malam harian bergrid 15 detik busur, sekitar 500 m. Grid asli dipertahankan dengan koordinat EPSG:4326.
 
-**Peran model:** kandidat proksi aktivitas (`Xactivity`). Cahaya malam menggambarkan pencahayaan dan pola aktivitas wilayah; bukan pengukuran lalu lintas, emisi, atau polusi per jam. Target polutan tetap berasal dari sensor darat. Penggunaan langsung sebagai background term atau komponen reward model rute belum ditetapkan.
+**Peran model:** proksi aktivitas (`Xactivity`); `ntl` adalah masukan aktif model (`feature_matrix/feature_spec.json`). Cahaya malam menggambarkan pencahayaan dan pola aktivitas wilayah; bukan pengukuran lalu lintas, emisi, atau polusi per jam. Target polutan tetap berasal dari sensor darat. Penggunaan langsung sebagai background term atau komponen reward model rute belum ditetapkan.
 
 ## Kolom penting
 
@@ -27,12 +27,12 @@ Hasil berisi **2.239.488 baris**, dari 243 tanggal produk antara 1 Januari–20 
 
 ## Asal dan penggunaan
 
-- Masukan: `datasets/2026/jakarta/viirs/*.all.h5` dan `.all.json`.
-- Kode: `code/preprocess_viirs.py`.
-- Konfigurasi, hash sumber, dan cakupan: `datasets/processed/viirs/manifest.json`.
+- Masukan: `datasets/2026/jakarta/viirs/*.all.h5` dan `.all.json` (di luar repo; hash tercatat di manifest).
+- Kode: skrip pengolahan batch tidak ada di repo. `src/data_worker/scripts/preprocess_single_viirs.py` mengubah satu ekstrak `*.all.h5` menjadi Parquet inferensi yang kompatibel dengan data latih; konektor operasional ada di `src/data_worker/connectors/viirs.py`.
+- Konfigurasi, hash sumber, dan cakupan: `src/data_worker/dataset_processed/viirs/manifest.json`.
 - Acuan kualitas: [NASA LAADS VNP46A2 Collection 2](https://ladsweb.modaps.eosdis.nasa.gov/missions-and-measurements/products/VNP46A2).
 
-**Untuk TCN:** sel VIIRS perlu dipasangkan secara spasial ke node model. Pengamatan harian dapat dipertahankan pada jam berikutnya setelah diketahui tersedia, disertai mask dan umur data. Tanggal produk bukan waktu lintasan tepat atau waktu publikasi, sehingga penggabungan per jam belum dilakukan. Hasil pengisian celah NASA tidak boleh dianggap sebagai pengamatan baru pada hari tersebut.
+**Penggabungan per jam (ST-GNN dan LightGBM):** FeatureMatrix memasangkan setiap sel 100 m ke sel VIIRS yang memuat pusatnya, lalu mengambil pengamatan valid terakhir dengan `produced_at <= τ` secara *as-of*, disertai mask `ntl_available` dan umur `ntl_age_hours`. Tanggal produk bukan waktu lintasan tepat atau waktu publikasi, sehingga umur ini bersifat proksi. Hasil pengisian celah NASA tidak boleh dianggap sebagai pengamatan baru pada hari tersebut.
 
 **Risiko:** cakupan pengamatan berkualitas tidak merata, kotak ekstrak bukan batas administratif DKI, dan cahaya malam belum terbukti menjelaskan perubahan aktivitas per jam. Normalisasi dan imputasi selanjutnya hanya dipelajari dari data pelatihan.
 
