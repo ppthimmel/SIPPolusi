@@ -107,14 +107,18 @@ variables and owner. There is no global env file. Copy each one before the
 first run and fill in the values (`.env` is gitignored):
 
 ```bash
-for d in postgres minio model_registry backend gateway data_worker frontend observability; do
+for d in postgres minio model_registry backend backend/osm gateway data_worker frontend observability; do
   cp src/$d/.env.example src/$d/.env
 done
 ```
 
+`src/backend/osm/.env` is the Cache API's, which serves the public API and loads the MORL route model.
 Credentials repeated across services (Postgres user/password inside
-`DATABASE_URL`, MinIO root user/password as `AWS_*`) must match the
-`postgres` and `minio` env files.
+`DATABASE_URL`, MinIO root user/password as the registry's `AWS_*`) must match the
+`postgres` and `minio` env files. Only `model_registry` holds object-storage keys; the
+other services reach models through its artifact proxy. To get the stack close to
+Railway development, with the road graph and models seeded, follow
+[docs/devops/local-railway-parity.md](docs/devops/local-railway-parity.md).
 
 ## Running everything locally
 
