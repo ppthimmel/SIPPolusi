@@ -115,3 +115,7 @@ it has no `set_manifest.json`. If TI-AI-12 picks it, the follow-up is `package_c
 refuses a download whose `package.json` does not match the tag. Registering the route model uses the
 same pattern and still needs the registry fix below. Production serving of the registry on Railway:
 see [`src/model_registry/README.md`](../../../src/model_registry/README.md).
+
+## Paired MORL comparison
+
+The exploratory comparison of the existing scalarized and fixed-preference route policies, including the regret-prior baseline, is saved in [`morl-comparison/`](morl-comparison/). Open [`comparison-results.ipynb`](morl-comparison/comparison-results.ipynb) for the results, protocol, and limitations. The original test scenarios had already been inspected; these results are not a fresh blind test.
