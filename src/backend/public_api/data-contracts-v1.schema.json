@@ -1177,7 +1177,7 @@
               "type": "null"
             }
           ],
-          "description": "α anggota set policy yang melayani permintaan; null saat fallback",
+          "description": "α anggota set policy yang melayani permintaan; null untuk policy terkondisi atau saat fallback",
           "title": "Member Alpha"
         },
         "inference_ms": {

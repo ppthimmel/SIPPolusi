@@ -89,7 +89,7 @@ class RouteModelInfo(BaseModel):
     status: Literal["ready", "loading", "rejected", "unavailable"] = Field(description=(
         "ready = model termuat; loading = masih dimuat; rejected = paket termuat tetapi kontraknya ditolak "
         "untuk graf aktif; unavailable = registry atau paket tidak dapat dipakai"))
-    member_alpha: float | None = Field(description="α anggota set policy yang melayani permintaan; null saat fallback")
+    member_alpha: float | None = Field(description="α anggota set policy yang melayani permintaan; null untuk policy terkondisi atau saat fallback")
     inference_ms: float | None = Field(description="Durasi inferensi policy, ms; null saat fallback")
     compatibility: Literal["compatible", "flagged"] | None = Field(description=(
         "Hasil pemeriksaan kontrak paket terhadap graf dan kontrak data permintaan; null saat fallback"))

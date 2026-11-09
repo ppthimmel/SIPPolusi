@@ -17,9 +17,9 @@ from .infer import load_policy
 from .features import FEATURE_VERSION
 
 MODEL_ID = "morl-route-policy"
-#: Says which loader a registered version needs; model_id alone does not. A single
-#: preference-conditioned policy (load_scalarized_policy) would be another family.
+#: Says which loader a registered version needs; model_id alone does not.
 POLICY_FAMILY = "fixed_preference_set"
+SCALARIZED_POLICY_FAMILY = "preference_conditioned"
 _SET_FILES = ("set_manifest.json", "od_pairs.json", "evaluation.json")
 _MEMBER_FILES = ("manifest.json", "config.json", "evaluation.json")
 
@@ -116,4 +116,70 @@ def load_packaged_policy_set(package_dir, runtime, device="cpu"):
     return policies, package, compatibility
 
 
-__all__ = ["MODEL_ID", "POLICY_FAMILY", "runtime_contract", "package_policy_set", "load_packaged_policy_set", "package_digest", "PACKAGE_FILE"]
+def package_scalarized_policy(run_dir, out, *, data_contracts_version, upstream_model=None, decision=None):
+    """Package the selected scalarized checkpoint and its reproducibility metadata."""
+    run_dir, out = Path(run_dir).resolve(), Path(out)
+    manifest = json.loads((run_dir / "manifest.json").read_text(encoding="utf-8"))
+    if manifest.get("status") not in ("completed", "early_stopped"):
+        raise PackageError(f"Scalarized run status is {manifest.get('status')!r}, not complete or early stopped")
+    if manifest.get("algorithm") != "ppo-scalarized-1" or manifest.get("feature_version") != FEATURE_VERSION:
+        raise PackageError("Scalarized run has an unsupported algorithm or feature version")
+    best = manifest.get("best") or {}
+    if not best.get("checkpoint") or not best.get("sha256"):
+        raise PackageError("Scalarized run has no selected checkpoint")
+    checkpoint = (run_dir / best["checkpoint"]).resolve()
+    if not checkpoint.is_relative_to(run_dir) or not checkpoint.is_file():
+        raise PackageError("Selected checkpoint is missing or outside the run")
+    if sha256_file(checkpoint) != best["sha256"]:
+        raise PackageError("Selected checkpoint does not match its recorded SHA-256")
+    if out.exists() and any(out.iterdir()):
+        raise PackageError(f"{out} is not empty")
+    out.mkdir(parents=True, exist_ok=True)
+    (out / "checkpoints").mkdir()
+    shutil.copyfile(checkpoint, out / "checkpoints" / "best.pt")
+    # Only retain the fields needed for serving and provenance; local machine paths stay out.
+    keep = ("run_id", "status", "stop_reason", "algorithm", "feature_version", "config", "config_sha256",
+            "code", "versions", "data", "checkpoint_selection", "best", "evaluation")
+    saved = {key: manifest[key] for key in keep if key in manifest}
+    saved["best"] = {**best, "checkpoint": "checkpoints/best.pt"}
+    (out / "run_manifest.json").write_text(json.dumps(saved, indent=2, allow_nan=False) + "\n", encoding="utf-8")
+    data, fields = manifest["data"], manifest["data"].get("fields", {})
+    return build_package(
+        out, model_kind="route_policy", model_id=MODEL_ID, model_version=manifest["run_id"],
+        contract={"data_contracts_version": data_contracts_version, "graph_version": data["graph_version"],
+                  "feature_version": manifest["feature_version"], "mode": data.get("mode")},
+        lineage={"dataset_id": fields.get("dataset", {}).get("version"), "dataset": fields.get("dataset"),
+                 "exposure_estimator": fields.get("estimator"), "fields_manifest_sha256": fields.get("manifest_sha256"),
+                 "graph_files_sha256": data.get("graph_files_sha256"), "od_pairs_sha256": data.get("od_pairs_sha256"),
+                 "code_revision": manifest["code"]["commit"], "code_dirty": manifest["code"].get("dirty"),
+                 "config_sha256": manifest["config_sha256"], "algorithm": manifest["algorithm"],
+                 "selected_update": best.get("update"), "upstream_model": upstream_model},
+        environment={"python": manifest["versions"]["python"],
+                     "libraries": {k: v for k, v in manifest["versions"].items() if k != "python"}},
+        inference={"entrypoint": "route_model.morl.packaging.load_packaged_scalarized_policy",
+                   "policy_family": SCALARIZED_POLICY_FAMILY, "device": "cpu",
+                   "fallback": "A* route when the policy returns PolicyFailure"},
+        evaluation={"validation": manifest.get("evaluation"), "protocol": "docs/experiments/TI-AI-10/README.md",
+                    "decision": decision})
+
+
+def load_packaged_scalarized_policy(package_dir, runtime, device="cpu"):
+    """Verify package and compatibility, then reload the selected conditioned policy."""
+    from .scalarized import load_scalarized_policy
+
+    package_dir = Path(package_dir)
+    package = validate_package(package_dir, "route_policy")
+    if package.get("inference", {}).get("policy_family") != SCALARIZED_POLICY_FAMILY:
+        raise PackageError("Package is not a preference-conditioned policy")
+    compatibility = require_compatible(package, runtime)
+    run = json.loads((package_dir / "run_manifest.json").read_text(encoding="utf-8"))
+    checkpoint = (package_dir / run["best"]["checkpoint"]).resolve()
+    if not checkpoint.is_relative_to(package_dir.resolve()) or sha256_file(checkpoint) != run["best"]["sha256"]:
+        raise PackageError("Selected checkpoint does not match run_manifest.json")
+    model, _ = load_scalarized_policy(checkpoint, device)
+    return model, package, compatibility
+
+
+__all__ = ["MODEL_ID", "POLICY_FAMILY", "SCALARIZED_POLICY_FAMILY", "runtime_contract", "package_policy_set",
+           "load_packaged_policy_set", "package_scalarized_policy", "load_packaged_scalarized_policy",
+           "package_digest", "PACKAGE_FILE"]

@@ -104,10 +104,10 @@ Limits of this evidence:
 `evaluation.decision` is passed in for the set being packaged (`--decision`); it is never inherited, and is `null`
 for a set that has not been evaluated. The example carries the TI-AI-10 outcome of the committed set.
 `inference.policy_family` tells the backend which loader a registered version needs. The committed set is
-`fixed_preference_set` (`load_packaged_policy_set`). The scalarized policy on `dev` (TI-AI-09 PIC A,
-`load_scalarized_policy`) is a different family and has no packager yet; `package_policy_set` refuses it because
-it has no `set_manifest.json`. If TI-AI-12 picks it, the follow-up is `package_conditioned_policy` and a second
-`policy_family` value.
+`fixed_preference_set` (`load_packaged_policy_set`). The chosen scalarized policy (PIC A) uses the
+`preference_conditioned` family and is packaged with `package_scalarized_policy`; the Backend loader passes
+its requested preference directly. See [scalarized serving](scalarized-serving.md) for registration evidence,
+limitations, and the verification still needed.
 
 ## Registry (MLflow)
 
