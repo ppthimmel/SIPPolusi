@@ -284,8 +284,9 @@ jobs:
         # The database starts empty, without the cache schemas: the Cache API
         # must report degraded and answer 503 cache_empty (smoke test below).
         run: |
-          # Compose reads every service's env_file, also of services not started.
-          for f in src/*/.env.example; do cp "$f" "${f%.example}"; done
+          # Compose reads every service's env_file, also of services not started
+          # (src/backend/osm/.env.example is the Cache API's, one level deeper).
+          for f in src/*/.env.example src/*/*/.env.example; do cp "$f" "${f%.example}"; done
           docker compose up -d --no-build --no-deps --wait --wait-timeout 300 postgres backend cache_api gateway
       - name: Smoke test through the gateway
         run: |

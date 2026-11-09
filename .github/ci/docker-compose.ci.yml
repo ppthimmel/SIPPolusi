@@ -1,8 +1,7 @@
 # CI override for the regression job (.github/workflows/ci.yml, via COMPOSE_FILE).
 #
 # - postgres: PostGIS 18, the same major versions as Railway and the CI test
-#   jobs (docker-compose.yml keeps 16 so existing local volumes still start).
-#   Data lives in tmpfs, like src/backend/testdb.
+#   jobs (docker-compose.yml uses 18 too). Data lives in tmpfs, like src/backend/testdb.
 # - backend, cache_api, gateway: images loaded from the build job's cache
 #   (`docker compose up --no-build`), so they are not built a second time.
 # `!reset` needs Docker Compose 2.24 or newer.
@@ -16,5 +15,9 @@ services:
     image: sippolusi-backend:ci
   cache_api:
     image: sippolusi-cache-api:ci
+    # src/backend/osm/.env.example selects the registered MORL policy, as on Railway. CI starts no
+    # registry, so the regression job keeps the deterministic mock solver it has always tested.
+    environment:
+      ROUTE_SOLVER_PROVIDER: mock
   gateway:
     image: sippolusi-gateway:ci
