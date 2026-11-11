@@ -19,6 +19,9 @@ berbeda, dan cara menyiapkan stack baru sampai rute MORL keluar dari *gateway*.
 
 ## Yang sengaja berbeda
 
+- **Versi kontrak paket model rute.** Paket lokal dibangun dari kode saat ini dengan `CONTRACT_VERSION` 1.1.0, sehingga
+  dimuat sebagai `compatible`. `morl-route-policy:1` di Railway dibangun untuk 1.0.0 dan dimuat sebagai `flagged`
+  (versi minor berbeda, tetap dipakai). Isi *policy*-nya sama.
 - ***Object storage*.** Lokal memakai kontainer `minio` (URL *path-style*, *bucket* `mlflow`). Railway memakai
   Storage Bucket (`https://t3.storageapi.dev`, URL *virtual-host*, nama *bucket* buatan Railway). Karena klien hanya
   bicara dengan registry, perbedaan ini tidak terlihat oleh layanan lain.

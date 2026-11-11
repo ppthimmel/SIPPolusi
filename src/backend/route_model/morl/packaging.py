@@ -32,13 +32,16 @@ def runtime_contract(graph_version, data_contracts_version, upstream_model=None)
     return runtime
 
 
-def package_policy_set(set_dir, out, *, data_contracts_version, upstream_model=None, decision=None) -> dict:
+def package_policy_set(set_dir, out, *, data_contracts_version, upstream_model=None, decision=None,
+                       created_at=None) -> dict:
     """Copy the selected checkpoints and manifests of set_dir into out and write out/package.json.
 
     upstream_model: {name, version, bundle_sha256} of the spatial model whose exposure fields the
     set was trained on, when known. It is recorded; a different one in production only flags.
     decision: the evaluation outcome for THIS set (for example the TI-AI-10 outcome and its
     consequence). Recorded as given; None when the set has not been evaluated. Never inherited.
+    created_at: recorded in package.json; defaults to now. Pass a fixed value (for example the set's
+    finished_at) when the same set must always give the same package.json, and so the same hash.
     """
     set_dir, out = Path(set_dir), Path(out)
     manifest = json.loads((set_dir / "set_manifest.json").read_text(encoding="utf-8"))
@@ -93,7 +96,8 @@ def package_policy_set(set_dir, out, *, data_contracts_version, upstream_model=N
                    "alphas": [m["alpha"] for m in manifest["members"]], "selection_rule": manifest["selection_rule"],
                    "fallback": "A* route when the policy returns PolicyFailure"},
         evaluation={"validation": manifest.get("evaluation"), "protocol": "docs/experiments/TI-AI-10/README.md",
-                    "decision": decision})
+                    "decision": decision},
+        created_at=created_at)
 
 
 def load_packaged_policy_set(package_dir, runtime, device="cpu"):
