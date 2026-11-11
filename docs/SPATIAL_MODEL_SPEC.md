@@ -15,9 +15,12 @@ bagian keputusan arsitektur, antarmuka, sumber data, risiko, dan kasus uji terka
   [laporan perbandingan model](experiments/model-comparison-ds-v0.3.0/README.md#rekomendasi)
   (IDW p = 1 seluruh stasiun untuk PM2.5). Versi PM2.5 yang terdaftar dengan alias `production`
   (`spatial-downscaling-pm25` versi 1) adalah checkpoint split tetap run `847559c6`
-  (RMSE test 18,37 vs IDW 18,74), bukan fold LOSO. Bundle NO₂ sudah dipaket tetapi, menurut
-  [bukti registry TI-AI-11](experiments/TI-AI-11/railway_registry_evidence.md), belum terdaftar;
-  tanpa versi terdaftar Worker memakai IDW untuk NO₂.
+  (RMSE test 18,37 vs IDW 18,74), bukan fold LOSO. NO₂ terdaftar sebagai `spatial-downscaling-no2`
+  versi 1 (LightGBM *serving fit*, alias `candidate` dan `production`, dikemas untuk kontrak 1.1.0)
+  sejak 4 November 2026; siklus Worker pada window `2026-11-04T06:00Z` memakai kedua model terdaftar
+  dengan `fallback_cells` 0 ([verifikasi end-to-end TI-SE-10](https://github.com/ppthimmel/SIPPolusi/issues/10)).
+- IDW p = 2, k = 8 adalah fallback per polutan ketika model tidak dapat dimuat, misalnya registry
+  tidak dapat dijangkau; itu bukan model yang dipasang.
 - Analisis dan prakiraan **GEOS-CF** menjadi fitur regional pada pelatihan dan operasi,
   dengan satuan dan urutan fitur sesuai bundle. Data hanya boleh dipakai apabila tersedia
   pada waktu inferensi. Pemetaan ke 100 m tidak menghasilkan pengukuran baru 100 m.

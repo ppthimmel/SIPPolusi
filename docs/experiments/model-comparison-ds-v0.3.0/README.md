@@ -267,8 +267,9 @@ IDW p = 2, k = 8 pada kunci yang sama (689 stasiun-jam test):
 > sistem memakai **IDW p = 2, k = 8 + koreksi ST-GNN** untuk PM2.5 dan **LightGBM seluruh fitur** untuk NO2, dengan
 > IDW p = 2, k = 8 sebagai fallback per polutan ([spesifikasi aktif](../../SPATIAL_MODEL_SPEC.md)). Versi PM2.5 yang
 > terdaftar adalah checkpoint split tetap run `847559c6`
-> ([bukti registry TI-AI-11](../TI-AI-11/railway_registry_evidence.md)); bundle NO2 sudah dipaket tetapi belum
-> terdaftar menurut bukti tersebut. Dokumen proyek mencatat pilihan ini sebagai keputusan implementasi pemilik proyek
+> ([bukti registry TI-AI-11](../TI-AI-11/railway_registry_evidence.md)); NO2 terdaftar sebagai
+> `spatial-downscaling-no2` versi 1 (LightGBM *serving fit*) sejak 4 November 2026
+> ([verifikasi end-to-end TI-SE-10](https://github.com/ppthimmel/SIPPolusi/issues/10)). Dokumen proyek mencatat pilihan ini sebagai keputusan implementasi pemilik proyek
 > ([TI-AI-05](../TI-AI-05/README.md), [panduan model](../../../src/data_worker/spatial_model/README.md)) dan
 > menyatakan bahwa bukti tidak menunjukkan keunggulan konsisten ST-GNN terhadap interpolator yang disetel; alasan
 > lain tidak tercatat. Perubahan default IDW ke p = 1 belum dilakukan.

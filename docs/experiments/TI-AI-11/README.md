@@ -38,7 +38,8 @@ These three examples were built under data contract `1.0.0`. The runtime has pro
 `e088276` (4 November 2026), so by the [compatibility matrix](#compatibility-matrix) they are **flagged**, not
 rejected: they still load, and the status is recorded (the Cache API's `morl` solver provider logs
 `route_model_contract status=flagged`; the Data Worker adds `compatibility` to `model_metadata`). A package
-built now carries `1.1.0`.
+built now carries `1.1.0`; the NO2 version registered on 4 November 2026 (`package_sha256` `99ab5fce…`) was
+packaged that way.
 
 ## Loading
 
@@ -103,8 +104,10 @@ Limits of this evidence:
   The PM2.5 test RMSE was recomputed from the weights with the repository's evaluator and equals the PIC's value
   (18.372, `spatial_pm25_recomputed_metrics.csv`; see the caveats in the Railway notes). The NO2 serving fit has no
   evaluation of its own. The code path is also covered with a hand-made bundle in `tests/test_model_package.py`.
-- Railway: registry through the proxy, and both models registered, are recorded in
-  [`railway_registry_evidence.md`](railway_registry_evidence.md).
+- Railway: registry through the proxy, and the route and PM2.5 models registered, are recorded in
+  [`railway_registry_evidence.md`](railway_registry_evidence.md). `spatial-downscaling-no2` version 1 (LightGBM
+  serving fit, aliases `candidate` and `production`) was registered on 4 November 2026, and a Data Worker cycle
+  used both spatial models with no fallback cells ([TI-SE-10 end-to-end verification](https://github.com/ppthimmel/SIPPolusi/issues/10)).
 
 ## Decision field and policy families
 

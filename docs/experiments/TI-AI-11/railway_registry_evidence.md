@@ -75,6 +75,10 @@ an unbiased estimate.
 ## Not covered
 
 - Registering the NO2 bundle (it is packaged and loads, but is not in the registry).
+  Note 2026-11-11: registered on Railway `development` on 4 November 2026 as `spatial-downscaling-no2` version 1
+  (aliases `candidate` and `production`, packaged for contract 1.1.0, `package_sha256` `99ab5fce…`), and used by
+  the Data Worker for window `2026-11-04T06:00Z` with no fallback cells; recorded in the
+  [TI-SE-10 end-to-end verification](https://github.com/ppthimmel/SIPPolusi/issues/10).
 - No component reads `morl-route-policy` yet; the backend still uses a route stub (tracked in #90).
   Note 2026-11-09: superseded by TI-SE-07b; the Cache API's `morl` solver provider now loads it
   ([solver README](../../../src/backend/solver/README.md#penyedia-morl-ti-se-07b)).
