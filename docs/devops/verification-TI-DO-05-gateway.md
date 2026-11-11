@@ -11,6 +11,12 @@ Diuji juga di **Railway development** pada 27 Oktober 2026 setelah gateway dari
 branch ini di-deploy (lihat [Hasil di Railway](#hasil-di-railway)); skenario
 502/504 hanya diuji lokal.
 
+> **Catatan 2026-11-09.** Dokumen ini mencatat konfigurasi dan hasil per 27 Oktober 2026. Sejak itu
+> gateway juga membuka `POST /v1/geocode/search` dan `POST /v1/geocode/reverse` (TI-SE-12), connect timeout
+> menjadi 2 s, dan read/send timeout diatur lewat `GATEWAY_UPSTREAM_TIMEOUT_S` (bawaan image 10 s). Untuk
+> konfigurasi terkini pakai [`src/gateway/README.md`](../../src/gateway/README.md) dan
+> [`default.conf.template`](../../src/gateway/templates/default.conf.template), bukan potongan di bawah.
+
 ## Status acceptance criteria
 
 | Kriteria | Status | Bukti |
@@ -64,6 +70,9 @@ Urutan pemrosesan satu request di gateway:
    tidak menjawab → `504`.
 
 ## Konfigurasi NGINX (teredaksi)
+
+Potongan berikut adalah konfigurasi per 27 Oktober 2026, bukan konfigurasi terkini (lihat catatan di awal
+dokumen dan [`src/gateway/README.md`](../../src/gateway/README.md)).
 
 Konfigurasi tidak memuat rahasia; satu-satunya nilai dari lingkungan adalah
 alamat upstream, ditulis di sini sebagai `<CACHE_API_UPSTREAM>`. Komentar dan
@@ -366,3 +375,8 @@ isinya sama.
   klien dan baris request; dengan `X-Real-IP` alamat itu kini alamat pengguna,
   bukan alamat edge. Formatnya tetap dari NGINX; log akses tidak memuat alamat
   klien.
+
+## Lihat juga
+
+- [`docs/devops/private-networking.md`](private-networking.md): matriks paparan jaringan
+- [`docs/ti-se-12/README.md`](../ti-se-12/README.md): jalur `/v1/geocode/*` yang ditambahkan kemudian

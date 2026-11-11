@@ -43,6 +43,7 @@ Results, evidence and limitations: [`docs/experiments/TI-AI-09`](../../../../doc
 | `resources.py` | Memory, disk and thread limits |
 | `evaluate_candidate.py` | TI-AI-10: the set against the fastest route on the test split ([report](../../../../docs/experiments/TI-AI-10/README.md)) |
 | `verify_set.py` | Checks a trained set from its files: checksums, identical routes after reload, inference time |
+| `packaging.py` | TI-AI-11: `package_policy_set` turns a trained set into a verified model package; `load_packaged_policy_set` loads one. The Cache API's `morl` solver provider ([`solver/morl.py`](../../solver/morl.py)) serves the registered package this way |
 
 ## Choices the results depend on
 
@@ -113,3 +114,8 @@ The package also runs on Windows: `resources.py` reads memory through the Win32 
 `replace_file` retries while an antivirus or indexer holds a file just written. Building
 fields needs `pyproj`; where Smart App Control blocks its DLL, build them in the
 Data Worker's Docker image (see the link above). Training itself does not need `pyproj`.
+
+## See also
+
+- [`docs/experiments/TI-AI-11/README.md`](../../../../docs/experiments/TI-AI-11/README.md): packaging (`packaging.py`)
+- [`src/backend/solver/README.md`](../../solver/README.md#penyedia-morl-ti-se-07b): serving the packaged set in the Cache API

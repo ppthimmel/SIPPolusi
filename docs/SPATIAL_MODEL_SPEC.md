@@ -8,8 +8,19 @@ bagian keputusan arsitektur, antarmuka, sumber data, risiko, dan kasus uji terka
 ## Estimasi dan sumber atmosfer
 
 - Dataset aktif adalah **ds-v0.3.0**; snapshot dan hasil eksperimen tidak diubah oleh revisi ini.
-- PM2.5: `max(0, IDW + target_scale × correction)` dengan koreksi ST-GNN.
+- PM2.5: `max(0, IDW + target_scale × correction)` dengan koreksi ST-GNN. Basis IDW memakai
+  p = 2, k = 8 (`spatial_model/models/stgnn/sensors.py`).
 - NO₂: LightGBM seluruh 62 fitur, target konsentrasi langsung, hasil minimal nol.
+- Pasangan ini adalah keputusan implementasi pemilik proyek dan berbeda dari rekomendasi
+  [laporan perbandingan model](experiments/model-comparison-ds-v0.3.0/README.md#rekomendasi)
+  (IDW p = 1 seluruh stasiun untuk PM2.5). Versi PM2.5 yang terdaftar dengan alias `production`
+  (`spatial-downscaling-pm25` versi 1) adalah checkpoint split tetap run `847559c6`
+  (RMSE test 18,37 vs IDW 18,74), bukan fold LOSO. NO₂ terdaftar sebagai `spatial-downscaling-no2`
+  versi 1 (LightGBM *serving fit*, alias `candidate` dan `production`, dikemas untuk kontrak 1.1.0)
+  sejak 4 November 2026; siklus Worker pada window `2026-11-04T06:00Z` memakai kedua model terdaftar
+  dengan `fallback_cells` 0 ([verifikasi end-to-end TI-SE-10](https://github.com/ppthimmel/SIPPolusi/issues/10)).
+- IDW p = 2, k = 8 adalah fallback per polutan ketika model tidak dapat dimuat, misalnya registry
+  tidak dapat dijangkau; itu bukan model yang dipasang.
 - Analisis dan prakiraan **GEOS-CF** menjadi fitur regional pada pelatihan dan operasi,
   dengan satuan dan urutan fitur sesuai bundle. Data hanya boleh dipakai apabila tersedia
   pada waktu inferensi. Pemetaan ke 100 m tidak menghasilkan pengukuran baru 100 m.
@@ -22,6 +33,7 @@ bagian keputusan arsitektur, antarmuka, sumber data, risiko, dan kasus uji terka
 ## Fallback dan confidence
 
 Model atau riwayat wajib yang tidak tersedia memicu IDW **secara independen per polutan**.
+IDW fallback memakai p = 2, k = 8 dari `spatial_model/configs/idw_baseline.toml`.
 Hasil polutan yang berhasil dipertahankan. `model_metadata` mencatat sumber, versi konkret,
 alasan fallback, dan sumber yang digunakan ruas. Konsentrasi tidak tersedia tetap kosong;
 nilai kosong tidak boleh diubah menjadi nol.
@@ -79,3 +91,13 @@ sebelum menjalankan backend/Worker baru pada basis data yang sudah ada.
 replay historis lokal dengan model nyata, MLflow/MinIO, dua sel, satu ruas multisel,
 cache PostgreSQL/PostGIS, pembacaan backend, dan rekonstruksi saat artefak lokal dimatikan.
 Ini bukti integrasi lokal, bukan klaim akurasi seluruh kota atau deployment Railway.
+
+## Lihat juga
+
+- [`docs/PROTOKOL_EVALUASI.md`](PROTOKOL_EVALUASI.md): protokol evaluasi dan status model
+- [`docs/experiments/model-comparison-ds-v0.3.0/README.md`](experiments/model-comparison-ds-v0.3.0/README.md): bukti perbandingan model (rekomendasinya IDW p=1)
+- [`docs/experiments/model-comparison-ds-v0.3.0/stgnn_idw_residual/ds-v0.3.0_loso_pm25_gpu_seed42_20261014_a7eabc1b/report.md`](experiments/model-comparison-ds-v0.3.0/stgnn_idw_residual/ds-v0.3.0_loso_pm25_gpu_seed42_20261014_a7eabc1b/report.md): ST-GNN PM2.5 LOSO (a7eabc1b)
+- [`docs/experiments/model-comparison-ds-v0.3.0/stgnn_idw_residual/ds-v0.3.0_fcst_calendar_gpu_seed42_20261014_847559c6/report.md`](experiments/model-comparison-ds-v0.3.0/stgnn_idw_residual/ds-v0.3.0_fcst_calendar_gpu_seed42_20261014_847559c6/report.md): ST-GNN PM2.5 split tetap (847559c6), checkpoint yang terdaftar
+- [`src/data_worker/spatial_model/README.md`](../src/data_worker/spatial_model/README.md): kode training, inferensi, dan cache
+- [`src/data_worker/dataset_processed/geos-cf/README.md`](../src/data_worker/dataset_processed/geos-cf/README.md): fitur GEOS-CF
+- [`src/backend/pollution/README.md`](../src/backend/pollution/README.md): pembaca cache polusi di Cache API

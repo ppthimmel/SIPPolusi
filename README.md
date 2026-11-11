@@ -7,14 +7,18 @@ SIPPolusi: Sistem Informasi Pemandu Perjalanan dalam Polusi
 ## Layout
 
 - [src/frontend](src/frontend) — web app (TypeScript, MapLibre GL JS).
-- [src/backend](src/backend) — real-time critical path: request validation,
-  cache reads, and Multi-Objective Route Model inference
-  ([src/backend/route_model](src/backend/route_model)), served from one
+- [src/backend](src/backend) — real-time critical path. Its Cache API
+  ([src/backend/osm](src/backend/osm), own image and `src/backend/osm/.env`)
+  serves the public API (`/v1/routes`, `/v1/exposure-surface`, `/v1/geocode/*`):
+  request validation, cache reads, and Multi-Objective Route Model inference
+  through the `morl` solver provider, which loads `morl-route-policy` from the
+  model registry ([src/backend/solver](src/backend/solver/README.md),
+  model code in [src/backend/route_model](src/backend/route_model)), in one
   FastAPI process to stay within the routing latency budget.
   Baseline routing, interface examples and cost assumptions:
   [routing guide](src/backend/route_model/README.md).
 - [src/gateway](src/gateway) — API Gateway: NGINX custom reverse proxy,
-  the public entry point for `/v1/*` in front of the backend.
+  the public entry point for `/v1/*` in front of the Cache API.
 - [src/data_worker](src/data_worker) — background phase: secondary data
   ingestion, road graph construction, and Spatial Downscaling Model inference
   ([src/data_worker/spatial_model](src/data_worker/spatial_model)).
@@ -33,10 +37,11 @@ SIPPolusi: Sistem Informasi Pemandu Perjalanan dalam Polusi
   pollutant-specific fallback, and mandatory cached grid-to-road provenance.
 
 Railway's edge terminates TLS; the NGINX API Gateway ([src/gateway](src/gateway))
-behind it is the single public entry point and forwards `/v1/*` to the backend
-over Railway's private network (design document, Table 3.2). Build/start
-definitions, health checks, logging and the smoke test for the gateway,
-backend and data worker are in
+behind it is the single public entry point and forwards the public paths
+(`/v1/routes`, `/v1/exposure-surface`, `/v1/geocode/search`, `/v1/geocode/reverse`)
+to the Cache API over Railway's private network (design document, Table 3.2);
+any other path gets 404. Build/start definitions, health checks, logging and the
+smoke test for the gateway, backend, Cache API and data worker are in
 [docs/devops/build-runtime.md](docs/devops/build-runtime.md).
 CI/CD (build, test, regression, and the rule that Railway deploys a commit
 pushed to `dev` only after the pipeline passes) is in
@@ -131,21 +136,22 @@ Current stabilization evidence and remaining verification gaps are recorded in
 docker compose up --build
 ```
 
-This starts, in dependency order: Postgres/PostGIS (schemas applied
-the data worker creates the PostGIS extension and schemas/tables on startup via SQLAlchemy), MinIO (creates the
+This starts, in dependency order: Postgres/PostGIS (the data worker creates the
+PostGIS extension and schemas/tables on startup), MinIO (creates the
 `mlflow` and `feature-store` buckets), the Model Registry (MLflow), Backend,
-API Gateway, Data Worker, Frontend, and the observability stack (Prometheus, Pushgateway,
-Grafana).
+Cache API, API Gateway, Data Worker, Frontend, and the observability stack
+(Prometheus, Pushgateway, Grafana).
 
 | Service         | URL                          |
 |------------------|-------------------------------|
 | Frontend         | http://localhost:8080         |
 | API Gateway (NGINX) | http://localhost:8081      |
 | Backend API      | http://localhost:8000         |
+| Cache API        | http://localhost:8001         |
 | Model Registry (MLflow UI) | http://localhost:5000 |
 | MinIO console    | http://localhost:9001 (credentials from `src/minio/.env`) |
 | Prometheus       | http://localhost:9090         |
-| Grafana          | http://localhost:3000 (admin/admin) |
+| Grafana          | http://localhost:3000 (credentials from `src/observability/.env`) |
 
 To wipe state and start fresh (e.g. after changing a schema file):
 
@@ -199,9 +205,19 @@ The mock serves one scenario at a time (fallback, stale data, partial data,
 every error code, timeouts, ...). List them and switch with
 `GET /__mock/scenario` and `GET /__mock/scenario?name=<scenario>`; the dev
 server proxies `/__mock`, so `http://localhost:5173/__mock/scenario?name=fallback`
-works too. See [docs/ti-se-09-verifikasi-frontend.md](docs/ti-se-09-verifikasi-frontend.md)
+works too. See [docs/ti-se-09/README.md](docs/ti-se-09/README.md)
 for the states that were exercised.
 
 The map background is OpenStreetMap raster tiles by default (development use
 only); set `VITE_BASEMAP_TILES` in `src/frontend/.env` (or as a Docker build
 arg) to use another tile service.
+
+## See also
+
+- [`docs/README.md`](docs/README.md): index of all project documentation, grouped by topic
+- [`src/gateway/README.md`](src/gateway/README.md): public paths, rate limits and timeouts of the gateway
+- [`src/backend/osm/README.md`](src/backend/osm/README.md): Cache API: serves `/v1/*` behind the gateway
+- [`src/backend/public_api/README.md`](src/backend/public_api/README.md): public API contract (`/v1/routes`, `/v1/exposure-surface`, geocoding)
+- [`src/backend/solver/README.md`](src/backend/solver/README.md): route solver providers, including `morl`
+- [`docs/devops/private-networking.md`](docs/devops/private-networking.md): network exposure on Railway
+- [`tests/e2e/README.md`](tests/e2e/README.md): end-to-end test harness

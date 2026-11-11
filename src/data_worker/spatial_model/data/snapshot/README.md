@@ -43,7 +43,7 @@ deret macet yang dihitung ulang pada deret penuh dan jam tidak lengkap.
 - **Grup stasiun:**
   - Stasiun pada sel 100 m yang sama atau berjarak < 300 m (transitif), atau duplikat penyedia, masuk satu grup.
   - Grup adalah satuan split dan satuan fold.
-- **Split stasiun 70/15/15 per grup:**
+- **Split stasiun 70/15/15 % per grup** (`fractions` di `configs/ds-v0.3.0.toml`; pada ds-v0.3.0 menjadi 73/15/15 dari 103 grup):
   - Grup diurutkan per strata (tipe stasiun, kota administrasi) dan diacak di dalam strata dengan seed 42.
   - Label train/val/test diberikan menurut pola posisi sistematis.
 - **Blok temporal:**
@@ -57,8 +57,14 @@ deret macet yang dihitung ulang pada deret penuh dan jam tidak lengkap.
   - Landsat dan VIIRS diambil *as-of* waktu inferensi; tidak ada komposit statis yang di-fit.
   - GEOS-CF memakai `available_at_utc <= waktu inferensi`. Cuaca Open-Meteo memakai valid time terbaru dengan waktu
     tersedia `floor(t, 6 jam) + 8 jam <= waktu inferensi`.
-- **Satuan target:** µg/m³, terverifikasi terhadap ISPU portal (`scripts/check_ispu_units.py`).
+- **Satuan target:** µg/m³, terverifikasi terhadap ISPU portal (`src/data_worker/scripts/check_ispu_units.py`).
 - **Normalisasi:**
   - Statistik fitur di-fit pada jam masukan blok train di node grup train.
   - Target PM2.5 dan rasio GEOS-CF/SPKU dari split train.
   - Target NO2 di-fit per fold LOSO.
+
+## Lihat juga
+
+- [`src/data_worker/feature_matrix/README.md`](../../../feature_matrix/README.md): sumber FeatureMatrix
+- [`docs/experiments/TI-AI-02/README.md`](../../../../../docs/experiments/TI-AI-02/README.md): bukti FeatureMatrix pertama
+- [`docs/experiments/ds-v0.3.0/split_stats.md`](../../../../../docs/experiments/ds-v0.3.0/split_stats.md): statistik pembagian ds-v0.3.0

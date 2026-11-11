@@ -42,7 +42,7 @@ tersedia di `/docs`.
 |---|---|
 | `context` (*route context*) | moda, kecepatan rujukan (1,3 / 4,2 m/s), preferensi α/β, polutan, bbox, titik asal/tujuan beserta simpul hasil snap dan jarak snap-nya, `same_node` |
 | `weights` (status ketersediaan bobot) | time window yang dipakai, `data_stale`, umur (menit), jumlah ruas, ruas dengan estimasi, `missing_edge_count`, median yang dipakai mengisi (`imputed_exposure_index`), `concentration_missing_count`, baris yang tersaring (`excluded_rows`) |
-| `source` (metadata sumber) | `graph_version`, `osm_timestamp`, versi model polusi, `coverage_ratio`, jumlah ruas per `estimation_source`/`background_source`, baris graf yang ditolak validasi |
+| `source` (metadata sumber) | `graph_version`, `osm_timestamp`, versi model polusi, `coverage_ratio`, jumlah ruas per `estimation_source`/`background_source`, baris graf yang ditolak validasi, `downscaling_fallback` (polutan yang estimasinya dari fallback, bukan model downscaling terdaftar) |
 | `nodes` | `id`, `lon`, `lat` |
 | `edges` | per ruas: `u`, `v`, `length_m`, `oneway`, `bidirectional` (moda ini boleh v → u), `travel_time_s` = panjang ÷ kecepatan, `exposure_index`, `confidence_score`, `weight_source`, `concentration_ugm3` (polutan yang diminta), `pm25_ugm3`, `no2_ugm3`, `estimation_source` |
 
@@ -69,22 +69,31 @@ median. Karena itu keduanya disediakan per ruas: `concentration_ugm3` untuk base
 | 422 | `outside_study_area` | Titik asal atau tujuan di luar daratan DKI Jakarta; pesan menyebut "Titik asal" atau "Titik tujuan" | *Tujuan Kepulauan Seribu* |
 | 422 | `point_not_on_network` | Tidak ada simpul layak untuk moda itu dalam 200 m dari titik asal atau tujuan | *Pantai Ancol → laut* |
 | 422 | `no_route_found` | Ada kandidat simpul, tetapi tidak ada pasangan asal–tujuan yang terhubung di subgraf | dicakup tes; di data Jakarta tidak ditemukan titik nyata dengan radius 200 m |
-| 503 | `cache_unavailable` + `reason` | `cache_empty` (belum ada graf aktif / time window `complete`, atau tidak ada estimasi di bbox), `database_unavailable`, `query_timeout` | Semua permintaan valid selama cache polusi Railway kosong |
+| 503 | `cache_unavailable` + `reason` | `cache_empty` (belum ada graf aktif / time window `complete`, atau tidak ada estimasi di bbox), `database_unavailable`, `query_timeout` | Permintaan valid ke basis data tanpa time window `complete` (misalnya basis data lokal baru) |
 
 Galat perjalanan (422) dilaporkan lebih dulu daripada galat cache polusi (503), karena pengguna
 bisa menindaklanjutinya dengan memindahkan titik. Kedua cache tetap dibaca bersamaan.
 
-**Keadaan saat ini.** Selama cache polusi di Railway masih kosong, permintaan yang valid
-menghasilkan 503 `cache_empty`. Uji yang berhasil (200) berjalan di basis data lokal yang diisi
-Data Worker (lihat [VERIFICATION.md](VERIFICATION.md)).
+**Keadaan saat ini.** Cache polusi di Railway `development` diisi sejak 27 Okt
+(`DOWNSCALE_WRITE_CACHE=1`, [`docs/ti-se-10/LAPORAN.md`](../../../docs/ti-se-10/LAPORAN.md)).
+Selama basis data belum punya time window `complete`, permintaan yang valid menghasilkan 503
+`cache_empty`. Uji yang berhasil (200) di [VERIFICATION.md](VERIFICATION_TI-SE-05.md) berjalan di basis
+data lokal yang diisi Data Worker.
 
 ## Menguji
 
 Dari `src/backend/planner`, dengan venv dan dependensi dari [`../pollution`](../pollution/README.md#menguji):
 
 ```bash
-pytest -m "not cacheflow"                                                    # unit → 35 passed
-TEST_DATABASE_URL=postgresql://test:test@localhost:55432/test pytest         # semua → 37 passed
+pytest -m "not cacheflow"                                                    # unit
+TEST_DATABASE_URL=postgresql://test:test@localhost:55432/test pytest         # semua
 ```
 
+Hasil terbaru ada di CI ([`docs/devops/ci-cd.md`](../../../docs/devops/ci-cd.md)).
+
 Uji `cacheflow` memakai basis data uji lokal ([`../testdb`](../testdb/docker-compose.yml)).
+
+## Lihat juga
+
+- [`docs/experiments/TI-AI-06/README.md`](../../../docs/experiments/TI-AI-06/README.md): kecepatan dan rumus paparan
+- [`src/backend/route_model/README.md`](../route_model/README.md): baseline rute tercepat (TI-AI-07)

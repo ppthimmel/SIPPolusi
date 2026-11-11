@@ -1,13 +1,16 @@
 # Build dan runtime layanan (TI-DO-02)
 
-Panduan membangun, menjalankan, dan memeriksa tiga layanan yang di-deploy ke
-Railway: **Data Worker**, **Backend API**, dan **API Gateway (NGINX custom)**.
-Hasil uji ada di [`smoke-test-TI-DO-02.md`](smoke-test-TI-DO-02.md).
+Panduan membangun, menjalankan, dan memeriksa empat layanan pada tabel di bawah:
+**Data Worker**, **Backend API**, **Cache API**, dan **API Gateway (NGINX custom)**.
+Di Railway *development* layanan Backend saat ini tidak punya *deployment* yang
+berjalan; *gateway* hanya meneruskan ke Cache API
+([local-railway-parity.md](local-railway-parity.md)).
+Hasil uji ada di [`verification-TI-DO-02-build-runtime.md`](verification-TI-DO-02-build-runtime.md).
 Pipeline CI/CD dan aturan deployment: [`ci-cd.md`](ci-cd.md).
 
 Konfigurasi ini tidak bergantung pada Traefik atau K3s: build memakai
 Dockerfile per layanan, Railway membangun dan menjalankannya, dan NGINX custom
-menjadi titik masuk publik di depan Backend (Dokumen Desain, Tabel 3.2).
+menjadi titik masuk publik di depan Cache API (Dokumen Desain, Tabel 3.2).
 Manifes `k3s/` lama (Ingress Traefik) sudah dihapus.
 
 ## Ringkasan
@@ -15,19 +18,22 @@ Manifes `k3s/` lama (Ingress Traefik) sudah dihapus.
 | Layanan | Folder (Root Directory Railway) | Start (CMD Dockerfile) | Mode Railway | Pemeriksaan |
 |---|---|---|---|---|
 | Backend API | `src/backend` | `python serve.py` | Service web, restart `ON_FAILURE` | `GET /health` (hidup), `GET /health/ready` (basis data; graf rute hanya dilaporkan) |
-| Cache API (API publik `/v1/routes`, `/v1/exposure-surface`; baca internal `/v1/osm`, `/v1/pollution`) | `src/backend`, *Dockerfile Path* `/src/backend/osm/Dockerfile` (dashboard) | `uvicorn osm.app:app` | Service web privat | `GET /health/live` (hidup, `HEALTHCHECK` image), `GET /health/ready` (basis data, graf aktif) |
+| Cache API (API publik `/v1/routes`, `/v1/exposure-surface`, `/v1/geocode/*`; baca internal `/v1/osm`, `/v1/pollution`) | `src/backend`, *Dockerfile Path* `/src/backend/osm/Dockerfile` (dashboard) | `uvicorn osm.app:app` | Service web privat | `GET /health/live` (hidup, `HEALTHCHECK` image), `GET /health/ready` (basis data, graf aktif) |
 | API Gateway | `src/gateway` | entrypoint image `nginx` | Service web publik, restart `ON_FAILURE` | `GET /healthz` |
 | Data Worker | `src/data_worker` | `python main.py cycle` | Cron `15 * * * *`, restart `NEVER` | `python main.py check`, `python main.py status` (jadwal), `python main.py health` (kesegaran data) |
 
-Setiap folder memuat `Dockerfile`, `.dockerignore`, `.env.example`, dan
-`railway.json` (builder, *watch path*, health check, restart, cron). Cache API
-memakai folder yang sama dengan Backend, dengan Dockerfile sendiri yang dipilih
+Setiap folder memuat `Dockerfile`, `.env.example`, dan `railway.json`
+(builder, *watch path*, health check, restart, cron); `src/backend` dan
+`src/data_worker` juga memuat `.dockerignore` (gateway tidak, karena isi foldernya
+hanya konfigurasi NGINX dan tes). Cache API memakai folder yang sama dengan
+Backend, dengan Dockerfile sendiri (`src/backend/osm/Dockerfile`, pengecualiannya
+di `osm/Dockerfile.dockerignore`) dan `src/backend/osm/.env.example`, yang dipilih
 lewat *Dockerfile Path* di dashboard
 (panduan: [`src/backend/osm/README.md`](../../src/backend/osm/README.md)).
 Railway membaca `src/backend/railway.json` untuk kedua service, jadi berkas itu
 tidak boleh memuat `dockerfilePath`.
 Skema log, correlation ID, metrik, dan arti setiap pemeriksaan ada di
-[`observability-TI-DO-08.md`](observability-TI-DO-08.md).
+[`observability.md`](observability.md).
 
 > **Config as Code dihentikan Railway.** Berkas `railway.json` yang sudah
 > dipakai tetap berlaku sampai **1 Desember 2026**; sejak 28 Agustus 2026
@@ -37,8 +43,8 @@ Skema log, correlation ID, metrik, dan arti setiap pemeriksaan ada di
 > Pengganti (Infrastructure as Code) dikerjakan terpisah.
 
 Pemetaan jalur ke layanan hanya ada di gateway, dan gateway hanya membuka API
-publik: `POST /v1/routes` dan `GET /v1/exposure-surface` ke Cache API, dengan
-rate limit per alamat IP. Jalur lain, termasuk `/v1/osm/*`, `/v1/pollution/*`,
+publik: `POST /v1/routes`, `GET /v1/exposure-surface`, `POST /v1/geocode/search`,
+dan `POST /v1/geocode/reverse` ke Cache API, dengan rate limit per alamat IP. Jalur lain, termasuk `/v1/osm/*`, `/v1/pollution/*`,
 dan seluruh Backend, dijawab 404 oleh gateway dan hanya dapat dicapai lewat
 jaringan privat (TI-DO-05, [`src/gateway/README.md`](../../src/gateway/README.md)).
 Container frontend meneruskan `/v1/*` apa adanya ke gateway (`GATEWAY_UPSTREAM`),
@@ -68,8 +74,8 @@ mendapat batas waktu, `X-Request-ID`, dan rate limit yang sama dengan klien lain
   `RAILWAY_ENVIRONMENT_NAME` yang disuntikkan Railway; environment Railway
   selain `development` dan `production` diperlakukan sebagai `staging`.
   Di luar `development`, `DATABASE_URL` wajib.
-- **Rahasia tidak masuk image.** `.dockerignore` mengecualikan `.env*`
-  (kecuali `.env.example`). Railway menyuntikkan variabel saat runtime.
+- **Rahasia tidak masuk image.** `.dockerignore` (Cache API:
+  `osm/Dockerfile.dockerignore`) mengecualikan `.env*` (kecuali `.env.example`). Railway menyuntikkan variabel saat runtime.
 
 ### Variabel
 
@@ -80,8 +86,12 @@ mendapat batas waktu, `X-Request-ID`, dan rate limit yang sama dengan klien lain
 | Backend, Data Worker | `LOG_LEVEL`, `LOG_FORMAT` | tidak | `INFO`; `json` otomatis di Railway |
 | Gateway | `CACHE_API_UPSTREAM` | ya | `http://${{cache-api.RAILWAY_PRIVATE_DOMAIN}}:${{cache-api.PORT}}` (sesuaikan nama service) |
 | Gateway | `PORT` | tidak | disuntikkan Railway |
+| Gateway | `GATEWAY_UPSTREAM_TIMEOUT_S` | tidak (bawaan image 10) | `43`; lihat [`src/gateway/README.md`](../../src/gateway/README.md) |
 | Cache API | `DATABASE_URL` | ya | `${{database.DATABASE_URL}}` |
-| Cache API | `API_GEOCODING_URL` | tidak; kosong = pencarian lokasi nonaktif | `https://photon.komoot.io`, lihat [`ti-se-12-geocoding.md`](../ti-se-12-geocoding.md) |
+| Cache API | `ROUTE_SOLVER_PROVIDER` | tidak (bawaan `mock`) | `morl` |
+| Cache API | `MLFLOW_TRACKING_URI` | ya bila `morl` | `http://modelregistry.railway.internal:5000` |
+| Cache API | `ROUTE_SOLVER_BUDGET_MS`, `ROUTE_SOLVER_FALLBACK_TIMEOUT_MS`, `ROUTE_SOLVER_GATEWAY_TIMEOUT_MS` | tidak | `40000`, `20000`, `43000`; daftar lengkap `ROUTE_SOLVER_*` di [`src/backend/solver/README.md`](../../src/backend/solver/README.md) |
+| Cache API | `API_GEOCODING_URL` | tidak; kosong = pencarian lokasi nonaktif | `https://photon.komoot.io`, lihat [`docs/ti-se-12/README.md`](../ti-se-12/README.md) |
 | Frontend | `GATEWAY_UPSTREAM` | tidak (bawaan `http://gateway:8080`) | `http://${{gateway.RAILWAY_PRIVATE_DOMAIN}}:${{gateway.PORT}}` |
 | Data Worker | `DATABASE_URL` | ya | `${{database.DATABASE_URL}}` |
 | Data Worker | `SPKU_*` | tidak | lihat [`src/data_worker/README.md`](../../src/data_worker/README.md) |
@@ -112,7 +122,7 @@ docker build -f src/backend/osm/Dockerfile --target runtime -t sippolusi-cache-a
 docker build -t sippolusi-gateway src/gateway
 docker build -t sippolusi-data-worker src/data_worker
 docker run --rm -p 8000:8000 --env-file src/backend/.env sippolusi-backend
-docker run --rm -p 8001:8000 --env-file src/backend/.env sippolusi-cache-api
+docker run --rm -p 8001:8000 --env-file src/backend/osm/.env sippolusi-cache-api
 docker run --rm -p 8081:8080 -e CACHE_API_UPSTREAM=http://host.docker.internal:8001 sippolusi-gateway
 docker run --rm --env-file src/data_worker/.env sippolusi-data-worker python main.py check
 ```
@@ -149,8 +159,8 @@ untuk mengujinya, tambahkan service-nya, kosongkan **Cron Schedule** dan isi
 **Custom Start Command** `python main.py check` di Settings → Deploy sebelum
 deploy, lalu baca log-nya.
 
-Untuk Data Worker, langkah migrasi dan peralihan cron ada di
-[`src/data_worker/docs/RAILWAY.md`](../../src/data_worker/docs/RAILWAY.md).
+Untuk Data Worker, migrasi data historis dari SQLite ada di
+[`src/data_worker/README.md`](../../src/data_worker/README.md#migrasi-dari-sqlite).
 
 ## Kegagalan build dan start
 
@@ -224,9 +234,18 @@ publik, atau 429 dinyatakan gagal. Smoke test mengirim empat request ke API
 publik, jauh di bawah batas rate limit.
 
 ```bash
-python scripts/smoke_test.py --gateway https://<domain-gateway> --backend https://<domain-backend>
+python scripts/smoke_test.py --gateway https://<domain-gateway>
 ```
+
+Backend tidak punya domain publik di Railway, jadi `--backend` hanya dipakai
+bila backend dapat dijangkau langsung (lokal: `--backend http://localhost:8000`).
 
 Data Worker tidak memiliki endpoint HTTP; smoke test-nya adalah
 `python main.py check` di dalam image yang sama (lokal) dan status keluar
 eksekusi cron terakhir di Railway (`railway logs --service data_worker`).
+
+## Lihat juga
+
+- [`docs/software/technical-runbook.md`](../software/technical-runbook.md): runbook operasional dan stack E2E
+- [`src/model_registry/README.md`](../../src/model_registry/README.md): registry model (MLflow)
+- [`src/backend/solver/README.md`](../../src/backend/solver/README.md): penyedia rute dan variabel `ROUTE_SOLVER_*`

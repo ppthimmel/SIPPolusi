@@ -119,3 +119,7 @@ Cara membaca:
   disepakati dengan tim AI (TI-AI-10) sebelum layanan Route Model dibangun.
 - **Tahap berikutnya.** TI-SE-07 dan TI-SE-08 menyusun GeoJSON FeatureCollection dan endpoint
   `POST /v1/routes` dari `SolveResult` ini.
+
+## Lihat juga
+
+- [`src/backend/solver/VERIFICATION_TI-SE-07.md`](VERIFICATION_TI-SE-07.md): verifikasi lanjutan TI-SE-07

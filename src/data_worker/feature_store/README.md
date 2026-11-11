@@ -11,7 +11,7 @@ Pengambilan, transformasi, dan penyimpanan dipisah sehingga setiap tahap dapat d
 | Pengambilan | `connectors/http.py`, `connectors/stac.py` | Timeout, coba ulang, dan pencatatan per sumber (Tabel 3.19); katalog STAC dan token SAS Planetary Computer |
 | Transformasi | `connectors/<sumber>.py` | Parser respons dan granule → baris berskema data latih; validasi format, rentang fisik, dan duplikat |
 | Penyimpanan | `feature_store/store.py` | Skema PostgreSQL `features`; penulisan idempoten, revisi, dan retensi |
-| Pembaca fitur | `feature_store/reader.py` | `StoreSourceReader`: aturan as-of `SourceReader` TI-AI-02, sumber dari PostgreSQL |
+| Pembaca fitur | `feature_store/reader.py` | `StoreSourceReader`: aturan as-of `SourceReader` TI-AI-02, sumber dari PostgreSQL. Sejak commit 5e5c9bf menjadi masukan inferensi model spasial (`trigger_downscale_inference`) kecuali `SPATIAL_FEATURE_ROOT` diatur |
 | Langkah siklus | `feature_store/steps.py` | Enam langkah pada `acquisition.DEFAULT_STEPS` |
 | CLI | `feature_store/cli.py` | `python main.py features status/fetch/seed/rebuild` |
 
@@ -142,3 +142,12 @@ NDVI/NDBI baru terisi setelah scene cerah berikutnya.
 | `FEATURES_SOURCES` | `all` | `all`, `none`, atau daftar dari `open_meteo,geoscf_ana,geoscf_fcst,sentinel5p,landsat,viirs` |
 | `FEATURES_DB_SCHEMA` | `features` | Skema tabel penyimpanan |
 | `FEATURE_STORE_DIR` | kosong | Bila diatur, Parquet dan `manifest.json` FeatureMatrix per time window ditulis ke sini |
+
+## Lihat juga
+
+- [`src/data_worker/feature_matrix/README.md`](../feature_matrix/README.md): FeatureMatrix offline
+- [`src/data_worker/spatial_model/README.md`](../spatial_model/README.md): inferensi yang membaca feature store
+- [`docs/software/data-contracts-TI-SE-01.md`](../../../docs/software/data-contracts-TI-SE-01.md): kontrak data
+- [`docs/devops/data-worker-schedule.md`](../../../docs/devops/data-worker-schedule.md): jadwal siklus
+- [`docs/experiments/TI-AI-05/source_reader_cache.md`](../../../docs/experiments/TI-AI-05/source_reader_cache.md): cache pembaca sumber
+- [`src/data_worker/dataset_processed/geos-cf/README.md`](../dataset_processed/geos-cf/README.md): spesifikasi fitur per sumber (GEOS-CF; berkas lain di folder yang sama)

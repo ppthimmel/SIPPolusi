@@ -12,7 +12,7 @@ Baris ditulis oleh Spatial Downscaling Model lewat
 [`src/data_worker/spatial_model/inference/cache.py`](../../data_worker/spatial_model/inference/cache.py)
 (`write_pollution_weight`, TI-AI-05). Graf OSM ditulis oleh
 [`src/data_worker/osm_cache`](../../data_worker/osm_cache/README.md) (`write_road_graph`).
-Bukti TI-SE-04: [VERIFICATION.md](VERIFICATION.md).
+Bukti TI-SE-04: [VERIFICATION.md](VERIFICATION_TI-SE-04.md).
 
 ## Trace sel sumber
 
@@ -61,14 +61,17 @@ dan batas interpretasi confidence.
 |---|---|---|
 | GET | `/windows?limit=` | Daftar time window (terbaru dulu), time window `complete` terakhir, `data_stale` |
 | GET | `/edge-weights?bbox=&time_window_start=&mode=&graph_version=` | `read_pollution_weight`: EdgeWeight satu time window di dalam bbox |
+| GET | `/edge-weights/{edge_id}/trace?time_window_start=` | Sel grid sumber dan panjang agregasi untuk satu ruas di cache |
 
 - `time_window_start`: `latest` (default) atau ISO 8601, mis. `2026-10-13T05:00:00Z`.
 - `graph_version`: `active` (default), `all` (tanpa filter), atau nama versi.
 - `bbox` sama dengan `/v1/osm` (maks. `OSM_MAX_BBOX_KM2`, default 25 km²).
 
-Contoh respons ada di [VERIFICATION.md](VERIFICATION.md). Saat ini cache polusi di Railway
-masih kosong, sehingga `/edge-weights` menjawab 503 `cache_empty` sampai Data Worker menulis
-time window pertama.
+Contoh respons ada di [VERIFICATION.md](VERIFICATION_TI-SE-04.md). Cache polusi di Railway
+`development` diisi sejak 27 Okt (`DOWNSCALE_WRITE_CACHE=1`,
+[`docs/ti-se-10/LAPORAN.md`](../../../docs/ti-se-10/LAPORAN.md)). Pada basis data yang belum
+punya time window `complete` (misalnya basis data lokal baru), `/edge-weights` menjawab 503
+`cache_empty` sampai Data Worker menulis time window pertama.
 
 ## Konfigurasi
 
@@ -112,7 +115,7 @@ sama dengan [`../osm/README.md`](../osm/README.md#menjalankan-dan-menguji). Endp
 
 Ada dua jenis tes:
 
-- **Unit tes** (`test_models.py`, `test_api.py`): tanpa database.
+- **Unit tes** (`test_models.py`, `test_api.py`, `test_weights_query.py`): tanpa database.
 - **Uji alur tulis → baca** (`test_cache_flow.py`): menulis dengan kode Data Worker
   (`write_road_graph`, `write_pollution_weight`), lalu membaca dengan Backend (repository dan
   HTTP API). Uji ini **menulis** ke basis data, jadi hanya dijalankan ke PostgreSQL + PostGIS
@@ -137,16 +140,17 @@ Dari root repo:
 
    ```bash
    cd pollution
-   pytest -m "not cacheflow"                                                    # unit → 20 passed
-   TEST_DATABASE_URL=postgresql://test:test@localhost:55432/test pytest         # semua → 30 passed
+   pytest -m "not cacheflow"                                                    # unit
+   TEST_DATABASE_URL=postgresql://test:test@localhost:55432/test pytest         # semua
    ```
 
-   Tanpa `TEST_DATABASE_URL`, 10 uji alur dilewati (`20 passed, 10 skipped`).
+   Tanpa `TEST_DATABASE_URL`, uji alur dilewati. Hasil terbaru ada di CI
+   ([`docs/devops/ci-cd.md`](../../../docs/devops/ci-cd.md)).
 
 4. Tes penulis graf di Data Worker (dari `src/data_worker`, dengan dependensi yang sama):
 
    ```bash
-   TEST_DATABASE_URL=postgresql://test:test@localhost:55432/test pytest tests/test_osm_cache_writer.py   # → 12 passed
+   TEST_DATABASE_URL=postgresql://test:test@localhost:55432/test pytest tests/test_osm_cache_writer.py
    ```
 
 5. Matikan basis data uji. Datanya ada di tmpfs, jadi ikut hilang:
@@ -157,3 +161,8 @@ Dari root repo:
 
 Di Mac Apple Silicon, image `postgis/postgis` berjalan lewat emulasi amd64
 (`platform: linux/amd64`). Start pertama butuh beberapa detik lebih lama.
+
+## Lihat juga
+
+- [`src/data_worker/spatial_model/README.md`](../../data_worker/spatial_model/README.md): sisi penulis cache
+- [`docs/experiments/TI-AI-05/README.md`](../../../docs/experiments/TI-AI-05/README.md): bukti EdgeWeight dan jejak inferensi

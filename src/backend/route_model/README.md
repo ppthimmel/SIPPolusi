@@ -53,9 +53,11 @@ snapshot = ExposureSnapshot(
 ```
 
 The caller must supply a snapshot selected for the requested window and enforce
-freshness. The current HTTP adapter has no pollution-cache integration and
-therefore reports unavailable exposure. TI-SE-05 can supply that snapshot to
-the same backend function. TI-AI-10 must reuse the same OD, snapped node IDs,
+freshness. The legacy HTTP adapter of the `backend` service (`main.py`) has no
+pollution-cache integration and therefore reports unavailable exposure. The public
+route path does: the Cache API's planner attaches pollution-cache edge weights
+(`planner/weights.py`) to the solver input that every solver provider receives,
+including the in-process `baseline` provider that runs this A*. TI-AI-10 must reuse the same OD, snapped node IDs,
 graph, edge times and snapshot for both solvers; do not independently resnap the
 policy route. Missing exposure must be excluded/reported explicitly in comparisons.
 
@@ -96,18 +98,25 @@ All statuses except `ok` have `route: null` and `metrics: null`, so an empty
 geometry cannot masquerade as a successfully computed journey. The existing
 HTTP adapter maps these domain statuses to the status codes above.
 
-`route_source` is `baseline` on direct calls. `/v1/routes` currently falls back
-because the MORL policy is unavailable, returning `route_source: fallback`,
+`route_source` is `baseline` on direct calls. The legacy `POST /v1/routes` of the
+`backend` service (`main.py`, through `inference.solve_route`) has no policy and
+always falls back, returning `route_source: fallback`,
 `fallback_reason: policy_unavailable`, `preference_applied: false`. An exception
 from the policy adapter is labelled `policy_error`. The baseline does not use
-alpha/beta. Actual model timeout/cancellation is not yet implemented; the future
-model adapter must enforce its deadline before invoking fallback.
+alpha/beta. This legacy path has no model timeout or cancellation.
+
+The public `POST /v1/routes` is served by the Cache API instead, through the solver
+providers `mock`, `baseline`, `http` and `morl` (the registered MORL policy, loaded in
+process). Its replies use `route_source` `policy` or `baseline` (a labelled A* fallback
+with its `fallback_reason`), and solving runs under a deadline with cancellation. See
+[solver providers](../solver/README.md) and the
+[`morl` provider](../solver/README.md#penyedia-morl-ti-se-07b).
 
 ## API and CLI
 
 Call `solve_baseline` or `inference.solve_baseline_route` directly to select
-the baseline for experiments. The existing `POST /v1/routes` endpoint uses
-the policy adapter and explicitly marked fallback. It accepts:
+the baseline for experiments. The legacy `POST /v1/routes` endpoint of the
+`backend` service uses the policy adapter and explicitly marked fallback. It accepts:
 
 ```json
 {
@@ -178,3 +187,10 @@ zero-length journeys, invalid/missing data, cache invalidation and API statuses.
 The Jakarta script records explicit coordinates and cold/warm timings; this is
 one regression scenario, not a general latency benchmark or a measured 2.3%
 failure rate. See the experiment report for measured results and limitations.
+
+## See also
+
+- [`src/backend/solver/README.md`](../solver/README.md): how public `POST /v1/routes` is served today (Cache API solver providers)
+- [`docs/experiments/TI-AI-06/README.md`](../../../docs/experiments/TI-AI-06/README.md): time and exposure cost definitions
+- [`docs/experiments/TI-AI-07/README.md`](../../../docs/experiments/TI-AI-07/README.md): Jakarta regression for this baseline
+- [`src/backend/planner/README.md`](../planner/README.md): route request to solver input

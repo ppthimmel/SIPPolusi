@@ -143,3 +143,8 @@ docker compose -f tests/e2e/docker-compose.yml down -v
 Lihat [tests/e2e/README.md](../../tests/e2e/README.md). Untuk mengganti dataset, jalankan
 `export_fixture.py` dengan `SOURCE_DATABASE_URL` (read-only), lalu catat `dataset_version` yang baru di
 laporan.
+
+## Lihat juga
+
+- [`docs/ti-se-11/VERIFICATION.md`](../ti-se-11/VERIFICATION.md): run ulang terbaru (64/64)
+- [`docs/software/technical-runbook.md`](../software/technical-runbook.md): runbook operasional

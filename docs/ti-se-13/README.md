@@ -13,13 +13,13 @@ watchPosition → NavigationSession (perangkat) → panel + peta
 
 | Bagian | Berkas |
 |---|---|
-| Geometri rute: jarak sepanjang rute, proyeksi posisi, belokan | [`nav-geometry.ts`](../src/frontend/src/nav-geometry.ts) |
-| Sesi navigasi: progres, sinyal lemah, keluar rute, rute ulang, tiba | [`navigation.ts`](../src/frontend/src/navigation.ts) |
-| Sumber posisi dan pesan galatnya | [`position.ts`](../src/frontend/src/position.ts) |
-| Panel navigasi | [`nav-view.ts`](../src/frontend/src/nav-view.ts) |
-| Penanda posisi, lingkar akurasi, kamera | [`map-view.ts`](../src/frontend/src/map-view.ts) |
-| Alur: mulai, rute ulang, akhiri | [`main.ts`](../src/frontend/src/main.ts) (bagian "navigation") |
-| Simulasi posisi, hanya build pengembangan | [`position-sim.ts`](../src/frontend/src/position-sim.ts) |
+| Geometri rute: jarak sepanjang rute, proyeksi posisi, belokan | [`nav-geometry.ts`](../../src/frontend/src/nav-geometry.ts) |
+| Sesi navigasi: progres, sinyal lemah, keluar rute, rute ulang, tiba | [`navigation.ts`](../../src/frontend/src/navigation.ts) |
+| Sumber posisi dan pesan galatnya | [`position.ts`](../../src/frontend/src/position.ts) |
+| Panel navigasi | [`nav-view.ts`](../../src/frontend/src/nav-view.ts) |
+| Penanda posisi, lingkar akurasi, kamera | [`map-view.ts`](../../src/frontend/src/map-view.ts) |
+| Alur: mulai, rute ulang, akhiri | [`main.ts`](../../src/frontend/src/main.ts) (bagian "navigation") |
+| Simulasi posisi, hanya build pengembangan | [`position-sim.ts`](../../src/frontend/src/position-sim.ts) |
 
 Backend tidak berubah: rute ulang memakai `POST /v1/routes` yang sudah ada.
 
@@ -43,7 +43,7 @@ kecepatan rata-rata rute itu sendiri dari estimasi Backend (`travel_time_min` di
 
 ## Ambang
 
-Semua di [`NAV_LIMITS`](../src/frontend/src/navigation.ts).
+Semua di [`NAV_LIMITS`](../../src/frontend/src/navigation.ts).
 
 | Hal | Nilai | Alasan |
 |---|---|---|
@@ -71,14 +71,14 @@ Semua di [`NAV_LIMITS`](../src/frontend/src/navigation.ts).
 ## Keadaan yang diuji
 
 "Unit" = Vitest (`nav-geometry.test.ts`, `navigation.test.ts`, `position.test.ts`). "Browser" = peramban terhadap
-`npm run mock` dengan simulasi posisi (lihat bawah), 3 November 2026; tangkapan di [`ti-se-13/`](ti-se-13/).
+`npm run mock` dengan simulasi posisi (lihat bawah), 3 November 2026; tangkapan di [`ti-se-13/`](./).
 
 | Keadaan | Hasil | Bukti |
 |---|---|---|
-| Mulai navigasi dari rute rekomendasi atau rute tercepat | Panel navigasi, penanda biru dengan arah, kamera mengikuti | Browser, [`01`](ti-se-13/01-navigasi-berjalan.jpg) |
+| Mulai navigasi dari rute rekomendasi atau rute tercepat | Panel navigasi, penanda biru dengan arah, kamera mengikuti | Browser, [`01`](01-navigasi-berjalan.jpg) |
 | Petunjuk, sisa jarak, waktu, dan jam tiba diperbarui | Belokan berganti setelah dilewati, sisa jarak menurun | Unit, Browser |
 | Rute asli Backend (fixture TI-SE-08) dilalui dari awal sampai akhir | Sisa jarak tidak pernah naik, tidak pernah keluar rute, berakhir tiba | Unit |
-| Keluar rute | Pesan "Anda keluar dari rute", satu permintaan dari posisi menyimpang, rute diperbarui | Browser, [`02`](ti-se-13/02-keluar-rute.jpg); log mock: tepat 1 permintaan |
+| Keluar rute | Pesan "Anda keluar dari rute", satu permintaan dari posisi menyimpang, rute diperbarui | Browser, [`02`](02-keluar-rute.jpg); log mock: tepat 1 permintaan |
 | Rute ulang gagal (timeout 12 s) | Rute lama tetap tampil, pesan galat, dicoba lagi tepat setelah 30 s dan berhasil | Browser; log mock: 1 gagal, 1 berhasil dalam ±45 s keluar rute |
 | Rute ulang berturut-turut | Jeda 30 → 60 → 120 s, `Retry-After` dihormati | Unit |
 | Rute ulang dibatalkan | Tetap memakai jeda 30 s | Unit |
@@ -87,11 +87,11 @@ Semua di [`NAV_LIMITS`](../src/frontend/src/navigation.ts).
 | Tujuan jauh dari jalan (sepeda) | Tiba saat mendekati tujuan di luar rute dekat ujung rute | Unit |
 | Fix hilang 40 s | Kemajuan menyusul posisi berikutnya, tetap di rute | Unit |
 | Satu fix melenceng | Tidak dianggap keluar rute | Unit |
-| Sinyal lemah (akurasi ±120 m) | Lingkar akurasi, pesan "Sinyal GPS lemah", keluar rute dan tiba tidak dinilai | Unit, Browser, [`03`](ti-se-13/03-sinyal-lemah.jpg) |
-| Izin lokasi ditolak | Navigasi tidak dimulai, kembali ke hasil rute dengan pesan, kedua rute tetap utuh | Browser, [`04`](ti-se-13/04-izin-ditolak.jpg) |
+| Sinyal lemah (akurasi ±120 m) | Lingkar akurasi, pesan "Sinyal GPS lemah", keluar rute dan tiba tidak dinilai | Unit, Browser, [`03`](03-sinyal-lemah.jpg) |
+| Izin lokasi ditolak | Navigasi tidak dimulai, kembali ke hasil rute dengan pesan, kedua rute tetap utuh | Browser, [`04`](04-izin-ditolak.jpg) |
 | Posisi tidak tersedia / timeout | Navigasi tetap berjalan dengan pesan; rute dan tombol akhiri tetap ada | Browser |
 | Peramban tanpa Geolocation API, atau halaman bukan HTTPS | Navigasi tidak dimulai, pesan menyebut penyebabnya | Unit |
-| Tiba di tujuan | "Anda telah tiba", pelacakan berhenti, tombol "Selesai" kembali ke hasil | Unit, Browser, [`05`](ti-se-13/05-tiba.jpg) |
+| Tiba di tujuan | "Anda telah tiba", pelacakan berhenti, tombol "Selesai" kembali ke hasil | Unit, Browser, [`05`](05-tiba.jpg) |
 | Akhiri navigasi | Pelacakan berhenti, penanda posisi hilang, hasil rute tampil kembali | Browser |
 | Peta digeser tangan | Kamera berhenti mengikuti; tombol "Ikuti posisi" (juga tombol lokasi di peta) mengembalikannya | Browser |
 | Build produksi | Simulasi tidak ada di bundle | `vite build`, dicari di `dist/` |
@@ -127,3 +127,9 @@ Contoh: `http://localhost:5173/?simulasi=keluar&kecepatan=25`. Untuk melihat rut
 - **Halaman harus terbuka.** Peramban menghentikan `watchPosition` saat halaman di latar belakang atau layar mati;
   navigasi berlanjut saat halaman dibuka lagi.
 - **HTTPS.** Geolocation hanya tersedia lewat HTTPS (atau `localhost`), seperti deployment Railway.
+
+## Lihat juga
+
+- [`docs/ti-se-09/README.md`](../ti-se-09/README.md): verifikasi frontend
+- [`src/backend/public_api/README.md`](../../src/backend/public_api/README.md): `/v1/routes` yang dipanggil saat rute ulang
+- [`src/gateway/README.md`](../../src/gateway/README.md): batas laju gateway

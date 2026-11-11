@@ -56,10 +56,21 @@ with psycopg.connect(dsn, autocommit=True) as conn:
 
 ## DDL dan uji
 
-[`schema.sql`](schema.sql) adalah salinan struktur schema `osm` dan `pollution` di Railway
-(per 2026-10-13), termasuk unique index `road_edge_edge_id_key`.
+[`schema.sql`](schema.sql) adalah struktur schema `osm` dan `pollution`, termasuk unique index
+`road_edge_edge_id_key`. Bagian awalnya disalin dari Railway per 2026-10-13; sesudahnya ditambah tabel
+jejak inferensi `pollution` (`inference_run`, `grid_prediction`, `edge_cell`, `edge_cell_set`,
+`edge_cell_piece`, `edge_metadata`). Di basis data yang sudah ada, tabel itu dibuat `init_db()` lewat
+[`database/spatial_migration.sql`](../database/spatial_migration.sql).
 `schema_sql(osm, pollution)` mengganti nama schema supaya uji bisa membuat salinan terisolasi. Berkas ini untuk uji dan basis data lokal baru, bukan migrasi produksi.
+Untuk basis data lokal, [`scripts/local/seed_graph.py`](../../../scripts/local/seed_graph.py) membuat schema
+lewat `schema_sql()` lalu mengimpor graf `dataset_processed/OSM` lewat `write_road_graph`, dengan `edge_id`
+yang sama dengan Railway.
 
 Uji: [`tests/test_osm_cache_writer.py`](../tests/test_osm_cache_writer.py), dijalankan ke
 basis data lokal ([`src/backend/testdb`](../../backend/testdb/docker-compose.yml)).
 Langkahnya ada di [`src/backend/pollution/README.md`](../../backend/pollution/README.md#menguji).
+
+## Lihat juga
+
+- [`src/data_worker/dataset_processed/OSM/README.md`](../dataset_processed/OSM/README.md): kamus kolom ekspor CSV graf jalan
+- [`docs/software/data-contracts-TI-SE-01.md`](../../../docs/software/data-contracts-TI-SE-01.md): kontrak RoadGraph

@@ -9,11 +9,11 @@ dibekukan.
 | Butir | Nilai |
 |---|---|
 | Versi | `ds-v0.3.0`, [`docs/experiments/ds-v0.3.0`](experiments/ds-v0.3.0/README.md) |
-| Manifest | `manifest.json` (SHA-256 `a8b1f372a5a6e2f5…`), keutuhan diperiksa dengan `CHECKSUMS.sha256` |
+| Manifest | `manifest.json` (SHA-256 saat dibekukan `a8b1f372a5a6e2f5…`, commit `2964b51`), keutuhan diperiksa dengan `CHECKSUMS.sha256`. Catatan 2026-11-09: berkas ini ditulis ulang pada commit `afe202e` (dengan teks mojibake); `manifest.json` dan `CHECKSUMS.sha256` saat ini mencatat `2fa699d5e5037284…`. Berkas data tidak berubah |
 | Ground truth | Ekspor PostgreSQL `sippolusi_ground_truth_20261006`, salinan di `source/` |
 | Rentang | Time window 13 September 00.00 – 30 September 22.00 UTC (batas data pengamatan satelit dan Open-Meteo) |
 | Wilayah | Grid 100 m EPSG:32748; 105 stasiun sensor darat di dalam bbox studi, 103 grup stasiun |
-| Target | PM2.5 (38.211 label stasiun-jam) dan NO2 (5.372), dilatih dan dievaluasi terpisah. Satuan µg/m³, terverifikasi terhadap ISPU portal (`scripts/check_ispu_units.py`) |
+| Target | PM2.5 (38.211 label stasiun-jam) dan NO2 (5.372), dilatih dan dievaluasi terpisah. Satuan µg/m³, terverifikasi terhadap ISPU portal (`src/data_worker/scripts/check_ispu_units.py`) |
 | Fitur | FeatureMatrix ST-GNN TI-AI-02 (`stgnn/`, versi fitur `63aa324632a35665`), L = 24 time window; termasuk prakiraan GEOS-CF (`geoscf_fcst_*`) dan kalender (jam/hari WIB) |
 
 Snapshot ini immutable. Perubahan aturan, rentang, atau data menghasilkan versi baru. Data operasional di
@@ -39,7 +39,7 @@ aditif atau pergantian sumber akibat AOD kosong. Lihat [spesifikasi aktif](SPATI
   - test: 29 September 00.00 – 30 September 22.00 UTC.
   - Jeda antarblok 25 jam ≥ max(L, 24 jam), sehingga jendela masukan sampel val/test tidak memuat jam blok
     sebelumnya.
-- **Split stasiun:** 73/15/15 grup (train/val/test), acak berstrata menurut tipe stasiun dan kota administrasi,
+- **Split stasiun:** 73/15/15 grup dari 103 (train/val/test; pecahan konfigurasi 70/15/15 %), acak berstrata menurut tipe stasiun dan kota administrasi,
   seed 42.
 
 ## Protokol per target
@@ -83,9 +83,9 @@ ketersediaan data pendukung, seperti pada baseline TI-AI-04.
 
 | Model | Cara memakai dataset | Status |
 |---|---|---|
-| Baseline IDW (TI-AI-04) | `python -m spatial_model.evaluation.idw run --manifest docs/experiments/ds-v0.3.0/manifest.json` | Run [`20261013T101200Z-idw-ds-v0.3.0-f6f15b8f`](experiments/TI-AI-04/runs/20261013T101200Z-idw-ds-v0.3.0-f6f15b8f/report.md) |
-| ST-GNN | `read_stgnn_batch(docs/experiments/ds-v0.3.0/stgnn, t)`; split dari `splits/` atau kolom `split` pada `stgnn/labels.parquet` (PM2.5 blind ganda, `none` di luar split); fold dari `splits/loso_folds.parquet` | IDW-residual ST-GNN pada ds-v0.3.0 tidak lebih baik dari IDW ([perbandingan model](experiments/model-comparison-ds-v0.3.0/README.md)) |
-| Perbandingan interpolator dan model terlatih | [`experiments/model-comparison-ds-v0.3.0`](experiments/model-comparison-ds-v0.3.0/README.md): LOSO blok val untuk pemilihan, LOSO blok test untuk pelaporan | PM2.5: IDW p = 1 seluruh stasiun terpilih (22,18); NO2: LightGBM seluruh fitur, target langsung (27,43), bergantung pada fitur geometri sensor dan perlu pemeriksaan sensor LCS-* |
+| Baseline IDW (TI-AI-04) | `python -m spatial_model.evaluation.idw run --manifest docs/experiments/ds-v0.3.0/manifest.json --out <folder-baru>` | Run [`20261013T101200Z-idw-ds-v0.3.0-f6f15b8f`](experiments/TI-AI-04/runs/20261013T101200Z-idw-ds-v0.3.0-f6f15b8f/report.md) |
+| ST-GNN | `read_stgnn_batch(docs/experiments/ds-v0.3.0/stgnn, t)`; split dari `splits/` atau kolom `split` pada `stgnn/labels.parquet` (PM2.5 blind ganda, `none` di luar split); fold dari `splits/loso_folds.parquet` | IDW-residual ST-GNN (basis IDW p = 2, k = 8). Split tetap, run GPU `847559c6`: RMSE test 18,37 vs IDW 18,74, IK 95% selisih [−0,58; −0,10], signifikan tetapi kecil dan eksploratif. LOSO, run `a7eabc1b`: 23,74 vs 24,00, IK 95% [−2,31; +1,85], tidak signifikan; terhadap IDW p = 1 seluruh stasiun (22,18) lebih buruk, IK 95% [+0,27; +2,98]. Checkpoint `847559c6` adalah versi PM2.5 yang terdaftar ([spesifikasi aktif](SPATIAL_MODEL_SPEC.md)) |
+| Perbandingan interpolator dan model terlatih | [`experiments/model-comparison-ds-v0.3.0`](experiments/model-comparison-ds-v0.3.0/README.md): LOSO blok val untuk pemilihan, LOSO blok test untuk pelaporan | PM2.5: IDW p = 1 seluruh stasiun terpilih pada val (22,18); NO2: LightGBM seluruh fitur, target langsung (27,43), bergantung pada fitur geometri sensor dan perlu pemeriksaan sensor LCS-*. Yang dipasang di kode berbeda untuk PM2.5: IDW p = 2, k = 8 + koreksi ST-GNN, dengan IDW p = 2, k = 8 sebagai fallback ([spesifikasi aktif](SPATIAL_MODEL_SPEC.md)) |
 | Algoritma pencarian rute A\* | Tidak memakai label secara langsung. Bobot polusi ruas (EdgeWeight) berasal dari Spatial Downscaling Model yang kinerjanya dilaporkan pada ds-v0.3.0, sehingga laporan rute menyebut versi dataset model tersebut | Mengikuti model yang dipakai |
 
 ## Hasil baseline IDW pada ds-v0.3.0
@@ -102,3 +102,14 @@ IDW power = 2, neighbors = 8, jarak meter pada EPSG:32748 (Tabel 3.8).
   - PM2.5: power = 1 dengan seluruh stasiun (RMSE test 22,18 µg/m³, R² 0,11).
   - NO2: power = 2 dengan seluruh stasiun (RMSE test 44,66 µg/m³, R² 0,22).
 - Seluruh perbandingan memakai stasiun, jam, dan versi dataset yang sama.
+
+## Lihat juga
+
+- [`docs/experiments/TI-AI-05/README.md`](experiments/TI-AI-05/README.md): model spasial yang dipasang
+- [`notebooks/spatial_model/README.md`](../notebooks/spatial_model/README.md): menjalankan protokol lewat notebook
+- [`docs/experiments/model-comparison-ds-v0.3.0/stgnn_idw_residual/ds-v0.3.0_loso_pm25_gpu_seed42_20261014_a7eabc1b/report.md`](experiments/model-comparison-ds-v0.3.0/stgnn_idw_residual/ds-v0.3.0_loso_pm25_gpu_seed42_20261014_a7eabc1b/report.md): ST-GNN PM2.5 LOSO (run a7eabc1b)
+- [`docs/experiments/model-comparison-ds-v0.3.0/stgnn_idw_residual/ds-v0.3.0_fcst_calendar_gpu_seed42_20261014_847559c6/report.md`](experiments/model-comparison-ds-v0.3.0/stgnn_idw_residual/ds-v0.3.0_fcst_calendar_gpu_seed42_20261014_847559c6/report.md): ST-GNN PM2.5 split tetap (run 847559c6)
+- [`docs/experiments/ds-v0.3.0/leakage_report.md`](experiments/ds-v0.3.0/leakage_report.md): laporan pemeriksaan kebocoran
+- [`docs/experiments/ds-v0.3.0/split_stats.md`](experiments/ds-v0.3.0/split_stats.md): statistik pembagian data
+- [`src/data_worker/spatial_model/data/snapshot/README.md`](../src/data_worker/spatial_model/data/snapshot/README.md): pembangun snapshot dataset
+- [`docs/experiments/TI-AI-10/PROTOCOL.md`](experiments/TI-AI-10/PROTOCOL.md): protokol evaluasi model rute (MORL)

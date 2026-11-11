@@ -46,7 +46,8 @@ side by side, on the same test pairs, windows and preferences:
 
 **1 against 3** is the effect of the regret path. **3 against 2** is the effect of the approach, one conditioned policy
 against a set, with neither using the path. **1 against 4** is what learning adds to the path. Run 3 has not been
-trained yet, and `evaluate_candidate.py` loads only policy sets so far; both are TI-AI-10 work. Do not conclude from 1
+trained yet, and `evaluate_candidate.py` loads only policy sets so far; both are TI-AI-10 work. Status after
+[TI-AI-10](../../TI-AI-10/README.md): both still open. Do not conclude from 1
 against 2 alone that one approach is better.
 
 ## Design decision: the direct regret path
@@ -135,10 +136,13 @@ python -m unittest src.backend.tests.test_morl_scalarized
 
 **2. Exposure fields.** Skip this if `src\backend\route_model\runs\fields\manifest.json`
 already exists. With Docker Desktop running, this takes about 10 minutes. The image is the
-Data Worker's, which already has `pyproj`.
+Data Worker's, which already has `pyproj`. Build it first with `docker compose build data_worker`;
+Compose names it `<project>-data_worker`, where the project is the checkout folder's name in lower
+case (`sippolusi-data_worker` for a `SIPPolusi` folder).
 
 ```powershell
-docker run --rm -v "${PWD}:/repo" -w /repo sipci-data_worker:latest sh -c "pip install -q networkx; python -m src.backend.route_model.morl.fields --out src/backend/route_model/runs/fields"
+docker compose build data_worker
+docker run --rm -v "${PWD}:/repo" -w /repo sippolusi-data_worker:latest sh -c "pip install -q networkx; python -m src.backend.route_model.morl.fields --out src/backend/route_model/runs/fields"
 ```
 
 The result should have 17 train, 7 val and 7 test windows, and the `values_sha256` of each window
@@ -211,3 +215,9 @@ to report on the finished run.
 - **Exact search remains the benchmark.** The features already run two Dijkstra searches per request, and the
   weighted A* of TI-AI-06 never dead-ends. TI-AI-10 should compare with it as well.
 - **Fields are IDW only**, trips are 0.5–3 km, and only bike mode is trained.
+
+## See also
+
+- [`docs/experiments/TI-AI-09/README.md`](../README.md): PIC B multi-policy set
+- [`docs/experiments/TI-AI-10/README.md`](../../TI-AI-10/README.md): TI-AI-10 evaluation (PIC B only)
+- [`docs/experiments/TI-AI-11/README.md`](../../TI-AI-11/README.md): packaging (no packager for PIC A yet)

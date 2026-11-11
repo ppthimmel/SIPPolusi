@@ -32,3 +32,8 @@ The user subsequently requested pulling dev first. The implementation was stashe
 Independent review found and regression tests reproduced three issues: NO2 ST-GNN export target, per-fold resume for untouched folds, and stale prediction summaries. All were fixed. Six real Jupyter smoke runs completed, followed by six saved-checkpoint workflow runs after the dev update. ST-GNN used one epoch; LOSO used fold 0. Full LOSO and full convergence are outside this smoke verification.
 
 Final Data Worker suite on updated dev base: 296 passed, 86 skipped, 33 warnings. Three earlier environment failures were resolved by installing declared runtime dependencies locally and exposing the dependency path to child processes. No unrelated worker fixes were made. Final diff whitespace and notebook schema/HTML checks passed.
+
+## See also
+
+- [`docs/superpowers/specs/2026-11-02-manual-training-notebooks-design.md`](../specs/2026-11-02-manual-training-notebooks-design.md): design
+- [`notebooks/spatial_model/README.md`](../../../notebooks/spatial_model/README.md): result: notebook guide

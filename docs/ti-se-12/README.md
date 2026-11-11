@@ -9,9 +9,9 @@ Frontend → POST /v1/geocode/search, /reverse → API Gateway (rate limit) → 
 
 | Bagian | Berkas |
 |---|---|
-| Endpoint dan klien penyedia | [`public_api/geocoding.py`](../src/backend/public_api/geocoding.py), [`router.py`](../src/backend/public_api/router.py) |
-| Batas laju dan path | [`src/gateway/templates/default.conf.template`](../src/gateway/templates/default.conf.template) |
-| Kolom pencarian | [`place-search.ts`](../src/frontend/src/place-search.ts), [`place-combobox.ts`](../src/frontend/src/place-combobox.ts) |
+| Endpoint dan klien penyedia | [`public_api/geocoding.py`](../../src/backend/public_api/geocoding.py), [`router.py`](../../src/backend/public_api/router.py) |
+| Batas laju dan path | [`src/gateway/templates/default.conf.template`](../../src/gateway/templates/default.conf.template) |
+| Kolom pencarian | [`place-search.ts`](../../src/frontend/src/place-search.ts), [`place-combobox.ts`](../../src/frontend/src/place-combobox.ts) |
 
 ## Penyedia: API Photon
 
@@ -130,14 +130,14 @@ terhadap stack Docker dengan server Photon publik (`E2E_GEOCODING_URL=https://ph
 
 | Keadaan | Hasil | Diuji |
 |---|---|---|
-| Ketik nama, pilih saran dengan klik atau Enter | Titik terisi dan peta menuju ke sana; tombol Cari rute aktif tanpa mengetik koordinat | Browser, [01](ti-se-12/01-saran-tempat.jpg) |
-| Klik peta | Koordinat tampil dulu, lalu diganti nama tempat | Browser, E2E, [02](ti-se-12/02-nama-dan-klik-peta.jpg) |
-| Pemberitahuan pengiriman data | Selalu tampil di formulir, sebelum ada ketikan atau klik; menyebut teks, klik peta, dan lokasi | Unit, Browser, [02](ti-se-12/02-nama-dan-klik-peta.jpg) |
-| Tempat umum dengan Photon sungguhan | Tujuan utama di atas halte; lihat "Urutan saran" | Unit, Browser, [01](ti-se-12/01-saran-tempat.jpg) |
-| Hasil rute | Kepala hasil memakai nama: "Monumen Nasional → Monas Timur" | Browser, [03](ti-se-12/03-hasil-rute-dengan-nama.jpg) |
-| Tempat hanya ada di luar wilayah | Pesan "berada di luar wilayah studi" | Unit, Browser, E2E, [04](ti-se-12/04-di-luar-wilayah.jpg) |
-| Tidak ditemukan | Pesan dengan saran peta dan koordinat | Unit, Browser, E2E, [05](ti-se-12/05-tidak-ditemukan.jpg) |
-| Penyedia mati, timeout, atau jawaban rusak | 503; pesan "sedang tidak tersedia"; form tetap utuh; rute tetap dilayani | Unit, Browser, E2E, [06](ti-se-12/06-layanan-tidak-tersedia.jpg) |
+| Ketik nama, pilih saran dengan klik atau Enter | Titik terisi dan peta menuju ke sana; tombol Cari rute aktif tanpa mengetik koordinat | Browser, [01](01-saran-tempat.jpg) |
+| Klik peta | Koordinat tampil dulu, lalu diganti nama tempat | Browser, E2E, [02](02-nama-dan-klik-peta.jpg) |
+| Pemberitahuan pengiriman data | Selalu tampil di formulir, sebelum ada ketikan atau klik; menyebut teks, klik peta, dan lokasi | Unit, Browser, [02](02-nama-dan-klik-peta.jpg) |
+| Tempat umum dengan Photon sungguhan | Tujuan utama di atas halte; lihat "Urutan saran" | Unit, Browser, [01](01-saran-tempat.jpg) |
+| Hasil rute | Kepala hasil memakai nama: "Monumen Nasional → Monas Timur" | Browser, [03](03-hasil-rute-dengan-nama.jpg) |
+| Tempat hanya ada di luar wilayah | Pesan "berada di luar wilayah studi" | Unit, Browser, E2E, [04](04-di-luar-wilayah.jpg) |
+| Tidak ditemukan | Pesan dengan saran peta dan koordinat | Unit, Browser, E2E, [05](05-tidak-ditemukan.jpg) |
+| Penyedia mati, timeout, atau jawaban rusak | 503; pesan "sedang tidak tersedia"; form tetap utuh; rute tetap dilayani | Unit, Browser, E2E, [06](06-layanan-tidak-tersedia.jpg) |
 | `API_GEOCODING_URL` kosong | 503 `not_configured`; tidak ada panggilan keluar | Unit |
 | 429 dari gateway | Pesan "terlalu banyak pencarian" | Unit, Browser |
 | 502 berbadan HTML, 200 tidak sesuai kontrak | Pesan "sedang tidak tersedia"; isi server tidak ditampilkan | Unit, Browser |
@@ -147,12 +147,12 @@ terhadap stack Docker dengan server Photon publik (`E2E_GEOCODING_URL=https://ph
 | Ketik `lat, lon` saat layanan mati | Titik terisi tanpa memanggil pencarian | Browser |
 | Teks tanpa memilih saran, lalu pindah kolom | Daftar tertutup; pesan di kolom; tombol nonaktif | Browser |
 | Keyboard | Panah memilih, Enter mengambil, Escape menutup; `aria-activedescendant` mengikuti | Browser |
-| Tampilan ponsel (375 × 812) | Kolom yang diketik dan daftar saran terlihat bersamaan; tidak melebar keluar layar; target sentuh ≥ 44 px | Browser, [07](ti-se-12/07-ponsel.jpg) |
+| Tampilan ponsel (375 × 812) | Kolom yang diketik dan daftar saran terlihat bersamaan; tidak melebar keluar layar; target sentuh ≥ 44 px | Browser, [07](07-ponsel.jpg) |
 | Isi log | Tanpa teks pencarian dan koordinat, termasuk saat penyedia gagal | Unit, E2E |
 | Metode, ukuran body, dan batas laju di gateway | 405, 413, 429 dengan `Retry-After`; batas bersama seluruh pengguna | `src/gateway/tests/run.sh` |
 
 Respons nyata melalui kode backend ke Photon publik disimpan di
-[`fixtures/ti-se-12`](../src/frontend/src/fixtures/ti-se-12/README.md) dan dibaca `src/contract.test.ts`.
+[`fixtures/ti-se-12`](../../src/frontend/src/fixtures/ti-se-12/README.md) dan dibaca `src/contract.test.ts`.
 
 ## Yang belum dibuktikan
 
@@ -161,3 +161,10 @@ Respons nyata melalui kode backend ke Photon publik disimpan di
 - **Photon sendiri** belum dicoba.
 - **Pembaca layar sungguhan** belum dicoba; yang dipenuhi adalah pola ARIA combobox dan `role="status"`.
 - **Ponsel sungguhan dengan papan ketik terbuka** belum dicoba; tampilan ponsel diuji dengan emulasi tanpa papan ketik.
+
+## Lihat juga
+
+- [`src/backend/public_api/README.md`](../../src/backend/public_api/README.md): kontrak endpoint geocode
+- [`src/gateway/README.md`](../../src/gateway/README.md): batas laju gateway
+- [`docs/devops/verification-TI-DO-05-gateway.md`](../devops/verification-TI-DO-05-gateway.md): bukti gateway
+- [`docs/ti-se-09/README.md`](../ti-se-09/README.md): verifikasi frontend

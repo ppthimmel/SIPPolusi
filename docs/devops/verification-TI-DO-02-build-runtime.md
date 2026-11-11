@@ -93,6 +93,10 @@ permintaan ke portal SPKU; siklus per jam di Railway tetap berjalan.
 
 ## 5. Railway staging
 
+> **Catatan 2026-11-09.** Bagian ini mencatat konfigurasi saat uji (9 Oktober 2026). `BACKEND_UPSTREAM`
+> sudah diganti `CACHE_API_UPSTREAM` (TI-DO-05), dan Backend tidak lagi punya domain publik (TI-DO-04).
+> Jangan salin variabel atau domain di bawah; pakai [`build-runtime.md`](build-runtime.md).
+
 Proyek `humble-endurance`, environment `staging` dibuat 9 Oktober 2026
 dengan menduplikasi `development`, lalu hanya menyisakan `database` (PostGIS
 18, volume baru yang kosong), `backend`, `data_worker`, dan service baru
@@ -162,8 +166,11 @@ selesai, service `data_worker` dihapus dari staging agar tidak berulang tiap
 jam; `development` tidak berubah (cron `15 * * * *`). Blok `environments`
 tidak dipertahankan di repositori.
 
-Ulangi kapan saja:
+Untuk menjalankan smoke test pada konfigurasi terkini, ikuti bagian
+[Smoke test di `build-runtime.md`](build-runtime.md#smoke-test). Perintah dan domain di atas hanya catatan uji
+9 Oktober 2026.
 
-```bash
-python scripts/smoke_test.py --gateway https://gateway-staging-9379.up.railway.app --backend https://backend-staging-fe40.up.railway.app
-```
+## Lihat juga
+
+- [`src/gateway/README.md`](../../src/gateway/README.md): konfigurasi gateway terkini (`BACKEND_UPSTREAM` tidak lagi dipakai)
+- [`docs/devops/private-networking.md`](private-networking.md): Backend tidak lagi punya domain publik

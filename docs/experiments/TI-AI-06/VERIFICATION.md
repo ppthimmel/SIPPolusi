@@ -1,8 +1,8 @@
 # TI-AI-06: verifikasi fungsi waktu dan paparan
 
 Rumus, satuan, penanganan data hilang, dan contoh perhitungan manual terdapat
-di [route-time-exposure.md](route-time-exposure.md). Perbandingan algoritma
-terdapat di [notebook](../notebooks/weighted_astar_verification.ipynb).
+di [README.md](README.md). Perbandingan algoritma
+terdapat di [notebook](../../../notebooks/weighted_astar_verification.ipynb).
 
 ## Pengujian 2 November 2026
 
@@ -54,3 +54,8 @@ ini juga menerapkan aturan tersebut; kesesuaian ilmiah dan konsistensi saat
 evaluasi tetap perlu ditinjau. Untuk perbandingan adil, MORL dan pembanding
 deterministik harus berbagi graf, bobot, dan rute/nilai acuan yang sama,
 terutama jika beberapa rute tercepat dengan paparan berbeda memiliki waktu seri.
+
+## Lihat juga
+
+- [`src/backend/solver/VERIFICATION_TI-SE-06.md`](../../../src/backend/solver/VERIFICATION_TI-SE-06.md): verifikasi orkestrasi solver
+- [`docs/experiments/TI-AI-08/README.md`](../TI-AI-08/README.md): lingkungan MORL yang memakai fungsi biaya ini

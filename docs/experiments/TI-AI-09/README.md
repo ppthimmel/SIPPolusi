@@ -11,7 +11,7 @@ trained with PPO on environment `route-env-1`, graph `jakarta-20261005`, bike mo
 fields it gives no benefit over the fastest route.** Its routes are 0.5-0.8% slower and
 0.4-0.6% more exposed. Those fields hold almost no trade-off to exploit: the exact optimum
 saves only 0.2% exposure. On synthetically perturbed fields the policies do respond to the
-preference. No test data was used; the comparison with A* on test belongs to TI-AI-10.
+preference. No test data was used; the comparison with A* on test belongs to [TI-AI-10](../TI-AI-10/README.md).
 
 ## Acceptance criteria
 
@@ -29,7 +29,7 @@ used in training. Ratios are relative to the fastest route; below 1 is better th
 "Optimal" is exact Dijkstra on the same objective.
 
 These numbers are slightly optimistic: they come from the same 150 pairs that chose each
-checkpoint. Unbiased numbers will come from TI-AI-10's test split.
+checkpoint. Unbiased numbers will come from [TI-AI-10](../TI-AI-10/README.md)'s test split.
 
 | α | Update selected | Warm-start success | Selected success | Mean return | Optimality gap |
 |---|---|---:|---:|---:|---:|
@@ -100,6 +100,8 @@ were trained again.
 - **Short trips, one mode.** Trips are 0.5-3 km by bike. Walk mode has not been trained.
 - **Training location.** The design places training on the Tambora GPU server; this ran locally
   on CPU. No Model Registry is involved: registration belongs to TI-AI-11.
+  Note 2026-11-09: this set was later packaged and registered as `morl-route-policy` version 1
+  ([TI-AI-11 Railway evidence](../TI-AI-11/railway_registry_evidence.md)).
 - **Reproducibility.** Equal seeds give equal training in a unit test on a small graph. This
   set has not been trained twice.
 
@@ -117,3 +119,9 @@ python -m src.backend.route_model.morl.verify_set --set docs/experiments/TI-AI-0
 
 Field files are not committed; [`fields_manifest.json`](fields_manifest.json) holds their hashes.
 Training machine paths in the copied manifests were made relative to the repo root.
+
+## See also
+
+- [`docs/experiments/TI-AI-10/README.md`](../TI-AI-10/README.md): next step: test-split evaluation
+- [`docs/experiments/TI-AI-11/README.md`](../TI-AI-11/README.md): next step: packaging; registered as `morl-route-policy`
+- [`src/backend/solver/README.md`](../../../src/backend/solver/README.md#penyedia-morl-ti-se-07b): serving: the `morl` provider (TI-SE-07b)

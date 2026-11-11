@@ -25,7 +25,7 @@ else:  # Preserve direct invocation of astar_osm.py as a CLI.
 
 DEFAULT_GRAPH = Path(__file__).resolve().parents[2] / "data_worker/dataset_processed/OSM"
 # Standalone defaults must match osm/config.py's ModeProfile defaults; check
-# docs/route-time-exposure.md and route_model/README.md when changing them.
+# docs/experiments/TI-AI-06/README.md and route_model/README.md when changing them.
 # The backend planner can override its speeds through OSM_*_SPEED_MPS.
 SPEED_MPS = {"walk": 1.3, "bike": 4.2}
 EARTH_RADIUS_M = 6_371_008.8

@@ -22,7 +22,7 @@ Kode keluar ``health``: 0 data segar, 1 data tertinggal atau basis data tidak te
 ``status`` menilai jadwal (apakah siklus berjalan dan berhasil); ``health``
 menilai hasilnya (apakah ground truth dan cache polusi masih segar). Siklus
 dapat berstatus ``ok`` sementara datanya tetap basi, dan sebaliknya; yang
-dipantau di Railway ada di docs/devops/observability-TI-DO-08.md.
+dipantau di Railway ada di docs/devops/observability.md.
 
 Setiap siklus dicatat pada tabel ``worker.cycle_run`` (lihat ``worker_runs.py``);
 data sumber sekunder dan manifest FeatureMatrix pada skema ``features``

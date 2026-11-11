@@ -31,7 +31,7 @@ class ApiSettings(BaseSettings):
     # Empty: no CORS headers, so browsers on other origins are refused.
     cors_origins: str = ""
 
-    # Base URL of a Photon server for POST /v1/geocode/* (TI-SE-12, docs/ti-se-12-geocoding.md).
+    # Base URL of a Photon server for POST /v1/geocode/* (TI-SE-12, docs/ti-se-12/README.md).
     # Empty: no search text or coordinate leaves this service; the endpoints answer 503.
     geocoding_url: str = ""
     # Below the Frontend's GEOCODE_TIMEOUT_MS, so the page gets this service's own answer.

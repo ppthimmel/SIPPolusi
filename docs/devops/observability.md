@@ -38,8 +38,9 @@ menimpa kunci di atas.
 | Event | Layanan | Level | Field |
 |---|---|---|---|
 | `http_request` | backend, cache-api | `info`; `error` bila status ≥ 500; `debug` untuk `/health*` dan `/metrics` | `method`, `route` (template, mis. `/v1/osm/nodes/{node_id}`), `status`, `duration_ms` |
-| `route_inference` | backend (`POST /v1/routes`) | `info` bila `ok`, `warn` bila `fallback`/`failed` | `outcome` (`ok`/`fallback`/`failed`), `status`, `route_source`, `fallback_reason`, `http_status`, `duration_ms` |
-| `route_inference` (baris teks) | cache-api (`/v1/routes/solve`, logger `solver`) | `info`/`warn` | sudah ada sejak TI-SE-07: `request_id`, `solver`, `outcome`, `fallback_reason`, `inference_ms`, ... |
+| `route_inference` | backend (`POST /v1/routes` milik Backend sendiri, bukan jalur publik) | `info` bila `ok`, `warn` bila `fallback`/`failed` | `outcome` (`ok`/`fallback`/`failed`), `status`, `route_source`, `fallback_reason`, `http_status`, `duration_ms` |
+| `route_inference` (baris teks) | cache-api (`POST /v1/routes` publik dan `/v1/routes/solve`, logger `solver`, `src/backend/solver/orchestrator.py`) | `info` bila `ok`, `warn` selain itu | sudah ada sejak TI-SE-07: `request_id`, `solver`, `outcome`, `route_source`, `model_version`, `fallback_reason`, `inference_ms`, ... |
+| `route_model_load` (baris teks) | cache-api (penyedia `morl`, logger `solver`, `src/backend/solver/morl.py`) | `info` bila `ok`, `warn` bila `failed` | `outcome=ok`: `model`, `package_sha256`, `package_version`, `policy_family`, `graph_version`, `mode`, `load_ms`; `outcome=failed`: `model`, `error`, `action` (`retry` atau `stop`) |
 | `job_started` | data_worker | `info` | `job`, `time_window`, `trigger` |
 | `job_step` | data_worker | `error` bila `failed`; `warn` bila `degraded`/`unavailable` atau ada `fallback_reason`; selain itu `info` | `time_window`, `step`, `status`, `duration_s`, `step_run_id` (run SPKU/inferensi milik langkah), `fallback_reason`, `error`, `note` (bila status bukan ok) |
 | `downscale_fallback` | data_worker | `warn` | `time_window`, `pollutants` (yang jatuh ke IDW), `reason` (JSON per polutan) |
@@ -107,8 +108,9 @@ pasang `status`.
 
 `GET /metrics` pada Backend API dan Cache API **tanpa autentikasi**. Itu
 disengaja: kedua service hanya dijangkau lewat jaringan privat Railway, dan
-gateway hanya meneruskan `POST /v1/routes`, `GET /v1/exposure-surface`, dan
-`/healthz` ke luar, sehingga `/metrics` tidak terbuka ke publik. Bila service
+gateway hanya membuka `POST /v1/routes`, `GET /v1/exposure-surface`,
+`POST /v1/geocode/search`, `POST /v1/geocode/reverse` (keempatnya ke Cache API),
+dan `/healthz` miliknya sendiri, sehingga `/metrics` tidak terbuka ke publik. Bila service
 diberi domain publik, `/metrics` harus ditutup (gateway atau token) lebih
 dulu. Penghitung disimpan di memori proses: nilainya kembali ke 0 setiap
 restart/deploy, dan bila service dijalankan dengan beberapa replika/worker
@@ -123,8 +125,9 @@ target dengan `sum` dan `rate`).
 | `level:error` dengan `event:http_request` | Backend, Cache API | respons 5xx |
 | `sippolusi_http_requests_total{status=~"5.."}` naik | `/metrics` | laju error |
 | `sippolusi_http_request_duration_seconds_sum / _count` naik | `/metrics` | latency rata-rata per route |
-| `event:route_inference outcome:fallback`, `sippolusi_route_fallback_total{reason}` | Backend | rute dilayani baseline, bukan policy; respons tetap 200 tetapi tercatat `warn` |
-| `sippolusi_route_inference_failures_total{reason}` | Backend | inferensi policy melempar exception |
+| baris `route_inference outcome=fallback` (logger `solver`) | Cache API | rute publik dilayani fallback A*, bukan policy; respons tetap 200 tetapi tercatat `warn` |
+| baris `route_model_load outcome=failed` | Cache API (`morl`) | *policy* MORL tidak termuat; `action=retry` dicoba lagi, `action=stop` menunggu perubahan registry dan redeploy; sampai itu semua rute memakai fallback |
+| `event:route_inference outcome:fallback`, `sippolusi_route_fallback_total{reason}`, `sippolusi_route_inference_failures_total{reason}` | Backend | hanya untuk `POST /v1/routes` milik Backend, yang tidak dibuka gateway; Cache API tidak menghasilkan metrik ini |
 | `event:job_finished status:failed` / `skipped` / `degraded` | Data Worker | ada langkah gagal atau siklus terhenti (`interrupted`) / siklus lain masih memegang kunci / ada langkah `degraded` atau `unavailable` |
 | `event:downscale_fallback`, `fallback_steps` pada `job_finished` | Data Worker | model polutan tidak tersedia; EdgeWeight polutan itu dihitung IDW |
 | `main.py status` exit 1 / 3 | Data Worker | eksekusi terakhir gagal / tidak ada eksekusi untuk window yang jatuh tempo |
@@ -141,17 +144,24 @@ terlewat atau gagal. Cara memasangnya sebagai cron Railway ada di subbab 3.
 Dihasilkan dari kode cabang ini (`LOG_FORMAT=json`), dipotong seperlunya.
 
 Backend, satu rute yang dilayani fallback; kedua baris membawa `X-Request-ID`
-dari gateway:
+dari gateway (contoh 2026-10-27; jalur publik `POST /v1/routes` kini dilayani
+Cache API, yang mencatat baris teks `route_inference` dari logger `solver`):
 
 ```json
 {"time": "2026-10-27T01:16:40.191+00:00", "level": "warn", "logger": "main", "message": "route_inference outcome=fallback status=ok route_source=fallback fallback_reason=policy_unavailable http_status=200 duration_ms=11.3", "service": "backend", "correlation_id": "3f1c2a9e-0b1d-4c55-9a9e-1d2c3b4a5f60", "event": "route_inference", "outcome": "fallback", "status": "ok", "route_source": "fallback", "fallback_reason": "policy_unavailable", "http_status": 200, "duration_ms": 11.3}
 {"time": "2026-10-27T01:16:40.192+00:00", "level": "info", "logger": "request", "message": "http_request method=POST route=/v1/routes status=200 duration_ms=15.4", "service": "backend", "correlation_id": "3f1c2a9e-0b1d-4c55-9a9e-1d2c3b4a5f60", "event": "http_request", "method": "POST", "route": "/v1/routes", "status": 200, "duration_ms": 15.4}
 ```
 
-Data Worker, satu siklus: langkah ground truth `degraded`, NO2 jatuh ke IDW, dan DSN yang
-ikut tercetak oleh galat koneksi tersamarkan. `correlation_id` adalah `run_id` pada `worker.cycle_run`:
+Data Worker, satu siklus terjadwal: langkah ground truth `degraded`, NO2 jatuh ke IDW, dan siklus
+berakhir `degraded`. Dibentuk dengan `RedactingFormatter` dan `log_event` dari
+`src/data_worker/log_config.py`; nilainya ilustratif. `correlation_id` adalah `run_id` pada
+`worker.cycle_run`, `step_run_id` adalah `run_id` lintasan SPKU. Redaksi DSN dijelaskan di subbab 1:
 
 ```json
+{"time": "2026-10-27T09:15:00.000+00:00", "level": "info", "logger": "data_worker", "message": "job_started job=acquisition_cycle time_window=2026-10-27T08:00Z/09:00Z trigger=schedule", "service": "data_worker", "correlation_id": "20261027T091500Z-3fa9c1", "event": "job_started", "job": "acquisition_cycle", "time_window": "2026-10-27T08:00Z/09:00Z", "trigger": "schedule"}
+{"time": "2026-10-27T09:18:04.900+00:00", "level": "warn", "logger": "data_worker.acquisition", "message": "job_step time_window=2026-10-27T08:00Z/09:00Z step=fetch_ground_truth status=degraded duration_s=184.27 step_run_id=20261027T091502Z-8c2d1e note=lintasan SPKU partial", "service": "data_worker", "correlation_id": "20261027T091500Z-3fa9c1", "event": "job_step", "time_window": "2026-10-27T08:00Z/09:00Z", "step": "fetch_ground_truth", "status": "degraded", "duration_s": 184.27, "step_run_id": "20261027T091502Z-8c2d1e", "note": "lintasan SPKU partial"}
+{"time": "2026-10-27T09:21:38.200+00:00", "level": "warn", "logger": "spatial_model.inference", "message": "downscale_fallback time_window=2026-10-27T08:00Z/09:00Z pollutants=no2 reason={\"no2\": \"load_bundle:MlflowException\"}", "service": "data_worker", "correlation_id": "20261027T091500Z-3fa9c1", "event": "downscale_fallback", "time_window": "2026-10-27T08:00Z/09:00Z", "pollutants": "no2", "reason": "{\"no2\": \"load_bundle:MlflowException\"}"}
+{"time": "2026-10-27T09:21:52.900+00:00", "level": "warn", "logger": "data_worker", "message": "job_finished job=acquisition_cycle time_window=2026-10-27T08:00Z/09:00Z trigger=schedule status=degraded duration_s=412.6 degraded_steps=fetch_ground_truth fallback_steps=trigger_downscale_inference", "service": "data_worker", "correlation_id": "20261027T091500Z-3fa9c1", "event": "job_finished", "job": "acquisition_cycle", "time_window": "2026-10-27T08:00Z/09:00Z", "trigger": "schedule", "status": "degraded", "duration_s": 412.6, "degraded_steps": "fetch_ground_truth", "fallback_steps": "trigger_downscale_inference"}
 ```
 
 ## 6. Uji kondisi tidak sehat
@@ -198,3 +208,11 @@ python -m pytest src/backend/tests                      # dari root repo
 cd src/backend/osm && python -m pytest                  # juga pollution, planner, solver
 cd src/data_worker && python -m pytest tests/test_observability.py tests/test_preflight.py tests/test_data_worker.py
 ```
+
+## Lihat juga
+
+- [`docs/devops/build-runtime.md`](build-runtime.md): logging per layanan
+- [`docs/devops/data-worker-schedule.md`](data-worker-schedule.md): jadwal dan status siklus Data Worker
+- [`src/observability/README.md`](../../src/observability/README.md): konfigurasi Prometheus, Pushgateway, dan Grafana
+- [`src/gateway/README.md`](../../src/gateway/README.md#logs): log gateway
+- [`src/backend/solver/README.md`](../../src/backend/solver/README.md#penyedia-morl-ti-se-07b): event `route_model_load` dari penyedia `morl`

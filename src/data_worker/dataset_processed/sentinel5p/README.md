@@ -1,12 +1,12 @@
 # Spesifikasi fitur Sentinel-5P
 
-Sentinel-5P menyediakan sinyal NO2 berskala makro (`Xmacro`) untuk membantu Spatial Downscaling Model. Target konsentrasi polutan tetap berasal dari sensor darat. Kolom satelit ini belum ditetapkan sebagai background term konsentrasi permukaan atau masukan langsung model rute.
+Sentinel-5P menyediakan sinyal NO2 berskala makro (`Xmacro`) untuk membantu Spatial Downscaling Model. Target konsentrasi polutan tetap berasal dari sensor darat. `no2_mol_m2` adalah masukan aktif model (`feature_matrix/feature_spec.json`), bukan background term konsentrasi permukaan dan bukan masukan langsung model rute.
 
 ## Fitur yang dipakai
 
 | Kolom | Arti / satuan | Asal dan transformasi | Keputusan |
 |---|---|---|---|
-| `no2_mol_m2` | Jumlah NO2 sepanjang kolom troposfer / mol/m² | `PRODUCT/nitrogendioxide_tropospheric_column`; seleksi QA → median harian per sel → median bulanan | Kandidat fitur; manfaatnya perlu diuji |
+| `no2_mol_m2` | Jumlah NO2 sepanjang kolom troposfer / mol/m² | `PRODUCT/nitrogendioxide_tropospheric_column`; seleksi QA → median harian per sel → median bulanan | Masukan model (temporal), bersama `no2_mol_m2_age_hours` |
 | `no2_precision_mol_m2` | Estimasi presisi retrieval / mol/m² | Presisi piksel sumber diringkas dengan median harian dan bulanan | Informasi kualitas; bukan galat model atau ketidakpastian komposit yang dihitung ulang |
 
 **Sumber:** Sentinel-5P TROPOMI NO2 NRTI Level-2, diakses melalui Planetary Computer. Data tersedia dengan kebijakan akses bebas dan terbuka sesuai [ketentuan Copernicus Sentinel](https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice). Pengamatan memiliki footprint orde beberapa kilometer, dengan lintasan sekitar harian; cakupan berkualitas tidak dijamin setiap hari. Hasil saat ini berupa grid **5 km, EPSG:32748**, diperbarui **bulanan**. Nilainya adalah kolom atmosfer, bukan konsentrasi dekat permukaan dalam µg/m³.
@@ -17,7 +17,7 @@ Nilai kosong ditangani dari metadata sumber. QA dibuka skalanya (`nilai tersimpa
 
 Ada dua bentuk Parquet:
 
-- **Per pengamatan:** `observations.parquet`, satu granule × satu sel; `observed_start_at`–`observed_at` adalah rentang pengamatan dan `produced_at` proksi waktu tersedia. Gunakan untuk penyelarasan waktu.
+- **Per pengamatan:** `observations.parquet`, satu granule × satu sel; `observed_start_at`–`observed_at` adalah rentang pengamatan dan `produced_at` proksi waktu tersedia. Gunakan untuk penyelarasan waktu. `scene_times.parquet` meringkas waktu, jumlah piksel, dan hash sumber per granule.
 - **Bulanan:** `monthly/YYYY-MM.parquet`, satu sel × satu bulan untuk ringkasan.
 
 Kolom pendamping tabel bulanan:
@@ -36,11 +36,11 @@ Nilai kosong dipertahankan sebagai `NaN` bersama mask `available`. Imputasi dan 
 
 ## Asal berkas dan batas penggunaan
 
-- Masukan: `datasets/2026/jakarta/sentinel5p/*.all.h5` dan metadata `.all.json`.
-- Kode: `code/preprocess_sentinel5p.py`.
-- Penyelarasan waktu: `datasets/processed/sentinel5p/observations.parquet`.
-- Ringkasan bulanan: `datasets/processed/sentinel5p/monthly/YYYY-MM.parquet`.
-- Audit piksel: `YYYY-MM.pixels.parquet`; jejak asal dan hash masukan tersedia di `manifest.json`, daftar granule di JSON bulanan.
+- Masukan: `datasets/2026/jakarta/sentinel5p/*.all.h5` dan metadata `.all.json` (di luar repo; hash tercatat di manifest).
+- Kode: skrip pengolahan batch tidak ada di repo. `src/data_worker/scripts/preprocess_single_sentinel5p.py` mengubah satu ekstrak `*.all.h5` menjadi Parquet inferensi yang kompatibel dengan data latih; konektor operasional ada di `src/data_worker/connectors/sentinel5p.py`.
+- Penyelarasan waktu: `src/data_worker/dataset_processed/sentinel5p/observations.parquet`.
+- Ringkasan bulanan: `src/data_worker/dataset_processed/sentinel5p/monthly/YYYY-MM.parquet`.
+- Audit piksel: `monthly/YYYY-MM.pixels.parquet`; jejak asal dan hash masukan tersedia di `manifest.json`, daftar granule di JSON bulanan.
 
 **Risiko utama:** seleksi kualitas menyebabkan cakupan tidak merata; grid menggunakan titik pusat, bukan luas irisan footprint. Grid 5 km adalah ringkasan dan tidak menambah ketelitian pengukuran. Sebelum digabung dengan Landsat 100 m, penyelarasan spasial diperlukan; ID sel kedua sumber tidak bisa langsung dicocokkan.
 
@@ -48,3 +48,7 @@ Nilai kosong dipertahankan sebagai `NaN` bersama mask `available`. Imputasi dan 
 
 Sentinel: `observations.parquet` menyimpan pengamatan dan produksi per granule/sel.
 
+## Lihat juga
+
+- [`src/data_worker/feature_matrix/README.md`](../../feature_matrix/README.md): fitur yang dipakai model
+- [`src/data_worker/feature_store/README.md`](../../feature_store/README.md): konektor dan tabel feature store

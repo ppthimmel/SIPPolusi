@@ -70,3 +70,12 @@ berbeda, dan cara menyiapkan stack baru sampai rute MORL keluar dari *gateway*.
 
 Untuk meniru *private networking* Railway, tambahkan `-f docker-compose.private.yml`
 ([private-networking.md](private-networking.md)). Alat pada langkah 3–5 tidak membutuhkan *port* host.
+
+## Lihat juga
+
+- [`scripts/railway/README.md`](../../scripts/railway/README.md): prosedur pendaftaran model di Railway
+- [`src/model_registry/README.md`](../../src/model_registry/README.md): registry model
+- [`docs/devops/build-runtime.md`](build-runtime.md): build, health check, dan logging per layanan
+- [`docs/software/technical-runbook.md`](../software/technical-runbook.md): runbook operasional
+- [`src/backend/osm/README.md`](../../src/backend/osm/README.md): Cache API
+- [`src/backend/solver/README.md`](../../src/backend/solver/README.md#penyedia-morl-ti-se-07b): penyedia `morl` yang memuat policy dari registry

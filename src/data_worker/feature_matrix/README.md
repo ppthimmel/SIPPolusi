@@ -37,7 +37,9 @@ Keluaran ±3,3 MB dan tidak di-commit. Durasi bergantung pada pemuatan sumber pe
 `SourceReader` memuat snapshot sumber secara lazy sekali per instance, lalu memilih
 baris sel dari indeks untuk setiap tile/batch. Cache menyimpan kolom yang diperlukan
 dengan ID kategorikal; keluaran fitur seluruh kota tidak disimpan. Worker membuat reader
-baru setiap run, sehingga pembaruan berkas dibaca pada run berikutnya. Buat instance
+baru setiap run, sehingga pembaruan berkas dibaca pada run berikutnya. Di Railway, inferensi Worker
+memakai `StoreSourceReader` (feature store PostgreSQL, aturan as-of yang sama); `SourceReader` hanya
+dipakai bila `SPATIAL_FEATURE_ROOT` diatur (`spatial_model/inference/runtime.py`, `feature_reader`). Buat instance
 baru jika sumber atau konfigurasi reader berubah; jangan berbagi instance mutable
 antar-thread. Biaya pemuatan awal dan RAM ditukar dengan penghapusan I/O berulang
 antar-tile. Perbandingan keluaran, waktu, dan penggunaan memori:
@@ -179,3 +181,15 @@ antar-tile. Perbandingan keluaran, waktu, dan penggunaan memori:
   yang diasumsikan.
 - **OSM hanya dipakai setelah prediksi** (`grid_predictions_to_roads`), dengan asumsi jalan tidak berubah sejak
   snapshot 5 Oktober.
+
+## Lihat juga
+
+- [`src/data_worker/dataset_processed/geos-cf/README.md`](../dataset_processed/geos-cf/README.md): spesifikasi fitur GEOS-CF
+- [`src/data_worker/dataset_processed/landsat/README.md`](../dataset_processed/landsat/README.md): spesifikasi fitur Landsat
+- [`src/data_worker/dataset_processed/open_meteo/README.md`](../dataset_processed/open_meteo/README.md): spesifikasi fitur Open-Meteo
+- [`src/data_worker/dataset_processed/sentinel5p/README.md`](../dataset_processed/sentinel5p/README.md): spesifikasi fitur Sentinel-5P
+- [`src/data_worker/dataset_processed/viirs/README.md`](../dataset_processed/viirs/README.md): spesifikasi fitur VIIRS
+- [`src/data_worker/feature_store/README.md`](../feature_store/README.md): feature store (`StoreSourceReader`, dipakai inferensi di Railway)
+- [`src/data_worker/docs/DATA.md`](../docs/DATA.md): data ground truth
+- [`docs/experiments/ds-v0.3.0/README.md`](../../../docs/experiments/ds-v0.3.0/README.md): snapshot ds-v0.3.0
+- [`src/data_worker/spatial_model/data/snapshot/README.md`](../spatial_model/data/snapshot/README.md): pembangun snapshot
