@@ -89,7 +89,9 @@ mendapat batas waktu, `X-Request-ID`, dan rate limit yang sama dengan klien lain
 ## Menjalankan secara lokal
 
 Prasyarat: Docker. Salin `.env.example` setiap layanan menjadi `.env`
-(perintahnya ada di [README](../../README.md)), lalu:
+(perintahnya ada di [README](../../README.md)), termasuk `src/backend/osm/.env.example` untuk Cache API.
+Kesetaraan dengan Railway *development* dan langkah *seed* (graf jalan, pendaftaran model):
+[local-railway-parity.md](local-railway-parity.md). Lalu:
 
 ```bash
 docker compose up --build -d

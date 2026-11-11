@@ -223,3 +223,6 @@ docs/experiments/ds-v0.1.0.zip
 
 # MORL exposure fields and training runs (TI-AI-09); selected evidence goes to docs/experiments/TI-AI-09
 /src/backend/route_model/runs/
+
+# Local model packages for the local registry (docs/devops/local-railway-parity.md)
+.local-models/

@@ -29,7 +29,21 @@ object storage. Variabel service `model_registry` (nilai rahasia dari bucket Rai
 
 Nama bucket S3 berbeda dari nama bucket di dashboard Railway; ambil dari `railway bucket credentials`.
 Bila `MLFLOW_ARTIFACTS_DESTINATION` tidak diatur, tujuan mengikuti `MLFLOW_ARTIFACT_ROOT` (pengaturan lama dengan `s3://`
-langsung, dipakai compose lokal).
+langsung; kini hanya dipakai `docker-compose.spatial-verification.yml`).
+
+## Lokal (docker compose)
+
+`docker-compose.yml` menjalankan registry dengan mode *proxy* yang sama, terhadap kontainer `minio` (URL *path-style*,
+*bucket* `mlflow`, region `us-east-1`): lihat [`.env.example`](.env.example). Layanan lain hanya diberi
+`MLFLOW_TRACKING_URI=http://model_registry:5000`. Untuk mendaftarkan model rute dan bundel spasial ke registry lokal:
+
+```bash
+docker compose --profile tools run --rm register_models
+docker compose restart cache_api   # Cache API memuat policy saat mulai
+```
+
+Langkah lengkapnya, termasuk *seed* graf jalan, ada di
+[docs/devops/local-railway-parity.md](../../docs/devops/local-railway-parity.md).
 
 Setiap model diunggah sebagai paket dengan `package.json` (format dan kompatibilitas:
 [TI-AI-11](../../docs/experiments/TI-AI-11/README.md)). Perintah:

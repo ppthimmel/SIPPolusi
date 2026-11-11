@@ -200,6 +200,15 @@ class RoutePackageTest(unittest.TestCase):
     def build(self):
         return package_policy_set(self.set_dir, self.out, data_contracts_version="1.0.0")
 
+    def test_same_set_with_fixed_created_at_gives_the_same_package(self):
+        make_set(self.set_dir)
+        stamp = "2026-11-02T16:31:34+00:00"
+        first = package_policy_set(self.set_dir, self.out, data_contracts_version="1.0.0", created_at=stamp)
+        second_dir = Path(self.tmp.name) / "again"
+        package_policy_set(self.set_dir, second_dir, data_contracts_version="1.0.0", created_at=stamp)
+        self.assertEqual(first["created_at"], stamp)
+        self.assertEqual((self.out / PACKAGE_FILE).read_bytes(), (second_dir / PACKAGE_FILE).read_bytes())
+
     def test_package_reloads_to_identical_weights(self):
         make_set(self.set_dir)
         self.build()
