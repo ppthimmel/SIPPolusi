@@ -40,8 +40,10 @@ langsung; kini hanya dipakai `docker-compose.spatial-verification.yml`).
 
 ```bash
 docker compose --profile tools run --rm register_models
-docker compose restart cache_api   # Cache API memuat policy saat mulai
 ```
+
+Cache API yang sudah berjalan memuat *policy* sendiri pada pemeriksaan berikutnya (paling lambat 60 detik di stack
+lokal), tanpa *restart*.
 
 Langkah lengkapnya, termasuk *seed* graf jalan, ada di
 [docs/devops/local-railway-parity.md](../../docs/devops/local-railway-parity.md).

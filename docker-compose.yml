@@ -96,6 +96,9 @@ services:
     env_file: ./src/backend/osm/.env
     environment:
       PORT: "8000"
+      # A fresh stack starts before register_models: the Cache API waits for the model and checks the
+      # registry this often (Railway keeps the 900 s default; the local registry does not sleep).
+      ROUTE_SOLVER_MODEL_RECHECK_S: "60"
     ports:
       - "8001:8000"
 
