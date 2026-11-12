@@ -265,6 +265,20 @@ def test_run_dapat_diulang_dari_manifest_yang_sama(tmp_path):
     assert {"pm25", "no2"} <= set(metrics["overall"])
 
 
+def test_laporan_tetap_ditulis_tanpa_commit_git(tmp_path, monkeypatch):
+    """Tanpa repositori git yang terbaca (mis. kontainer uji pada git worktree), commit tercatat None."""
+    from spatial_model.evaluation.idw import run as idw_run
+
+    monkeypatch.setattr(idw_run, "code_version",
+                        lambda: {"git_commit": None, "git_branch": None, "git_dirty": None})
+    stations, obs = _raw()
+    build_dataset(_config(), stations, obs, {"type": "synthetic"}, tmp_path / "dataset")
+    run_dir = run_baseline(CONFIG, tmp_path / "dataset" / MANIFEST_FILE, tmp_path / "runs")
+    assert json.loads((run_dir / "run_manifest.json").read_text())["code"]["git_commit"] is None
+    report = (run_dir / "report.md").read_text(encoding="utf-8")
+    assert "commit `tidak diketahui`" in report and "working tree tidak bersih" not in report
+
+
 # Portabilitas: Windows memakai cp1252 sebagai encoding bawaan ------------------------
 NON_UTF8_ENV = {"PYTHONUTF8": "0", "PYTHONIOENCODING": "", "LC_ALL": "en_US.ISO8859-1", "LANG": "en_US.ISO8859-1"}
 NON_UTF8_SCRIPT = """

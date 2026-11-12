@@ -162,7 +162,9 @@ def write_report(path: pathlib.Path, ctx: dict) -> None:
         f"{_split_range(rm)}",
         f"- Skema: {rm['evaluation']['cv_scheme']}; model IDW power = {rm['model']['power']:g}, "
         f"neighbors = {rm['model']['neighbors']}, jarak pada {rm['model']['crs']}",
-        f"- Seed: {rm['seed']}; commit `{rm['code'].get('git_commit', '?')[:10]}`"
+        # git_commit is None when git cannot read the checkout (run.code_version), e.g. a git
+        # worktree mounted into a container, whose .git file points to a host path.
+        f"- Seed: {rm['seed']}; commit `{(rm['code'].get('git_commit') or '')[:10] or 'tidak diketahui'}`"
         + (" (working tree tidak bersih)" if rm['code'].get('git_dirty') else ""),
         "",
         "## Metrik utama (split uji, IDW konfigurasi Tabel 3.8)",
