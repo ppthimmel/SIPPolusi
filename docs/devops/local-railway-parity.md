@@ -67,7 +67,8 @@ berbeda, dan cara menyiapkan stack baru sampai rute MORL keluar dari *gateway*.
 7. **Isi *cache* polusi.** Tunggu siklus pertama Data Worker selesai (`serve --now` menjalankannya saat mulai), atau
    jalankan satu siklus: `docker compose run --rm data_worker python main.py cycle`. Siklus pertama baru menulis
    *cache* bila graf sudah `active` saat langkah `trigger_downscale_inference` dimulai (biasanya beberapa menit
-   setelah mulai, setelah pengambilan SPKU). Bila langkah itu mencatat `tidak ada graf road network berstatus
+   setelah mulai, setelah pengambilan SPKU). Bila log Data Worker berisi `job_step ...
+   step=trigger_downscale_inference status=unavailable` dengan catatan `tidak ada graf road network berstatus
    active`, jalankan satu siklus seperti di atas. Sebelum ada time window berstatus `complete`, `POST /v1/routes`
    menjawab 503 `cache_unavailable` (`cache_empty`).
 8. **Cek.** `curl http://localhost:8081/healthz`, lalu minta rute lewat Frontend (`http://localhost:8080`) atau
