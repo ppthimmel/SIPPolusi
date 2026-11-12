@@ -34,6 +34,10 @@ berbeda, dan cara menyiapkan stack baru sampai rute MORL keluar dari *gateway*.
   terpisah.
 - **Layanan `backend`.** Lokal tetap menjalankan kontainer `backend`. Di Railway layanan itu tidak punya *deployment*
   yang berjalan, dan *gateway* hanya meneruskan ke Cache API. Status ini akan dibahas dengan tim sebelum diubah.
+- **Jeda pemeriksaan model rute.** `docker-compose.yml` memberi Cache API `ROUTE_SOLVER_MODEL_RECHECK_S=60`, Railway
+  memakai bawaan 900 detik. Registry lokal tidak tidur, jadi model yang didaftarkan setelah stack menyala termuat dalam
+  semenit (langkah 6). Jeda yang sama dipakai saat paket ditolak graf aktif, jadi pemeriksaan itu juga lebih sering
+  di lokal.
 - **Data.** Basis data lokal mulai kosong. Graf jalan diisi `seed_graph`; data stasiun diambil siklus Data Worker
   pertama dari portal SPKU (butuh internet). Data sumber sekunder (satelit, cuaca) juga butuh internet, dan VIIRS
   butuh `EARTHDATA_TOKEN`.
