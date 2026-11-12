@@ -9,6 +9,10 @@ spku.Store), as in tests/e2e/fixture/load_fixture.py. The graph is written throu
 osm_cache.write_road_graph, the only supported import path, and keeps the edge ids of the Railway graph
 (jakarta-20261005, edge ids 1..373352): the registered route policy refers to those ids. A graph version
 that already exists is left alone, so running this twice is safe.
+
+On a fresh stack the Data Worker (`serve --now`) has usually created the osm and pollution tables from its
+ORM models before this runs. schema_sql() is idempotent and adds what those tables lack (the trigram
+index, older volumes' missing osm columns), so this is safe to run while the stack is up.
 """
 from __future__ import annotations
 
