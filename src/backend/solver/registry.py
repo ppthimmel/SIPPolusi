@@ -18,6 +18,16 @@ Timeouts and connection errors are retried a bounded number of times (the regist
 sleeps when idle and takes 10-30 s to wake), and so are 408 and 429; other 4xx answers are
 not, and are marked retryable=False so the caller does not ask again. A `stop` event (set at shutdown) ends
 the retries and their waits at once.
+
+One 4xx is told apart (TI-SE-07c): the version lookup saying the model, the alias or the version does
+not exist (yet) raises ModelNotRegistered. That one changes by itself once the model is registered, so
+the solver asks again later instead of stopping. MLflow 2.17.2 answers it as
+    alias      400 INVALID_PARAMETER_VALUE "Registered model alias <alias> not found."
+               (also when the model itself is not registered)
+    version    404 RESOURCE_DOES_NOT_EXIST "Model Version (name=..., version=...) not found"
+               or "Registered Model with name=... not found"
+Every other 4xx, a 4xx without MLflow's error body (a proxy, a wrong URL) and a 404 while downloading
+the artifacts of a registered version stay plain RegistryErrors.
 """
 from __future__ import annotations
 
@@ -45,9 +55,43 @@ class RegistryError(Exception):
     asking again can help (timeouts, 5xx), or the registry's answer has to change first (4xx, a missing
     tag, artifacts outside the proxy)."""
 
-    def __init__(self, message: str, retryable: bool = True):
+    def __init__(self, message: str, retryable: bool = True, *, status: int | None = None,
+                 error_code: str | None = None, detail: str = ""):
         super().__init__(message)
         self.retryable = retryable
+        self.status, self.error_code, self.detail = status, error_code, detail  # an HTTP answer, if any
+
+
+class ModelNotRegistered(RegistryError):
+    """The registry holds no version for name@selector yet: no such model, alias or version. Not retried
+    within the call (retryable=False); the solver checks again every model_recheck_s, since registering
+    the model fixes it without a redeploy."""
+
+    def __init__(self, message: str, **kw):
+        super().__init__(message, retryable=False, **kw)
+
+
+_ALIAS_NOT_FOUND = re.compile(r"\balias\b.*\bnot found\b", re.IGNORECASE)
+
+
+def _not_registered(error: RegistryError, by_alias: bool) -> bool:
+    if error.status == 404 and error.error_code == "RESOURCE_DOES_NOT_EXIST":
+        return True
+    # MLflow answers an alias that is not set (model registered or not) with 400, not 404.
+    return (by_alias and error.status == 400 and error.error_code == "INVALID_PARAMETER_VALUE"
+            and bool(_ALIAS_NOT_FOUND.search(error.detail)))
+
+
+def _error_body(response: httpx.Response) -> tuple[str | None, str]:
+    """MLflow's {"error_code", "message"}, or (None, "") when the answer is not one."""
+    try:
+        body = response.json()
+    except ValueError:
+        return None, ""
+    if not isinstance(body, dict):
+        return None, ""
+    code = body.get("error_code")
+    return (code if isinstance(code, str) else None), str(body.get("message") or "")
 
 
 @dataclass(frozen=True)
@@ -85,17 +129,28 @@ class RegistryClient:
                 if response.status_code == 200:
                     return response
                 if response.status_code < 500 and response.status_code not in _TEMPORARY:
-                    raise RegistryError(f"registry answered HTTP {response.status_code} for {url}", retryable=False)
+                    code, detail = _error_body(response)
+                    raise RegistryError(f"registry answered HTTP {response.status_code}"
+                                        f"{f' {code}' if code else ''} for {url}", retryable=False,
+                                        status=response.status_code, error_code=code, detail=detail)
                 last = RegistryError(f"registry answered HTTP {response.status_code}")
             if attempt + 1 < self.attempts and self._stop.wait(self.backoff_s * (2 ** attempt)):
                 raise RegistryError("stopped (shutting down)")
         raise last
 
     def _version(self, client: httpx.Client, name: str, selector: str) -> dict:
-        if str(selector).isdigit():
-            body = self._get(client, "/api/2.0/mlflow/model-versions/get", name=name, version=str(selector)).json()
-        else:
-            body = self._get(client, "/api/2.0/mlflow/registered-models/alias", name=name, alias=selector).json()
+        by_alias = not str(selector).isdigit()
+        try:
+            if by_alias:
+                body = self._get(client, "/api/2.0/mlflow/registered-models/alias", name=name, alias=selector).json()
+            else:
+                body = self._get(client, "/api/2.0/mlflow/model-versions/get", name=name, version=str(selector)).json()
+        except RegistryError as exc:
+            if _not_registered(exc, by_alias):
+                raise ModelNotRegistered(f"{name}@{selector} is not registered (HTTP {exc.status} {exc.error_code}: "
+                                         f"{exc.detail})", status=exc.status, error_code=exc.error_code,
+                                         detail=exc.detail) from exc
+            raise
         version = body.get("model_version")
         if not isinstance(version, dict) or not version.get("version") or not version.get("source"):
             raise RegistryError(f"registry returned no model version for {name}@{selector}", retryable=False)
