@@ -34,6 +34,10 @@ berbeda, dan cara menyiapkan stack baru sampai rute MORL keluar dari *gateway*.
   terpisah.
 - **Layanan `backend`.** Lokal tetap menjalankan kontainer `backend`. Di Railway layanan itu tidak punya *deployment*
   yang berjalan, dan *gateway* hanya meneruskan ke Cache API. Status ini akan dibahas dengan tim sebelum diubah.
+- **Jeda pemeriksaan model rute.** `docker-compose.yml` memberi Cache API `ROUTE_SOLVER_MODEL_RECHECK_S=60`, Railway
+  memakai bawaan 900 detik. Registry lokal tidak tidur, jadi model yang didaftarkan setelah stack menyala termuat dalam
+  semenit (langkah 6). Jeda yang sama dipakai saat paket ditolak graf aktif, jadi pemeriksaan itu juga lebih sering
+  di lokal.
 - **Data.** Basis data lokal mulai kosong. Graf jalan diisi `seed_graph`; data stasiun diambil siklus Data Worker
   pertama dari portal SPKU (butuh internet). Data sumber sekunder (satelit, cuaca) juga butuh internet, dan VIIRS
   butuh `EARTHDATA_TOKEN`.
@@ -59,11 +63,15 @@ berbeda, dan cara menyiapkan stack baru sampai rute MORL keluar dari *gateway*.
    `packaged/spatial/pm25/...` sudah berisi `package.json`). Bundel tanpa `package.json` dipaketkan dulu:
    `docker compose run --rm -v ./.local-models:/models data_worker python -m spatial_model.training package /models/<nama>`,
    lalu jalankan langkah 4 lagi.
-6. **Mulai ulang Cache API.** `docker compose restart cache_api`. Cache API memuat *policy* saat mulai. Bila model
-   belum terdaftar, registry menjawab HTTP 400 untuk alias `production`, Cache API mencatat
-   `route_model_load outcome=failed ... action=stop` dan tidak mencoba lagi sampai dimulai ulang. Di Railway hal ini
-   tidak terjadi karena model sudah terdaftar sebelum Cache API berjalan. Setelah dimulai ulang, log berisi
-   `route_model_load outcome=ok model=morl-route-policy:1 ...`.
+6. **Tunggu Cache API memuat *policy* (tanpa *restart*).** Cache API yang mulai sebelum langkah 4 mendapat HTTP 400
+   untuk alias `production` dan mencatat `route_model_load outcome=waiting ... reason=not_registered`. Selama itu
+   rute memakai fallback A* (`model_unavailable`). Cache API memeriksa registry lagi setiap
+   `ROUTE_SOLVER_MODEL_RECHECK_S` (60 detik di `docker-compose.yml`), jadi paling lambat semenit setelah
+   `register_models` log berisi `route_model_load outcome=ok model=morl-route-policy:1 ...`. Cek dengan
+   `docker compose logs cache_api | grep route_model_load`. `docker compose restart cache_api` hanya opsional, untuk
+   memuat lebih cepat. Di Railway berlaku hal yang sama dengan jeda bawaan 900 detik, misalnya bila registry
+   di-*reset* atau alias dihapus lalu dibuat lagi. Kesalahan lain (`action=stop`) tetap perlu perbaikan di registry
+   lalu *restart*.
 7. **Isi *cache* polusi.** Tunggu siklus pertama Data Worker selesai (`serve --now` menjalankannya saat mulai), atau
    jalankan satu siklus: `docker compose run --rm data_worker python main.py cycle`. Siklus pertama baru menulis
    *cache* bila graf sudah `active` saat langkah `trigger_downscale_inference` dimulai (biasanya beberapa menit

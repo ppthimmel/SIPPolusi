@@ -127,6 +127,7 @@ target dengan `sum` dan `rate`).
 | `sippolusi_http_request_duration_seconds_sum / _count` naik | `/metrics` | latency rata-rata per route |
 | baris `route_inference outcome=fallback` (logger `solver`) | Cache API | rute publik dilayani fallback A*, bukan policy; respons tetap 200 tetapi tercatat `warn` |
 | baris `route_model_load outcome=failed` | Cache API (`morl`) | *policy* MORL tidak termuat; `action=retry` dicoba lagi, `action=stop` menunggu perubahan registry dan redeploy; sampai itu semua rute memakai fallback |
+| baris `route_model_load outcome=waiting reason=not_registered` | Cache API (`morl`) | model atau alias belum terdaftar; registry diperiksa lagi setiap `ROUTE_SOLVER_MODEL_RECHECK_S` dan *policy* termuat sendiri setelah didaftarkan (tanpa *restart*); sampai itu semua rute memakai fallback |
 | `event:route_inference outcome:fallback`, `sippolusi_route_fallback_total{reason}`, `sippolusi_route_inference_failures_total{reason}` | Backend | hanya untuk `POST /v1/routes` milik Backend, yang tidak dibuka gateway; Cache API tidak menghasilkan metrik ini |
 | `event:job_finished status:failed` / `skipped` / `degraded` | Data Worker | ada langkah gagal atau siklus terhenti (`interrupted`) / siklus lain masih memegang kunci / ada langkah `degraded` atau `unavailable` |
 | `event:downscale_fallback`, `fallback_steps` pada `job_finished` | Data Worker | model polutan tidak tersedia; EdgeWeight polutan itu dihitung IDW |
