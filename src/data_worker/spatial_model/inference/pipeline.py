@@ -86,9 +86,11 @@ def run_downscale_inference(
     timings: dict[str, float] = {}
 
     from spatial_model.inference.runtime import infer_registered
+    log_event(log, "downscale_stage_started", stage="model_inference", time_window=str(time_window))
     grid, model_metadata, resolved_version, input_fingerprint = infer_registered(
         time_window, ground_truth, spec, settings, inputs=inputs, resolver=resolver, versions=model_versions,
         runtime_contract=runtime_contract(spec))
+    log_event(log, "downscale_stage_finished", stage="model_inference", elapsed_s=round(time.perf_counter() - started, 2))
     from .provenance import TRACE_VERSION, CONFIDENCE_POLICY
     policy_identity = json.dumps(dict(graph=graph_version, trace_version=TRACE_VERSION,
                                       confidence=CONFIDENCE_POLICY), sort_keys=True)
@@ -121,6 +123,7 @@ def run_downscale_inference(
     timings["grid_s"] = time.perf_counter() - t
 
     t = time.perf_counter()
+    log_event(log, "downscale_stage_started", stage="road_aggregation")
     edge_ids, coords, index = edges
     pieces, edge_table = _pieces(edge_ids, coords, index, spec, graph_version, pieces_cache_dir)
     weights, missing = aggregate_grid_to_edges(grid, pieces, edge_table)
@@ -140,17 +143,20 @@ def run_downscale_inference(
     weights["model_metadata"] = [road_metadata[int(edge)] for edge in weights.edge_id]
     weights["trace_run_id"] = run_id
     timings["aggregate_s"] = time.perf_counter() - t
+    log_event(log, "downscale_stage_finished", stage="road_aggregation", elapsed_s=round(timings["aggregate_s"], 2))
     coverage = len(weights) / len(edge_table) if len(edge_table) else 0.0
 
     rows_written = 0
     if conn is not None:
         t = time.perf_counter()
+        log_event(log, "downscale_stage_started", stage="cache_write", edges=len(weights))
         from .provenance import InferenceTrace
         trace = InferenceTrace(run_id, grid, pieces, spec.as_dict(), input_fingerprint, model_metadata, settings)
         rows_written = cache.write_pollution_weight(conn, weights, time_window, graph_version, resolved_version,
                                                     coverage_ratio=coverage, pollution_schema=pollution_schema,
                                                     osm_schema=osm_schema, trace=trace)
         timings["write_cache_s"] = time.perf_counter() - t
+        log_event(log, "downscale_stage_finished", stage="cache_write", elapsed_s=round(timings["write_cache_s"], 2), rows=rows_written)
 
     summary = RunSummary(
         run_id=run_id, status="complete", time_window_start=time_window.start, model_version=resolved_version,

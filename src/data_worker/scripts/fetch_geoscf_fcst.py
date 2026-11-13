@@ -53,6 +53,10 @@ GRADS_UNIX_EPOCH = dt.date(1970, 1, 1).toordinal() + 1     # waktu GrADS 1970-01
 MAX_TIME_MISMATCHES = 6
 
 
+class ForecastTimeMismatch(ValueError):
+    """The forecast time axis cannot be trusted for this response."""
+
+
 def _get(url: str, method: str = "GET", tries: int = 4) -> tuple[bytes, dict]:
     for attempt in range(tries):
         try:
@@ -124,7 +128,7 @@ def fetch_run(init: pd.Timestamp, get=None) -> dict:
     decoded = _grads_time(_parse_ascii(text, "time"))
     mismatched = np.flatnonzero(decoded != times).tolist()
     if decoded[0] != times[0] or decoded[-1] != times[-1] or len(mismatched) > MAX_TIME_MISMATCHES:
-        raise ValueError(f"{init}: waktu run tidak sesuai ({decoded[0]}, {decoded[-1]}, {len(mismatched)} beda)")
+        raise ForecastTimeMismatch(f"{init}: waktu run tidak sesuai ({decoded[0]}, {decoded[-1]}, {len(mismatched)} beda)")
     first = get(_lead_url(init, times[0]), "HEAD")[1].get("Last-Modified")
     last = get(_lead_url(init, times[-1]), "HEAD")[1].get("Last-Modified")
     if not first or not last:

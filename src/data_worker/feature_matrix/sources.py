@@ -231,8 +231,8 @@ class SourceReader:
     def _prepare(self, grid_ids: tuple[str, ...]) -> dict:
         if grid_ids == self._cache_key:
             return self._cache
-        unknown = set(grid_ids) - set(self._cells.index)
-        if unknown:
+        unknown = pd.Index(grid_ids).difference(self._cells.index)
+        if len(unknown):
             raise ValueError(f"{len(unknown)} grid_id di luar sel aktif, mis. {sorted(unknown)[:3]}")
         source = self._load_sources()
         cells = self._cells.loc[list(grid_ids)].reset_index()

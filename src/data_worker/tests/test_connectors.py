@@ -364,6 +364,15 @@ def test_geoscf_fcst_waktu_ascii_tetap_rusak_run_ditunda():
     assert sum("ascii?pm25_rh35" in url for _, url, _ in c.session.calls) == geoscf.FCST_ATTEMPTS
 
 
+def test_geoscf_fcst_lead_pertama_rusak_diminta_ulang():
+    init = pd.Timestamp("2026-09-30 09:00", tz="UTC")
+    clean = fixture_text("geoscf_fcst_20260930_09z.ascii")
+    c = _fcst_client([_fcst_time_changed({0: lambda days: days + 5 / 24}), clean], init)
+    frame, quality = geoscf.fetch_fcst(c, init)
+    assert len(frame) == 1080 and quality["attempts"] == 2
+    assert sum("ascii?pm25_rh35" in url for _, url, _ in c.session.calls) == 2
+
+
 @pytest.mark.parametrize("changes", [
     {0: "2133.1875"},                                            # lead pertama: sumbu tidak dapat dipastikan
     {119: lambda days: days + 1 / 24},                           # lead terakhir bergeser satu jam

@@ -85,6 +85,8 @@ def _step_downscale_inference(time_window: TimeWindow, config: Config) -> dict:
     artifact_dir = os.environ.get("SPATIAL_ARTIFACT_DIR") or None
     from spatial_model.inference.runtime import feature_reader, worker_inputs
     with psycopg.connect(config.database) as conn, contextlib.ExitStack() as stack:
+        started = time.perf_counter()
+        log_event(log, "downscale_stage_started", stage="prepare_inputs", time_window=str(time_window))
         conn.autocommit = True
         ground_truth = load_ground_truth_window(conn, time_window, settings["qc"], config.db_schema)
         graph_version = cache.read_active_graph_version(conn)
@@ -98,6 +100,8 @@ def _step_downscale_inference(time_window: TimeWindow, config: Config) -> dict:
         except (ValueError, FileNotFoundError, KeyError, psycopg.Error):
             log.warning("Model input preparation unavailable; use per-pollutant fallback")
             inputs = None
+        log_event(log, "downscale_stage_finished", stage="prepare_inputs",
+                  elapsed_s=round(time.perf_counter() - started, 2), inputs_available=inputs is not None)
         summary = run_downscale_inference(
             time_window, ground_truth=ground_truth, edges=edges, graph_version=graph_version, conn=conn,
             settings=settings, artifact_dir=artifact_dir, inputs=inputs,

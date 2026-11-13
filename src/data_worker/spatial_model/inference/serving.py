@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import json
 import hashlib
+import logging
+import time
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -10,6 +12,9 @@ import numpy as np
 import pandas as pd
 
 from spatial_model.artifacts.bundles import validate_bundle
+from log_config import log_event
+
+log = logging.getLogger(__name__)
 
 
 def check_package(directory, runtime=None):
@@ -69,6 +74,7 @@ class GridInputs:
     def __init__(self, reader, readings):
         self.reader = reader
         self._hash = hashlib.sha256()
+        self.feature_seconds = 0.0
         self.readings = readings.copy()
         self.readings["time_utc"] = pd.to_datetime(self.readings.time_utc, utc=True)
         if self.readings.duplicated(["time_utc", "station_uuid"]).any():
@@ -82,6 +88,7 @@ class GridInputs:
         self._hash = hashlib.sha256()
 
     def frames(self, nodes, stations, target, end):
+        started = time.perf_counter()
         end = pd.Timestamp(end)
         hours = pd.date_range(end - pd.Timedelta(hours=23), end, freq="h")
         ids = list(dict.fromkeys([*nodes.grid_id, *stations.grid_id]))
@@ -101,6 +108,7 @@ class GridInputs:
         sensor = self.readings[self.readings.station_uuid.isin(stations.uuid)]
         values = sensor.pivot(index="time_utc", columns="station_uuid", values=f"{target}_ugm3")
         values = values.reindex(index=hours, columns=stations.uuid).to_numpy(dtype=float)
+        self.feature_seconds += time.perf_counter() - started
         return hours, frame, values
 
 
@@ -157,11 +165,15 @@ def predict_pm25(loaded, inputs, nodes, stations, end):
     return predicted
 
 
-def tabular_frame(inputs, nodes, stations, target, end):
+def tabular_frame(inputs, nodes, stations, target, end, *, history_hours=3):
     """Use exactly the training feature algebra on sources plus unlabeled query nodes."""
     from spatial_model.data.features import spatial_features
     from spatial_model.data.grid import to_grid_xy
     hours, frame, readings = inputs.frames(nodes, stations, target, end)
+    # The returned last hour uses only lag1, lag2 and a trailing three-hour mean.
+    # Keep reading/hashing the full history above, but avoid the quadratic spatial
+    # feature calculation for hours that cannot affect this prediction.
+    hours, readings = hours[-history_hours:], readings[-history_hours:]
     h, s, q = len(hours), len(stations), len(nodes)
     sx, sy = to_grid_xy(stations.lng, stations.lat)
     xy = np.vstack([np.column_stack([sx, sy]), nodes[["easting", "northing"]]])
@@ -192,7 +204,11 @@ def predict_grid(loaded, inputs, spec, bundle, end):
         raise ValueError("No eligible model sensors")
     nodes = query_nodes(spec)
     values = np.full(len(nodes), np.nan)
-    for inside, halo in tiles(nodes):
+    started = time.perf_counter()
+    feature_start = getattr(inputs, "feature_seconds", 0.0)
+    count = 0
+    log_event(log, "spatial_grid_started", pollutant=target, cells=len(nodes))
+    for count, (inside, halo) in enumerate(tiles(nodes), 1):
         if target == "pm25":
             prediction = predict_pm25(loaded, inputs, halo, stations, end)
             lookup = pd.Series(prediction, index=halo.grid_id)
@@ -201,4 +217,11 @@ def predict_grid(loaded, inputs, spec, bundle, end):
             from spatial_model.models.lightgbm.model import predict
             frame = tabular_frame(inputs, inside, stations, target, end)
             values[inside.cell_id] = predict(loaded.model, loaded.metadata, frame)
+        if count % 100 == 0:
+            log_event(log, "spatial_grid_progress", pollutant=target, tiles=count,
+                      elapsed_s=round(time.perf_counter() - started, 2),
+                      feature_s=round(getattr(inputs, "feature_seconds", 0.0) - feature_start, 2))
+    log_event(log, "spatial_grid_finished", pollutant=target, tiles=count,
+              elapsed_s=round(time.perf_counter() - started, 2),
+              feature_s=round(getattr(inputs, "feature_seconds", 0.0) - feature_start, 2))
     return values

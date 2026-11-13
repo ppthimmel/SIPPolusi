@@ -1,0 +1,67 @@
+{
+  "checked_at_utc": "2026-11-13T12:46:23.549131+00:00",
+  "http_status": 200,
+  "request": {
+    "origin": {
+      "lon": 106.8227,
+      "lat": -6.1754
+    },
+    "destination": {
+      "lon": 106.8456,
+      "lat": -6.2088
+    },
+    "mode": "bike",
+    "preference": {
+      "alpha": 0.5,
+      "beta": 0.5
+    }
+  },
+  "metadata": {
+    "route_source": "policy",
+    "preference_applied": true,
+    "fallback_reason": null,
+    "time_window_start": "2026-11-13T09:00:00Z",
+    "data_stale": false,
+    "graph_version": "jakarta-20261005",
+    "model_version": {
+      "downscaling": "spatial-73d4d1c9ed25d85ae2b15769a184d805e4a577c52014ecaa4cda9c551ba3982a-729cc3b2426d",
+      "route_policy": "morl-route-policy:2"
+    },
+    "route_model": {
+      "name": "morl-route-policy",
+      "version": "2",
+      "package_sha256": "564c693081968cd1750c7a996b5301e34148200b21cc8fde7c5f6f1b626fed52",
+      "package_version": "20261103T081938Z-scalarized-bike-v1-6eab87d4",
+      "policy_family": "preference_conditioned",
+      "status": "ready",
+      "member_alpha": null,
+      "inference_ms": 179.9,
+      "compatibility": "compatible"
+    },
+    "estimation": {
+      "source": "hybrid",
+      "fallback_pollutants": []
+    },
+    "solver": "morl",
+    "comparison": {
+      "delta_travel_time_min": 0.0,
+      "delta_exposure_pct": 0.0
+    }
+  },
+  "routes": [
+    {
+      "role": "recommended",
+      "route_source": "policy",
+      "edge_count": 120,
+      "travel_time_min": 22.37,
+      "exposure_index_min": 82.8459
+    },
+    {
+      "role": "comparison",
+      "route_source": "baseline",
+      "edge_count": 120,
+      "travel_time_min": 22.37,
+      "exposure_index_min": 82.8459
+    }
+  ]
+}
