@@ -1,6 +1,6 @@
 # TI-AI-12: audit awal dan pekerjaan evaluasi final
 
-**Status: evaluasi parsial; belum selesai.** [Benchmark v1](run-v1/REPORT.md) menambahkan run berpasangan PIC A dan weighted Dijkstra pada 50 OD baru dan satu field IDW yang sudah pernah diperiksa. Bukti ini tidak membuktikan keunggulan model atau menggantikan evaluasi pada field model spasial dan kondisi operasi yang lebih luas. TI-AI-11 telah menyediakan paket dan bukti reload PIC A, PM2.5, dan NO2 dalam kontainer baru ([verifikasi](../TI-AI-11/container-verification.md)).
+**Status: bukti evaluasi dan keterbatasan tersedia untuk review.** [Benchmark v1](run-v1/REPORT.md) membandingkan PIC A dan weighted Dijkstra pada field IDW; [benchmark v2](run-v2/REPORT.md) mengulang 50 OD yang sama pada field keluaran model spasial terdaftar. [Replay gateway](gateway-v1/REPORT.md) menguji jalur layanan dan kasus fallback. Kedua field dibekukan di [`inputs/`](inputs/). Bukti ini tidak membuktikan keunggulan model atau generalisasi ke kondisi operasi yang lebih luas. TI-AI-11 menyediakan paket dan bukti reload kedua model ([verifikasi](../TI-AI-11/container-verification.md)).
 
 ## Bukti yang sudah tersedia
 
@@ -12,7 +12,7 @@ Jalankan `python scripts/audit_ti_ai12_evidence.py` dari root untuk menghitung u
 
 - Skenario test sudah diperiksa sebelum pemilihan model. Hasil adalah eksploratif; tidak boleh disebut evaluasi buta independen. Medan utama berasal dari IDW ds-v0.3.0, bukan keluaran model spasial terdaftar; medan perturbasi adalah uji sintetis.
 - Pada perbandingan TI-AI-11, runtime weighted Dijkstra tidak direkam. [Benchmark v1](run-v1/REPORT.md) mengukur kedua metode pada input dan mesin yang sama, tetapi tidak mengukur API end-to-end.
-- Medan asli merupakan artefak terbangkit yang tidak ada di Git. Manifest mencatat hash dan kode pembangunnya, tetapi pengulangan memerlukan regenerasi dan pemeriksaan identitas; perbedaan versi writer dapat mengubah byte parquet. Hasil per skenario tidak menyimpan geometri lengkap.
+- Parquet field asli TI-AI-10 tidak ada di Git. CSV dari window yang digunakan run v1 dan keluaran model spasial untuk run v2 kini dibekukan di [`inputs/`](inputs/); hash dan asalnya dicatat. Hasil per skenario tidak menyimpan geometri lengkap.
 - Model spasial NO2 serving fit tidak memiliki evaluasi tersendiri; evaluasi berasal dari checkpoint LOSO terpisah. Hasil PM2.5 split tetap bersifat eksploratif karena test pernah dilihat. Lihat [protokol spasial](../../PROTOKOL_EVALUASI.md) dan [bukti registry](../TI-AI-11/railway_registry_evidence.md).
 
 ## Sebelum run final

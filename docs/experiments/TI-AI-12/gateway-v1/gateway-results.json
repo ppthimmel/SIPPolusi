@@ -1,0 +1,758 @@
+[
+  {
+    "request": {
+      "origin": {
+        "lon": 106.8227,
+        "lat": -6.1754
+      },
+      "destination": {
+        "lon": 106.8456,
+        "lat": -6.2088
+      },
+      "mode": "bike",
+      "preference": {
+        "alpha": 0.0,
+        "beta": 1.0
+      }
+    },
+    "repeat": 0,
+    "status": 200,
+    "elapsed_ms": 2353.71268200106,
+    "response_sha256": "081c130e052fdf8e6cb744820bec6b9359ea3ecce9edfbf7f1c3f13c7c5cf699",
+    "metadata": {
+      "request_id": "8ec9d3c138ce31622e8338ee75cbf101",
+      "mode": "bike",
+      "pollutant": "pm25",
+      "preference": {
+        "alpha": 0.0,
+        "beta": 1.0
+      },
+      "route_source": "policy",
+      "preference_applied": true,
+      "fallback_reason": null,
+      "time_window_start": "2026-11-13T09:00:00Z",
+      "data_stale": true,
+      "missing_edge_count": 0,
+      "graph_version": "jakarta-20261005",
+      "model_version": {
+        "downscaling": "spatial-73d4d1c9ed25d85ae2b15769a184d805e4a577c52014ecaa4cda9c551ba3982a-729cc3b2426d",
+        "route_policy": "morl-route-policy:2"
+      },
+      "route_model": {
+        "name": "morl-route-policy",
+        "version": "2",
+        "package_sha256": "564c693081968cd1750c7a996b5301e34148200b21cc8fde7c5f6f1b626fed52",
+        "package_version": "20261103T081938Z-scalarized-bike-v1-6eab87d4",
+        "policy_family": "preference_conditioned",
+        "status": "ready",
+        "member_alpha": null,
+        "inference_ms": 286.0,
+        "compatibility": "compatible"
+      },
+      "estimation": {
+        "source": "hybrid",
+        "fallback_pollutants": []
+      },
+      "solver": "morl",
+      "comparison": {
+        "delta_travel_time_min": 0.0,
+        "delta_exposure_pct": 0.0
+      },
+      "notes": [
+        "Estimasi polusi berasal dari time window yang lebih lama dari batas kebaruan."
+      ],
+      "crs": "urn:ogc:def:crs:OGC::CRS84",
+      "coordinate_order": [
+        "lon",
+        "lat"
+      ],
+      "units": {
+        "travel_time_min": "min",
+        "distance_m": "m",
+        "exposure_index_min": "index\u00b7min",
+        "exposure_ug_min_m3": "\u00b5g\u00b7min/m\u00b3",
+        "concentration_coverage": "fraction 0\u20131",
+        "confidence_score": "fraction 0\u20131",
+        "imputed_edge_count": "count",
+        "delta_travel_time_min": "min",
+        "delta_exposure_pct": "%"
+      },
+      "exposure_index_definition": "I = \u00bd \u00b7 (PM2.5 / 15 + NO2 / 25), konsentrasi dalam \u00b5g/m\u00b3 dibagi pedoman WHO 2021 (rata-rata 24 jam); bila hanya satu polutan tersedia, I = PM2.5 / 15 atau NO2 / 25. Tanpa satuan; 1,0 = tepat pada pedoman.",
+      "disclaimer": "Estimasi konsentrasi polutan merupakan keluaran model, bukan hasil pengukuran langsung, dan dapat berbeda dari kondisi udara sebenarnya. Gunakan rute ini sebagai alat bantu keputusan."
+    },
+    "error": null,
+    "feature_count": 2
+  },
+  {
+    "request": {
+      "origin": {
+        "lon": 106.8227,
+        "lat": -6.1754
+      },
+      "destination": {
+        "lon": 106.8456,
+        "lat": -6.2088
+      },
+      "mode": "bike",
+      "preference": {
+        "alpha": 0.0,
+        "beta": 1.0
+      }
+    },
+    "repeat": 1,
+    "status": 200,
+    "elapsed_ms": 1449.1588800010504,
+    "response_sha256": "9e47952e1dc4266b698a3292be1b29956a6cf91757f41968884d8fd2f72a0bc0",
+    "metadata": {
+      "request_id": "2665094bc920d6ac3771485a964ad327",
+      "mode": "bike",
+      "pollutant": "pm25",
+      "preference": {
+        "alpha": 0.0,
+        "beta": 1.0
+      },
+      "route_source": "policy",
+      "preference_applied": true,
+      "fallback_reason": null,
+      "time_window_start": "2026-11-13T09:00:00Z",
+      "data_stale": true,
+      "missing_edge_count": 0,
+      "graph_version": "jakarta-20261005",
+      "model_version": {
+        "downscaling": "spatial-73d4d1c9ed25d85ae2b15769a184d805e4a577c52014ecaa4cda9c551ba3982a-729cc3b2426d",
+        "route_policy": "morl-route-policy:2"
+      },
+      "route_model": {
+        "name": "morl-route-policy",
+        "version": "2",
+        "package_sha256": "564c693081968cd1750c7a996b5301e34148200b21cc8fde7c5f6f1b626fed52",
+        "package_version": "20261103T081938Z-scalarized-bike-v1-6eab87d4",
+        "policy_family": "preference_conditioned",
+        "status": "ready",
+        "member_alpha": null,
+        "inference_ms": 195.5,
+        "compatibility": "compatible"
+      },
+      "estimation": {
+        "source": "hybrid",
+        "fallback_pollutants": []
+      },
+      "solver": "morl",
+      "comparison": {
+        "delta_travel_time_min": 0.0,
+        "delta_exposure_pct": 0.0
+      },
+      "notes": [
+        "Estimasi polusi berasal dari time window yang lebih lama dari batas kebaruan."
+      ],
+      "crs": "urn:ogc:def:crs:OGC::CRS84",
+      "coordinate_order": [
+        "lon",
+        "lat"
+      ],
+      "units": {
+        "travel_time_min": "min",
+        "distance_m": "m",
+        "exposure_index_min": "index\u00b7min",
+        "exposure_ug_min_m3": "\u00b5g\u00b7min/m\u00b3",
+        "concentration_coverage": "fraction 0\u20131",
+        "confidence_score": "fraction 0\u20131",
+        "imputed_edge_count": "count",
+        "delta_travel_time_min": "min",
+        "delta_exposure_pct": "%"
+      },
+      "exposure_index_definition": "I = \u00bd \u00b7 (PM2.5 / 15 + NO2 / 25), konsentrasi dalam \u00b5g/m\u00b3 dibagi pedoman WHO 2021 (rata-rata 24 jam); bila hanya satu polutan tersedia, I = PM2.5 / 15 atau NO2 / 25. Tanpa satuan; 1,0 = tepat pada pedoman.",
+      "disclaimer": "Estimasi konsentrasi polutan merupakan keluaran model, bukan hasil pengukuran langsung, dan dapat berbeda dari kondisi udara sebenarnya. Gunakan rute ini sebagai alat bantu keputusan."
+    },
+    "error": null,
+    "feature_count": 2
+  },
+  {
+    "request": {
+      "origin": {
+        "lon": 106.8227,
+        "lat": -6.1754
+      },
+      "destination": {
+        "lon": 106.8456,
+        "lat": -6.2088
+      },
+      "mode": "bike",
+      "preference": {
+        "alpha": 0.0,
+        "beta": 1.0
+      }
+    },
+    "repeat": 2,
+    "status": 200,
+    "elapsed_ms": 1279.272301002493,
+    "response_sha256": "a99a17b56913c286a54fde57c3b0a8441d60ea526c8b8a36fc4103c60903fd23",
+    "metadata": {
+      "request_id": "13262206c558f2929535368b7e3209a1",
+      "mode": "bike",
+      "pollutant": "pm25",
+      "preference": {
+        "alpha": 0.0,
+        "beta": 1.0
+      },
+      "route_source": "policy",
+      "preference_applied": true,
+      "fallback_reason": null,
+      "time_window_start": "2026-11-13T09:00:00Z",
+      "data_stale": true,
+      "missing_edge_count": 0,
+      "graph_version": "jakarta-20261005",
+      "model_version": {
+        "downscaling": "spatial-73d4d1c9ed25d85ae2b15769a184d805e4a577c52014ecaa4cda9c551ba3982a-729cc3b2426d",
+        "route_policy": "morl-route-policy:2"
+      },
+      "route_model": {
+        "name": "morl-route-policy",
+        "version": "2",
+        "package_sha256": "564c693081968cd1750c7a996b5301e34148200b21cc8fde7c5f6f1b626fed52",
+        "package_version": "20261103T081938Z-scalarized-bike-v1-6eab87d4",
+        "policy_family": "preference_conditioned",
+        "status": "ready",
+        "member_alpha": null,
+        "inference_ms": 211.2,
+        "compatibility": "compatible"
+      },
+      "estimation": {
+        "source": "hybrid",
+        "fallback_pollutants": []
+      },
+      "solver": "morl",
+      "comparison": {
+        "delta_travel_time_min": 0.0,
+        "delta_exposure_pct": 0.0
+      },
+      "notes": [
+        "Estimasi polusi berasal dari time window yang lebih lama dari batas kebaruan."
+      ],
+      "crs": "urn:ogc:def:crs:OGC::CRS84",
+      "coordinate_order": [
+        "lon",
+        "lat"
+      ],
+      "units": {
+        "travel_time_min": "min",
+        "distance_m": "m",
+        "exposure_index_min": "index\u00b7min",
+        "exposure_ug_min_m3": "\u00b5g\u00b7min/m\u00b3",
+        "concentration_coverage": "fraction 0\u20131",
+        "confidence_score": "fraction 0\u20131",
+        "imputed_edge_count": "count",
+        "delta_travel_time_min": "min",
+        "delta_exposure_pct": "%"
+      },
+      "exposure_index_definition": "I = \u00bd \u00b7 (PM2.5 / 15 + NO2 / 25), konsentrasi dalam \u00b5g/m\u00b3 dibagi pedoman WHO 2021 (rata-rata 24 jam); bila hanya satu polutan tersedia, I = PM2.5 / 15 atau NO2 / 25. Tanpa satuan; 1,0 = tepat pada pedoman.",
+      "disclaimer": "Estimasi konsentrasi polutan merupakan keluaran model, bukan hasil pengukuran langsung, dan dapat berbeda dari kondisi udara sebenarnya. Gunakan rute ini sebagai alat bantu keputusan."
+    },
+    "error": null,
+    "feature_count": 2
+  },
+  {
+    "request": {
+      "origin": {
+        "lon": 106.8227,
+        "lat": -6.1754
+      },
+      "destination": {
+        "lon": 106.8456,
+        "lat": -6.2088
+      },
+      "mode": "bike",
+      "preference": {
+        "alpha": 0.5,
+        "beta": 0.5
+      }
+    },
+    "repeat": 0,
+    "status": 200,
+    "elapsed_ms": 1238.3886089992302,
+    "response_sha256": "4d864c9227a38cb41aa2329c7025c591b2d00a58433a6637a822e20673e944a2",
+    "metadata": {
+      "request_id": "9e1db9f662b48d18cf70d1a5c2ec6fa7",
+      "mode": "bike",
+      "pollutant": "pm25",
+      "preference": {
+        "alpha": 0.5,
+        "beta": 0.5
+      },
+      "route_source": "policy",
+      "preference_applied": true,
+      "fallback_reason": null,
+      "time_window_start": "2026-11-13T09:00:00Z",
+      "data_stale": true,
+      "missing_edge_count": 0,
+      "graph_version": "jakarta-20261005",
+      "model_version": {
+        "downscaling": "spatial-73d4d1c9ed25d85ae2b15769a184d805e4a577c52014ecaa4cda9c551ba3982a-729cc3b2426d",
+        "route_policy": "morl-route-policy:2"
+      },
+      "route_model": {
+        "name": "morl-route-policy",
+        "version": "2",
+        "package_sha256": "564c693081968cd1750c7a996b5301e34148200b21cc8fde7c5f6f1b626fed52",
+        "package_version": "20261103T081938Z-scalarized-bike-v1-6eab87d4",
+        "policy_family": "preference_conditioned",
+        "status": "ready",
+        "member_alpha": null,
+        "inference_ms": 209.5,
+        "compatibility": "compatible"
+      },
+      "estimation": {
+        "source": "hybrid",
+        "fallback_pollutants": []
+      },
+      "solver": "morl",
+      "comparison": {
+        "delta_travel_time_min": 0.0,
+        "delta_exposure_pct": 0.0
+      },
+      "notes": [
+        "Estimasi polusi berasal dari time window yang lebih lama dari batas kebaruan."
+      ],
+      "crs": "urn:ogc:def:crs:OGC::CRS84",
+      "coordinate_order": [
+        "lon",
+        "lat"
+      ],
+      "units": {
+        "travel_time_min": "min",
+        "distance_m": "m",
+        "exposure_index_min": "index\u00b7min",
+        "exposure_ug_min_m3": "\u00b5g\u00b7min/m\u00b3",
+        "concentration_coverage": "fraction 0\u20131",
+        "confidence_score": "fraction 0\u20131",
+        "imputed_edge_count": "count",
+        "delta_travel_time_min": "min",
+        "delta_exposure_pct": "%"
+      },
+      "exposure_index_definition": "I = \u00bd \u00b7 (PM2.5 / 15 + NO2 / 25), konsentrasi dalam \u00b5g/m\u00b3 dibagi pedoman WHO 2021 (rata-rata 24 jam); bila hanya satu polutan tersedia, I = PM2.5 / 15 atau NO2 / 25. Tanpa satuan; 1,0 = tepat pada pedoman.",
+      "disclaimer": "Estimasi konsentrasi polutan merupakan keluaran model, bukan hasil pengukuran langsung, dan dapat berbeda dari kondisi udara sebenarnya. Gunakan rute ini sebagai alat bantu keputusan."
+    },
+    "error": null,
+    "feature_count": 2
+  },
+  {
+    "request": {
+      "origin": {
+        "lon": 106.8227,
+        "lat": -6.1754
+      },
+      "destination": {
+        "lon": 106.8456,
+        "lat": -6.2088
+      },
+      "mode": "bike",
+      "preference": {
+        "alpha": 0.5,
+        "beta": 0.5
+      }
+    },
+    "repeat": 1,
+    "status": 200,
+    "elapsed_ms": 1155.3671439978643,
+    "response_sha256": "9703c38634476b6de143ad290da99bc2aabe2fa8eac8531f852f8925e67ca494",
+    "metadata": {
+      "request_id": "948276938486b1a21b1e587434f10d42",
+      "mode": "bike",
+      "pollutant": "pm25",
+      "preference": {
+        "alpha": 0.5,
+        "beta": 0.5
+      },
+      "route_source": "policy",
+      "preference_applied": true,
+      "fallback_reason": null,
+      "time_window_start": "2026-11-13T09:00:00Z",
+      "data_stale": true,
+      "missing_edge_count": 0,
+      "graph_version": "jakarta-20261005",
+      "model_version": {
+        "downscaling": "spatial-73d4d1c9ed25d85ae2b15769a184d805e4a577c52014ecaa4cda9c551ba3982a-729cc3b2426d",
+        "route_policy": "morl-route-policy:2"
+      },
+      "route_model": {
+        "name": "morl-route-policy",
+        "version": "2",
+        "package_sha256": "564c693081968cd1750c7a996b5301e34148200b21cc8fde7c5f6f1b626fed52",
+        "package_version": "20261103T081938Z-scalarized-bike-v1-6eab87d4",
+        "policy_family": "preference_conditioned",
+        "status": "ready",
+        "member_alpha": null,
+        "inference_ms": 201.6,
+        "compatibility": "compatible"
+      },
+      "estimation": {
+        "source": "hybrid",
+        "fallback_pollutants": []
+      },
+      "solver": "morl",
+      "comparison": {
+        "delta_travel_time_min": 0.0,
+        "delta_exposure_pct": 0.0
+      },
+      "notes": [
+        "Estimasi polusi berasal dari time window yang lebih lama dari batas kebaruan."
+      ],
+      "crs": "urn:ogc:def:crs:OGC::CRS84",
+      "coordinate_order": [
+        "lon",
+        "lat"
+      ],
+      "units": {
+        "travel_time_min": "min",
+        "distance_m": "m",
+        "exposure_index_min": "index\u00b7min",
+        "exposure_ug_min_m3": "\u00b5g\u00b7min/m\u00b3",
+        "concentration_coverage": "fraction 0\u20131",
+        "confidence_score": "fraction 0\u20131",
+        "imputed_edge_count": "count",
+        "delta_travel_time_min": "min",
+        "delta_exposure_pct": "%"
+      },
+      "exposure_index_definition": "I = \u00bd \u00b7 (PM2.5 / 15 + NO2 / 25), konsentrasi dalam \u00b5g/m\u00b3 dibagi pedoman WHO 2021 (rata-rata 24 jam); bila hanya satu polutan tersedia, I = PM2.5 / 15 atau NO2 / 25. Tanpa satuan; 1,0 = tepat pada pedoman.",
+      "disclaimer": "Estimasi konsentrasi polutan merupakan keluaran model, bukan hasil pengukuran langsung, dan dapat berbeda dari kondisi udara sebenarnya. Gunakan rute ini sebagai alat bantu keputusan."
+    },
+    "error": null,
+    "feature_count": 2
+  },
+  {
+    "request": {
+      "origin": {
+        "lon": 106.8227,
+        "lat": -6.1754
+      },
+      "destination": {
+        "lon": 106.8456,
+        "lat": -6.2088
+      },
+      "mode": "bike",
+      "preference": {
+        "alpha": 0.5,
+        "beta": 0.5
+      }
+    },
+    "repeat": 2,
+    "status": 200,
+    "elapsed_ms": 1362.5213779996557,
+    "response_sha256": "31e7d010edba464996484cd5ec28bd75d083d995039f3be48aa90939c17befaf",
+    "metadata": {
+      "request_id": "dfb461ebf80bb4a955be0180f18f4410",
+      "mode": "bike",
+      "pollutant": "pm25",
+      "preference": {
+        "alpha": 0.5,
+        "beta": 0.5
+      },
+      "route_source": "policy",
+      "preference_applied": true,
+      "fallback_reason": null,
+      "time_window_start": "2026-11-13T09:00:00Z",
+      "data_stale": true,
+      "missing_edge_count": 0,
+      "graph_version": "jakarta-20261005",
+      "model_version": {
+        "downscaling": "spatial-73d4d1c9ed25d85ae2b15769a184d805e4a577c52014ecaa4cda9c551ba3982a-729cc3b2426d",
+        "route_policy": "morl-route-policy:2"
+      },
+      "route_model": {
+        "name": "morl-route-policy",
+        "version": "2",
+        "package_sha256": "564c693081968cd1750c7a996b5301e34148200b21cc8fde7c5f6f1b626fed52",
+        "package_version": "20261103T081938Z-scalarized-bike-v1-6eab87d4",
+        "policy_family": "preference_conditioned",
+        "status": "ready",
+        "member_alpha": null,
+        "inference_ms": 197.5,
+        "compatibility": "compatible"
+      },
+      "estimation": {
+        "source": "hybrid",
+        "fallback_pollutants": []
+      },
+      "solver": "morl",
+      "comparison": {
+        "delta_travel_time_min": 0.0,
+        "delta_exposure_pct": 0.0
+      },
+      "notes": [
+        "Estimasi polusi berasal dari time window yang lebih lama dari batas kebaruan."
+      ],
+      "crs": "urn:ogc:def:crs:OGC::CRS84",
+      "coordinate_order": [
+        "lon",
+        "lat"
+      ],
+      "units": {
+        "travel_time_min": "min",
+        "distance_m": "m",
+        "exposure_index_min": "index\u00b7min",
+        "exposure_ug_min_m3": "\u00b5g\u00b7min/m\u00b3",
+        "concentration_coverage": "fraction 0\u20131",
+        "confidence_score": "fraction 0\u20131",
+        "imputed_edge_count": "count",
+        "delta_travel_time_min": "min",
+        "delta_exposure_pct": "%"
+      },
+      "exposure_index_definition": "I = \u00bd \u00b7 (PM2.5 / 15 + NO2 / 25), konsentrasi dalam \u00b5g/m\u00b3 dibagi pedoman WHO 2021 (rata-rata 24 jam); bila hanya satu polutan tersedia, I = PM2.5 / 15 atau NO2 / 25. Tanpa satuan; 1,0 = tepat pada pedoman.",
+      "disclaimer": "Estimasi konsentrasi polutan merupakan keluaran model, bukan hasil pengukuran langsung, dan dapat berbeda dari kondisi udara sebenarnya. Gunakan rute ini sebagai alat bantu keputusan."
+    },
+    "error": null,
+    "feature_count": 2
+  },
+  {
+    "request": {
+      "origin": {
+        "lon": 106.8227,
+        "lat": -6.1754
+      },
+      "destination": {
+        "lon": 106.8456,
+        "lat": -6.2088
+      },
+      "mode": "bike",
+      "preference": {
+        "alpha": 1.0,
+        "beta": 0.0
+      }
+    },
+    "repeat": 0,
+    "status": 200,
+    "elapsed_ms": 1235.2015919968835,
+    "response_sha256": "0be4cb42500538e93e4aa60e2ef8c643b50f00939f3de89b99060c022fa65056",
+    "metadata": {
+      "request_id": "ccb80c84117a3af195b75a43354cc217",
+      "mode": "bike",
+      "pollutant": "pm25",
+      "preference": {
+        "alpha": 1.0,
+        "beta": 0.0
+      },
+      "route_source": "policy",
+      "preference_applied": true,
+      "fallback_reason": null,
+      "time_window_start": "2026-11-13T09:00:00Z",
+      "data_stale": true,
+      "missing_edge_count": 0,
+      "graph_version": "jakarta-20261005",
+      "model_version": {
+        "downscaling": "spatial-73d4d1c9ed25d85ae2b15769a184d805e4a577c52014ecaa4cda9c551ba3982a-729cc3b2426d",
+        "route_policy": "morl-route-policy:2"
+      },
+      "route_model": {
+        "name": "morl-route-policy",
+        "version": "2",
+        "package_sha256": "564c693081968cd1750c7a996b5301e34148200b21cc8fde7c5f6f1b626fed52",
+        "package_version": "20261103T081938Z-scalarized-bike-v1-6eab87d4",
+        "policy_family": "preference_conditioned",
+        "status": "ready",
+        "member_alpha": null,
+        "inference_ms": 200.9,
+        "compatibility": "compatible"
+      },
+      "estimation": {
+        "source": "hybrid",
+        "fallback_pollutants": []
+      },
+      "solver": "morl",
+      "comparison": {
+        "delta_travel_time_min": 0.0,
+        "delta_exposure_pct": 0.0
+      },
+      "notes": [
+        "Estimasi polusi berasal dari time window yang lebih lama dari batas kebaruan."
+      ],
+      "crs": "urn:ogc:def:crs:OGC::CRS84",
+      "coordinate_order": [
+        "lon",
+        "lat"
+      ],
+      "units": {
+        "travel_time_min": "min",
+        "distance_m": "m",
+        "exposure_index_min": "index\u00b7min",
+        "exposure_ug_min_m3": "\u00b5g\u00b7min/m\u00b3",
+        "concentration_coverage": "fraction 0\u20131",
+        "confidence_score": "fraction 0\u20131",
+        "imputed_edge_count": "count",
+        "delta_travel_time_min": "min",
+        "delta_exposure_pct": "%"
+      },
+      "exposure_index_definition": "I = \u00bd \u00b7 (PM2.5 / 15 + NO2 / 25), konsentrasi dalam \u00b5g/m\u00b3 dibagi pedoman WHO 2021 (rata-rata 24 jam); bila hanya satu polutan tersedia, I = PM2.5 / 15 atau NO2 / 25. Tanpa satuan; 1,0 = tepat pada pedoman.",
+      "disclaimer": "Estimasi konsentrasi polutan merupakan keluaran model, bukan hasil pengukuran langsung, dan dapat berbeda dari kondisi udara sebenarnya. Gunakan rute ini sebagai alat bantu keputusan."
+    },
+    "error": null,
+    "feature_count": 2
+  },
+  {
+    "request": {
+      "origin": {
+        "lon": 106.8227,
+        "lat": -6.1754
+      },
+      "destination": {
+        "lon": 106.8456,
+        "lat": -6.2088
+      },
+      "mode": "bike",
+      "preference": {
+        "alpha": 1.0,
+        "beta": 0.0
+      }
+    },
+    "repeat": 1,
+    "status": 200,
+    "elapsed_ms": 1196.8799520000175,
+    "response_sha256": "0a403f0c7617eb421ba3e6b5bf4c64d484bbd0fda93a0dcd0a44b965164aa5f8",
+    "metadata": {
+      "request_id": "060220335ccd34d79ccff911e4414896",
+      "mode": "bike",
+      "pollutant": "pm25",
+      "preference": {
+        "alpha": 1.0,
+        "beta": 0.0
+      },
+      "route_source": "policy",
+      "preference_applied": true,
+      "fallback_reason": null,
+      "time_window_start": "2026-11-13T09:00:00Z",
+      "data_stale": true,
+      "missing_edge_count": 0,
+      "graph_version": "jakarta-20261005",
+      "model_version": {
+        "downscaling": "spatial-73d4d1c9ed25d85ae2b15769a184d805e4a577c52014ecaa4cda9c551ba3982a-729cc3b2426d",
+        "route_policy": "morl-route-policy:2"
+      },
+      "route_model": {
+        "name": "morl-route-policy",
+        "version": "2",
+        "package_sha256": "564c693081968cd1750c7a996b5301e34148200b21cc8fde7c5f6f1b626fed52",
+        "package_version": "20261103T081938Z-scalarized-bike-v1-6eab87d4",
+        "policy_family": "preference_conditioned",
+        "status": "ready",
+        "member_alpha": null,
+        "inference_ms": 173.5,
+        "compatibility": "compatible"
+      },
+      "estimation": {
+        "source": "hybrid",
+        "fallback_pollutants": []
+      },
+      "solver": "morl",
+      "comparison": {
+        "delta_travel_time_min": 0.0,
+        "delta_exposure_pct": 0.0
+      },
+      "notes": [
+        "Estimasi polusi berasal dari time window yang lebih lama dari batas kebaruan."
+      ],
+      "crs": "urn:ogc:def:crs:OGC::CRS84",
+      "coordinate_order": [
+        "lon",
+        "lat"
+      ],
+      "units": {
+        "travel_time_min": "min",
+        "distance_m": "m",
+        "exposure_index_min": "index\u00b7min",
+        "exposure_ug_min_m3": "\u00b5g\u00b7min/m\u00b3",
+        "concentration_coverage": "fraction 0\u20131",
+        "confidence_score": "fraction 0\u20131",
+        "imputed_edge_count": "count",
+        "delta_travel_time_min": "min",
+        "delta_exposure_pct": "%"
+      },
+      "exposure_index_definition": "I = \u00bd \u00b7 (PM2.5 / 15 + NO2 / 25), konsentrasi dalam \u00b5g/m\u00b3 dibagi pedoman WHO 2021 (rata-rata 24 jam); bila hanya satu polutan tersedia, I = PM2.5 / 15 atau NO2 / 25. Tanpa satuan; 1,0 = tepat pada pedoman.",
+      "disclaimer": "Estimasi konsentrasi polutan merupakan keluaran model, bukan hasil pengukuran langsung, dan dapat berbeda dari kondisi udara sebenarnya. Gunakan rute ini sebagai alat bantu keputusan."
+    },
+    "error": null,
+    "feature_count": 2
+  },
+  {
+    "request": {
+      "origin": {
+        "lon": 106.8227,
+        "lat": -6.1754
+      },
+      "destination": {
+        "lon": 106.8456,
+        "lat": -6.2088
+      },
+      "mode": "bike",
+      "preference": {
+        "alpha": 1.0,
+        "beta": 0.0
+      }
+    },
+    "repeat": 2,
+    "status": 200,
+    "elapsed_ms": 1307.022124001378,
+    "response_sha256": "3856aad5343b44abc18eba6e39fd85a07c22de2d41f93b24bb62ba8a57e076a5",
+    "metadata": {
+      "request_id": "ca809d2985b8b0415b1878203ccd63c2",
+      "mode": "bike",
+      "pollutant": "pm25",
+      "preference": {
+        "alpha": 1.0,
+        "beta": 0.0
+      },
+      "route_source": "policy",
+      "preference_applied": true,
+      "fallback_reason": null,
+      "time_window_start": "2026-11-13T09:00:00Z",
+      "data_stale": true,
+      "missing_edge_count": 0,
+      "graph_version": "jakarta-20261005",
+      "model_version": {
+        "downscaling": "spatial-73d4d1c9ed25d85ae2b15769a184d805e4a577c52014ecaa4cda9c551ba3982a-729cc3b2426d",
+        "route_policy": "morl-route-policy:2"
+      },
+      "route_model": {
+        "name": "morl-route-policy",
+        "version": "2",
+        "package_sha256": "564c693081968cd1750c7a996b5301e34148200b21cc8fde7c5f6f1b626fed52",
+        "package_version": "20261103T081938Z-scalarized-bike-v1-6eab87d4",
+        "policy_family": "preference_conditioned",
+        "status": "ready",
+        "member_alpha": null,
+        "inference_ms": 197.9,
+        "compatibility": "compatible"
+      },
+      "estimation": {
+        "source": "hybrid",
+        "fallback_pollutants": []
+      },
+      "solver": "morl",
+      "comparison": {
+        "delta_travel_time_min": 0.0,
+        "delta_exposure_pct": 0.0
+      },
+      "notes": [
+        "Estimasi polusi berasal dari time window yang lebih lama dari batas kebaruan."
+      ],
+      "crs": "urn:ogc:def:crs:OGC::CRS84",
+      "coordinate_order": [
+        "lon",
+        "lat"
+      ],
+      "units": {
+        "travel_time_min": "min",
+        "distance_m": "m",
+        "exposure_index_min": "index\u00b7min",
+        "exposure_ug_min_m3": "\u00b5g\u00b7min/m\u00b3",
+        "concentration_coverage": "fraction 0\u20131",
+        "confidence_score": "fraction 0\u20131",
+        "imputed_edge_count": "count",
+        "delta_travel_time_min": "min",
+        "delta_exposure_pct": "%"
+      },
+      "exposure_index_definition": "I = \u00bd \u00b7 (PM2.5 / 15 + NO2 / 25), konsentrasi dalam \u00b5g/m\u00b3 dibagi pedoman WHO 2021 (rata-rata 24 jam); bila hanya satu polutan tersedia, I = PM2.5 / 15 atau NO2 / 25. Tanpa satuan; 1,0 = tepat pada pedoman.",
+      "disclaimer": "Estimasi konsentrasi polutan merupakan keluaran model, bukan hasil pengukuran langsung, dan dapat berbeda dari kondisi udara sebenarnya. Gunakan rute ini sebagai alat bantu keputusan."
+    },
+    "error": null,
+    "feature_count": 2
+  }
+]
