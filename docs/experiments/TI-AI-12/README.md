@@ -1,6 +1,6 @@
 # TI-AI-12: audit awal dan pekerjaan evaluasi final
 
-**Status: belum selesai.** Audit ini menginventarisasi bukti yang sudah ada; ini bukan run final baru dan tidak membuktikan keunggulan model. TI-AI-11 telah menyediakan paket dan bukti reload PIC A, PM2.5, dan NO2 dalam kontainer baru ([verifikasi](../TI-AI-11/container-verification.md)).
+**Status: evaluasi parsial; belum selesai.** [Benchmark v1](run-v1/REPORT.md) menambahkan run berpasangan PIC A dan weighted Dijkstra pada 50 OD baru dan satu field IDW yang sudah pernah diperiksa. Bukti ini tidak membuktikan keunggulan model atau menggantikan evaluasi pada field model spasial dan kondisi operasi yang lebih luas. TI-AI-11 telah menyediakan paket dan bukti reload PIC A, PM2.5, dan NO2 dalam kontainer baru ([verifikasi](../TI-AI-11/container-verification.md)).
 
 ## Bukti yang sudah tersedia
 
@@ -11,7 +11,7 @@ Jalankan `python scripts/audit_ti_ai12_evidence.py` dari root untuk menghitung u
 ## Batasan yang menghalangi penutupan
 
 - Skenario test sudah diperiksa sebelum pemilihan model. Hasil adalah eksploratif; tidak boleh disebut evaluasi buta independen. Medan utama berasal dari IDW ds-v0.3.0, bukan keluaran model spasial terdaftar; medan perturbasi adalah uji sintetis.
-- Weighted Dijkstra menghasilkan acuan objektif, tetapi runtime-nya tidak direkam. Latensi PIC A yang dicatat bukan pengukuran end-to-end yang sebanding dengan baseline. Data lama tidak dapat dipakai untuk menyimpulkan MORL lebih cepat.
+- Pada perbandingan TI-AI-11, runtime weighted Dijkstra tidak direkam. [Benchmark v1](run-v1/REPORT.md) mengukur kedua metode pada input dan mesin yang sama, tetapi tidak mengukur API end-to-end.
 - Medan asli merupakan artefak terbangkit yang tidak ada di Git. Manifest mencatat hash dan kode pembangunnya, tetapi pengulangan memerlukan regenerasi dan pemeriksaan identitas; perbedaan versi writer dapat mengubah byte parquet. Hasil per skenario tidak menyimpan geometri lengkap.
 - Model spasial NO2 serving fit tidak memiliki evaluasi tersendiri; evaluasi berasal dari checkpoint LOSO terpisah. Hasil PM2.5 split tetap bersifat eksploratif karena test pernah dilihat. Lihat [protokol spasial](../../PROTOKOL_EVALUASI.md) dan [bukti registry](../TI-AI-11/railway_registry_evidence.md).
 
