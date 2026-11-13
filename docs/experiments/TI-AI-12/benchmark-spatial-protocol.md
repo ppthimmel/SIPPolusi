@@ -1,0 +1,7 @@
+# Benchmark field spatial replay v2
+
+Ditulis sebelum run v2. Pakai metode, seed, 50 pasangan OD, tiga preferensi, kriteria kegagalan dan definisi waktu yang sama dengan [v1](benchmark-protocol.md); mengganti hanya field dan program yang memverifikasi hash field tersebut. OD identik antar-run, bukan sampel baru. Gunakan direktori keluaran baru.
+
+Input `inputs/spatial-replay-20261113.csv.gz` adalah kolom `edge_id,exposure_index` dari `pollution.edge_pollution` window complete 2026-11-13 09:00 UTC pada graf `jakarta-20261005`, urut edge_id, tanpa pembulatan API. SHA-256 gzip `11811931b510f6d9abce70876290a62c8b4cc04544f9f26613f6973e05a835f2`; CSV setelah dekompresi `a066d187c4477f1436dd03f85e3340c5e8c1acc14a14c80ec8eab44b6a765712`. Script export mencatat perintah ekstraksi. Sumber adalah replay TI-AI-11: PM2.5 `spatial-downscaling-pm25:1` dan NO₂ `spatial-downscaling-no2:1`, tanpa fallback; PM2.5 flagged karena versi minor kontrak. Run ID dan fingerprint input tersedia dalam bukti registry/replay dan manifest sumber di `inputs/spatial-lineage.json`.
+
+Ini adalah satu window hasil replay dari data yang dikumpulkan sebelumnya, bukan akuisisi live tanpa putus atau evaluasi buta. `RouteEnv` mengisi ruas graf yang tidak ada pada field dengan median; jumlahnya direkam. Hasil ini bukan pengukuran waktu API atau bukti generalisasi. Pengujian gateway dicatat terpisah karena memakai subgraf planner dan aturan cache layanan, bukan graf penuh dan angka floating point mentah benchmark ini.
