@@ -48,7 +48,10 @@ berbeda, dan cara menyiapkan stack baru sampai rute MORL keluar dari *gateway*.
 2. **Mulai stack.** `docker compose up -d --build`. Volume basis data baru bernama `postgres18_data`; volume lama
    `postgres_data` (PostgreSQL 16) tidak dipakai dan tidak dihapus.
 3. **Graf jalan.** `docker compose --profile tools run --rm seed_graph`. Menulis schema dan graf `jakarta-20261005`
-   lewat `osm_cache.write_road_graph` (sekitar beberapa menit). Aman dijalankan ulang.
+   lewat `osm_cache.write_road_graph` (sekitar beberapa menit). Jalankan saat stack sudah berjalan; tidak perlu
+   menghentikan Data Worker. Data Worker sudah membuat tabel `osm` dan `pollution` dari model ORM saat mulai, dan
+   `seed_graph` hanya melengkapi yang belum ada (DDL `osm_cache/schema.sql` memakai `IF NOT EXISTS`, termasuk
+   kolom `osm` yang belum ada pada volume lokal lama). Aman dijalankan ulang.
 4. **Model.** `docker compose --profile tools run --rm register_models`. Membangun paket model rute dari set TI-AI-09
    yang di-commit (`package_route`), lalu mendaftarkannya dan setiap folder di `./.local-models/` dengan alias
    `candidate` dan `production`, lewat *artifact proxy*. Paket yang sudah terdaftar dilewati.
@@ -62,11 +65,18 @@ berbeda, dan cara menyiapkan stack baru sampai rute MORL keluar dari *gateway*.
    tidak terjadi karena model sudah terdaftar sebelum Cache API berjalan. Setelah dimulai ulang, log berisi
    `route_model_load outcome=ok model=morl-route-policy:1 ...`.
 7. **Isi *cache* polusi.** Tunggu siklus pertama Data Worker selesai (`serve --now` menjalankannya saat mulai), atau
-   jalankan satu siklus: `docker compose run --rm data_worker python main.py cycle`. Sebelum ada time window
-   berstatus `complete`, `POST /v1/routes` menjawab 503 `cache_unavailable` (`cache_empty`).
+   jalankan satu siklus: `docker compose run --rm data_worker python main.py cycle`. Siklus pertama baru menulis
+   *cache* bila graf sudah `active` saat langkah `trigger_downscale_inference` dimulai (biasanya beberapa menit
+   setelah mulai, setelah pengambilan SPKU). Bila log Data Worker berisi `job_step ...
+   step=trigger_downscale_inference status=unavailable` dengan catatan `tidak ada graf road network berstatus
+   active`, jalankan satu siklus seperti di atas. Sebelum ada time window berstatus `complete`, `POST /v1/routes`
+   menjawab 503 `cache_unavailable` (`cache_empty`).
 8. **Cek.** `curl http://localhost:8081/healthz`, lalu minta rute lewat Frontend (`http://localhost:8080`) atau
-   `POST http://localhost:8081/v1/routes`. Rute dari MORL bertanda `route_source` model dan versi `morl-route-policy`;
-   bila model tidak termuat, Cache API memakai *fallback* A* dan mencatat alasannya.
+   `POST http://localhost:8081/v1/routes`. Rute dari MORL bertanda `route_source` `policy` dan versi
+   `morl-route-policy:1` pada `metadata.model_version.route_policy`. *Policy* yang di-commit hanya untuk moda
+   `bike`; permintaan `walk` memakai *fallback* A* (`route_source` `baseline`, alasan `model_unavailable`). Bila
+   model tidak termuat, Cache API juga memakai *fallback* A* dan mencatat alasannya. Contoh:
+   `curl -X POST -H 'Content-Type: application/json' -d '{"origin":{"lon":106.8227,"lat":-6.1754},"destination":{"lon":106.8456,"lat":-6.2088},"mode":"bike","preference":{"alpha":0.5,"beta":0.5}}' http://localhost:8081/v1/routes`.
 
 Untuk meniru *private networking* Railway, tambahkan `-f docker-compose.private.yml`
 ([private-networking.md](private-networking.md)). Alat pada langkah 3–5 tidak membutuhkan *port* host.
