@@ -62,6 +62,9 @@ jejak inferensi `pollution` (`inference_run`, `grid_prediction`, `edge_cell`, `e
 `edge_cell_piece`, `edge_metadata`). Di basis data yang sudah ada, tabel itu dibuat `init_db()` lewat
 [`database/spatial_migration.sql`](../database/spatial_migration.sql).
 `schema_sql(osm, pollution)` mengganti nama schema supaya uji bisa membuat salinan terisolasi. Berkas ini untuk uji dan basis data lokal baru, bukan migrasi produksi.
+DDL-nya idempoten (`IF NOT EXISTS`) dan aman dijalankan setelah `init_db()`, yang pada basis data kosong membuat
+tabel yang sama dari model ORM. [`tests/test_cache_schema_ddl.py`](../tests/test_cache_schema_ddl.py) memeriksa
+bahwa kolom dari keduanya sama.
 Untuk basis data lokal, [`scripts/local/seed_graph.py`](../../../scripts/local/seed_graph.py) membuat schema
 lewat `schema_sql()` lalu mengimpor graf `dataset_processed/OSM` lewat `write_road_graph`, dengan `edge_id`
 yang sama dengan Railway.
