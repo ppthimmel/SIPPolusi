@@ -1,6 +1,6 @@
 """Place search and reverse geocoding for the trip form (TI-SE-12), through a Photon server.
 
-The provider and its usage policy are documented in docs/ti-se-12-geocoding.md. The base
+The provider and its usage policy are documented in docs/ti-se-12/README.md. The base
 URL comes from API_GEOCODING_URL; without it nothing leaves this service and both
 endpoints answer 503 geocoding_unavailable, while the map and typed coordinates keep working.
 

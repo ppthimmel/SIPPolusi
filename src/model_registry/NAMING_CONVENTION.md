@@ -84,3 +84,9 @@ Existing names such as `spatial-downscaling-pm25` and `spatial-downscaling-no2`
 remain unchanged until a separate implementation updates registration, resolution,
 and deployment configuration consistently. Do not migrate existing aliases as part
 of documenting this convention.
+
+## See also
+
+- [`src/model_registry/README.md`](README.md): registry service
+- [`checkpoints/README.md`](../../checkpoints/README.md): checkpoint layout
+- [`docs/experiments/TI-AI-11/README.md`](../../docs/experiments/TI-AI-11/README.md): registered model names in use today

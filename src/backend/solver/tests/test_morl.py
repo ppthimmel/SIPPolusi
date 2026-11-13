@@ -8,6 +8,7 @@ needs a policy that always reaches the destination.
 from __future__ import annotations
 
 import asyncio
+import logging
 import json
 import threading
 import time
@@ -34,7 +35,7 @@ from solver.contract import SolveRequest, SolverError
 from solver.morl import MorlSolver, SubgraphRouter
 from solver.orchestrator import solve_route_request
 from solver.paths import shortest_path
-from solver.registry import RegistryClient, RegistryError
+from solver.registry import ModelNotRegistered, RegistryClient, RegistryError
 
 from .biggrid import grid_input
 from .conftest import request_body
@@ -289,13 +290,24 @@ def test_registry_url_comes_from_mlflow_tracking_uri(monkeypatch):
 
 # ------------------------------------------------------------------ registry
 
+ALIAS = "/api/2.0/mlflow/registered-models/alias"
+
+
+def alias_not_found(alias: str) -> httpx.Response:
+    """What MLflow 2.17.2 answers for an alias that is not set, whether or not the model exists."""
+    return httpx.Response(400, json={"error_code": "INVALID_PARAMETER_VALUE",
+                                     "message": f"Registered model alias {alias} not found."})
+
+
 class FakeRegistry:
-    """MLflow REST and artifact proxy over one package directory."""
+    """MLflow REST and artifact proxy over one package directory. `registered=False` is a registry where
+    nothing is registered yet; `answer` replaces the reply to the version lookup."""
 
     def __init__(self, package: Path, tag=None, source="mlflow-artifacts:/2/run123/artifacts/package", fail_first=0,
-                 fail_status=503):
+                 fail_status=503, registered=True, answer: httpx.Response | None = None):
         self.package, self.source, self.fail_first, self.fail_status = package, source, fail_first, fail_status
         self.tag = package_digest(package) if tag is None else tag
+        self.registered, self.answer = registered, answer
         self.requests: list[str] = []
 
     def handler(self, request: httpx.Request) -> httpx.Response:
@@ -304,10 +316,17 @@ class FakeRegistry:
             self.fail_first -= 1
             return httpx.Response(self.fail_status)
         path = request.url.path
-        if path == "/api/2.0/mlflow/registered-models/alias":
+        if path in (ALIAS, "/api/2.0/mlflow/model-versions/get"):
             assert request.url.params["name"] == "morl-route-policy"
-            if request.url.params["alias"] != "production":
-                return httpx.Response(404, json={"error_code": "RESOURCE_DOES_NOT_EXIST"})
+            if self.answer is not None:
+                return self.answer
+            if path == ALIAS and (not self.registered or request.url.params["alias"] != "production"):
+                return alias_not_found(request.url.params["alias"])
+            if path != ALIAS and (not self.registered or request.url.params["version"] != "1"):
+                return httpx.Response(404, json={
+                    "error_code": "RESOURCE_DOES_NOT_EXIST",
+                    "message": f"Model Version (name=morl-route-policy, version={request.url.params['version']}) "
+                               "not found"})
             tags = [{"key": "package_sha256", "value": self.tag}] if self.tag else []
             return httpx.Response(200, json={"model_version": {"name": "morl-route-policy", "version": "1",
                                                                "source": self.source, "tags": tags}})
@@ -599,3 +618,126 @@ async def test_package_built_for_an_older_minor_contract_still_serves_flagged(tm
     assert await solver.load_once()
     result = await solve(solver, osm_repo, pollution_repo, settings)
     assert result.route_source == "policy" and result.route_model["compatibility"] == "flagged"
+
+
+# ------------------------------------------------------------------ waiting for a model not registered yet (TI-SE-07c)
+
+def test_a_model_not_registered_yet_is_told_apart_from_other_answers(tmp_path):
+    package = build_package(tmp_path / "src")
+    for selector in ("production", "7"):  # an alias not set, a version that does not exist
+        with pytest.raises(ModelNotRegistered) as missing:
+            FakeRegistry(package, registered=False).client().resolve("morl-route-policy", selector, tmp_path / "cache")
+        assert missing.value.retryable is False  # not asked again within the call: the solver decides when
+    for answer in (httpx.Response(404), httpx.Response(401), httpx.Response(403, json={"error_code": "PERMISSION_DENIED"}),
+                   httpx.Response(400, json={"error_code": "INVALID_PARAMETER_VALUE",
+                                             "message": "Missing value for required parameter 'name'."})):
+        with pytest.raises(RegistryError) as other:
+            FakeRegistry(package, answer=answer).client().resolve("morl-route-policy", "production", tmp_path / "cache")
+        assert not isinstance(other.value, ModelNotRegistered) and other.value.retryable is False
+
+
+async def test_model_registered_after_start_is_loaded_without_a_restart(tmp_path, osm_repo, pollution_repo, settings,
+                                                                       oracle_family, caplog):
+    """A fresh stack: the Cache API starts before register_models. It waits, serves the labelled fallback,
+    and loads the policy at the first check after the model is registered."""
+    caplog.set_level(logging.INFO, logger="solver")
+    package = build_package(tmp_path / "src", family=oracle_family)
+    registry = FakeRegistry(package, registered=False)
+    solver = registry_solver(tmp_path, registry, model_recheck_s=0.05)
+    await solver.start()
+    await until(lambda: registry.requests.count(ALIAS) >= 3)
+    assert solver.state == "unavailable" and not solver._task.done()  # still waiting, not stopped
+    waiting = await solve(solver, osm_repo, pollution_repo, settings)
+    assert (waiting.route_source, waiting.preference_applied, waiting.fallback_reason) == (
+        "baseline", False, "model_unavailable")
+    assert waiting.route_model["status"] == "unavailable" and waiting.route_model["package_sha256"] is None
+    assert "outcome=waiting" in caplog.text and "action=stop" not in caplog.text
+    registry.registered = True  # register_models ran
+    await asyncio.wait_for(solver._task, 10)
+    assert solver.state == "ready"
+    result = await solve(solver, osm_repo, pollution_repo, settings)
+    assert result.route_source == "policy" and result.route_model["package_sha256"] == package_digest(package)
+    loads = [r.getMessage() for r in caplog.records if r.getMessage().startswith("route_model_load")]
+    assert "outcome=waiting" in loads[0] and "outcome=ok" in loads[-1]
+    await solver.close()
+
+
+@pytest.mark.parametrize("answer", [
+    httpx.Response(401),
+    httpx.Response(403, json={"error_code": "PERMISSION_DENIED", "message": "Permission denied"}),
+    httpx.Response(400, json={"error_code": "INVALID_PARAMETER_VALUE",
+                              "message": "Missing value for required parameter 'name'."}),
+    httpx.Response(404),  # no MLflow error body: a proxy or a wrong URL, not a missing model
+], ids=["401", "403", "400-other", "404-no-body"])
+async def test_other_client_errors_still_stop(tmp_path, answer, caplog):
+    registry = FakeRegistry(build_package(tmp_path / "src"), answer=answer)
+    solver = registry_solver(tmp_path, registry, model_recheck_s=0.01, model_retry_initial_s=0.01)
+    await solver.start()
+    await asyncio.wait_for(solver._task, 10)
+    assert solver.state == "unavailable" and registry.requests.count(ALIAS) == 1
+    assert "action=stop" in caplog.text and "outcome=waiting" not in caplog.text
+
+
+@pytest.mark.parametrize("case", ["no_tag", "wrong_tag", "unknown_family", "other_contract_major", "missing_artifact"])
+async def test_a_registered_package_that_cannot_be_used_still_stops(tmp_path, case, caplog):
+    """Only a missing model or alias is waited for: a registered package that is wrong stops the attempts."""
+    package = build_package(tmp_path / "src", contract="2.0.0" if case == "other_contract_major" else "1.0.0",
+                            family="preference_conditioned_v9" if case == "unknown_family" else None)
+    registry = FakeRegistry(package, tag={"no_tag": "", "wrong_tag": "0" * 64}.get(case))
+    transport = registry.handler
+    if case == "missing_artifact":  # the version exists but its files do not: the registry is broken, not empty
+        def transport(request):
+            if request.url.path.startswith("/api/2.0/mlflow-artifacts/"):
+                return httpx.Response(404, json={"error_code": "RESOURCE_DOES_NOT_EXIST", "message": "not found"})
+            return registry.handler(request)
+    solver = MorlSolver(morl_settings(registry_url="http://registry:5000", model_cache_dir=str(tmp_path / "cache"),
+                                      registry_attempts=1, model_recheck_s=0.01, model_retry_initial_s=0.01),
+                        data_contracts_version="1.0.0", registry_transport=httpx.MockTransport(transport))
+    await solver.start()
+    await asyncio.wait_for(solver._task, 30)
+    assert solver.state == "unavailable" and registry.requests.count(ALIAS) == 1
+    assert "action=stop" in caplog.text and "outcome=waiting" not in caplog.text
+
+
+async def test_waiting_checks_a_sleeping_registry_at_the_recheck_interval_only(tmp_path, oracle_family):
+    """While no model is registered, the registry is asked once per model_recheck_s, not at the faster retry
+    pace, so the checks do not keep it awake; a check that finds it asleep (timeouts) is retried like any
+    waking registry, and the model is picked up once the registry answers with it."""
+    package = build_package(tmp_path / "src", family=oracle_family)
+    registry = FakeRegistry(package, registered=False)
+    asleep, checks = threading.Event(), []
+
+    def transport(request):
+        if request.url.path == ALIAS:
+            checks.append(time.perf_counter())
+        if asleep.is_set():
+            raise httpx.ConnectTimeout("registry asleep")
+        return registry.handler(request)
+    solver = MorlSolver(morl_settings(registry_url="http://registry:5000", model_cache_dir=str(tmp_path / "cache"),
+                                      registry_attempts=1, model_recheck_s=0.3, model_retry_initial_s=0.01,
+                                      model_retry_max_s=0.02),
+                        data_contracts_version="1.0.0", registry_transport=httpx.MockTransport(transport))
+    await solver.start()
+    await asyncio.sleep(1.0)
+    assert 2 <= len(checks) <= 5  # about 1 s / 0.3 s, not 1 s / 0.01 s
+    assert all(b - a >= 0.25 for a, b in zip(checks, checks[1:]))
+    asleep.set()
+    seen = len(checks)
+    await until(lambda: len(checks) >= seen + 3)  # timeouts: retried on the fast backoff
+    assert solver.state == "unavailable" and not solver._task.done()
+    registry.registered = True
+    asleep.clear()  # awake, with the model
+    await asyncio.wait_for(solver._task, 10)
+    assert solver.state == "ready"
+    await solver.close()
+
+
+async def test_close_does_not_wait_for_the_next_check(tmp_path):
+    registry = FakeRegistry(build_package(tmp_path / "src"), registered=False)
+    solver = registry_solver(tmp_path, registry, model_recheck_s=600)
+    await solver.start()
+    await until(lambda: registry.requests.count(ALIAS) == 1)
+    await asyncio.sleep(0.05)
+    started = time.perf_counter()
+    await solver.close()
+    assert time.perf_counter() - started < 1.0 and registry.requests.count(ALIAS) == 1

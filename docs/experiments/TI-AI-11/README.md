@@ -34,6 +34,13 @@ The PM2.5 spatial example is [`spatial_pm25_package.json`](spatial_pm25_package.
 uploaded (fixed-split checkpoint, not an all-station refit; see the Railway notes). The NO2 serving fit is
 [`spatial_no2_package.json`](spatial_no2_package.json).
 
+These three examples were built under data contract `1.0.0`. The runtime has provided `1.1.0` since commit
+`e088276` (4 November 2026), so by the [compatibility matrix](#compatibility-matrix) they are **flagged**, not
+rejected: they still load, and the status is recorded (the Cache API's `morl` solver provider logs
+`route_model_contract status=flagged`; the Data Worker adds `compatibility` to `model_metadata`). A package
+built now carries `1.1.0`; the NO2 version registered on 4 November 2026 (`package_sha256` `99ab5fce…`) was
+packaged that way.
+
 ## Loading
 
 ```python
@@ -91,13 +98,16 @@ Limits of this evidence:
 - The exposure field is a fixed synthetic one: the real fields are not in git. It shows that the package
   reproduces the set, not route quality (TI-AI-10 covers that).
 - "Clean environment" here is a fresh Python process on the same machine, not a fresh container.
-  The same check should run in CI or on Railway once the registry is fixed.
+  The registry on Railway has since been fixed (see the Railway notes below), but its check compares file
+  hashes only; this reload check has not been run in CI or in a container.
 - Spatial: the PM2.5 and NO2 bundles package and load (`spatial_pm25_smoke_test.json`, `spatial_no2_smoke_test.json`).
   The PM2.5 test RMSE was recomputed from the weights with the repository's evaluator and equals the PIC's value
   (18.372, `spatial_pm25_recomputed_metrics.csv`; see the caveats in the Railway notes). The NO2 serving fit has no
   evaluation of its own. The code path is also covered with a hand-made bundle in `tests/test_model_package.py`.
-- Railway: registry through the proxy, and both models registered, are recorded in
-  [`railway_registry_evidence.md`](railway_registry_evidence.md).
+- Railway: registry through the proxy, and the route and PM2.5 models registered, are recorded in
+  [`railway_registry_evidence.md`](railway_registry_evidence.md). `spatial-downscaling-no2` version 1 (LightGBM
+  serving fit, aliases `candidate` and `production`) was registered on 4 November 2026, and a Data Worker cycle
+  used both spatial models with no fallback cells ([TI-SE-10 end-to-end verification](https://github.com/ppthimmel/SIPPolusi/issues/10)).
 
 ## Decision field and policy families
 
@@ -113,9 +123,18 @@ limitations, and the verification still needed.
 
 `register` tags a version with `package_sha256` when the bundle has a `package.json`, and `resolve`
 refuses a download whose `package.json` does not match the tag. Registering the route model uses the
-same pattern and still needs the registry fix below. Production serving of the registry on Railway:
+same pattern: `morl-route-policy` version 1 is registered
+([`railway_registry_evidence.md`](railway_registry_evidence.md)), and the Cache API's `morl` solver provider
+resolves it ([solver README](../../../src/backend/solver/README.md#penyedia-morl-ti-se-07b)). Production serving of the registry on Railway:
 see [`src/model_registry/README.md`](../../../src/model_registry/README.md).
 
 ## Paired MORL comparison
 
 The exploratory comparison of the existing scalarized and fixed-preference route policies, including the regret-prior baseline, is saved in [`morl-comparison/`](morl-comparison/). Open [`comparison-results.ipynb`](morl-comparison/comparison-results.ipynb) for the results, protocol, and limitations. The original test scenarios had already been inspected; these results are not a fresh blind test.
+## See also
+
+- [`src/backend/solver/README.md`](../../../src/backend/solver/README.md#penyedia-morl-ti-se-07b): the `morl` provider that loads the packaged route policy
+- [`docs/devops/local-railway-parity.md`](../../devops/local-railway-parity.md): local `package_route` and `register_models` jobs
+- [`docs/software/data-contracts-TI-SE-01.md`](../../software/data-contracts-TI-SE-01.md): data contract versioning
+- [`scripts/railway/README.md`](../../../scripts/railway/README.md): registering packages on Railway
+- [`src/model_registry/NAMING_CONVENTION.md`](../../../src/model_registry/NAMING_CONVENTION.md): planned naming convention

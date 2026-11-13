@@ -5,13 +5,18 @@
 -- __OSM__ dan __POLLUTION__ diganti nama schema oleh osm_cache.schema_sql(), sehingga uji
 -- dapat membuat salinan terisolasi. Dipakai untuk uji dan basis data lokal baru, bukan migrasi
 -- basis data produksi.
+--
+-- Aman dijalankan ulang dan setelah init_db Data Worker. Pada stack lokal baru Data Worker mulai
+-- lebih dulu dan membuat tabel dari model ORM (database/models.py), sehingga setiap CREATE memakai
+-- IF NOT EXISTS. ALTER TABLE ... ADD COLUMN IF NOT EXISTS di bawah melengkapi tabel osm yang dibuat
+-- model ORM sebelum kolomnya disamakan dengan Railway (November 2026).
 
 CREATE EXTENSION IF NOT EXISTS postgis;
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
 
 CREATE SCHEMA IF NOT EXISTS __OSM__;
 
-CREATE TABLE __OSM__.graph_version (
+CREATE TABLE IF NOT EXISTS __OSM__.graph_version (
     version text NOT NULL,
     status text NOT NULL,
     osm_timestamp timestamp with time zone,
@@ -21,19 +26,21 @@ CREATE TABLE __OSM__.graph_version (
     CONSTRAINT graph_version_pkey PRIMARY KEY (version),
     CONSTRAINT ck_graph_version_status CHECK (status = ANY (ARRAY['building'::text, 'active'::text, 'retired'::text]))
 );
-CREATE UNIQUE INDEX graph_version_single_active_idx ON __OSM__.graph_version USING btree (status)
+CREATE UNIQUE INDEX IF NOT EXISTS graph_version_single_active_idx ON __OSM__.graph_version USING btree (status)
     WHERE (status = 'active'::text);
 
-CREATE TABLE __OSM__.road_node (
+CREATE TABLE IF NOT EXISTS __OSM__.road_node (
     node_id bigint NOT NULL,
     graph_version text NOT NULL,
     geom public.geometry(Point, 4326),
     tags jsonb DEFAULT '{}'::jsonb NOT NULL,
     CONSTRAINT road_node_pkey PRIMARY KEY (node_id, graph_version)
 );
-CREATE INDEX idx_road_node_geom ON __OSM__.road_node USING gist (geom);
+CREATE INDEX IF NOT EXISTS idx_road_node_geom ON __OSM__.road_node USING gist (geom);
+ALTER TABLE __OSM__.road_node
+    ADD COLUMN IF NOT EXISTS tags jsonb DEFAULT '{}'::jsonb NOT NULL;
 
-CREATE TABLE __OSM__.road_edge (
+CREATE TABLE IF NOT EXISTS __OSM__.road_edge (
     edge_id bigint NOT NULL,
     graph_version text NOT NULL,
     u bigint NOT NULL,
@@ -49,18 +56,23 @@ CREATE TABLE __OSM__.road_edge (
     tags jsonb DEFAULT '{}'::jsonb NOT NULL,
     CONSTRAINT road_edge_pkey PRIMARY KEY (edge_id, graph_version)
 );
-CREATE INDEX idx_road_edge_geom ON __OSM__.road_edge USING gist (geom);
-CREATE INDEX idx_road_edge_osm_way_id ON __OSM__.road_edge USING btree (osm_way_id);
-CREATE INDEX idx_road_edge_u ON __OSM__.road_edge USING btree (graph_version, u);
-CREATE INDEX idx_road_edge_v ON __OSM__.road_edge USING btree (graph_version, v);
-CREATE INDEX idx_road_edge_name_trgm ON __OSM__.road_edge USING gin (name gin_trgm_ops);
+ALTER TABLE __OSM__.road_edge
+    ADD COLUMN IF NOT EXISTS osm_way_id bigint,
+    ADD COLUMN IF NOT EXISTS name text,
+    ADD COLUMN IF NOT EXISTS oneway boolean DEFAULT false NOT NULL,
+    ADD COLUMN IF NOT EXISTS tags jsonb DEFAULT '{}'::jsonb NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_road_edge_geom ON __OSM__.road_edge USING gist (geom);
+CREATE INDEX IF NOT EXISTS idx_road_edge_osm_way_id ON __OSM__.road_edge USING btree (osm_way_id);
+CREATE INDEX IF NOT EXISTS idx_road_edge_u ON __OSM__.road_edge USING btree (graph_version, u);
+CREATE INDEX IF NOT EXISTS idx_road_edge_v ON __OSM__.road_edge USING btree (graph_version, v);
+CREATE INDEX IF NOT EXISTS idx_road_edge_name_trgm ON __OSM__.road_edge USING gin (name gin_trgm_ops);
 -- edge_id unik secara global (pollution.edge_pollution hanya merujuk edge_id). Dibuat di
 -- Railway pada 2026-10-13.
-CREATE UNIQUE INDEX road_edge_edge_id_key ON __OSM__.road_edge USING btree (edge_id);
+CREATE UNIQUE INDEX IF NOT EXISTS road_edge_edge_id_key ON __OSM__.road_edge USING btree (edge_id);
 
 CREATE SCHEMA IF NOT EXISTS __POLLUTION__;
 
-CREATE TABLE __POLLUTION__.edge_pollution (
+CREATE TABLE IF NOT EXISTS __POLLUTION__.edge_pollution (
     edge_id bigint NOT NULL,
     time_window_start timestamp with time zone NOT NULL,
     pm25_ugm3 real,
@@ -78,9 +90,9 @@ CREATE TABLE __POLLUTION__.edge_pollution (
     CONSTRAINT ck_edge_pollution_background_source CHECK (background_source = ANY (ARRAY['aod'::text, 'reanalysis'::text])),
     CONSTRAINT ck_edge_pollution_estimation_source CHECK (estimation_source = ANY (ARRAY['stgnn'::text, 'idw'::text, 'hybrid'::text]))
 );
-CREATE INDEX idx_edge_pollution_geom ON __POLLUTION__.edge_pollution USING gist (geom);
+CREATE INDEX IF NOT EXISTS idx_edge_pollution_geom ON __POLLUTION__.edge_pollution USING gist (geom);
 
-CREATE TABLE __POLLUTION__.pollution_window (
+CREATE TABLE IF NOT EXISTS __POLLUTION__.pollution_window (
     time_window_start timestamp with time zone NOT NULL,
     pollutant text,
     status text NOT NULL,

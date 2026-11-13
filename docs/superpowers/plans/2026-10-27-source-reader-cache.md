@@ -41,3 +41,8 @@ Documentation/evidence belongs under `docs/experiments/TI-AI-05/`.
 
 Execution is inline as continuation of the existing TI-AI-05 review; the clean current
 checkout and branch are retained. No new model or training configuration is required.
+
+## See also
+
+- [`docs/experiments/TI-AI-05/source_reader_cache.md`](../../experiments/TI-AI-05/source_reader_cache.md): result and benchmark
+- [`src/data_worker/feature_matrix/README.md`](../../../src/data_worker/feature_matrix/README.md): FeatureMatrix and `SourceReader`

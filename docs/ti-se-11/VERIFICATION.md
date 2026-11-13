@@ -155,3 +155,8 @@ then no connected NIC. Desktop restart alone did not recover it and WSL shutdown
 hung. Restarting WslService with administrator elevation completed the shutdown;
 relaunching Desktop restored Engine 25.0.3. The subsequent rebuild and complete
 matrix succeeded. No Docker data reset or volume purge was used for recovery.
+
+## See also
+
+- [`docs/software/technical-runbook.md`](../software/technical-runbook.md): runbook created in this ticket
+- [`tests/e2e/README.md`](../../tests/e2e/README.md): E2E harness

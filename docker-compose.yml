@@ -6,15 +6,21 @@
 # Build/start guide and smoke test: docs/devops/build-runtime.md.
 # Add -f docker-compose.private.yml to publish only the public entry points,
 # as on Railway (docs/devops/private-networking.md).
+# Parity with Railway development (database version, registry proxy, MORL route model, Worker settings)
+# and the seed steps for a fresh stack: docs/devops/local-railway-parity.md.
 services:
   postgres:
-    image: postgis/postgis:16-3.4
+    # Same version and data directory as the Railway database. A PostgreSQL 16 volume cannot be
+    # opened by 18, hence a new volume name; the old postgres_data volume is left untouched.
+    image: postgis/postgis:18-3.6
     restart: unless-stopped
     env_file: ./src/postgres/.env
+    environment:
+      PGDATA: /var/lib/postgresql/data/pgdata
     ports:
       - "5432:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres18_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 5s
@@ -24,6 +30,7 @@ services:
   # minio/minio is no longer pullable without a Docker Hub login (MinIO Inc.
   # moved AGPL community images behind auth); bitnamilegacy is the free
   # community-maintained mirror and supports MINIO_DEFAULT_BUCKETS directly.
+  # Railway uses its Storage Bucket instead; only model_registry talks to either.
   minio:
     image: bitnamilegacy/minio:latest
     restart: unless-stopped
@@ -39,6 +46,8 @@ services:
       timeout: 5s
       retries: 10
 
+  # Proxied artifacts (MLFLOW_ARTIFACT_ROOT=mlflow-artifacts:/), as on Railway: clients need only
+  # MLFLOW_TRACKING_URI, and only this service holds the object-storage keys.
   model_registry:
     build: ./src/model_registry
     restart: unless-stopped
@@ -69,8 +78,10 @@ services:
       timeout: 5s
       retries: 10
 
-  # Cache API (/v1/osm, /v1/pollution): same source tree as the backend, own
-  # image and process. Health check is built into the image (GET /health).
+  # Cache API: the whole public API behind the gateway (/v1/routes, /v1/exposure-surface,
+  # /v1/geocode/*) plus /v1/osm and /v1/pollution. Same source tree as the backend, own image,
+  # process and env file. It loads the MORL route policy from the registry (ROUTE_SOLVER_PROVIDER=morl).
+  # Health check is built into the image (GET /health/live).
   cache_api:
     build:
       context: ./src/backend
@@ -80,9 +91,14 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    env_file: ./src/backend/.env
+      model_registry:
+        condition: service_started
+    env_file: ./src/backend/osm/.env
     environment:
       PORT: "8000"
+      # A fresh stack starts before register_models: the Cache API waits for the model and checks the
+      # registry this often (Railway keeps the 900 s default; the local registry does not sleep).
+      ROUTE_SOLVER_MODEL_RECHECK_S: "60"
     ports:
       - "8001:8000"
 
@@ -99,7 +115,8 @@ services:
   data_worker:
     build: ./src/data_worker
     volumes:
-      # Training inputs are excluded from the image; expose processed features read-only locally.
+      # Training inputs are excluded from the image; expose processed files read-only locally
+      # (the road graph for seed_graph, and offline features if SPATIAL_FEATURE_ROOT is set).
       - ./src/data_worker/dataset_processed:/app/dataset_processed:ro
     restart: unless-stopped
     depends_on:
@@ -108,14 +125,19 @@ services:
       model_registry:
         condition: service_started
     env_file: ./src/data_worker/.env
-    # Image default is `python main.py cycle` (one cycle then exit, for the
-    # Railway cron in railway.json). With restart: unless-stopped that would
-    # rerun a full SPKU sweep every few minutes, so run the in-process
-    # scheduler instead: one cycle now, then every hour at minute 15.
+    # Image default is `python main.py cycle` (one cycle then exit), which Railway runs from its cron
+    # `15 * * * *`. With restart: unless-stopped that would rerun a full SPKU sweep every few minutes,
+    # so run the in-process scheduler instead: one cycle now, then every hour at minute 15. Same
+    # schedule, different trigger.
     command: ["python", "main.py", "serve", "--now"]
 
   frontend:
-    build: ./src/frontend
+    build:
+      context: ./src/frontend
+      # Build-time request timeouts, as on Railway development (src/frontend/.env.example).
+      args:
+        VITE_ROUTE_TIMEOUT_MS: ${VITE_ROUTE_TIMEOUT_MS:-45000}
+        VITE_SURFACE_TIMEOUT_MS: ${VITE_SURFACE_TIMEOUT_MS:-45000}
     restart: unless-stopped
     env_file: ./src/frontend/.env
     depends_on:
@@ -144,6 +166,57 @@ services:
     depends_on:
       - prometheus
 
+  # --- One-shot seed tools (profile "tools"); see docs/devops/local-railway-parity.md ---------------
+  # Schemas and the road graph Railway development uses (jakarta-20261005, with its edge ids).
+  seed_graph:
+    build: ./src/data_worker
+    profiles: [tools]
+    env_file: ./src/data_worker/.env
+    volumes:
+      - ./src/data_worker/dataset_processed:/app/dataset_processed:ro
+      - ./scripts/local:/seed:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: ["python", "/seed/seed_graph.py"]
+
+  # Route policy package from the committed TI-AI-09 set, built in the Cache API image.
+  package_route:
+    build:
+      context: ./src/backend
+      dockerfile: osm/Dockerfile
+      target: runtime
+    profiles: [tools]
+    user: "0"  # writes to the shared volume
+    volumes:
+      - ./docs/experiments/TI-AI-09/set:/route-set:ro
+      - ./scripts/local:/seed:ro
+      - local_packages:/out
+    command: ["python", "/seed/package_route.py"]
+
+  # Registers the route package and every packaged folder under ./.local-models (spatial bundles)
+  # through the registry's artifact proxy, with the aliases candidate and production. Same script as
+  # on Railway (scripts/railway/register_from_bucket.py). No object-storage keys in this container.
+  register_models:
+    build: ./src/model_registry
+    profiles: [tools]
+    environment:
+      MLFLOW_TRACKING_URI: http://model_registry:5000
+      REGISTER_ALIASES: candidate,production
+      GIT_PYTHON_REFRESH: quiet
+    volumes:
+      - ./scripts/railway:/tools:ro
+      - ./scripts/local:/seed:ro
+      - ./.local-models:/local-models:ro
+      - local_packages:/out:ro
+    depends_on:
+      model_registry:
+        condition: service_started
+      package_route:
+        condition: service_completed_successfully
+    entrypoint: ["sh", "/seed/register_models.sh"]
+
 volumes:
-  postgres_data:
+  postgres18_data:
   minio_data:
+  local_packages:

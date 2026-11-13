@@ -7,12 +7,14 @@ pelatihan dan operasi, tanpa pergantian AOD/MERRA-2 atau suku latar aditif setel
 
 | Polutan | Model | Keluaran |
 |---|---|---|
-| PM2.5 | IDW + koreksi ST-GNN | `max(0, IDW + target_scale × correction)` |
+| PM2.5 | IDW (p = 2, k = 8) + koreksi ST-GNN | `max(0, IDW + target_scale × correction)` |
 | NO₂ | LightGBM dengan seluruh 62 fitur | Konsentrasi langsung, minimal nol |
 
 Pemilihan ini adalah keputusan implementasi. Hasil PM2.5 belum menunjukkan keuntungan konsisten
 terhadap interpolator yang disetel. Keuntungan NO₂ sensitif terhadap geometri dan bias jaringan sensor;
-hasil pada stasiun tidak membuktikan akurasi pada seluruh grid.
+hasil pada stasiun tidak membuktikan akurasi pada seluruh grid. Rekomendasi
+[laporan perbandingan](../../../docs/experiments/model-comparison-ds-v0.3.0/README.md#rekomendasi) (IDW p = 1
+seluruh stasiun untuk PM2.5) belum diterapkan; fallback tetap IDW p = 2, k = 8 (`configs/idw_baseline.toml`).
 
 ## Organisasi
 
@@ -24,7 +26,7 @@ spatial_model/
 ├── inference/    # pipeline, Worker, serving, agregasi, confidence, cache
 ├── artifacts/    # bundle model dan registry MLflow/MinIO
 ├── configs/      # konfigurasi ST-GNN, LightGBM, IDW, snapshot
-└── training/     # perintah train, register, promote
+└── training/     # perintah train, register, promote, package, register-route
 ```
 
 `models/stgnn/` dan `models/lightgbm/` memuat implementasi dan training masing-masing model.
@@ -120,7 +122,12 @@ python -m spatial_model.training register ../../.cache/training/pm25/bundle
 python -m spatial_model.training register ../../.cache/training/no2/bundle
 python -m spatial_model.training promote pm25 1
 python -m spatial_model.training promote no2 1
+python -m spatial_model.training package ../../.cache/training/pm25/bundle
+python -m spatial_model.training register-route <folder-paket-rute>
 ```
+
+`package` menulis `package.json` (format paket TI-AI-11) ke bundle; `register` memverifikasinya bila ada.
+`register-route` mendaftarkan paket policy rute `morl-route-policy`.
 
 Nama registry: `spatial-downscaling-pm25` dan `spatial-downscaling-no2`. Registrasi membuat versi
 dan alias `candidate`. Promotion memverifikasi bundle sebelum menetapkan `production`.
@@ -130,8 +137,8 @@ dan memverifikasi hash pada cache lokal `SPATIAL_MODEL_CACHE`.
 ## Inferensi dan cache
 
 Worker membaca 24 jam sensor dengan QC/hourly aggregation yang sama dengan baseline.
-Fitur lingkungan dibaca dari *feature store* PostgreSQL yang diisi siklus setiap jam (skema `features`,
-`StoreSourceReader`, aturan *as-of* sama dengan `SourceReader`). `SPATIAL_FEATURE_ROOT`, bila diatur, menunjuk
+Sejak commit `5e5c9bf`, fitur lingkungan dibaca dari *feature store* PostgreSQL yang diisi siklus setiap jam
+(skema `features`, `StoreSourceReader` pada `inference/runtime.py`, aturan *as-of* sama dengan `SourceReader`). `SPATIAL_FEATURE_ROOT`, bila diatur, menunjuk
 keluaran preprocessing (`dataset_processed`) sebagai gantinya, untuk run luring dan reproduksi; image Worker tidak
 memuat `dataset_processed`.
 Fitur mengikuti aturan waktu tersedia dataset; input masa depan ditolak. ST-GNN memakai tile
@@ -200,3 +207,14 @@ python scripts/verify_spatial_models.py --pm25 .cache/training/pm25 --no2 .cache
 
 `TEST_DATABASE_URL` wajib menunjuk database lokal `spatial_test`. Script menolak host/database lain.
 Laporan ringkas disimpan pada `docs/experiments/TI-AI-05/registered_verification.json`.
+
+## Lihat juga
+
+- [`docs/PROTOKOL_EVALUASI.md`](../../../docs/PROTOKOL_EVALUASI.md): protokol evaluasi
+- [`src/data_worker/spatial_model/data/snapshot/README.md`](data/snapshot/README.md): pembangun snapshot
+- [`src/data_worker/spatial_model/evaluation/idw/README.md`](evaluation/idw/README.md): baseline IDW
+- [`checkpoints/README.md`](../../../checkpoints/README.md): lokasi checkpoint lokal
+- [`docs/experiments/TI-AI-11/README.md`](../../../docs/experiments/TI-AI-11/README.md): pemaketan model (`package`, `register-route`)
+- [`src/model_registry/README.md`](../../model_registry/README.md): registry model
+- [`src/data_worker/feature_store/README.md`](../feature_store/README.md): feature store, sumber fitur inferensi
+- [`src/backend/pollution/README.md`](../../backend/pollution/README.md): pembaca cache di Cache API

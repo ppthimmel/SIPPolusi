@@ -9,11 +9,16 @@ orchestrator answers with the A* baseline, labelled (route_source "baseline",
 fallback_reason "model_*").
 
 Loading: a failure the registry or the package can fix by itself (timeout, 5xx while it
-wakes) is retried with a capped backoff. Anything else (4xx, a missing or wrong tag, an
-altered package, an unknown policy family, another contract major) stops the attempts
-with status "unavailable", and the cause is logged; it needs a registry change and a
-redeploy. Loads run in a daemon thread and check a stop event, so a load stuck on a
-sleeping registry never delays shutdown.
+wakes) is retried with a capped backoff. A model, alias or version that is not registered
+yet (registry.ModelNotRegistered, e.g. the Cache API started before register_models) is
+waited for: logged as outcome=waiting and asked again every ROUTE_SOLVER_MODEL_RECHECK_S,
+so the policy is loaded at the first check after it is registered, without a restart. The
+interval is slow because each check may wake a sleeping registry. Anything else (another
+4xx, a missing or wrong tag, an altered package, an unknown policy family, another contract
+major) stops the attempts with status "unavailable", and the cause is logged; it needs a
+registry change and a redeploy. Status is "unavailable" while waiting too, so routes get the
+A* fallback with fallback_reason model_unavailable. Loads run in a daemon thread and check a
+stop event, so a load stuck on a sleeping registry never delays shutdown.
 
 Per request:
     contract  package graph_version and data contract major against the request's graph
@@ -222,6 +227,12 @@ def _retryable(exc: BaseException) -> bool:
     return isinstance(exc, OSError)  # disk or network trouble below the registry client
 
 
+def _not_registered(exc: BaseException) -> bool:
+    """The registry holds no such model, alias or version yet: registering it fixes this, no redeploy."""
+    from .registry import ModelNotRegistered
+    return isinstance(exc, ModelNotRegistered)
+
+
 async def _in_daemon_thread(fn: Callable[[], Any]) -> Any:
     """fn() in a daemon thread: unlike asyncio.to_thread, interpreter shutdown does not wait for it."""
     loop = asyncio.get_running_loop()
@@ -304,24 +315,45 @@ class MorlSolver:
                        self.settings.model_selector, type(exc).__name__, exc,
                        "retry" if retry else "stop (needs a registry change and a redeploy)")
 
+    def _log_waiting(self, exc: BaseException, first: bool) -> None:
+        """The model is not registered yet. Logged as a warning once, then per check at info."""
+        logger.log(logging.WARNING if first else logging.INFO,
+                   "route_model_load outcome=waiting model=%s@%s reason=not_registered (%s) action=check again in "
+                   "%.0f s; routes use the A* fallback (model_unavailable) until it is registered, no restart needed",
+                   self.settings.model_name, self.settings.model_selector, exc, self.settings.model_recheck_s)
+
     async def load_once(self) -> bool:
         """One load attempt; True when the policy is ready. Failures are logged, never raised."""
         loaded, exc = await self._attempt_load()
         if loaded is None:
             self.state = "unavailable"
-            self._log_failure(exc, _retryable(exc))
+            if _not_registered(exc):
+                self._log_waiting(exc, first=True)
+            else:
+                self._log_failure(exc, _retryable(exc))
             return False
         self._loaded, self.state = loaded, "ready"
         return True
 
     async def _load_until_ready(self) -> None:
+        """Load, retrying what can fix itself. Three outcomes per failed attempt:
+        not registered yet   wait model_recheck_s (slow: each check may wake a sleeping registry) and ask again
+        retryable            timeouts and 5xx while the registry wakes: backoff from model_retry_initial_s
+        anything else        stop; the registry or the package has to change
+        """
         delay = self.settings.model_retry_initial_s
+        waiting = False
         while True:
             loaded, exc = await self._attempt_load()
             if loaded is not None:
                 self._loaded, self.state = loaded, "ready"
                 return
             self.state = "unavailable"
+            if _not_registered(exc) and not self._stop.is_set():
+                self._log_waiting(exc, first=not waiting)
+                waiting, delay = True, self.settings.model_retry_initial_s
+                await asyncio.sleep(self.settings.model_recheck_s)
+                continue
             retry = _retryable(exc) and not self._stop.is_set()
             self._log_failure(exc, retry)
             if not retry:

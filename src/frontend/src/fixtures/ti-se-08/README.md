@@ -4,3 +4,8 @@ Salinan `src/backend/public_api/examples/` (respons rute diperbarui untuk `metad
 respons `POST /v1/routes` dan `GET /v1/exposure-surface` pada data yang ditulis Data Worker
 ke PostGIS lokal. `src/contract.test.ts` memastikan parser frontend membaca respons ini.
 Salin ulang bila kontrak backend berubah.
+
+## Lihat juga
+
+- [`src/backend/public_api/README.md`](../../../../backend/public_api/README.md): API publik sumber fixture
+- [`docs/software/data-contracts-TI-SE-01.md`](../../../../../docs/software/data-contracts-TI-SE-01.md): kontrak data

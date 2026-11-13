@@ -3,8 +3,9 @@
 ## Architecture and contracts
 
 The browser sends `/v1/*` to the frontend proxy, then the NGINX gateway.
-The gateway exposes exactly `POST /v1/routes` and `GET /v1/exposure-surface`
-from the Cache API (`osm.app:app`). The separate Backend (`main:app`) is not
+The gateway exposes exactly `POST /v1/routes`, `GET /v1/exposure-surface`,
+`POST /v1/geocode/search` and `POST /v1/geocode/reverse` from the Cache API
+(`osm.app:app`). The separate Backend (`main:app`) is not
 the public routing endpoint. The Cache API reads OSM and pollution caches,
 builds solver input, validates the solver result and computes response metrics.
 The Data Worker acquires and validates data, performs spatial inference and
@@ -16,7 +17,7 @@ support model registration and artifacts.
 - [OpenAPI snapshot](../../src/backend/public_api/openapi.json)
 - [Solver settings and fallback](../../src/backend/solver/README.md)
 - [Build/runtime and deployment](../devops/build-runtime.md)
-- [Observability](../devops/observability-TI-DO-08.md)
+- [Observability](../devops/observability.md)
 
 ## Reproduce a controlled local pipeline
 
@@ -61,7 +62,7 @@ Copy each `src/<service>/.env.example` to `.env` as described in the root
 README. In PowerShell, preserve existing files:
 
 ```powershell
-'postgres','minio','model_registry','backend','gateway','data_worker','frontend','observability' | ForEach-Object {
+'postgres','minio','model_registry','backend','backend/osm','gateway','data_worker','frontend','observability' | ForEach-Object {
   $target = "src/$_/.env"
   if (-not (Test-Path $target)) { Copy-Item "src/$_/.env.example" $target }
 }
@@ -73,13 +74,18 @@ Use matching Postgres and MinIO credentials across consuming services. Example
 credentials are local development values. This stack uses live acquisition;
 starting containers does not guarantee that a usable graph and pollution window
 already exist. Use the fixture stack above for deterministic verification.
-Root Compose uses PostGIS 16-3.4; E2E/CI use 18-3.6. Record the actual version
-when reporting results rather than assuming these environments are identical.
+Root Compose, E2E and CI all use PostGIS 18-3.6, the same as the Railway
+database. Record the actual version when reporting results rather than assuming
+these environments are identical. To seed the road graph and register models
+locally, follow [local-railway-parity.md](../devops/local-railway-parity.md).
 
-`src/backend/.env` configures both Backend and Cache API. Solver defaults in
-`solver/config.py` select `ROUTE_SOLVER_PROVIDER=mock`. Set it explicitly to
-`baseline` for fastest-path routing, or `http` with `ROUTE_SOLVER_URL` for a
-compatible IRouteSolve service. `ROUTE_SOLVER_FALLBACK=baseline` is the default;
+`src/backend/.env` configures the Backend; the Cache API reads its own
+`src/backend/osm/.env`. Solver defaults in `solver/config.py` select
+`ROUTE_SOLVER_PROVIDER=mock`, but `src/backend/osm/.env.example` sets `morl`, as
+on Railway: the Cache API loads the registered `morl-route-policy` from MLflow
+(`MLFLOW_TRACKING_URI`) and falls back to the A* baseline until it is registered.
+Set the provider to `baseline` for fastest-path routing, or `http` with
+`ROUTE_SOLVER_URL` for a compatible IRouteSolve service. `ROUTE_SOLVER_FALLBACK=baseline` is the default;
 use `none` to propagate solver failure. A running mock is not trained-model evidence.
 
 For Vite against the real API, start `postgres cache_api gateway`, set
@@ -107,3 +113,11 @@ MinIO creates the configured buckets via `MINIO_DEFAULT_BUCKETS`.
 
 Keep request IDs, Worker run IDs, artifact versions and redacted logs with a
 verification report. Never include private DSNs or travel coordinates in logs.
+
+## See also
+
+- [`docs/devops/local-railway-parity.md`](../devops/local-railway-parity.md): local stack matching Railway development (newer than the full-stack section here)
+- [`src/gateway/README.md`](../../src/gateway/README.md): current public paths
+- [`docs/devops/ci-cd.md`](../devops/ci-cd.md): CI/CD pipeline
+- [`src/model_registry/README.md`](../../src/model_registry/README.md): model registry
+- [`docs/ti-se-11/VERIFICATION.md`](../ti-se-11/VERIFICATION.md): ticket that introduced this runbook

@@ -124,7 +124,7 @@ dicatat di `edges_without_estimate`.
 Setiap ruas dipotong tepat pada batas sel grid. Nilai ruas adalah rata-rata nilai sel yang dilalui,
 dibobot panjang potongan ruas di setiap sel. Indeks paparan dihitung setelah agregasi dari polutan yang
 tersedia. Rinciannya ada di
-[README modul](../../../src/data_worker/spatial_model/README.md#definisi-agregasi-grid-ke-ruas) dan
+[README modul](../../../src/data_worker/spatial_model/README.md#inferensi-dan-cache) dan
 diuji oleh UT-SDM-07 (a)–(e).
 
 Pada time window ini, tabel potongan memuat 574.809 pasangan ruas-sel dengan panjang total 17.317 km,
@@ -154,7 +154,7 @@ Contohnya ruas 44451 (4,9 km) yang melintasi 66 sel: PM2.5 yang dihitung ulang d
 | `DOWNSCALE_WRITE_CACHE` tidak diatur | Langkah berstatus `disabled` |
 | Ukuran satu time window | ±92 MB termasuk indeks |
 
-Uji otomatis pada `tests/test_spatial_edgeweight.py` dan `tests/test_spatial_baseline.py`
+Uji otomatis pada `src/data_worker/tests/test_spatial_edgeweight.py` dan `src/data_worker/tests/test_spatial_baseline.py`
 (UT-SDM-01, 06, 07, 08; UT-OPS-01, 02; retensi; portabilitas encoding) lulus terhadap
 PostgreSQL + PostGIS sungguhan: 129 lulus. Tanpa basis data: 92 lulus dan 37 dilewati.
 
@@ -163,6 +163,10 @@ PostgreSQL + PostGIS sungguhan: 129 lulus. Tanpa basis data: 92 lulus dan 37 dil
 Basis data Railway menjalankan image `postgis/postgis:18-3.6` (PostgreSQL 18.6, PostGIS 3.6.4), bukan
 PostgreSQL 16 seperti pada dokumen desain, `docker-compose.yml`, dan fixture uji. Seluruh 129 uji dan tiga
 siklus di atas diulang pada image yang sama persis (amd64), dan semuanya lulus dengan hasil yang sama.
+
+Catatan 2026-11-09: `docker-compose.yml`, `docker-compose.data-worker-tests.yml`, dan CI kini memakai
+`postgis/postgis:18-3.6`. PostgreSQL 16 (`16-3.4`) masih dipakai `docker-compose.spatial-verification.yml` dan
+fixture Testcontainers di `src/data_worker/tests/conftest.py`.
 
 | Sumber daya layanan `database` (8 Oktober 2026) | Nilai |
 |---|---|
@@ -207,6 +211,8 @@ Tabel di atas menjelaskan bukti IDW historis. Untuk kontrak aktif, lihat verifik
 - **Confidence score provisional.** Rumusnya masih provisional sampai kalibrasi PF-12 dilakukan.
 - **Kontrak TI-SE-01 belum resmi.** `EdgeWeight` mengikuti Tabel 3.3 karena TI-SE-01 belum
   menghasilkan kontrak bersama; Backend perlu memakai struktur yang sama.
+  Catatan 2026-11-09: kontrak kini ada di
+  [`docs/software/data-contracts-TI-SE-01.md`](../../software/data-contracts-TI-SE-01.md) (versi 1.1.0).
 - **Retensi dan deployment.** Artefak lokal tetap opsional; trace baru disimpan di PostgreSQL
   selama window cache dipertahankan. Upgrade Railway memerlukan migrasi dan verifikasi deployment
   terpisah; replay lokal tidak membuktikan bahwa deployment tersebut sudah dilakukan.
@@ -254,3 +260,11 @@ historis tanpa trace. Tidak dibuat riwayat sintetis untuk baris lama.
 Ruang lingkup lokal TI-AI-05 mengikuti [spesifikasi revisi](../../SPATIAL_MODEL_SPEC.md).
 Confidence tetap provisional; ketelitian grid seluruh kota, kalibrasi, UI, dan deployment Railway
 tidak disimpulkan dari bukti replay ini.
+
+## Lihat juga
+
+- [`docs/software/data-contracts-TI-SE-01.md`](../../software/data-contracts-TI-SE-01.md): kontrak data resmi (kini 1.1.0)
+- [`docs/experiments/TI-AI-11/README.md`](../TI-AI-11/README.md): pemaketan dan registry model
+- [`src/data_worker/feature_store/README.md`](../../../src/data_worker/feature_store/README.md): inferensi kini membaca fitur dari feature store
+- [`checkpoints/README.md`](../../../checkpoints/README.md): lokasi checkpoint lokal
+- [`src/backend/pollution/README.md`](../../../src/backend/pollution/README.md): pembaca cache polusi

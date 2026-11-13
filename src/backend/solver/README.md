@@ -77,12 +77,19 @@ Dipilih dengan `ROUTE_SOLVER_PROVIDER`; endpoint-nya tidak berubah.
 - **Pemuatan di latar belakang.** *Start-up* tidak menunggu registry (registry tidur bila tidak ada lalu lintas,
   10–30 detik untuk bangun). Setiap panggilan HTTP dibatasi `ROUTE_SOLVER_REGISTRY_TIMEOUT_S` dan
   `ROUTE_SOLVER_REGISTRY_ATTEMPTS`. Kegagalan yang dapat pulih sendiri (timeout, 5xx saat registry bangun, 408, 429) diulang
-  dengan jeda berlipat sampai `ROUTE_SOLVER_MODEL_RETRY_MAX_S`. Kegagalan lain (4xx, tag hilang atau salah, paket
-  berubah, family tanpa loader, kontrak mayor lain) menghentikan percobaan dengan status `unavailable` dan alasannya
-  di log: perlu perubahan di registry lalu *redeploy*, dan registry tidak terus dipanggil. Pemuatan berjalan di
+  dengan jeda berlipat sampai `ROUTE_SOLVER_MODEL_RETRY_MAX_S`. Model, alias, atau versi yang **belum terdaftar**
+  (MLflow: HTTP 400 `INVALID_PARAMETER_VALUE` "Registered model alias … not found" untuk alias, juga bila modelnya
+  belum ada; HTTP 404 `RESOURCE_DOES_NOT_EXIST` untuk versi) ditunggu: log
+  `route_model_load outcome=waiting ... reason=not_registered`, lalu registry ditanya lagi setiap
+  `ROUTE_SOLVER_MODEL_RECHECK_S`, sehingga *policy* termuat pada pemeriksaan pertama setelah model didaftarkan, tanpa
+  *restart*. Jedanya lambat karena setiap pemeriksaan dapat membangunkan registry yang tidur; *timeout* saat
+  pemeriksaan diulang seperti registry yang sedang bangun. Kegagalan lain (4xx lain, 4xx tanpa badan galat MLflow,
+  artefak versi terdaftar yang hilang, tag hilang atau salah, paket berubah, family tanpa loader, kontrak mayor lain)
+  menghentikan percobaan dengan status `unavailable` dan alasannya di log (`action=stop`): perlu perubahan di registry
+  lalu *redeploy*, dan registry tidak terus dipanggil. Pemuatan berjalan di
   thread *daemon* dan berhenti saat *shutdown*, jadi registry yang tidur tidak menahan *deploy*. Selama belum
-  termuat, rute dilayani fallback A* bertanda `model_unavailable`, dan `/health/ready` melaporkan `route_model`
-  (`loading`, `ready`, `rejected`, `unavailable`) tanpa memengaruhi kesiapan. Versi yang sudah termuat dipakai
+  termuat, termasuk selama menunggu model terdaftar, rute dilayani fallback A* bertanda `model_unavailable`, dan
+  `/health/ready` melaporkan `route_model` (`loading`, `ready`, `rejected`, `unavailable`) tanpa memengaruhi kesiapan. Versi yang sudah termuat dipakai
   sampai *restart*, kecuali saat graf berganti (lihat bawah).
 - **Loader dari `policy_family`.** `package.json` `inference.policy_family` memilih loader di `morl.LOADERS`
   (`fixed_preference_set` = set TI-AI-09 PIC B). Family tanpa loader tidak dimuat. *Policy* PIC A cukup
@@ -150,7 +157,7 @@ Penyedia `http` tidak memakai thread: permintaan HTTP dibatalkan langsung oleh `
 | `ROUTE_SOLVER_MODEL_CACHE_DIR` | `/tmp/sippolusi/route-models` | `morl`: *cache* paket terverifikasi |
 | `ROUTE_SOLVER_REGISTRY_TIMEOUT_S` / `_ATTEMPTS` | `30` / `3` | `morl`: batas per panggilan registry dan jumlah percobaan |
 | `ROUTE_SOLVER_MODEL_RETRY_INITIAL_S` / `_MAX_S` | `10` / `300` | `morl`: jeda awal dan maksimum pengulangan pemuatan yang gagal |
-| `ROUTE_SOLVER_MODEL_RECHECK_S` | `900` | `morl`: jeda pemeriksaan registry selama paket ditolak oleh graf aktif |
+| `ROUTE_SOLVER_MODEL_RECHECK_S` | `900` | `morl`: jeda pemeriksaan registry selama paket ditolak oleh graf aktif atau model/alias belum terdaftar (stack lokal: `60`, di `docker-compose.yml`) |
 | `ROUTE_SOLVER_TORCH_THREADS` / `ROUTE_SOLVER_MODEL_CONCURRENCY` | `2` / `2` | `morl`: thread PyTorch dan dekode paralel |
 | `ROUTE_SOLVER_FAULT` | `none` | Khusus `mock`: `timeout`, `error`, `no_route`, `invalid` |
 | `ROUTE_SOLVER_BUDGET_MS` | `8000` | Batas latensi Backend |
@@ -270,8 +277,10 @@ respons yang sama dengan `/plan`. `/solve` dan `/plan` tetap sebagai endpoint in
 diteruskan oleh API Gateway. Metadata GeoJSON kini juga memuat `crs`, `coordinate_order`, `units`,
 dan `exposure_index_definition`.
 
-**Keadaan saat ini.** Selama cache polusi Railway masih kosong, permintaan valid menjawab 503
-`cache_empty`. Hasil 200 dibuktikan di basis data lokal: [VERIFICATION.md](VERIFICATION.md) (TI-SE-06) dan
+**Keadaan saat ini.** Cache polusi Railway `development` diisi sejak 27 Okt
+(`DOWNSCALE_WRITE_CACHE=1`, [`docs/ti-se-10/LAPORAN.md`](../../../docs/ti-se-10/LAPORAN.md)).
+Pada basis data tanpa time window `complete`, permintaan valid menjawab 503 `cache_empty`.
+Hasil 200 dibuktikan di basis data lokal: [VERIFICATION.md](VERIFICATION_TI-SE-06.md) (TI-SE-06) dan
 [VERIFICATION_TI-SE-07.md](VERIFICATION_TI-SE-07.md) (integrasi model, fallback, GeoJSON).
 
 ## Menguji
@@ -279,12 +288,27 @@ dan `exposure_index_definition`.
 Dari `src/backend/solver`, dengan venv dan dependensi dari [`../pollution`](../pollution/README.md#menguji):
 
 ```bash
-pytest -m "not cacheflow"                                                    # tanpa DB → 93 passed
-TEST_DATABASE_URL=postgresql://test:test@localhost:55432/test pytest         # semua → 99 passed
+pytest -m "not cacheflow"                                                    # tanpa DB
+TEST_DATABASE_URL=postgresql://test:test@localhost:55432/test pytest         # semua
 ```
 
-- **Uji kontrak** (`tests/test_contract.py`) menjalankan ketiga penyedia (mock, baseline, dan HTTP
-  ke layanan tiruan `httpx.MockTransport`) tanpa layanan AI.
+Hasil terbaru ada di CI ([`docs/devops/ci-cd.md`](../../../docs/devops/ci-cd.md)).
+
+- **Uji kontrak** (`tests/test_contract.py`) menjalankan penyedia mock, baseline, dan HTTP
+  (ke layanan tiruan `httpx.MockTransport`) tanpa layanan AI.
+- **Uji MORL** (`tests/test_morl.py`) menguji penyedia keempat, `morl` (TI-SE-07b): pemuatan
+  paket policy, hash, gerbang kontrak, dan unduhan registry, dengan policy kecil yang belum dilatih.
 - **Uji integrasi** (`tests/test_model_service.py`) menjalankan server Route Model tiruan
   sungguhan (uvicorn di port lokal) untuk jawaban valid, malformat, lambat, galat, dan layanan
   mati.
+
+## Lihat juga
+
+- [`docs/experiments/TI-AI-11/README.md`](../../../docs/experiments/TI-AI-11/README.md): format paket policy rute
+- [`docs/experiments/TI-AI-11/railway_registry_evidence.md`](../../../docs/experiments/TI-AI-11/railway_registry_evidence.md): bukti registry di Railway
+- [`src/model_registry/README.md`](../../model_registry/README.md): registry model
+- [`src/backend/route_model/README.md`](../route_model/README.md): baseline A*
+- [`src/backend/route_model/morl/README.md`](../route_model/morl/README.md): modul MORL
+- [`docs/experiments/TI-AI-09/README.md`](../../../docs/experiments/TI-AI-09/README.md): set policy PIC B yang dilayani
+- [`docs/devops/local-railway-parity.md`](../../../docs/devops/local-railway-parity.md): stack lokal dengan penyedia `morl`
+- [`docs/experiments/TI-AI-06/README.md`](../../../docs/experiments/TI-AI-06/README.md): definisi waktu dan paparan

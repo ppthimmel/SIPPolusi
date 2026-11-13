@@ -5,6 +5,11 @@ and `osm` (OSM Cache DB). The `mlflow` schema is owned by MLflow itself and only
 reserved here. Data Worker writes these tables; Backend reads them. This file is
 kept identical in src/backend/database and src/data_worker/database because each
 service is built from its own Docker context.
+
+Columns match osm_cache/schema.sql, the copy of the Railway structure: Railway's
+tables predate these models, so create_all leaves them alone there, but on an
+empty database (a fresh local stack) these models create the tables first.
+tests/test_cache_schema_ddl.py checks that both give the same columns.
 """
 from datetime import datetime
 
@@ -153,6 +158,7 @@ class RoadNode(OsmBase):
     node_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     graph_version: Mapped[str] = mapped_column(Text, primary_key=True)
     geom = mapped_column(Geometry("POINT", srid=4326))
+    tags: Mapped[dict] = mapped_column(JSONB, server_default=text("'{}'::jsonb"), nullable=False)
 
 
 class RoadEdge(OsmBase):
@@ -167,6 +173,10 @@ class RoadEdge(OsmBase):
     walk_allowed: Mapped[bool] = mapped_column(Boolean, server_default=text("true"))
     bike_allowed: Mapped[bool] = mapped_column(Boolean, server_default=text("true"))
     geom = mapped_column(Geometry("LINESTRING", srid=4326))
+    osm_way_id: Mapped[int | None] = mapped_column(BigInteger)
+    name: Mapped[str | None] = mapped_column(Text)
+    oneway: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
+    tags: Mapped[dict] = mapped_column(JSONB, server_default=text("'{}'::jsonb"), nullable=False)
 
 
 class GraphVersion(OsmBase):

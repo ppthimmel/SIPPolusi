@@ -108,3 +108,10 @@ On the original workstation, inspect `.cache/full-training-20261103/lightgbm-sta
 `.cache/full-training-20261103/stgnn-status.json`. A queued or running job is not an
 available completed checkpoint set. Historical LightGBM results above remain
 separate from these new full-feature fixed-configuration fits.
+
+## See also
+
+- [`notebooks/spatial_model/README.md`](../notebooks/spatial_model/README.md): notebooks that write runs into this folder
+- [`src/model_registry/NAMING_CONVENTION.md`](../src/model_registry/NAMING_CONVENTION.md): run and model naming convention
+- [`docs/experiments/model-comparison-ds-v0.3.0/README.md`](../docs/experiments/model-comparison-ds-v0.3.0/README.md): model comparison these runs belong to
+- [`docs/experiments/TI-AI-05/README.md`](../docs/experiments/TI-AI-05/README.md): evidence for the deployed spatial model

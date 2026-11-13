@@ -40,3 +40,9 @@ Implementation proceeds inline under the user's approval. No further design appr
 Results: versioned schema/corpus and central documentation implemented; 60 contract/OpenAPI tests passed, 94 affected worker tests passed with local PostGIS, 285 full worker tests passed (76 skipped), frontend 102 passed and build succeeded. Independent review findings were reproduced and fixed with regression tests. Full backend run exposed two failures reproduced on original HEAD; see verification-TI-SE-01.md. Graphify AST graph updated. No commit or remote issue mutation performed.
 
 Final component regression: 362 passed, 15 skipped, one pre-existing example mismatch deselected. Solver cancellation timing assertions were intermittent in broad/concurrent runs; the final serial module passed 8/8 on both current code and original HEAD. Disposable PostGIS container/network removed.
+
+## See also
+
+- [`docs/superpowers/specs/2026-10-27-shared-data-contracts-design.md`](../specs/2026-10-27-shared-data-contracts-design.md): design
+- [`docs/software/data-contracts-TI-SE-01.md`](../../software/data-contracts-TI-SE-01.md): result: data contract document
+- [`docs/software/verification-TI-SE-01.md`](../../software/verification-TI-SE-01.md): verification

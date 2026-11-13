@@ -58,6 +58,11 @@ Struktur di Railway per 2026-10-13. Salinan DDL-nya:
 | `edge_pollution` | `(edge_id, time_window_start)`, kunci idempotensi *upsert* | `idx_edge_pollution_geom` GiST `(geom)` | CHECK `background_source` ∈ {aod, reanalysis}; `estimation_source` ∈ {stgnn, idw} |
 | `pollution_window` | `time_window_start` | – | CHECK `status` ∈ {writing, complete} |
 
+> Catatan 2026-11-09: tabel di atas adalah potret skema per 2026-10-13. Skema `pollution` saat
+> ini ada di [`src/data_worker/database/spatial_migration.sql`](../../data_worker/database/spatial_migration.sql):
+> `estimation_source` kini juga menerima `hybrid`, dan ada tabel tambahan seperti
+> `pollution.inference_run`, `pollution.edge_metadata`, `grid_prediction`, serta `edge_cell*`.
+
 ### Kunci, index, dan aturan versi
 
 | Kunci / index | Dipakai untuk |
@@ -171,3 +176,8 @@ GET /v1/pollution/edge-weights?bbox=…&time_window_start=2026-10-12T01:00:00Z
   - memasang bobot ke subgraf (`attach_edge_weights`, isi median dan `missing_edge_count`);
   - `validate_route_request` dengan preferensi α/β.
 - **TI-SE-08:** endpoint publik `/v1/exposure-surface` (heatmap).
+
+## Lihat juga
+
+- [`src/data_worker/osm_cache/README.md`](../../data_worker/osm_cache/README.md): penulis cache OSM
+- [`docs/SPATIAL_MODEL_SPEC.md`](../../../docs/SPATIAL_MODEL_SPEC.md): skema cache polusi terkini (tabel jejak inferensi)

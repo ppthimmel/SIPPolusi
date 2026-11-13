@@ -32,3 +32,9 @@ There is no pollution snapshot in this OSM export: real-route exposure is
 explicitly unavailable. Synthetic exposure tests demonstrate the aggregation,
 including partial-data handling. The claimed 2.3% failure rate has not been
 independently reproduced and is not inferred from the number of components.
+
+## See also
+
+- [`src/backend/route_model/README.md`](../../../src/backend/route_model/README.md): baseline method
+- [`docs/experiments/TI-AI-06/README.md`](../TI-AI-06/README.md): time and exposure cost definitions
+- [`src/backend/solver/README.md`](../../../src/backend/solver/README.md): `baseline` solver provider
