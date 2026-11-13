@@ -1,0 +1,5 @@
+# Pengulangan field model spasial tanpa uji gateway bersamaan
+
+Run v3 memakai [protokol v2](../benchmark-spatial-protocol.md), kode commit `acb9018`, field dan 50 OD yang sama dengan [run v2](../run-v2/REPORT.md). Run selesai exit code 0 dan tidak ada permintaan gateway yang sengaja dijalankan bersamaan; beban host lain tidak dikendalikan. Pada 150 permintaan kedua metode berhasil dan seluruh rute valid. Median/p95 PIC A 194,4/502,8 ms dan Dijkstra 13,3/47,3 ms. Waktu tidak mencakup API, pemuatan, atau jaringan dan tidak memakai timeout.
+
+Semua 150 hasil rute dan metrik nonwaktu cocok dengan v2; pada α=0,5 PIC A cocok dengan optimum pada 33/50 pasangan, rata-rata selisih objektif 0,091%, dan median pengurangan paparan terhadap rute tercepat 0%. Ringkasan kualitas, metode perhitungan, keterbatasan satu window serta cara mengulang dijelaskan pada [laporan v2](../run-v2/REPORT.md); gunakan direktori keluaran baru dan jangan menimpa v2 atau v3. Keluaran per skenario dan manifest berada di folder ini.
