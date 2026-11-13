@@ -69,3 +69,17 @@ def test_manifest_does_not_include_local_machine_paths(packaged):
     directory, _ = packaged
     run = json.loads((directory / "run_manifest.json").read_text(encoding="utf-8"))
     assert "fields_dir" not in run and "graph_dir" not in run
+
+
+def test_serving_import_does_not_load_training_modules(tmp_path):
+    """Serving images do not include the repository-root layout required by training."""
+    import os
+    import subprocess
+    import sys
+
+    env = {**os.environ, "PYTHONPATH": str(ROOT / "src/backend")}
+    subprocess.run([sys.executable, "-c",
+                    "import sys; import route_model.morl.scalarized_serving; "
+                    "assert 'route_model.morl.train' not in sys.modules; "
+                    "assert 'route_model.morl.scalarized' not in sys.modules"],
+                   cwd=tmp_path, env=env, check=True)

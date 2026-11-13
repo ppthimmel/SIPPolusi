@@ -109,6 +109,8 @@ Limits of this evidence:
   serving fit, aliases `candidate` and `production`) was registered on 4 November 2026, and a Data Worker cycle
   used both spatial models with no fallback cells ([TI-SE-10 end-to-end verification](https://github.com/ppthimmel/SIPPolusi/issues/10)).
 
+The selected PIC A and both spatial packages were subsequently verified in fresh local parity containers; see [container verification](container-verification.md) for reference-output comparisons, compatibility checks and limitations.
+
 ## Decision field and policy families
 
 `evaluation.decision` is passed in for the set being packaged (`--decision`); it is never inherited, and is `null`

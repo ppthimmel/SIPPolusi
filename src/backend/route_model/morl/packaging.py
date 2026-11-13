@@ -169,7 +169,7 @@ def package_scalarized_policy(run_dir, out, *, data_contracts_version, upstream_
 
 def load_packaged_scalarized_policy(package_dir, runtime, device="cpu"):
     """Verify package and compatibility, then reload the selected conditioned policy."""
-    from .scalarized import load_scalarized_policy
+    from .scalarized_serving import load_scalarized_policy
 
     package_dir = Path(package_dir)
     package = validate_package(package_dir, "route_policy")

@@ -166,7 +166,7 @@ async def test_scalarized_package_serves_or_falls_back_without_false_success(tmp
 
 
 def test_scalarized_loader_passes_exact_preference_and_deadline(tmp_path, monkeypatch):
-    from route_model.morl import scalarized
+    from route_model.morl import scalarized_serving as scalarized
 
     root = Path(__file__).resolve().parents[4]
     run = root / "docs/experiments/TI-AI-09/scalarized/20261103T081938Z-scalarized-bike-v1-6eab87d4"

@@ -30,8 +30,8 @@ import torch
 
 from ..astar_osm import DEFAULT_GRAPH, get_router
 from ..training_env import file_sha256, load_od_pairs
-from .features import FEATURE_VERSION
-from .infer import CHECKPOINT_FORMAT, PolicyFailure, PolicyRoute, decode_route
+from .infer import PolicyFailure
+from .scalarized_serving import decode_preference_route, load_scalarized_policy
 from .scalarized_policy import BoundPreference, PreferenceActorCritic, RegretPrior, ScalarizedConfig
 from .scalarized_report import plot_curves, write_summary
 from .train import Actor, build_envs, evaluate, load_config, train, training_augmentation
@@ -57,19 +57,6 @@ class PreferenceActor(Actor):
         return sample._replace(global_x=np.append(sample.global_x, (self.alpha, 1.0 - self.alpha)).astype(np.float32))
 
 
-def load_scalarized_policy(path, device="cpu"):
-    """Rebuild the network from a checkpoint alone; returns (model in eval mode, checkpoint)."""
-    checkpoint = torch.load(path, map_location=device, weights_only=True)
-    if checkpoint.get("format") != CHECKPOINT_FORMAT:
-        raise ValueError(f"Unknown checkpoint format: {checkpoint.get('format')!r}")
-    if checkpoint.get("feature_version") != FEATURE_VERSION:
-        raise ValueError(f"Checkpoint expects features {checkpoint.get('feature_version')!r}, "
-                         f"this code builds {FEATURE_VERSION!r}")
-    model = PreferenceActorCritic(ScalarizedConfig(**checkpoint["model_config"])).to(device)
-    model.load_state_dict(checkpoint["model_state"])
-    return model.eval(), checkpoint
-
-
 class Scalarized:
     """train.py's hooks for one preference-conditioned policy."""
     actor = PreferenceActor
@@ -90,14 +77,6 @@ class Scalarized:
     @staticmethod
     def for_preference(model, alpha):
         return BoundPreference(model, alpha)
-
-
-def decode_preference_route(model, router, exposure, start, end, preference, **kwargs) -> PolicyRoute:
-    """The greedy route for a requested (alpha, beta); raises PolicyFailure, whose fallback is the A* route."""
-    alpha, beta = preference
-    if abs(alpha + beta - 1) > 1e-6:
-        raise ValueError("alpha and beta must sum to 1")
-    return decode_route(BoundPreference(model, alpha), router, exposure, start, end, **kwargs)
 
 
 def train_scalarized(config, fields_dir, out=None, **kwargs):

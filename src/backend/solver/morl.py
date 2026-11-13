@@ -165,7 +165,7 @@ def _load_fixed_preference_set(directory: Path, manifest: dict, data_contracts_v
 def _load_preference_conditioned(directory: Path, manifest: dict, data_contracts_version: str) -> Decoder:
     """PIC A: pass each requested preference directly to the conditioned policy."""
     from route_model.morl.packaging import load_packaged_scalarized_policy, runtime_contract
-    from route_model.morl.scalarized import decode_preference_route
+    from route_model.morl.scalarized_serving import decode_preference_route
 
     model, _, _ = load_packaged_scalarized_policy(
         directory, runtime_contract(manifest["contract"].get("graph_version"), data_contracts_version))

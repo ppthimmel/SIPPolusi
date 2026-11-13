@@ -28,7 +28,9 @@ team has decided to switch serving. A registry entry alone does not deploy code.
 
 Local tests compare the original and packaged checkpoint weights and routes for several
 preferences, exercise integrity and compatibility rejection, and exercise the Backend
-loader and fallback. They do not constitute a fresh-environment or live Railway test.
+loader and fallback. The [clean-container verification](container-verification.md) also
+reproduced six recorded routes and checked compatibility in the local parity stack; it
+is not a live Railway serving test.
 
 ## Development staging (9 November 2026)
 
