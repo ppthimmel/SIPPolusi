@@ -1,0 +1,61 @@
+{
+  "result": "pass",
+  "comparison": "source package vs independently registry-resolved package",
+  "dataset": "ds-v0.3.0",
+  "window": "2026-09-29T12:00:00+00:00",
+  "grid": {
+    "row": 172,
+    "col": 342,
+    "width": 2
+  },
+  "tolerance": {
+    "rtol": 1e-06,
+    "atol": 1e-06
+  },
+  "models": {
+    "pm25": {
+      "model": "spatial-downscaling-pm25:1",
+      "compatibility": {
+        "status": "flagged",
+        "reasons": [
+          "Contract version differs: package 1.0.0, runtime 1.1.0"
+        ]
+      },
+      "package_sha256": "ce84b2d71956041606af855908931179922153240965e6d5b664633dc2a493ab",
+      "source_package_sha256": "ce84b2d71956041606af855908931179922153240965e6d5b664633dc2a493ab",
+      "reference_predictions_ugm3": [
+        22.124473571777344,
+        22.084693908691406
+      ],
+      "reloaded_predictions_ugm3": [
+        22.124473571777344,
+        22.084693908691406
+      ],
+      "max_absolute_difference": 0.0
+    },
+    "no2": {
+      "model": "spatial-downscaling-no2:1",
+      "compatibility": {
+        "status": "compatible",
+        "reasons": []
+      },
+      "package_sha256": "99ab5fcedd1752c0e33067792173c264e0bf145266ce403852b611d8c0048c52",
+      "source_package_sha256": "99ab5fcedd1752c0e33067792173c264e0bf145266ce403852b611d8c0048c52",
+      "reference_predictions_ugm3": [
+        92.523869875581,
+        88.23375225206985
+      ],
+      "reloaded_predictions_ugm3": [
+        92.523869875581,
+        88.23375225206985
+      ],
+      "max_absolute_difference": 0.0
+    }
+  },
+  "snapshot_sha256": {
+    "stgnn/nodes.parquet": "e12324252225dfa1d0dcf29cacb9b003960908b402440a55321d20d90d77adcd",
+    "stgnn/features.parquet": "63aa324632a3566583d535768c2b467fa6d67dc3d626fb550a4dbdd96ca877c0",
+    "labels.parquet": "4d30c81321886029b6d1a17d710aeffae13fd917027e276f8371cd434569e351"
+  },
+  "python": "3.11.18"
+}

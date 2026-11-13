@@ -1,0 +1,205 @@
+{
+  "evaluation": "paired-morl-comparison",
+  "split": "test",
+  "code": {
+    "commit": "32baebdf8ea91d4dc53e0348b81f4c0f12c24827",
+    "branch": "feat/morl-comparison",
+    "dirty": false
+  },
+  "config": {
+    "name": "ti-ai-10-multi-policy-bike-v1",
+    "seed": 42,
+    "threads": 1,
+    "set_dir": "docs/experiments/TI-AI-09/set",
+    "strata": [
+      {
+        "name": "trained-range",
+        "pairs": 200,
+        "seed": 1010,
+        "min_distance_m": 500.0,
+        "max_distance_m": 3000.0,
+        "primary": true
+      },
+      {
+        "name": "longer-trips",
+        "pairs": 50,
+        "seed": 1011,
+        "min_distance_m": 3000.0,
+        "max_distance_m": 8000.0,
+        "primary": false
+      }
+    ],
+    "alphas": [
+      0.0,
+      0.1,
+      0.2,
+      0.3,
+      0.4,
+      0.5,
+      0.6,
+      0.7,
+      0.8,
+      0.9,
+      1.0
+    ],
+    "perturbed_seed": 2010,
+    "criteria": {
+      "default_alpha": 0.5,
+      "route_validity_min": 1.0,
+      "success_rate_min": 0.95,
+      "inference_budget_ms": 4500,
+      "inference_p95_max_ms": 4500,
+      "eai04_median_exposure_reduction_min_pct": 4.0,
+      "eai04_median_added_time_max_pct": 20.0,
+      "eai05_fulfilled_min": 0.8
+    }
+  },
+  "config_sha256": "e77ac3e1c4877db7c9681108ecf449b10cff2bde57f46ae1ab87da8134528242",
+  "started_at": "2026-11-09T07:05:54.647254+00:00",
+  "candidates": {
+    "fixed_preference_set": {
+      "set_id": "20261102T145533Z-multi-policy-bike-v1-201e7d41",
+      "checkpoints_sha256": {
+        "0.0": "de93a585b4df673ba7005ee10c372f3ca7a133b0275cd56d6492a35e88e3a340",
+        "0.25": "c7181b3d576c1e87482777f384eb063e5eb9d625da2a7e1bc27c2e1aa5f745ba",
+        "0.5": "1ca67248a5f321b1631e8ce51344dcf48a3577d4ea842c81bcf2029d557a2dc6",
+        "0.75": "c1775e2386907d9ca3ae9144facd444950f031a4b4d2240527336e17d055383b",
+        "1.0": "dc3cb0ab4971330c08b49a49a257480b9fff8e7df299b5d6773aad0ed7e665b9"
+      }
+    },
+    "scalarized": {
+      "run_id": "20261103T081938Z-scalarized-bike-v1-6eab87d4",
+      "checkpoint_sha256": "28709b934d26d99d1d8e0124409b5aad31ecfceb3780b872aa869614a54a0af6",
+      "selected_update": 0
+    },
+    "regret_prior": {
+      "trained": false,
+      "config_from": "20261103T081938Z-scalarized-bike-v1-6eab87d4"
+    }
+  },
+  "graph_version": "jakarta-20261005",
+  "mode": "bike",
+  "graph_files_sha256": {
+    "graph_version.csv": "be37aed8f1922136b8201ac62c4773990823c4637a898cabef2206e9a97f313f",
+    "road_node.csv.gz": "4921a432db17b2c274cd6c0aa2cf78787b6b81e4d6b4d5620f0dd495cd8fa3b9",
+    "road_edge.csv.gz": "792fa12eca4d44e122999e2e446f3d6a8c7b71ceeb4150b533314c82ec699554"
+  },
+  "fields_manifest_sha256": "6634e989861983fc59758812d8acb83b28cc32cbed2ec79e68520ee659375e0a",
+  "field_files_sha256": {
+    "2026-09-29T00:00:00Z": "de4e38fdfcead94190646e9a0f9f11e4a12306f369359cfd6eb16da73267cd49",
+    "2026-09-29T07:00:00Z": "2930d3fba774b708bbadd0ee20a5808e8c7983d372239952b330a8362fa204a1",
+    "2026-09-29T14:00:00Z": "ac00ccb7d505e51f3bcb240736dd0c1e05ca639d3a57980bcddf5d0be22430bd",
+    "2026-09-29T21:00:00Z": "cd1ab047caf6df4f63cd3b91083ccc12d0681ee0491ed066398a28f8243ad69b",
+    "2026-09-30T04:00:00Z": "7bbd21d4cb94729c9d67366c819b8eca5d3dbec10b2c52e91ea9f04ffef1a005",
+    "2026-09-30T11:00:00Z": "c2cf746eb8d58c59f1b645608c0b1a7c742cb660af73dd00c29ff723de3a535b",
+    "2026-09-30T18:00:00Z": "ce167443e139ef0aaa7d1cff5d9771c54d9a0bdf6bc846132c89bfee55796ac0"
+  },
+  "strata": {
+    "trained-range": {
+      "od_pairs": 200,
+      "od_sha256": "5ae2395357be85f21b41bb0c7d6f02ec32267442b0140e123e74ef7a3922fa43",
+      "sampling": {
+        "seed": 1010,
+        "min_distance_m": 500.0,
+        "max_distance_m": 3000.0,
+        "candidate_origins": {
+          "train": 162440,
+          "val": 52608,
+          "test": 33354
+        },
+        "candidate_destinations": {
+          "train": 162408,
+          "val": 52609,
+          "test": 33352
+        },
+        "splits": {
+          "train": {
+            "pairs": 0,
+            "attempts": 0,
+            "rejected": {
+              "distance": 0,
+              "unreachable": 0,
+              "duplicate": 0
+            }
+          },
+          "val": {
+            "pairs": 0,
+            "attempts": 0,
+            "rejected": {
+              "distance": 0,
+              "unreachable": 0,
+              "duplicate": 0
+            }
+          },
+          "test": {
+            "pairs": 200,
+            "attempts": 2236,
+            "rejected": {
+              "distance": 2033,
+              "unreachable": 3,
+              "duplicate": 0
+            }
+          }
+        }
+      }
+    },
+    "longer-trips": {
+      "od_pairs": 50,
+      "od_sha256": "008d7b5019eba794570f716b012d2a21584de003f9d3ed7c4976cb3cd6b18e7b",
+      "sampling": {
+        "seed": 1011,
+        "min_distance_m": 3000.0,
+        "max_distance_m": 8000.0,
+        "candidate_origins": {
+          "train": 162440,
+          "val": 52608,
+          "test": 33354
+        },
+        "candidate_destinations": {
+          "train": 162408,
+          "val": 52609,
+          "test": 33352
+        },
+        "splits": {
+          "train": {
+            "pairs": 0,
+            "attempts": 0,
+            "rejected": {
+              "distance": 0,
+              "unreachable": 0,
+              "duplicate": 0
+            }
+          },
+          "val": {
+            "pairs": 0,
+            "attempts": 0,
+            "rejected": {
+              "distance": 0,
+              "unreachable": 0,
+              "duplicate": 0
+            }
+          },
+          "test": {
+            "pairs": 50,
+            "attempts": 297,
+            "rejected": {
+              "distance": 245,
+              "unreachable": 2,
+              "duplicate": 0
+            }
+          }
+        }
+      }
+    }
+  },
+  "versions": {
+    "python": "3.12.14",
+    "torch": "2.15.0+cpu",
+    "threads": 1
+  },
+  "limitations": [
+    "TI-AI-10 test scenarios have been inspected; repeat results are exploratory.",
+    "The candidates differ in both preference conditioning and the regret path.",
+    "Latency is measured locally without enforcing a timeout."
+  ]
+}

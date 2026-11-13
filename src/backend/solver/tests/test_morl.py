@@ -26,7 +26,7 @@ from public_api.schemas import RouteFeatureCollection
 from route_model.model_package import PackageError, package_digest, sha256_file
 from route_model.morl.infer import PolicyFailure, PolicyRoute, optimal_weighted_route, save_checkpoint
 from route_model.morl.features import FEATURE_VERSION
-from route_model.morl.packaging import package_policy_set
+from route_model.morl.packaging import package_policy_set, package_scalarized_policy
 from route_model.morl.policy import ActorCritic
 from solver import morl
 from route_model.morl import features
@@ -145,6 +145,46 @@ async def test_untrained_policy_never_shows_as_a_false_success(tmp_path, osm_rep
             assert result.fallback_reason in ("model_no_route", "model_timeout")
             assert result.recommended.edge_ids == result.comparison.edge_ids
             assert result.route_model["status"] == "ready" and result.route_model["member_alpha"] is None
+
+
+async def test_scalarized_package_serves_or_falls_back_without_false_success(tmp_path, osm_repo, pollution_repo, settings):
+    root = Path(__file__).resolve().parents[4]
+    run = root / "docs/experiments/TI-AI-09/scalarized/20261103T081938Z-scalarized-bike-v1-6eab87d4"
+    package = tmp_path / "scalarized"
+    package_scalarized_policy(run, package, data_contracts_version="1.0.0")
+    solver = await ready_solver(package)
+    assert solver._loaded.family == "preference_conditioned"
+    result = await solve(solver, osm_repo, pollution_repo, settings, alpha=0.3)
+    if result.route_source == "policy":
+        assert result.recommended.metrics.edge_count > 0
+        assert result.route_model["policy_family"] == "preference_conditioned"
+        assert result.route_model["member_alpha"] is None
+    else:
+        assert result.fallback_reason in ("model_no_route", "model_timeout")
+        assert result.recommended.edge_ids == result.comparison.edge_ids
+    await solver.close()
+
+
+def test_scalarized_loader_passes_exact_preference_and_deadline(tmp_path, monkeypatch):
+    from route_model.morl import scalarized_serving as scalarized
+
+    root = Path(__file__).resolve().parents[4]
+    run = root / "docs/experiments/TI-AI-09/scalarized/20261103T081938Z-scalarized-bike-v1-6eab87d4"
+    package = tmp_path / "scalarized"
+    manifest = package_scalarized_policy(run, package, data_contracts_version="1.0.0")
+    calls = []
+    result = object()
+
+    def fake_decode(model, router, exposure, start, end, preference, **kwargs):
+        calls.append((preference, kwargs))
+        return result
+
+    monkeypatch.setattr(scalarized, "decode_preference_route", fake_decode)
+    decode = morl._load_preference_conditioned(package, manifest, "1.0.0")
+    cancel_check = lambda: None
+    assert decode(None, {}, 1, 2, (0.37, 0.63), 123, cancel_check) == (None, result)
+    assert calls[0][0] == (0.37, 0.63)
+    assert calls[0][1]["timeout_ms"] == 123 and calls[0][1]["cancel_check"] is cancel_check
 
 
 async def test_plan_metadata_follows_the_public_contract(tmp_path, osm_repo, pollution_repo, settings, oracle_family):

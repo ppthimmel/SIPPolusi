@@ -1,0 +1,66 @@
+{
+  "result": "pass",
+  "model": "morl-route-policy:2",
+  "package_sha256": "564c693081968cd1750c7a996b5301e34148200b21cc8fde7c5f6f1b626fed52",
+  "family": "preference_conditioned",
+  "compatibility": {
+    "status": "compatible",
+    "reasons": []
+  },
+  "mismatch_checks": {
+    "rejected": [
+      "wrong_graph",
+      "wrong_major"
+    ],
+    "minor_version": "flagged"
+  },
+  "graph_version": "jakarta-20261005",
+  "window": "2026-09-29T00:00:00Z",
+  "reference_field_sha256": "de4e38fdfcead94190646e9a0f9f11e4a12306f369359cfd6eb16da73267cd49",
+  "cases": [
+    {
+      "od_id": "trained-range-test-00000",
+      "alpha": 0.0,
+      "edges": 55,
+      "reference_route_sha256": "8b654ed50a8a4bb4",
+      "actual_route_sha256": "8b654ed50a8a4bb4"
+    },
+    {
+      "od_id": "trained-range-test-00000",
+      "alpha": 0.5,
+      "edges": 55,
+      "reference_route_sha256": "8b654ed50a8a4bb4",
+      "actual_route_sha256": "8b654ed50a8a4bb4"
+    },
+    {
+      "od_id": "trained-range-test-00000",
+      "alpha": 1.0,
+      "edges": 55,
+      "reference_route_sha256": "8b654ed50a8a4bb4",
+      "actual_route_sha256": "8b654ed50a8a4bb4"
+    },
+    {
+      "od_id": "trained-range-test-00007",
+      "alpha": 0.0,
+      "edges": 118,
+      "reference_route_sha256": "e5d0383bd9fc0532",
+      "actual_route_sha256": "e5d0383bd9fc0532"
+    },
+    {
+      "od_id": "trained-range-test-00007",
+      "alpha": 0.5,
+      "edges": 118,
+      "reference_route_sha256": "e5d0383bd9fc0532",
+      "actual_route_sha256": "e5d0383bd9fc0532"
+    },
+    {
+      "od_id": "trained-range-test-00007",
+      "alpha": 1.0,
+      "edges": 118,
+      "reference_route_sha256": "e5d0383bd9fc0532",
+      "actual_route_sha256": "e5d0383bd9fc0532"
+    }
+  ],
+  "python": "3.11.18",
+  "torch": "2.15.0+cpu"
+}

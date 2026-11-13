@@ -104,6 +104,28 @@ def test_grid_inputs_reject_future_provenance():
         provider.frames(nodes,stations,'no2',end)
 
 
+def test_no2_last_three_hours_match_full_history():
+    from spatial_model.inference.serving import tabular_frame
+    hours = pd.date_range('2026-09-28T13:00Z', periods=24, freq='h')
+    stations = pd.DataFrame(dict(uuid=['a', 'b'], grid_id=['r0200_c0200', 'r0200_c0201'],
+                                 lng=[106.8, 106.81], lat=[-6.2, -6.21],
+                                 group_id=['a', 'b'], station_type=['Reference', 'Sensor']))
+    nodes = pd.DataFrame(dict(grid_id=['r0200_c0202', 'r0200_c0203'],
+                              easting=[700000., 700100.], northing=[9310000., 9310000.]))
+    ids = [*stations.grid_id, *nodes.grid_id]
+    index = pd.MultiIndex.from_product([hours, ids], names=['time_utc', 'grid_id'])
+    rng = np.random.default_rng(11)
+    frame = pd.DataFrame({'geoscf_fcst_no2_ugm3': rng.uniform(5, 50, len(index)),
+                          'wind_direction_10m': rng.uniform(0, 360, len(index)),
+                          'wind_speed_10m': rng.uniform(0, 5, len(index))}, index=index)
+    readings = rng.uniform(5, 50, (24, len(stations)))
+    readings[21, 0] = np.nan
+    inputs = SimpleNamespace(frames=lambda *args: (hours, frame, readings))
+    actual = tabular_frame(inputs, nodes, stations, 'no2', hours[-1])
+    expected = tabular_frame(inputs, nodes, stations, 'no2', hours[-1], history_hours=24)
+    pd.testing.assert_frame_equal(actual, expected)
+
+
 def test_single_gat_halo_matches_full_graph():
     torch.manual_seed(42)
     model = STGNN(ModelConfig(temporal_channels=58, local_channels=8, hidden_channels=16,

@@ -227,7 +227,12 @@ def fetch_fcst(client: HttpClient, init: pd.Timestamp) -> tuple[pd.DataFrame, di
     """
     try:
         for attempt in range(1, FCST_ATTEMPTS + 1):
-            run = fcst_script.fetch_run(init, get=_getter(client))
+            try:
+                run = fcst_script.fetch_run(init, get=_getter(client))
+            except fcst_script.ForecastTimeMismatch:
+                if attempt == FCST_ATTEMPTS:
+                    raise
+                continue
             if not run["time_mismatch_leads"]:
                 break
         else:

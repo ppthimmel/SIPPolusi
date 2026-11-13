@@ -109,15 +109,17 @@ Limits of this evidence:
   serving fit, aliases `candidate` and `production`) was registered on 4 November 2026, and a Data Worker cycle
   used both spatial models with no fallback cells ([TI-SE-10 end-to-end verification](https://github.com/ppthimmel/SIPPolusi/issues/10)).
 
+The selected PIC A and both spatial packages were subsequently verified in fresh local parity containers; see [container verification](container-verification.md) for reference-output comparisons, compatibility checks and limitations.
+
 ## Decision field and policy families
 
 `evaluation.decision` is passed in for the set being packaged (`--decision`); it is never inherited, and is `null`
 for a set that has not been evaluated. The example carries the TI-AI-10 outcome of the committed set.
 `inference.policy_family` tells the backend which loader a registered version needs. The committed set is
-`fixed_preference_set` (`load_packaged_policy_set`). The scalarized policy on `dev` (TI-AI-09 PIC A,
-`load_scalarized_policy`) is a different family and has no packager yet; `package_policy_set` refuses it because
-it has no `set_manifest.json`. If TI-AI-12 picks it, the follow-up is `package_conditioned_policy` and a second
-`policy_family` value.
+`fixed_preference_set` (`load_packaged_policy_set`). The chosen scalarized policy (PIC A) uses the
+`preference_conditioned` family and is packaged with `package_scalarized_policy`; the Backend loader passes
+its requested preference directly. See [scalarized serving](scalarized-serving.md) for registration evidence,
+limitations, and the verification still needed.
 
 ## Registry (MLflow)
 
@@ -128,6 +130,9 @@ same pattern: `morl-route-policy` version 1 is registered
 resolves it ([solver README](../../../src/backend/solver/README.md#penyedia-morl-ti-se-07b)). Production serving of the registry on Railway:
 see [`src/model_registry/README.md`](../../../src/model_registry/README.md).
 
+## Paired MORL comparison
+
+The exploratory comparison of the existing scalarized and fixed-preference route policies, including the regret-prior baseline, is saved in [`morl-comparison/`](morl-comparison/). Open [`comparison-results.ipynb`](morl-comparison/comparison-results.ipynb) for the results, protocol, and limitations. The original test scenarios had already been inspected; these results are not a fresh blind test.
 ## See also
 
 - [`src/backend/solver/README.md`](../../../src/backend/solver/README.md#penyedia-morl-ti-se-07b): the `morl` provider that loads the packaged route policy

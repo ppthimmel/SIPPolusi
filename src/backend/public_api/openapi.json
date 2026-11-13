@@ -2735,7 +2735,7 @@
               }
             ],
             "title": "Member Alpha",
-            "description": "α anggota set policy yang melayani permintaan; null saat fallback"
+            "description": "α anggota set policy yang melayani permintaan; null untuk policy terkondisi atau saat fallback"
           },
           "inference_ms": {
             "anyOf": [

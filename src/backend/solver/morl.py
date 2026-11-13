@@ -162,10 +162,27 @@ def _load_fixed_preference_set(directory: Path, manifest: dict, data_contracts_v
     return decode
 
 
-#: policy_family in package.json -> loader. A preference-conditioned policy (TI-AI-09 PIC A)
-#: is added here with its own family name; the rest of the Backend does not change.
+def _load_preference_conditioned(directory: Path, manifest: dict, data_contracts_version: str) -> Decoder:
+    """PIC A: pass each requested preference directly to the conditioned policy."""
+    from route_model.morl.packaging import load_packaged_scalarized_policy, runtime_contract
+    from route_model.morl.scalarized_serving import decode_preference_route
+
+    model, _, _ = load_packaged_scalarized_policy(
+        directory, runtime_contract(manifest["contract"].get("graph_version"), data_contracts_version))
+    env = json.loads((directory / "run_manifest.json").read_text(encoding="utf-8")).get("config", {}).get("env", {})
+    limits = {"max_steps": env.get("max_steps", 1000), "max_steps_factor": env.get("max_steps_factor", 3.0)}
+
+    def decode(router, exposure, start, end, preference, timeout_ms, cancel_check=None):
+        route = decode_preference_route(model, router, exposure, start, end, preference, timeout_ms=timeout_ms,
+                                        cancel_check=cancel_check, **limits)
+        return None, route  # There is no discrete member in a conditioned policy.
+    return decode
+
+
+#: policy_family in package.json -> loader.
 LOADERS: dict[str, Callable[[Path, dict, str], Decoder]] = {
     "fixed_preference_set": _load_fixed_preference_set,
+    "preference_conditioned": _load_preference_conditioned,
 }
 
 
