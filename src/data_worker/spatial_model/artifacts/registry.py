@@ -146,6 +146,18 @@ def register_route_package(package_dir):
     return {"name": name, "version": str(version.version), "run_id": run.info.run_id}
 
 
+def promote_route(version):
+    """Give a registered morl-route-policy version the alias production, after resolving and verifying it.
+
+    This checks hashes and the manifest only; the Data Worker has no route_model code to load the weights.
+    Reload them first with scripts/verify_model_packages.py route.
+    """
+    with tempfile.TemporaryDirectory() as cache:
+        _, identity = resolve_route_package(str(version), cache_dir=cache)
+    client().set_registered_model_alias(os.environ.get("ROUTE_POLICY_MODEL", ROUTE_NAME), "production", str(version))
+    return identity
+
+
 def resolve_route_package(selector="production", cache_dir=None):
     """Download and verify a registered route package; returns (directory, 'name:version')."""
     c = client()

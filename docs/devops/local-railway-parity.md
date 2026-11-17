@@ -91,8 +91,7 @@ Untuk meniru *private networking* Railway, tambahkan `-f docker-compose.private.
 
 ## Lihat juga
 
-- [`scripts/railway/README.md`](../../scripts/railway/README.md): prosedur pendaftaran model di Railway
-- [`src/model_registry/README.md`](../../src/model_registry/README.md): registry model
+- [`src/model_registry/README.md`](../../src/model_registry/README.md): registry model dan pendaftaran di Railway (job `model-register`, TI-DO-10b)
 - [`docs/devops/build-runtime.md`](build-runtime.md): build, health check, dan logging per layanan
 - [`docs/software/technical-runbook.md`](../software/technical-runbook.md): runbook operasional
 - [`src/backend/osm/README.md`](../../src/backend/osm/README.md): Cache API

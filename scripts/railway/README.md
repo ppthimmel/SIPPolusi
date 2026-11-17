@@ -1,9 +1,16 @@
-# Mendaftarkan model ke registry Railway (manual, sementara)
+# Mendaftarkan model ke registry Railway (prosedur lama lewat Console)
+
+> **Diganti (TI-DO-10b, #91).** Di Railway, daftarkan model dengan *job* `model-register`:
+> `python -m spatial_model.training register-from-bucket` dijalankan di dalam jaringan privat, membaca paket lewat
+> *artifact proxy* registry, tanpa menempelkan *script*. Prosedurnya ada di
+> [`src/model_registry/README.md`](../../src/model_registry/README.md#mendaftarkan-model-dari-bucket-railway-ti-do-10b).
+> Perhatikan bahwa paket kini diunggah di bawah `artifacts/` pada *bucket*. `register_from_bucket.py` tetap ada
+> karena dipakai job lokal `register_models` (docker compose); halaman ini disimpan sebagai catatan prosedur
+> 3 November 2026.
 
 Registry MLflow di Railway hanya dapat dijangkau lewat *private networking* (tanpa domain publik dan tanpa
 autentikasi), sehingga `python -m spatial_model.training register` tidak dapat dijalankan dari laptop atau Colab.
 Prosedur ini mengunggah paket ke *bucket* lalu menjalankan `register_from_bucket.py` di Console `model_registry`.
-Otomatisasinya dilacak di #91.
 
 ## Langkah
 

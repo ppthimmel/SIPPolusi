@@ -127,7 +127,10 @@ python -m spatial_model.training register-route <folder-paket-rute>
 ```
 
 `package` menulis `package.json` (format paket TI-AI-11) ke bundle; `register` memverifikasinya bila ada.
-`register-route` mendaftarkan paket policy rute `morl-route-policy`.
+`register-route` mendaftarkan paket policy rute `morl-route-policy`. Di Railway, tempat registry hanya dapat dijangkau
+lewat jaringan privat, `register-from-bucket <awalan>` mendaftarkan bundel atau paket yang diunggah ke *bucket*,
+lewat *artifact proxy* registry dan tanpa kunci S3; `promote route <versi>` memberi `production` pada policy rute.
+Prosedurnya: [`src/model_registry/README.md`](../../model_registry/README.md#mendaftarkan-model-dari-bucket-railway-ti-do-10b).
 
 Nama registry: `spatial-downscaling-pm25` dan `spatial-downscaling-no2`. Registrasi membuat versi
 dan alias `candidate`. Promotion memverifikasi bundle sebelum menetapkan `production`.
