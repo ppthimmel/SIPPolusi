@@ -232,6 +232,25 @@ def test_promote_takes_only_the_current_candidate(registry, client, monkeypatch,
     assert client.get_registered_model("morl-route-policy").aliases["production"] == first
 
 
+def test_local_folder_registers_then_promotes(registry, client, tmp_path):
+    """The local compose job (register-dir --promote): same checks, then production; reruns change nothing."""
+    from spatial_model.artifacts.staged import register_directory
+
+    folder = stage_route(tmp_path, "route-local", seed="local")
+    before = sorted(p.relative_to(folder).as_posix() for p in folder.rglob("*"))
+    first = register_directory(folder, promote=True, wait=10)
+    assert first["status"] == "registered" and first["promotion"] == "promoted"
+    assert client.get_registered_model("morl-route-policy").aliases["production"] == first["version"]
+    again = register_directory(folder, promote=True, wait=10)
+    assert again["status"] == "already_registered" and again["promotion"] == "already_production"
+    assert sorted(p.relative_to(folder).as_posix() for p in folder.rglob("*")) == before
+
+    stage_bundle(tmp_path, "bundle-without-package", seed="local-b")
+    result = register_directory(tmp_path / "bundle-without-package", wait=10)
+    assert result["status"] == "registered" and "promotion" not in result
+    assert not (tmp_path / "bundle-without-package" / "package.json").exists()  # packaged in the copy
+
+
 def _staged(registry, prefix, seed):
     stage_route(registry.bucket, prefix, seed=seed)
     return prefix

@@ -41,7 +41,7 @@ ditunggunya.
 | build | `build / frontend` | `src/frontend/Dockerfile` (`tsc -b && vite build`; belum ada uji atau lint frontend) | galat tipe atau build web |
 | build | `build / model-registry` | `src/model_registry/Dockerfile` | dependensi MLflow tidak terpasang |
 | build | `build / observability`, `grafana`, `prometheus`, `pushgateway` | `src/observability/Dockerfile` (service Railway) dan image compose di `src/observability/*` | provisioning/konfigurasi tidak tersalin |
-| test | `test / backend` | `src/backend/tests` dan paket Cache API (`osm`, `pollution`, `planner`, `solver`); hanya skip yang diharapkan diterima (lihat bawah) | uji unit backend gagal, atau ada uji lain yang dilewati |
+| test | `test / backend` | `src/backend/tests` dan paket Cache API (`osm`, `pollution`, `planner`, `solver`); hanya skip yang diharapkan diterima (lihat bawah); paket model rute dari set TI-AI-09 dikemas lalu dimuat ulang (`scripts/verify_model_packages.py route`, TI-DO-10b) | uji unit backend gagal, ada uji lain yang dilewati, atau paket rute tidak dapat dimuat / rutenya berbeda |
 | test | `test / data-worker` | seluruh `src/data_worker/tests` pada PostGIS 18 sementara, termasuk `test_regresi.py` dan uji penyimpanan; tidak boleh ada uji yang dilewati | uji Data Worker gagal atau dilewati |
 | regression | `regression / cache flow + gateway e2e` | lihat bagian berikut | regresi lintas layanan |
 | gerbang | `ci-passed` | lulus hanya bila semua job di atas `success` | ada job gagal, dibatalkan, atau dilewati |
@@ -170,7 +170,7 @@ catat alasannya. Untuk perubahan yang akan menetap, lewat PR ke `dev`.
 - **Artefak** (14 hari, tab Summary run):
   | Artefak | Isi |
   |---|---|
-  | `reports-test-backend` | JUnit XML Backend dan tiap paket Cache API |
+  | `reports-test-backend` | JUnit XML Backend dan tiap paket Cache API, `route-package-check.json` |
   | `reports-test-data-worker` | JUnit XML Data Worker |
   | `reports-regression` | JUnit XML alur cache, keluaran smoke test, `docker compose ps` dan log seluruh container |
   | `*.dockerbuild` (satu per image) | rekaman build dari `docker/build-push-action`: log langkah, durasi, cache |
@@ -196,6 +196,7 @@ catat alasannya. Untuk perubahan yang akan menetap, lewat PR ke `dev`.
 docker build --target runtime src/gateway                       # build / gateway
 python -m pytest src/backend/tests                              # test / backend
 (cd src/backend/osm && pytest)                                  # juga pollution, planner, solver
+python scripts/verify_model_packages.py route --set docs/experiments/TI-AI-09/set --out /tmp/route.json   # paket rute
 docker compose -f src/backend/testdb/docker-compose.yml up -d
 export TEST_DATABASE_URL=postgresql://test:test@localhost:55432/test
 (cd src/data_worker && python -m pytest tests)                  # test / data-worker

@@ -120,12 +120,28 @@ Satu versi per model. Sumber versi berada di `mlflow-artifacts:/`, yaitu diungga
 pendaftaran di atas berasal dari registry kedua yang masih kosong (*port* 5001, *bucket* yang sama), dijalankan
 setelah teks keluaran dirapikan; hasilnya sama: satu versi per model, alias `candidate`.
 
-## 3. Belum dicakup
+## 3. Job lokal `register_models` dan CI
 
-- **Railway *development*.** Service `model-register` belum dibuat dan perintah belum dijalankan di Railway; bukti
-  di atas adalah lokal. Yang perlu dicatat setelah dijalankan: log deploy untuk bundel PM2.5 asli dan paket rute,
-  serta daftar versi registry.
-- **Job lokal `register_models`** (docker compose) masih memakai `scripts/railway/register_from_bucket.py`; logika
-  validasinya belum disatukan dengan perintah ini.
+- `register_models` (docker compose) kini memakai image Data Worker dan `python -m spatial_model.training register-dir
+  <folder> --promote`, kode yang sama dengan *job* Railway; `scripts/railway/register_from_bucket.py` dihapus.
+  `scripts/local/register_models.sh` dijalankan terhadap server MLflow ber-*proxy*: paket rute terdaftar sebagai
+  versi 1 lalu dipromosikan, folder tanpa `package.json`/`bundle.json` gagal dengan pesan jelas, dan menjalankan ulang
+  menghasilkan `already registered` dan `already production`. Uji: `test_local_folder_registers_then_promotes`.
+- CI `test / backend` mengemas set TI-AI-09 dan memuatnya ulang (`scripts/verify_model_packages.py route`). Dengan
+  dependensi CI di `python:3.11-slim`: `result: pass`, `compatible`, 23 berkas, 123 detik.
+
+Uji otomatis setelah perubahan ini: `test_register_from_bucket.py` + `test_model_package.py`, **28 lulus**.
+
+## 4. Railway *development*
+
+**Belum dijalankan.** Pada 17 November 2026 seluruh *deployment* di environment `development` (termasuk `database`,
+`model_registry`, `cache-api`, `data_worker`) berstatus `REMOVED`: *workspace* melewati *hard limit* pemakaian
+(US$10,01 dari US$10 untuk periode 27 Oktober–27 November). Railway tidak menjalankan *deployment* baru sampai batas
+itu dinaikkan atau periode berganti, sehingga service `model-register` belum dibuat. Setelah registry dapat berjalan,
+yang perlu dicatat di sini: log *job* untuk bundel PM2.5 asli dan satu paket rute, serta daftar versi registry.
+
+## 5. Belum dicakup
+
 - **Rollback `production`** ke versi yang bukan `candidate` tidak dilayani `railway-job`.
-- **Langkah CI opsional** (`scripts/verify_model_packages.py` pada setiap perubahan) belum ditambahkan.
+- **Pemeriksaan muat bundel spasial di CI**: tidak ada bundel PM2.5/NO₂ di git; jalankan
+  `scripts/verify_model_packages.py spatial` secara manual sebelum mengunggah.

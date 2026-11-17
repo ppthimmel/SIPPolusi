@@ -1,22 +1,15 @@
 #!/bin/sh
-# Register every packaged model folder with the local registry (docker compose service register_models).
+# Register every model folder with the local registry (docker compose service register_models, Data Worker image).
 # /out holds the route package built by package_route; /local-models holds spatial bundles you put in
-# ./.local-models (each needs a package.json: see docs/devops/local-railway-parity.md).
-# A folder already registered (same package.json hash) is reported and skipped, so this can be rerun.
+# ./.local-models (with or without package.json; one without is packaged in a copy, see
+# docs/devops/local-railway-parity.md).
+# Same verification as the Railway job (python -m spatial_model.training register-from-bucket), then production,
+# because the local stack serves what it registers. A folder already registered is reported and skipped.
 status=0
 for d in /out/*/ /local-models/*/; do
     [ -d "$d" ] || continue
-    if [ ! -f "${d}package.json" ]; then
-        echo "skip ${d}: no package.json (package it first)"
-        continue
-    fi
     echo "== ${d}"
-    if output=$(REGISTER_PREFIX=local/ REGISTER_LOCAL_DIR="$d" python /tools/register_from_bucket.py 2>&1); then
-        echo "$output" | grep -E "verified|registered|RESOLVED"
-    elif echo "$output" | grep -q "already holds this package"; then
-        echo "$output" | grep "already holds this package"
-    else
-        echo "$output" | tail -5
+    if ! python -m spatial_model.training register-dir "$d" --promote; then
         echo "not registered: ${d}"
         status=1
     fi

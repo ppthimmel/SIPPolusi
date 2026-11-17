@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import os
 import posixpath
+import shutil
 import tempfile
 import time
 import urllib.error
@@ -124,8 +125,8 @@ def inspect_package(root, grid_spec_id=None) -> dict:
     root = Path(root)
     has_package, has_bundle = (root / PACKAGE_FILE).is_file(), (root / "bundle.json").is_file()
     if not has_package and not has_bundle:
-        raise RegistrationError("Neither package.json nor bundle.json at the top of the prefix; point the prefix "
-                                "at the package folder itself")
+        raise RegistrationError("Neither package.json nor bundle.json at the top of the folder; point the prefix or folder "
+                                "at the package itself")
     try:
         kind = load_manifest(root)["model_kind"] if has_package else "spatial_downscaling"
         if kind == "spatial_downscaling":
@@ -251,9 +252,8 @@ def promote_candidate(selection, *, wait=120.0) -> dict:
     return {"status": "promoted", "name": name, "version": version, "previous": aliases.get("production")}
 
 
-def register_from_bucket(prefix, *, grid_spec_id=None, wait=120.0, workdir=None) -> dict:
-    """Download, verify, and register the package under prefix. Returns a summary; raises RegistrationError."""
-    prefix = normalise_prefix(prefix)
+def _connect(wait):
+    """Check MLFLOW_TRACKING_URI, drop S3 keys from this process, wait for the registry."""
     tracking_uri = os.environ.get("MLFLOW_TRACKING_URI")
     if not tracking_uri:
         raise RegistrationError("MLFLOW_TRACKING_URI is required (on Railway: http://modelregistry.railway.internal:5000)")
@@ -265,6 +265,11 @@ def register_from_bucket(prefix, *, grid_spec_id=None, wait=120.0, workdir=None)
         _say(f"waiting for the registry at {tracking_uri} (up to {wait:.0f} s)")
         wait_for_registry(tracking_uri, timeout=wait)
 
+
+def register_from_bucket(prefix, *, grid_spec_id=None, wait=120.0, workdir=None) -> dict:
+    """Download, verify, and register the package under prefix. Returns a summary; raises RegistrationError."""
+    prefix = normalise_prefix(prefix)
+    _connect(wait)
     with tempfile.TemporaryDirectory(dir=workdir) as tmp:
         root = Path(tmp) / "package"
         from mlflow.exceptions import MlflowException
@@ -276,35 +281,64 @@ def register_from_bucket(prefix, *, grid_spec_id=None, wait=120.0, workdir=None)
             raise RegistrationError(f"Nothing under mlflow-artifacts:/{prefix} (bucket path artifacts/{prefix}/). "
                                     "Upload the package folder there first.")
         _say(f"downloaded {count} files from mlflow-artifacts:/{prefix}")
-        info = inspect_package(root, grid_spec_id)
-        hashes = " ".join(f"{k} {v[:16]}..." for k, v in info["tags"].items())
-        _say(f"verified: {info['name']} {info['model_version']} {hashes} {info['files']} files + package.json"
-             + (" (package.json written here)" if info["packaged_here"] else ""))
+        return register_package_root(root, grid_spec_id=grid_spec_id)
 
-        from spatial_model.artifacts.registry import client as registry_client, register, register_route_package
-        client = registry_client()
-        existing = find_registered(client, info)
-        if existing is not None:
-            _say(f"already registered: {info['name']} version {existing.version} holds this package; "
-                 "nothing registered")
-            aliases = client.get_registered_model(info["name"]).aliases  # search results carry no aliases
-            return {"status": "already_registered", "name": info["name"], "version": str(existing.version),
-                    "aliases": sorted(a for a, v in aliases.items() if str(v) == str(existing.version)),
-                    **{key: existing.tags.get(key) for key in info["tags"]}}
-        _check_proxied(client, info["kind"])
-        before = max((int(v.version) for v in client.search_model_versions(f"name='{info['name']}'")), default=0)
+
+def register_directory(directory, *, grid_spec_id=None, promote=False, wait=120.0, workdir=None) -> dict:
+    """Same as register_from_bucket for a local folder (the local docker compose job register_models).
+
+    The folder is copied first, so packaging a bundle never writes into it. promote=True then gives the version
+    production through promote_candidate: the local stack serves what it registers, Railway does not.
+    """
+    directory = Path(directory)
+    if not directory.is_dir():
+        raise RegistrationError(f"No such folder: {directory}")
+    _connect(wait)
+    with tempfile.TemporaryDirectory(dir=workdir) as tmp:
+        root = Path(tmp) / "package"
+        shutil.copytree(directory, root)
+        _say(f"copied {sum(1 for p in root.rglob('*') if p.is_file())} files from {directory}")
+        result = register_package_root(root, grid_spec_id=grid_spec_id)
+    if promote:
+        promotion = promote_candidate(f"{result['target']}:{result['version']}", wait=0)
+        result["aliases"] = sorted(set(result["aliases"]) | {"production"})
+        result["promotion"] = promotion["status"]
+    return result
+
+
+def register_package_root(root, *, grid_spec_id=None) -> dict:
+    """Verify the package in root, skip it if registered, else register (candidate), resolve and compare."""
+    info = inspect_package(root, grid_spec_id)
+    target = "route" if info["kind"] == "route_policy" else info["target"]
+    hashes = " ".join(f"{k} {v[:16]}..." for k, v in info["tags"].items())
+    _say(f"verified: {info['name']} {info['model_version']} {hashes} {info['files']} files + package.json"
+         + (" (package.json written here)" if info["packaged_here"] else ""))
+
+    from spatial_model.artifacts.registry import client as registry_client, register, register_route_package
+    client = registry_client()
+    existing = find_registered(client, info)
+    if existing is not None:
+        _say(f"already registered: {info['name']} version {existing.version} holds this package; nothing registered")
+        aliases = client.get_registered_model(info["name"]).aliases  # search results carry no aliases
+        return {"status": "already_registered", "name": info["name"], "target": target,
+                "version": str(existing.version),
+                "aliases": sorted(a for a, v in aliases.items() if str(v) == str(existing.version)),
+                **{key: existing.tags.get(key) for key in info["tags"]}}
+    _check_proxied(client, info["kind"])
+    before = max((int(v.version) for v in client.search_model_versions(f"name='{info['name']}'")), default=0)
+    try:
+        result = (register_route_package(root) if info["kind"] == "route_policy" else register(root))
+        _say(f"registered: {result['name']} version {result['version']} aliases candidate")
+        identity, files = _verify_registered(info, result["version"])
+    except BaseException as exc:  # also Ctrl-C: never leave a version behind
         try:
-            result = (register_route_package(root) if info["kind"] == "route_policy" else register(root))
-            _say(f"registered: {result['name']} version {result['version']} aliases candidate")
-            identity, files = _verify_registered(info, result["version"])
-        except BaseException as exc:  # also Ctrl-C: never leave a version behind
-            try:
-                _delete_created(client, info, before)
-            except Exception as cleanup:  # report both; the original error is the one that matters
-                _say(f"rollback failed: {cleanup}; check {info['name']} versions after {before} by hand")
-            if isinstance(exc, RegistrationError) or not isinstance(exc, Exception):
-                raise
-            raise RegistrationError(f"Registration did not complete: {exc}") from exc
+            _delete_created(client, info, before)
+        except Exception as cleanup:  # report both; the original error is the one that matters
+            _say(f"rollback failed: {cleanup}; check {info['name']} versions after {before} by hand")
+        if isinstance(exc, RegistrationError) or not isinstance(exc, Exception):
+            raise
+        raise RegistrationError(f"Registration did not complete: {exc}") from exc
     _say(f"RESOLVED {identity}: all {files} files + package.json match.  RESULT: PASS")
-    return {"status": "registered", "name": result["name"], "version": result["version"], "run_id": result["run_id"],
-            "aliases": ["candidate"], "model_version": info["model_version"], **info["tags"]}
+    return {"status": "registered", "name": result["name"], "target": target, "version": result["version"],
+            "run_id": result["run_id"], "aliases": ["candidate"], "model_version": info["model_version"],
+            **info["tags"]}

@@ -60,6 +60,9 @@ lalu me-*resolve* versi baru lewat registry dan membandingkan hash-nya.
 
 ### Sekali saja: service *job* `model-register`
 
+Prasyarat: `database` dan `model_registry` berjalan (registry menyimpan metadata di `database`). Bila *workspace*
+melewati *hard limit* pemakaian, Railway menghapus semua *deployment* dan *job* ini tidak dapat berjalan.
+
 1. Di environment *development*, buat service baru dari repositori yang sama: **Root Directory** `src/data_worker`,
    **Config-as-code path** `/src/data_worker/railway.register.json`. Wajib berkas ini: tanpa itu Railway memakai
    `railway.json` milik Data Worker (cron `15 * * * *` dan `python main.py cycle`), sehingga service ini ikut

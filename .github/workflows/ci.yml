@@ -145,6 +145,11 @@ jobs:
             echo "::endgroup::"
           done
           exit $status
+      - name: Model package reload (route, TI-DO-10b)
+        # Packages the committed TI-AI-09 set and reloads it in fresh interpreters: a change to the
+        # package format or loader that breaks loading fails here, not at registration (~2 min).
+        # No spatial bundle is in git, so the spatial check runs by hand (src/model_registry/README.md).
+        run: python scripts/verify_model_packages.py route --set docs/experiments/TI-AI-09/set --out "$REPORTS/route-package-check.json"
       - name: Only the expected tests were skipped
         # osm/tests/test_integration_db.py reads the imported Jakarta graph on
         # Railway (DATABASE_URL), which CI has no access to; the cache-flow

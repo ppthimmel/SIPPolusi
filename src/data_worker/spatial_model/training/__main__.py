@@ -40,8 +40,20 @@ def main(argv=None):
     b.add_argument("--wait", type=float, default=120.0, help="seconds to wait for a sleeping registry (0: no wait)")
     commands.add_parser("railway-job", help="one-off Railway job: REGISTER_PREFIX registers, PROMOTE=<target>:<version> "
                                             "promotes the current candidate (src/model_registry/README.md)")
+    d = commands.add_parser("register-dir", help="register-from-bucket for a local folder (local compose job)")
+    d.add_argument("directory", type=Path)
+    d.add_argument("--grid-spec-id", help="for a spatial bundle without package.json")
+    d.add_argument("--promote", action="store_true", help="then give it production (local stack only)")
+    d.add_argument("--wait", type=float, default=120.0, help="seconds to wait for the registry (0: no wait)")
     args = parser.parse_args(argv)
-    if args.command in ("register-from-bucket", "railway-job"):
+    if args.command == "register-dir":
+        from spatial_model.artifacts.staged import RegistrationError, register_directory
+        try:
+            print(json.dumps(register_directory(args.directory, grid_spec_id=args.grid_spec_id, promote=args.promote,
+                                                wait=args.wait)))
+        except RegistrationError as exc:
+            parser.exit(1, f"register-dir: FAILED: {exc}\n")
+    elif args.command in ("register-from-bucket", "railway-job"):
         from spatial_model.artifacts.staged import RegistrationError, promote_candidate, register_from_bucket
         prefix, promotion = ((args.prefix, None) if args.command == "register-from-bucket"
                              else (os.environ.get("REGISTER_PREFIX", "").strip(), os.environ.get("PROMOTE", "").strip()))

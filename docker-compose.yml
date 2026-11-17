@@ -194,18 +194,15 @@ services:
       - local_packages:/out
     command: ["python", "/seed/package_route.py"]
 
-  # Registers the route package and every packaged folder under ./.local-models (spatial bundles)
-  # through the registry's artifact proxy, with the aliases candidate and production. Same script as
-  # on Railway (scripts/railway/register_from_bucket.py). No object-storage keys in this container.
+  # Registers the route package and every folder under ./.local-models (spatial bundles) through the
+  # registry's artifact proxy, then gives each production. Same code as the Railway job model-register
+  # (python -m spatial_model.training register-dir; TI-DO-10b). No object-storage keys in this container.
   register_models:
-    build: ./src/model_registry
+    build: ./src/data_worker
     profiles: [tools]
     environment:
       MLFLOW_TRACKING_URI: http://model_registry:5000
-      REGISTER_ALIASES: candidate,production
-      GIT_PYTHON_REFRESH: quiet
     volumes:
-      - ./scripts/railway:/tools:ro
       - ./scripts/local:/seed:ro
       - ./.local-models:/local-models:ro
       - local_packages:/out:ro
