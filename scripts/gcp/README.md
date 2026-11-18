@@ -35,12 +35,28 @@ memakai *fallback* IDW sampai keduanya diunggah dan didaftarkan.
 ## Deploy otomatis (CI/CD)
 
 Setiap *push* ke `dev` yang lulus `ci-passed` menjalankan `.github/workflows/deploy-gcp.yml`: membangun lima image
-bertag SHA commit, menjalankan `scripts/gcp/deploy.sh all`, lalu *smoke test* lewat gateway.
+bertag SHA commit, menjalankan `scripts/gcp/deploy.sh all`, *smoke test* lewat gateway, lalu memindahkan tag `:latest`
+ke image yang baru lulus itu.
+
+- **Commit lama tidak menimpa yang baru.** Tepat sebelum *deploy*, workflow memeriksa bahwa commit-nya masih ujung `dev`.
+  Bila tidak, *deploy* dilewati dan *run* commit yang lebih baru yang men-*deploy*.
+- **Jalankan manual** (Actions > Deploy to GCP > Run workflow, cabang `dev`) ditolak bila `ci-passed` tidak berhasil untuk
+  commit itu.
+- **Job sekali jalan** (`scripts/gcp/jobs/*.yaml`) memakai `:latest`, yaitu image terakhir yang lulus *deploy*. Cloud Run
+  mengunci image saat `gcloud run jobs replace`, jadi jalankan `replace` lagi sebelum `execute` untuk memakai image baru.
 
 GitHub masuk ke GCP tanpa kunci lewat *Workload Identity Federation*: pool `github`, provider `sippolusi-dev`, yang hanya
-menerima repositori ini (`repository_id` 1386978923) pada `refs/heads/dev`. Akun `sippolusi-deployer` memegang
-`roles/run.admin`, `roles/compute.networkViewer`, `roles/artifactregistry.writer` pada repositori image, dan
-`roles/iam.serviceAccountUser` pada `sippolusi-app` dan `sippolusi-registry`. Tidak ada rahasia di GitHub.
+menerima workflow `deploy-gcp.yml` dari repositori ini (`repository_id` 1386978923) pada `refs/heads/dev`. Syaratnya
+tersimpan di `scripts/gcp/wif-provider.yaml`; setelah berkas itu berubah, terapkan dengan:
+
+```bash
+gcloud iam workload-identity-pools providers update-oidc sippolusi-dev --project sippolusi --location global \
+  --workload-identity-pool github --flags-file scripts/gcp/wif-provider.yaml
+```
+
+Akun `sippolusi-deployer` memegang `roles/run.admin`, `roles/compute.networkViewer`, `roles/artifactregistry.writer` pada
+repositori image, dan `roles/iam.serviceAccountUser` pada `sippolusi-app` dan `sippolusi-registry`. Tidak ada rahasia di
+GitHub.
 
 ## Rahasia dan akun layanan
 
@@ -95,6 +111,8 @@ Variabel `--update-env-vars` hanya berlaku untuk eksekusi itu, jadi tidak ada ni
 - Observability (Grafana/Prometheus) belum dipasang; log tersedia di Cloud Logging.
 - *Deploy* otomatis belum pernah berjalan: ia aktif setelah PR-nya masuk ke `dev`, dan izin `sippolusi-deployer` baru
   teruji pada *run* pertama itu.
+- Syarat `scripts/gcp/wif-provider.yaml` belum diterapkan pada provider `sippolusi-dev`; terapkan sebelum *deploy*
+  otomatis pertama.
 - `backend` (API lama, `src/backend/Dockerfile`) tidak di-*deploy*; Railway juga tidak menjalankannya.
 
 ## Biaya

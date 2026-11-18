@@ -1,4 +1,5 @@
 # One-off: package the committed TI-AI-09 route set (Cache API image has PyTorch) into the seed bucket.
+# :latest is the image of the last successful deploy; run replace again to pick up a newer one.
 #   gcloud run jobs replace scripts/gcp/jobs/package-route.yaml --region asia-southeast2
 #   gcloud run jobs execute package-route --region asia-southeast2 --wait
 # Output: gs://sippolusi-seed-<number>/packaged/route-policy/ ; then stage it for model-register (README).

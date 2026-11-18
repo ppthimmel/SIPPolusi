@@ -1,0 +1,7 @@
+# Who may sign in to Google Cloud as sippolusi-deployer: only the deploy workflow of this repository, on dev.
+# Apply after changing this file (see scripts/gcp/README.md):
+#   gcloud iam workload-identity-pools providers update-oidc sippolusi-dev --project sippolusi --location global --workload-identity-pool github --flags-file scripts/gcp/wif-provider.yaml
+--attribute-condition: >-
+  assertion.repository_id=='1386978923' &&
+  assertion.ref=='refs/heads/dev' &&
+  assertion.job_workflow_ref=='ppthimmel/SIPPolusi/.github/workflows/deploy-gcp.yml@refs/heads/dev'

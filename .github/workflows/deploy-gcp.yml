@@ -1,6 +1,7 @@
 # Deploy to Google Cloud (project sippolusi). Called by ci.yml after ci-passed on a push to dev; can also be
-# started by hand on dev (Actions > Deploy to GCP > Run workflow). Other branches are refused by Google:
-# the workload identity provider accepts only this repository's refs/heads/dev. No key is stored in GitHub.
+# started by hand on dev (Actions > Deploy to GCP > Run workflow), which is refused unless ci-passed succeeded for
+# that commit. Other branches and workflows are refused by Google: the workload identity provider accepts only this
+# file on this repository's refs/heads/dev (scripts/gcp/wif-provider.yaml). No key is stored in GitHub.
 # Setup and resources: scripts/gcp/README.md.
 name: Deploy to GCP
 
@@ -9,6 +10,7 @@ on:
   workflow_dispatch:
 
 permissions:
+  checks: read
   contents: read
   id-token: write
 
@@ -25,8 +27,27 @@ env:
   DEPLOYER: sippolusi-deployer@sippolusi.iam.gserviceaccount.com
 
 jobs:
+  ci-gate:
+    name: gate / ci-passed
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      # A call from ci.yml already needs ci-passed; a manual run does not pass through ci.yml.
+      - name: Refuse a manual run of a commit that did not pass CI
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          passed="$(gh api "repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/check-runs?check_name=ci-passed&filter=latest" \
+            --jq '[.check_runs[].conclusion] | length > 0 and all(. == "success")')"
+          if [ "$passed" != "true" ]; then
+            echo "::error::ci-passed did not succeed for $GITHUB_SHA; nothing is deployed."
+            exit 1
+          fi
+
   images:
     name: image / ${{ matrix.name }}
+    needs: ci-gate
     runs-on: ubuntu-latest
     timeout-minutes: 40
     strategy:
@@ -70,12 +91,39 @@ jobs:
       IMAGE_TAG: ${{ github.sha }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # Two quick pushes run CI in parallel, so the older commit can get here last. The run for the newer commit
+      # deploys instead. The concurrency group above keeps this check and the deploy together.
+      - name: Skip when dev has moved on
+        id: head
+        run: |
+          head="$(git ls-remote origin refs/heads/dev | cut -f1)"
+          if [ -z "$head" ]; then
+            echo "::error::Could not read the head of dev."
+            exit 1
+          fi
+          if [ "$head" = "$GITHUB_SHA" ]; then
+            echo "current=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "current=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::$GITHUB_SHA is no longer the head of dev ($head); deploy skipped."
+          fi
       - uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
+        if: steps.head.outputs.current == 'true'
         with:
           workload_identity_provider: ${{ env.WIF_PROVIDER }}
           service_account: ${{ env.DEPLOYER }}
       - uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3.0.1
+        if: steps.head.outputs.current == 'true'
       - name: Deploy services and jobs
+        if: steps.head.outputs.current == 'true'
         run: bash scripts/gcp/deploy.sh all
       - name: Smoke test through the gateway
+        if: steps.head.outputs.current == 'true'
         run: python3 scripts/smoke_test.py --gateway "https://gateway-$PROJECT_NUMBER.$REGION.run.app" --health-path /gateway-health
+      # Moved only here, so an older commit that was skipped above cannot take :latest back.
+      - name: Point :latest at the deployed images
+        if: steps.head.outputs.current == 'true'
+        run: |
+          for image in model-registry cache-api gateway frontend data-worker; do
+            gcloud artifacts docker tags add "$IMAGES/$image:$IMAGE_TAG" "$IMAGES/$image:latest" --quiet
+          done

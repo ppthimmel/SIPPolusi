@@ -1,5 +1,6 @@
 # One-off: create the schemas and import the committed road graph (jakarta-20261005) into Cloud SQL.
-# Safe to run again (an existing graph version is left alone).
+# Safe to run again (an existing graph version is left alone). :latest is the image of the last successful deploy;
+# run replace again to pick up a newer one.
 #   gcloud run jobs replace scripts/gcp/jobs/seed-graph.yaml --region asia-southeast2
 #   gcloud run jobs execute seed-graph --region asia-southeast2 --wait
 apiVersion: run.googleapis.com/v1
