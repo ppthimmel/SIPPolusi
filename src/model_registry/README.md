@@ -30,7 +30,7 @@ object storage. Variabel service `model_registry` (nilai rahasia dari bucket Rai
 
 Nama bucket S3 berbeda dari nama bucket di dashboard Railway; ambil dari `railway bucket credentials`.
 Bila `MLFLOW_ARTIFACTS_DESTINATION` tidak diatur, tujuan mengikuti `MLFLOW_ARTIFACT_ROOT` (pengaturan lama dengan `s3://`
-langsung; kini hanya dipakai `docker-compose.spatial-verification.yml`).
+langsung; tidak lagi dipakai oleh berkas compose mana pun).
 
 ## Mendaftarkan model dari *bucket* (Railway, TI-DO-10b)
 

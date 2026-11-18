@@ -112,10 +112,10 @@ prediksi dan metrik identik antara keluaran training dan evaluator terpisah untu
 
 ## MLflow dan MinIO
 
-Metadata MLflow disimpan di PostgreSQL; payload di bucket MinIO `mlflow`.
-Atur `MLFLOW_TRACKING_URI`, `MLFLOW_S3_ENDPOINT_URL`, `AWS_ACCESS_KEY_ID`, dan
-`AWS_SECRET_ACCESS_KEY` lewat environment. Gunakan endpoint localhost untuk training pada host,
-hostname service untuk kontainer. Kredensial tidak disimpan dalam model atau notebook.
+Metadata MLflow disimpan di PostgreSQL; payload di bucket MinIO `mlflow`, lewat *artifact proxy* registry.
+Klien hanya perlu `MLFLOW_TRACKING_URI`; kunci *object storage* hanya dipegang service `model_registry`.
+Gunakan endpoint localhost untuk training pada host, hostname service untuk kontainer.
+Kredensial tidak disimpan dalam model atau notebook.
 
 ```bash
 python -m spatial_model.training register ../../.cache/training/pm25/bundle
@@ -205,6 +205,8 @@ gunakan environment ML terpisah dan jangan menonaktifkan pemeriksaan duplikasi O
 Perintah verifikasi lengkap dari root, setelah environment menunjuk stack lokal terisolasi:
 
 ```bash
+export MLFLOW_TRACKING_URI=http://127.0.0.1:15000
+export TEST_DATABASE_URL=postgresql://spatial_test:spatial_test@127.0.0.1:15432/spatial_test
 python scripts/verify_spatial_models.py --pm25 .cache/training/pm25 --no2 .cache/training/no2
 ```
 
