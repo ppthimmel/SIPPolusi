@@ -121,9 +121,15 @@ jobs:
         if: steps.head.outputs.current == 'true'
         run: python3 scripts/smoke_test.py --gateway "https://gateway-$PROJECT_NUMBER.$REGION.run.app" --health-path /gateway-health
       # Moved only here, so an older commit that was skipped above cannot take :latest back.
+      # Retagged through the registry API: overwriting an existing tag needs only artifactregistry.tags.update
+      # (roles/artifactregistry.writer). `gcloud artifacts docker tags add` deletes the tag first, which needs
+      # artifactregistry.tags.delete, a permission the deployer does not have.
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+        if: steps.head.outputs.current == 'true'
       - name: Point :latest at the deployed images
         if: steps.head.outputs.current == 'true'
         run: |
+          gcloud auth configure-docker "$REGION-docker.pkg.dev" --quiet
           for image in model-registry cache-api gateway frontend data-worker; do
-            gcloud artifacts docker tags add "$IMAGES/$image:$IMAGE_TAG" "$IMAGES/$image:latest" --quiet
+            docker buildx imagetools create --tag "$IMAGES/$image:latest" "$IMAGES/$image:$IMAGE_TAG"
           done
