@@ -1,0 +1,41 @@
+# One-off: package the committed TI-AI-09 route set (Cache API image has PyTorch) into the seed bucket.
+# :latest is the image of the last successful deploy; run replace again to pick up a newer one.
+#   gcloud run jobs replace scripts/gcp/jobs/package-route.yaml --region asia-southeast2
+#   gcloud run jobs execute package-route --region asia-southeast2 --wait
+# Output: gs://sippolusi-seed-<number>/packaged/route-policy/ ; then stage it for model-register (README).
+apiVersion: run.googleapis.com/v1
+kind: Job
+metadata:
+  name: package-route
+spec:
+  template:
+    metadata:
+      annotations:
+        run.googleapis.com/execution-environment: gen2
+    spec:
+      taskCount: 1
+      template:
+        spec:
+          serviceAccountName: sippolusi-tools@sippolusi.iam.gserviceaccount.com
+          maxRetries: 0
+          timeoutSeconds: 1200
+          containers:
+            - image: asia-southeast2-docker.pkg.dev/sippolusi/sippolusi/cache-api:latest
+              command: ["sh", "-c"]
+              args:
+                - >-
+                  python /seed/scripts/package_route.py &&
+                  rm -rf /seed/packaged/route-policy && mkdir -p /seed/packaged &&
+                  cp -r /tmp/route-policy /seed/packaged/route-policy && ls -R /seed/packaged/route-policy | head -40
+              env:
+                - {name: ROUTE_SET_DIR, value: /seed/route-set}
+                - {name: ROUTE_PACKAGE_OUT, value: /tmp/route-policy}
+              resources:
+                limits: {cpu: "2", memory: 4Gi}
+              volumeMounts:
+                - {name: seed, mountPath: /seed}
+          volumes:
+            - name: seed
+              csi:
+                driver: gcsfuse.run.googleapis.com
+                volumeAttributes: {bucketName: sippolusi-seed-87531247158}

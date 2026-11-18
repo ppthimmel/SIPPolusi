@@ -190,6 +190,12 @@ catat alasannya. Untuk perubahan yang akan menetap, lewat PR ke `dev`.
 | CI hijau, deployment Railway *Failed* | deploy | Railway → Deployments → log build/deploy commit tersebut; status juga tampil pada *Deployments* GitHub |
 | CI merah, deployment *Skipped* | deploy ditahan | memang diharapkan: perbaiki CI, versi lama tetap berjalan |
 
+## Deploy ke Google Cloud
+
+Setelah `ci-passed` pada *push* ke `dev`, job `deploy / gcp` memanggil `.github/workflows/deploy-gcp.yml` (tanpa kunci
+tersimpan; lihat [`scripts/gcp/README.md`](../../scripts/gcp/README.md#deploy-otomatis-cicd)). Railway tetap memakai
+"Wait for CI" seperti di atas.
+
 ## Menjalankan pemeriksaan yang sama secara lokal
 
 ```bash

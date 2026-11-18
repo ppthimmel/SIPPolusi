@@ -79,12 +79,14 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--gateway", required=True, help="gateway base URL, e.g. http://localhost:8081")
     parser.add_argument("--backend", help="backend base URL, if it is reachable directly")
+    parser.add_argument("--health-path", default="/healthz",
+                        help="gateway liveness path; use /gateway-health on Cloud Run, which reserves /healthz")
     args = parser.parse_args(argv)
     gateway = args.gateway.rstrip("/")
     backend = args.backend.rstrip("/") if args.backend else None
 
     checks = [
-        ("gateway liveness", "GET", f"{gateway}/healthz", None,
+        ("gateway liveness", "GET", f"{gateway}{args.health_path}", None,
          lambda s, h, p: s == 200 and isinstance(p, dict) and p.get("status") == "ok"),
         ("route request via gateway", "POST", f"{gateway}/v1/routes", ROUTE_REQUEST, answered_by_cache_api),
         ("heatmap via gateway", "GET", f"{gateway}/v1/exposure-surface?{SURFACE_QUERY}", None,

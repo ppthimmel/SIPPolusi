@@ -1,0 +1,16 @@
+# Upload filter for gcloud builds submit (gitignore syntax: anchor to the root, unlike .dockerignore,
+# so spatial_model/data/ is kept). The Docker build inside Cloud Build still applies .dockerignore.
+.env
+.env.*
+!.env.example
+__pycache__/
+*.pyc
+.pytest_cache/
+/.venv/
+/venv/
+/tests/
+/data/
+*.sqlite
+*.sqlite-*
+/dataset_processed/
+/.cache/

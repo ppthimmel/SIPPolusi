@@ -190,6 +190,7 @@ NOT_FOUND='{"error":{"code":"not_found"'
 
 # The public API: exact path, query string unchanged.
 expect_route GET  /healthz                       200 '{"status":"ok","service":"gateway"}'
+expect_route GET  /gateway-health                200 '{"status":"ok","service":"gateway"}'
 expect_route POST /v1/routes                     200 'cache_api /v1/routes '
 expect_route GET  '/v1/exposure-surface?bbox=106.8,-6.2,106.81,-6.19&zoom=15' 200 'cache_api /v1/exposure-surface?bbox=106.8,-6.2,106.81,-6.19&zoom=15 '
 # A raw path that NGINX normalises to a public path reaches the upstream as
