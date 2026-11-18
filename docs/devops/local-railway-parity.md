@@ -57,12 +57,13 @@ berbeda, dan cara menyiapkan stack baru sampai rute MORL keluar dari *gateway*.
    `seed_graph` hanya melengkapi yang belum ada (DDL `osm_cache/schema.sql` memakai `IF NOT EXISTS`, termasuk
    kolom `osm` yang belum ada pada volume lokal lama). Aman dijalankan ulang.
 4. **Model.** `docker compose --profile tools run --rm register_models`. Membangun paket model rute dari set TI-AI-09
-   yang di-commit (`package_route`), lalu mendaftarkannya dan setiap folder di `./.local-models/` dengan alias
-   `candidate` dan `production`, lewat *artifact proxy*. Paket yang sudah terdaftar dilewati.
+   yang di-commit (`package_route`), lalu mendaftarkannya dan setiap folder di `./.local-models/` lewat *artifact proxy*
+   dengan kode yang sama seperti *job* Railway `model-register` (`python -m spatial_model.training register-dir`,
+   image Data Worker; TI-DO-10b), lalu memberinya `production`. Paket yang sudah terdaftar dilewati.
 5. **Model spasial (opsional).** Taruh bundel di `./.local-models/<nama>/` (misalnya diunduh dari *bucket* Railway,
-   `packaged/spatial/pm25/...` sudah berisi `package.json`). Bundel tanpa `package.json` dipaketkan dulu:
-   `docker compose run --rm -v ./.local-models:/models data_worker python -m spatial_model.training package /models/<nama>`,
-   lalu jalankan langkah 4 lagi.
+   `packaged/spatial/pm25/...` sudah berisi `package.json`), lalu jalankan langkah 4 lagi. Bundel tanpa `package.json`
+   dipaketkan pada salinannya (tanpa `grid_spec_id`); untuk mengisinya, paketkan dulu:
+   `docker compose run --rm -v ./.local-models:/models data_worker python -m spatial_model.training package /models/<nama> --grid-spec-id <id>`.
 6. **Tunggu Cache API memuat *policy* (tanpa *restart*).** Cache API yang mulai sebelum langkah 4 mendapat HTTP 400
    untuk alias `production` dan mencatat `route_model_load outcome=waiting ... reason=not_registered`. Selama itu
    rute memakai fallback A* (`model_unavailable`). Cache API memeriksa registry lagi setiap
@@ -91,8 +92,7 @@ Untuk meniru *private networking* Railway, tambahkan `-f docker-compose.private.
 
 ## Lihat juga
 
-- [`scripts/railway/README.md`](../../scripts/railway/README.md): prosedur pendaftaran model di Railway
-- [`src/model_registry/README.md`](../../src/model_registry/README.md): registry model
+- [`src/model_registry/README.md`](../../src/model_registry/README.md): registry model dan pendaftaran di Railway (job `model-register`, TI-DO-10b)
 - [`docs/devops/build-runtime.md`](build-runtime.md): build, health check, dan logging per layanan
 - [`docs/software/technical-runbook.md`](../software/technical-runbook.md): runbook operasional
 - [`src/backend/osm/README.md`](../../src/backend/osm/README.md): Cache API

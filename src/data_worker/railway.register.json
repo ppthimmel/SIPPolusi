@@ -1,0 +1,12 @@
+{
+  "$schema": "https://railway.com/railway.schema.json",
+  "build": {
+    "builder": "DOCKERFILE",
+    "dockerfilePath": "Dockerfile",
+    "watchPatterns": ["src/data_worker/spatial_model/**", "src/data_worker/Dockerfile", "src/data_worker/requirements.txt"]
+  },
+  "deploy": {
+    "startCommand": "python -m spatial_model.training railway-job",
+    "restartPolicyType": "NEVER"
+  }
+}

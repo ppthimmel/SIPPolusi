@@ -14,8 +14,9 @@ record a ticket's result on a given date. They are kept as history and are not u
 | API gateway (NGINX) | [../src/gateway/README.md](../src/gateway/README.md) | [devops/verification-TI-DO-05-gateway.md](devops/verification-TI-DO-05-gateway.md) |
 | CI/CD | [devops/ci-cd.md](devops/ci-cd.md) | [devops/verification-TI-DO-06-ci-cd.md](devops/verification-TI-DO-06-ci-cd.md) |
 | Data Worker schedule | [devops/data-worker-schedule.md](devops/data-worker-schedule.md) | [devops/verification-TI-DO-07-data-worker-schedule.md](devops/verification-TI-DO-07-data-worker-schedule.md) |
+| Registering models from the bucket (Railway job) | [../src/model_registry/README.md](../src/model_registry/README.md#mendaftarkan-model-dari-bucket-railway-ti-do-10b) | [devops/verification-TI-DO-10b-register-from-bucket.md](devops/verification-TI-DO-10b-register-from-bucket.md) |
 | Observability | [devops/observability.md](devops/observability.md), [../src/observability/README.md](../src/observability/README.md) | |
-| Model registry (MLflow) | [../src/model_registry/README.md](../src/model_registry/README.md), [../scripts/railway/README.md](../scripts/railway/README.md) | [experiments/TI-AI-11/railway_registry_evidence.md](experiments/TI-AI-11/railway_registry_evidence.md) |
+| Model registry (MLflow) | [../src/model_registry/README.md](../src/model_registry/README.md) (registering from the bucket: TI-DO-10b), [../scripts/railway/README.md](../scripts/railway/README.md) (earlier Console procedure) | [experiments/TI-AI-11/railway_registry_evidence.md](experiments/TI-AI-11/railway_registry_evidence.md) |
 
 ## Backend (Cache API) and public API
 

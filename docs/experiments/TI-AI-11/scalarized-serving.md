@@ -21,8 +21,9 @@ preference directly. It uses the same timeout, cancellation, and marked fallback
 the fixed-preference family. `member_alpha` is null because there is no discrete member.
 
 To register through the private development registry, stage the package in the bucket
-and follow `scripts/railway/README.md`. Set `REGISTER_ALIASES` to an empty string if the
-new version should be registered without moving any existing alias. Do not assign the
+and run the `model-register` job ([`src/model_registry/README.md`](../../../src/model_registry/README.md#mendaftarkan-model-dari-bucket-railway-ti-do-10b),
+TI-DO-10b). The job moves only `candidate`; the Cache API serves `production`. (The 9 November
+registration below used the earlier Console script with no alias at all.) Do not assign the
 `production` alias until a Backend containing the new loader has been deployed and the
 team has decided to switch serving. A registry entry alone does not deploy code.
 

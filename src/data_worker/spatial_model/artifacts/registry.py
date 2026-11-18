@@ -22,7 +22,8 @@ def client():
     return MlflowClient(tracking_uri=os.environ.get("MLFLOW_TRACKING_URI", "http://localhost:5000"))
 
 
-def register(bundle):
+def register(bundle, *, set_candidate=True):
+    """Register a bundle. set_candidate=False leaves the alias to a caller that verifies the version first."""
     manifest = validate_bundle(bundle)
     packaged = (Path(bundle) / PACKAGE_FILE).is_file()
     if packaged:
@@ -69,7 +70,8 @@ def register(bundle):
         version = c.create_model_version(name, f"{run.info.artifact_uri}/bundle", run.info.run_id,
                                          tags={"bundle_sha256": digest(Path(bundle) / "bundle.json"),
                                                  **({"package_sha256": package_digest(bundle)} if packaged else {})})
-        c.set_registered_model_alias(name, "candidate", version.version)
+        if set_candidate:
+            c.set_registered_model_alias(name, "candidate", version.version)
     return {"name": name, "version": str(version.version), "run_id": run.info.run_id}
 
 
@@ -118,8 +120,11 @@ def promote(target, version):
     return identity
 
 
-def register_route_package(package_dir):
-    """Register a route policy package (route_model.morl.packaging) as a version of morl-route-policy."""
+def register_route_package(package_dir, *, set_candidate=True):
+    """Register a route policy package (route_model.morl.packaging) as a version of morl-route-policy.
+
+    set_candidate=False leaves the alias to a caller that verifies the version first.
+    """
     manifest = validate_package(package_dir, "route_policy")
     if manifest["model_id"] != ROUTE_NAME:
         raise ValueError("Package is not a morl-route-policy")
@@ -142,8 +147,21 @@ def register_route_package(package_dir):
                 raise
         version = c.create_model_version(name, f"{run.info.artifact_uri}/package", run.info.run_id,
                                          tags={"package_sha256": package_sha256})
-        c.set_registered_model_alias(name, "candidate", version.version)
+        if set_candidate:
+            c.set_registered_model_alias(name, "candidate", version.version)
     return {"name": name, "version": str(version.version), "run_id": run.info.run_id}
+
+
+def promote_route(version):
+    """Give a registered morl-route-policy version the alias production, after resolving and verifying it.
+
+    This checks hashes and the manifest only; the Data Worker has no route_model code to load the weights.
+    Reload them first with scripts/verify_model_packages.py route.
+    """
+    with tempfile.TemporaryDirectory() as cache:
+        _, identity = resolve_route_package(str(version), cache_dir=cache)
+    client().set_registered_model_alias(os.environ.get("ROUTE_POLICY_MODEL", ROUTE_NAME), "production", str(version))
+    return identity
 
 
 def resolve_route_package(selector="production", cache_dir=None):
