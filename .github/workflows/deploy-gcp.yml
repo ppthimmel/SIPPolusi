@@ -123,7 +123,4 @@ jobs:
       # Moved only here, so an older commit that was skipped above cannot take :latest back.
       - name: Point :latest at the deployed images
         if: steps.head.outputs.current == 'true'
-        run: |
-          for image in model-registry cache-api gateway frontend data-worker; do
-            gcloud artifacts docker tags add "$IMAGES/$image:$IMAGE_TAG" "$IMAGES/$image:latest" --quiet
-          done
+        run: bash scripts/gcp/retag-latest.sh
