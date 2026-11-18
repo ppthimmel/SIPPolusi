@@ -57,13 +57,15 @@ def main(argv=None):
         from spatial_model.artifacts.staged import RegistrationError, promote_candidate, register_from_bucket
         prefix, promotion = ((args.prefix, None) if args.command == "register-from-bucket"
                              else (os.environ.get("REGISTER_PREFIX", "").strip(), os.environ.get("PROMOTE", "").strip()))
+        grid_spec_id = (args.grid_spec_id if args.command == "register-from-bucket"
+                        else os.environ.get("REGISTER_GRID_SPEC_ID", "").strip() or None)
         try:
             if prefix and promotion:
                 raise RegistrationError("REGISTER_PREFIX and PROMOTE are both set; set one per run")
             if promotion:
                 print(json.dumps(promote_candidate(promotion)))
             elif prefix:
-                print(json.dumps(register_from_bucket(prefix, grid_spec_id=getattr(args, "grid_spec_id", None),
+                print(json.dumps(register_from_bucket(prefix, grid_spec_id=grid_spec_id,
                                                       wait=getattr(args, "wait", 120.0))))
             else:
                 parser.exit(0, "railway-job: neither REGISTER_PREFIX nor PROMOTE is set; nothing to do\n")

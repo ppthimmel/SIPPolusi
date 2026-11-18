@@ -78,8 +78,8 @@ keduanya sekaligus ditolak.
 ### Setiap pendaftaran
 
 1. **Buat paket dan periksa secara lokal.** Bundel spasial dari `export_bundle` mendapat `package.json` lewat
-   `python -m spatial_model.training package <bundle> [--grid-spec-id <id>]` (bila tidak, *job* mengemasnya tanpa
-   `grid_spec_id`). Paket model rute dibuat dengan `route_model.morl.packaging.package_policy_set`. Lalu jalankan
+   `python -m spatial_model.training package <bundle> [--grid-spec-id <id>]`. Bila belum, *job* mengemasnya; set
+   `REGISTER_GRID_SPEC_ID=<id>` pada *job* agar paket itu memuat `grid_spec_id`. Paket model rute dibuat dengan `route_model.morl.packaging.package_policy_set`. Lalu jalankan
    `python scripts/verify_model_packages.py spatial --bundle <bundle> --target pm25` (atau `route`).
 2. **Unggah foldernya ke *bucket*** `minio` (environment *development*, tab **Files**) **di bawah `artifacts/`**,
    misalnya `artifacts/incoming/spatial/pm25/<model_version>/` atau `artifacts/incoming/route/<model_version>/`.
@@ -99,9 +99,10 @@ keduanya sekaligus ditolak.
    RESOLVED spatial-downscaling-pm25:<n>: all N files match.  RESULT: PASS
    ```
    diikuti satu baris JSON (`status`, `name`, `version`, `bundle_sha256`, `package_sha256`). Kegagalan berakhir
-   dengan `railway-job: FAILED: <alasan>` dan kode keluar 1; tidak ada versi yang tertinggal.
-6. **Hapus `REGISTER_PREFIX`.** Bila tertinggal, deploy ulang (mis. setelah *push* ke `dev`) hanya melaporkan
-   `already registered`.
+   dengan `railway-job: FAILED: <alasan>` dan kode keluar 1; tidak ada versi yang tertinggal dan `candidate` tetap
+   pada versi sebelumnya.
+6. **Hapus `REGISTER_PREFIX` dan `REGISTER_GRID_SPEC_ID`.** Bila `REGISTER_PREFIX` tertinggal, deploy ulang (mis. setelah
+   *push* ke `dev`) hanya melaporkan `already registered`.
 
 ### Promosi (`production`)
 

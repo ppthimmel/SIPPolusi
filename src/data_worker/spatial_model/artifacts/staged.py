@@ -11,9 +11,9 @@ read through the registry's artifact proxy (``mlflow-artifacts:/``), so this cli
 
 Steps: wait for the registry, download, verify (bundle.json and package.json hashes, no unlisted file, no
 credential), write package.json for a spatial bundle that has none, skip a package that is already registered,
-register it with the alias ``candidate``, then resolve the new version again and compare its hashes. A failure after
-the version was created deletes that version, so no half-registered version is left behind. ``production`` is never
-set here; that is ``promote``.
+register it, resolve the new version again and compare its hashes, and only then give it the alias ``candidate``. A
+failure after the version was created deletes that version, so no half-registered version is left behind and
+``candidate`` stays on the previous version. ``production`` is never set here; that is ``promote``.
 """
 from __future__ import annotations
 
@@ -317,7 +317,7 @@ def register_directory(directory, *, grid_spec_id=None, promote=False, wait=120.
 
 
 def register_package_root(root, *, grid_spec_id=None) -> dict:
-    """Verify the package in root, skip it if registered, else register (candidate), resolve and compare."""
+    """Verify the package in root, skip it if registered, else register, resolve, compare, then set candidate."""
     info = inspect_package(root, grid_spec_id)
     target = "route" if info["kind"] == "route_policy" else info["target"]
     hashes = " ".join(f"{k} {v[:16]}..." for k, v in info["tags"].items())
@@ -337,9 +337,11 @@ def register_package_root(root, *, grid_spec_id=None) -> dict:
     _check_proxied(client, info["kind"])
     before = max((int(v.version) for v in client.search_model_versions(f"name='{info['name']}'")), default=0)
     try:
-        result = (register_route_package(root) if info["kind"] == "route_policy" else register(root))
-        _say(f"registered: {result['name']} version {result['version']} aliases candidate")
+        result = (register_route_package(root, set_candidate=False) if info["kind"] == "route_policy"
+                  else register(root, set_candidate=False))
         identity, files = _verify_registered(info, result["version"])
+        client.set_registered_model_alias(result["name"], "candidate", result["version"])
+        _say(f"registered: {result['name']} version {result['version']} aliases candidate")
     except BaseException as exc:  # also Ctrl-C: never leave a version behind
         try:
             _delete_created(client, info, before)

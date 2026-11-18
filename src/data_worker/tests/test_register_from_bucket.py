@@ -162,6 +162,8 @@ def test_credentials_and_folds_are_refused(registry, client):
 
 
 def test_failure_after_the_version_exists_rolls_it_back(registry, client, monkeypatch):
+    stage_route(registry.bucket, "incoming/route/rollback-good", seed="rollback-good")
+    previous = register_from_bucket("incoming/route/rollback-good", wait=10)["version"]
     stage_route(registry.bucket, "incoming/route/rollback", seed="rollback")
     before = len(_versions(client, "morl-route-policy"))
 
@@ -171,6 +173,7 @@ def test_failure_after_the_version_exists_rolls_it_back(registry, client, monkey
     with pytest.raises(RegistrationError, match="did not complete"):
         register_from_bucket("incoming/route/rollback", wait=10)
     assert len(_versions(client, "morl-route-policy")) == before
+    assert client.get_registered_model("morl-route-policy").aliases["candidate"] == previous
 
 
 def test_client_drops_object_storage_keys(registry, client, monkeypatch):
@@ -287,6 +290,21 @@ def test_rerun_finishes_a_promotion_that_never_happened(registry, client, tmp_pa
     again = register_directory(folder, promote=True, wait=10)
     assert again["status"] == "already_registered" and again["promotion"] == "promoted"
     assert client.get_registered_model("morl-route-policy").aliases["production"] == version
+
+
+def test_railway_job_packages_a_bundle_with_the_grid_spec_id(registry, client, monkeypatch, capsys, tmp_path):
+    from spatial_model.artifacts.registry import resolve
+    from spatial_model.training.__main__ import main
+
+    stage_bundle(registry.bucket, "incoming/spatial/pm25/grid", seed="grid")
+    monkeypatch.delenv("PROMOTE", raising=False)
+    monkeypatch.setenv("REGISTER_PREFIX", "incoming/spatial/pm25/grid/")
+    monkeypatch.setenv("REGISTER_GRID_SPEC_ID", "grid-test")
+    main(["railway-job"])
+
+    version = json.loads(capsys.readouterr().out.strip().splitlines()[-1])["version"]
+    root, _ = resolve("pm25", version, cache_dir=tmp_path)
+    assert json.loads((root / "package.json").read_text())["contract"]["grid_spec_id"] == "grid-test"
 
 
 def _staged(registry, prefix, seed):

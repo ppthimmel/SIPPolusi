@@ -133,7 +133,7 @@ setelah teks keluaran dirapikan; hasilnya sama: satu versi per model, alias `can
 - CI `test / backend` mengemas set TI-AI-09 dan memuatnya ulang (`scripts/verify_model_packages.py route`). Dengan
   dependensi CI di `python:3.11-slim`: `result: pass`, `compatible`, 23 berkas, 123 detik.
 
-Uji otomatis setelah perubahan ini: `test_register_from_bucket.py` + `test_model_package.py`, **30 lulus**.
+Uji otomatis setelah perubahan ini: `test_register_from_bucket.py` + `test_model_package.py`, **31 lulus**.
 
 ## 4. Lingkungan cloud: Google Cloud
 
@@ -196,7 +196,9 @@ PM2.5 dan NO₂ sengaja tetap `candidate`: `production` adalah keputusan tim. `m
 
 ## 5. Belum dicakup
 
-- **Service `model-register` di Railway** belum dibuat atau dijalankan (lihat bagian 4).
+- **Service `model-register` di Railway** belum dibuat atau dijalankan (lihat bagian 4). Karena itu belum dipastikan
+  bagaimana Railway menampilkan *deployment* yang langsung selesai dengan kode keluar 0, yang terjadi setiap *push* yang
+  menyentuh `watchPatterns` saat tidak ada `REGISTER_PREFIX` atau `PROMOTE`.
 - **Rollback `production`** ke versi yang bukan `candidate` tidak dilayani `railway-job`.
 - **Pemeriksaan muat bundel spasial di CI**: tidak ada bundel PM2.5/NO₂ di git; jalankan
   `scripts/verify_model_packages.py spatial` secara manual sebelum mengunggah.
