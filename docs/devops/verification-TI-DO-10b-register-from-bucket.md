@@ -125,12 +125,15 @@ setelah teks keluaran dirapikan; hasilnya sama: satu versi per model, alias `can
 - `register_models` (docker compose) kini memakai image Data Worker dan `python -m spatial_model.training register-dir
   <folder> --promote`, kode yang sama dengan *job* Railway; `scripts/railway/register_from_bucket.py` dihapus.
   `scripts/local/register_models.sh` dijalankan terhadap server MLflow ber-*proxy*: paket rute terdaftar sebagai
-  versi 1 lalu dipromosikan, folder tanpa `package.json`/`bundle.json` gagal dengan pesan jelas, dan menjalankan ulang
-  menghasilkan `already registered` dan `already production`. Uji: `test_local_folder_registers_then_promotes`.
+  versi 1 lalu dipromosikan, dan folder tanpa `package.json`/`bundle.json` gagal dengan pesan jelas. Menjalankan ulang
+  menghasilkan `already registered` dan `promotion skipped` tanpa mengubah alias, juga bila ada dua paket rute (set
+  TI-AI-09 di `/out` dan PIC A di `.local-models/`). Hanya versi `candidate` yang belum sempat menjadi `production`
+  yang dipromosikan pada *run* berikutnya. Uji: `test_local_folder_registers_then_promotes`,
+  `test_rerun_with_two_route_packages_keeps_aliases`, `test_rerun_finishes_a_promotion_that_never_happened`.
 - CI `test / backend` mengemas set TI-AI-09 dan memuatnya ulang (`scripts/verify_model_packages.py route`). Dengan
   dependensi CI di `python:3.11-slim`: `result: pass`, `compatible`, 23 berkas, 123 detik.
 
-Uji otomatis setelah perubahan ini: `test_register_from_bucket.py` + `test_model_package.py`, **28 lulus**.
+Uji otomatis setelah perubahan ini: `test_register_from_bucket.py` + `test_model_package.py`, **30 lulus**.
 
 ## 4. Lingkungan cloud: Google Cloud
 

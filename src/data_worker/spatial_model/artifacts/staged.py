@@ -287,8 +287,11 @@ def register_from_bucket(prefix, *, grid_spec_id=None, wait=120.0, workdir=None)
 def register_directory(directory, *, grid_spec_id=None, promote=False, wait=120.0, workdir=None) -> dict:
     """Same as register_from_bucket for a local folder (the local docker compose job register_models).
 
-    The folder is copied first, so packaging a bundle never writes into it. promote=True then gives the version
-    production through promote_candidate: the local stack serves what it registers, Railway does not.
+    The folder is copied first, so packaging a bundle never writes into it. promote=True then gives a newly
+    registered version production through promote_candidate: the local stack serves what it registers, Railway does
+    not. A folder that is already registered keeps its aliases, because with several packages of one model only the
+    last is the candidate and a rerun must not fail on the others. The exception is the current candidate that never
+    reached production: a run stopped between registering and promoting finishes on the next run.
     """
     directory = Path(directory)
     if not directory.is_dir():
@@ -299,10 +302,17 @@ def register_directory(directory, *, grid_spec_id=None, promote=False, wait=120.
         shutil.copytree(directory, root)
         _say(f"copied {sum(1 for p in root.rglob('*') if p.is_file())} files from {directory}")
         result = register_package_root(root, grid_spec_id=grid_spec_id)
-    if promote:
+    if not promote:
+        return result
+    unfinished = "candidate" in result["aliases"] and "production" not in result["aliases"]
+    if result["status"] == "registered" or unfinished:
         promotion = promote_candidate(f"{result['target']}:{result['version']}", wait=0)
         result["aliases"] = sorted(set(result["aliases"]) | {"production"})
         result["promotion"] = promotion["status"]
+    else:
+        _say(f"promotion skipped: {result['name']} version {result['version']} is already registered "
+             f"(aliases: {', '.join(result['aliases']) or 'none'})")
+        result["promotion"] = "skipped"
     return result
 
 

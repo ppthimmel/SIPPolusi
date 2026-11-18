@@ -242,13 +242,51 @@ def test_local_folder_registers_then_promotes(registry, client, tmp_path):
     assert first["status"] == "registered" and first["promotion"] == "promoted"
     assert client.get_registered_model("morl-route-policy").aliases["production"] == first["version"]
     again = register_directory(folder, promote=True, wait=10)
-    assert again["status"] == "already_registered" and again["promotion"] == "already_production"
+    assert again["status"] == "already_registered" and again["promotion"] == "skipped"
+    assert "production" in again["aliases"]
     assert sorted(p.relative_to(folder).as_posix() for p in folder.rglob("*")) == before
 
     stage_bundle(tmp_path, "bundle-without-package", seed="local-b")
     result = register_directory(tmp_path / "bundle-without-package", wait=10)
     assert result["status"] == "registered" and "promotion" not in result
     assert not (tmp_path / "bundle-without-package" / "package.json").exists()  # packaged in the copy
+
+
+def test_rerun_with_two_route_packages_keeps_aliases(registry, client, tmp_path, capsys):
+    """The TI-AI-09 set in /out next to PIC A in .local-models: the second run must succeed and change nothing."""
+    from spatial_model.artifacts.staged import register_directory
+
+    older = stage_route(tmp_path, "out-route", seed="two-older")
+    newer = stage_route(tmp_path, "local-models-route", seed="two-newer")
+    first = register_directory(older, promote=True, wait=10)["version"]
+    second = register_directory(newer, promote=True, wait=10)["version"]
+    aliases = client.get_registered_model("morl-route-policy").aliases
+    assert aliases["candidate"] == aliases["production"] == second
+    count = len(_versions(client, "morl-route-policy"))
+    capsys.readouterr()
+
+    rerun_older = register_directory(older, promote=True, wait=10)
+    assert (rerun_older["status"], rerun_older["version"]) == ("already_registered", first)
+    assert rerun_older["promotion"] == "skipped" and rerun_older["aliases"] == []
+    assert "promotion skipped" in capsys.readouterr().out
+    rerun_newer = register_directory(newer, promote=True, wait=10)
+    assert rerun_newer["promotion"] == "skipped" and rerun_newer["aliases"] == ["candidate", "production"]
+
+    assert client.get_registered_model("morl-route-policy").aliases == aliases
+    assert len(_versions(client, "morl-route-policy")) == count
+
+
+def test_rerun_finishes_a_promotion_that_never_happened(registry, client, tmp_path):
+    """Stopped after registering: the version is the candidate without production, so the next run promotes it."""
+    from spatial_model.artifacts.staged import register_directory
+
+    folder = stage_route(tmp_path, "route-interrupted", seed="interrupted")
+    version = register_directory(folder, wait=10)["version"]
+    assert client.get_registered_model("morl-route-policy").aliases["production"] != version
+
+    again = register_directory(folder, promote=True, wait=10)
+    assert again["status"] == "already_registered" and again["promotion"] == "promoted"
+    assert client.get_registered_model("morl-route-policy").aliases["production"] == version
 
 
 def _staged(registry, prefix, seed):
