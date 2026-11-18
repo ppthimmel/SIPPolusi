@@ -110,8 +110,8 @@ simpler IDW estimate. Railway is unchanged and still stopped by its usage limit.
 - [x] Commit the GCP scripts and build fixes on branch `chore/gcp-deployment`; open a PR to `dev`.
 - [x] Add a gateway health path that works on Cloud Run (`/gateway-health`); `scripts/smoke_test.py --health-path`.
 - [x] Add a GitHub Actions deploy job to GCP using Workload Identity Federation.
-- [ ] Apply `scripts/gcp/wif-provider.yaml` to the provider `sippolusi-dev` before the first automatic deploy, so only
-      `deploy-gcp.yml` can sign in as `sippolusi-deployer` (command in `scripts/gcp/README.md`).
+- [x] Apply `scripts/gcp/wif-provider.yaml` to the provider `sippolusi-dev`, so only `deploy-gcp.yml` can sign in as
+      `sippolusi-deployer` (command in `scripts/gcp/README.md`).
 - [ ] Merge PR #105 (TI-DO-10b) first, then the GCP PR; the `model-register` job needs the code in #105.
 - [ ] Check that the first `deploy / gcp` run on `dev` succeeds.
 - [ ] Decide whether to keep Railway, keep both, or shut Railway down (shutting down is irreversible; owner's decision).

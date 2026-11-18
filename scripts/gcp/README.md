@@ -111,8 +111,6 @@ Variabel `--update-env-vars` hanya berlaku untuk eksekusi itu, jadi tidak ada ni
 - Observability (Grafana/Prometheus) belum dipasang; log tersedia di Cloud Logging.
 - *Deploy* otomatis belum pernah berjalan: ia aktif setelah PR-nya masuk ke `dev`, dan izin `sippolusi-deployer` baru
   teruji pada *run* pertama itu.
-- Syarat `scripts/gcp/wif-provider.yaml` belum diterapkan pada provider `sippolusi-dev`; terapkan sebelum *deploy*
-  otomatis pertama.
 - `backend` (API lama, `src/backend/Dockerfile`) tidak di-*deploy*; Railway juga tidak menjalankannya.
 
 ## Biaya
