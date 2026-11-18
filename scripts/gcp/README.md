@@ -36,7 +36,7 @@ memakai *fallback* IDW sampai keduanya diunggah dan didaftarkan.
 
 Setiap *push* ke `dev` yang lulus `ci-passed` menjalankan `.github/workflows/deploy-gcp.yml`: membangun lima image
 bertag SHA commit, menjalankan `scripts/gcp/deploy.sh all`, *smoke test* lewat gateway, lalu memindahkan tag `:latest`
-ke image yang baru lulus itu.
+ke image yang baru lulus itu (`scripts/gcp/retag-latest.sh`).
 
 - **Commit lama tidak menimpa yang baru.** Tepat sebelum *deploy*, workflow memeriksa bahwa commit-nya masih ujung `dev`.
   Bila tidak, *deploy* dilewati dan *run* commit yang lebih baru yang men-*deploy*.
