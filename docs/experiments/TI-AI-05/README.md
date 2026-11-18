@@ -164,9 +164,9 @@ Basis data Railway menjalankan image `postgis/postgis:18-3.6` (PostgreSQL 18.6, 
 PostgreSQL 16 seperti pada dokumen desain, `docker-compose.yml`, dan fixture uji. Seluruh 129 uji dan tiga
 siklus di atas diulang pada image yang sama persis (amd64), dan semuanya lulus dengan hasil yang sama.
 
-Catatan 2026-11-09: `docker-compose.yml`, `docker-compose.data-worker-tests.yml`, dan CI kini memakai
-`postgis/postgis:18-3.6`. PostgreSQL 16 (`16-3.4`) masih dipakai `docker-compose.spatial-verification.yml` dan
-fixture Testcontainers di `src/data_worker/tests/conftest.py`.
+Catatan 2026-11-18: `docker-compose.yml`, `docker-compose.data-worker-tests.yml`,
+`docker-compose.spatial-verification.yml`, fixture Testcontainers di `src/data_worker/tests/conftest.py`, dan CI
+kini memakai `postgis/postgis:18-3.6`.
 
 | Sumber daya layanan `database` (8 Oktober 2026) | Nilai |
 |---|---|

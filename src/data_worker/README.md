@@ -241,7 +241,7 @@ TEST_DATABASE_URL=postgresql://postgres@localhost:5432/postgres pytest tests
 
 Uji penyimpanan dijalankan terhadap PostgreSQL + PostGIS sungguhan (Tabel
 5.10): lewat `TEST_DATABASE_URL`, atau otomatis lewat Testcontainers
-(`postgis/postgis:16-3.4`) bila Docker tersedia. Setiap uji memakai skema
+(`postgis/postgis:18-3.6`) bila Docker tersedia. Setiap uji memakai skema
 baru yang dihapus setelahnya. Tanpa keduanya, uji basis data dilewati dan
 sisanya tetap berjalan. `tests/test_data_worker.py` memuat UT-DW-01 dan
 UT-DW-05 dari Tabel 5.8; `tests/test_spatial_baseline.py` memuat UT-SDM-08

@@ -4,7 +4,7 @@ Sesuai Dokumen Desain subbab 5.2 (Tabel 5.10), operasi penyimpanan diuji
 terhadap instans sungguhan, bukan stub. Urutan sumber instans:
 
 1. ``TEST_DATABASE_URL`` bila diatur (misalnya PostgreSQL lokal atau CI);
-2. Testcontainers dengan image ``postgis/postgis:16-3.4`` bila pustaka dan
+2. Testcontainers dengan image ``postgis/postgis:18-3.6`` bila pustaka dan
    Docker tersedia;
 3. selain itu, uji yang membutuhkan basis data dilewati (skip).
 
@@ -48,7 +48,7 @@ def pg_dsn():
         except ImportError:
             pytest.skip("TEST_DATABASE_URL tidak diatur dan testcontainers tidak terpasang")
     try:
-        container = PostgresContainer("postgis/postgis:16-3.4", driver=None)
+        container = PostgresContainer("postgis/postgis:18-3.6", driver=None)
         container.start()
     except Exception as exc:  # noqa: BLE001 - Docker tidak tersedia
         pytest.skip(f"Docker/Testcontainers tidak tersedia: {exc}")
