@@ -121,15 +121,47 @@ jobs:
         if: steps.head.outputs.current == 'true'
         run: python3 scripts/smoke_test.py --gateway "https://gateway-$PROJECT_NUMBER.$REGION.run.app" --health-path /gateway-health
       # Moved only here, so an older commit that was skipped above cannot take :latest back.
-      # Retagged through the registry API: overwriting an existing tag needs only artifactregistry.tags.update
-      # (roles/artifactregistry.writer). `gcloud artifacts docker tags add` deletes the tag first, which needs
-      # artifactregistry.tags.delete, a permission the deployer does not have.
-      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
-        if: steps.head.outputs.current == 'true'
+      # `gcloud artifacts tags update` moves an existing tag with artifactregistry.tags.update, and `tags create`
+      # makes the first one for a new image with tags.create; roles/artifactregistry.writer has both.
+      # (`gcloud artifacts docker tags add` deletes the tag first, which needs tags.delete: the deployer lacks it.)
+      # Every digest is resolved before any tag moves, each move is retried, and the log names what moved.
       - name: Point :latest at the deployed images
         if: steps.head.outputs.current == 'true'
         run: |
-          gcloud auth configure-docker "$REGION-docker.pkg.dev" --quiet
-          for image in model-registry cache-api gateway frontend data-worker; do
-            docker buildx imagetools create --tag "$IMAGES/$image:latest" "$IMAGES/$image:$IMAGE_TAG"
+          images=(model-registry cache-api gateway frontend data-worker)
+          digests=()
+          for image in "${images[@]}"; do
+            digest="$(gcloud artifacts docker images describe "$IMAGES/$image:$IMAGE_TAG" \
+              --format='value(image_summary.digest)')" || digest=""
+            digests+=("$digest")
+            if [ -z "$digest" ]; then
+              echo "::error::No digest for $image:$IMAGE_TAG; no :latest tag was moved."
+              exit 1
+            fi
           done
+          where=(--project="$PROJECT" --location="$REGION" --repository=sippolusi)
+          moved=()
+          for i in "${!images[@]}"; do
+            image="${images[$i]}"
+            for attempt in 1 2 3; do
+              existing="$(gcloud artifacts tags list "${where[@]}" --package="$image" \
+                --filter='name~/tags/latest$' --format='value(name)' 2>/dev/null)" || existing=""
+              if [ -n "$existing" ]; then
+                operation=update
+              else
+                operation=create
+              fi
+              if gcloud artifacts tags "$operation" latest "${where[@]}" --package="$image" \
+                   --version="${digests[$i]}" --quiet; then
+                echo "$image:latest -> ${digests[$i]} ($operation)"
+                moved+=("$image")
+                break
+              fi
+              if [ "$attempt" -eq 3 ]; then
+                echo "::error::Moving :latest failed at $image. Already moved to $IMAGE_TAG: ${moved[*]:-none}."
+                exit 1
+              fi
+              sleep $((attempt * 10))
+            done
+          done
+          echo "::notice::Moved :latest to $IMAGE_TAG for ${moved[*]}."
