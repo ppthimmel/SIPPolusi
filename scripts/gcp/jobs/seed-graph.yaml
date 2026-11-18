@@ -1,0 +1,40 @@
+# One-off: create the schemas and import the committed road graph (jakarta-20261005) into Cloud SQL.
+# Safe to run again (an existing graph version is left alone).
+#   gcloud run jobs replace scripts/gcp/jobs/seed-graph.yaml --region asia-southeast2
+#   gcloud run jobs execute seed-graph --region asia-southeast2 --wait
+apiVersion: run.googleapis.com/v1
+kind: Job
+metadata:
+  name: seed-graph
+spec:
+  template:
+    metadata:
+      annotations:
+        run.googleapis.com/execution-environment: gen2
+        run.googleapis.com/network-interfaces: '[{"network":"default","subnetwork":"default"}]'
+        run.googleapis.com/vpc-access-egress: private-ranges-only
+    spec:
+      taskCount: 1
+      template:
+        spec:
+          serviceAccountName: sippolusi-tools@sippolusi.iam.gserviceaccount.com
+          maxRetries: 0
+          timeoutSeconds: 3600
+          containers:
+            - image: asia-southeast2-docker.pkg.dev/sippolusi/sippolusi/data-worker:latest
+              command: ["python", "/seed/scripts/seed_graph.py"]
+              env:
+                - {name: SEED_GRAPH_DIR, value: /seed/dataset_processed/OSM}
+                - name: DATABASE_URL
+                  valueFrom:
+                    secretKeyRef: {name: database-url, key: latest}
+              resources:
+                limits: {cpu: "2", memory: 8Gi}
+              volumeMounts:
+                - {name: seed, mountPath: /seed, readOnly: true}
+          volumes:
+            - name: seed
+              csi:
+                driver: gcsfuse.run.googleapis.com
+                readOnly: true
+                volumeAttributes: {bucketName: sippolusi-seed-87531247158}

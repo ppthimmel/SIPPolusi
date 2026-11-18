@@ -324,3 +324,13 @@ jobs:
             echo "::error::A required job did not succeed (failed, cancelled or skipped); nothing may be deployed from this commit."
             exit 1
           fi
+
+  # Google Cloud deployment (scripts/gcp/README.md): only a commit on dev that passed everything above.
+  deploy-gcp:
+    name: deploy / gcp
+    needs: [ci-passed]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
+    permissions:
+      contents: read
+      id-token: write
+    uses: ./.github/workflows/deploy-gcp.yml

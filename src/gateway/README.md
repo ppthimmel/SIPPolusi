@@ -8,6 +8,7 @@ the Cache API over Railway's private network. Nothing else is exposed.
 | Path | Behaviour |
 |---|---|
 | `GET /healthz` | Gateway liveness, answered by NGINX itself (Railway health check). Never touches an upstream; not rate limited. |
+| `GET /gateway-health` | The same answer for Cloud Run, which reserves paths ending in `z` and never forwards `/healthz` to the container. |
 | `POST /v1/routes` (exact path; `OPTIONS` also passes, any other method gets `405`) | Rate limited, then proxied to `CACHE_API_UPSTREAM` (IRouteQuery, TI-SE-08). Body at most 16 KiB. |
 | `GET /v1/exposure-surface` (exact path; `OPTIONS` also passes, any other method gets `405`) | Rate limited, then proxied to `CACHE_API_UPSTREAM` (IExposureSurface, TI-SE-08). |
 | `POST /v1/geocode/search`, `POST /v1/geocode/reverse` (exact paths; `OPTIONS` also passes, any other method gets `405`) | Rate limited per client and over all clients, then proxied to `CACHE_API_UPSTREAM` (TI-SE-12). Body at most 2 KiB. |

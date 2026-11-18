@@ -1,0 +1,29 @@
+# Build one service image and push it to Artifact Registry.
+#   gcloud builds submit <context> --config scripts/gcp/cloudbuild.yaml --ignore-file .dockerignore \
+#     --substitutions _IMAGE=<name>,_DOCKERFILE=<path in context>,_TARGET=<stage or empty>,_BUILD_ARGS=<...>
+steps:
+  - name: gcr.io/cloud-builders/docker
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        set -euo pipefail
+        target=()
+        [ -n "${_TARGET}" ] && target=(--target "${_TARGET}")
+        args=()
+        IFS=+ read -ra pairs <<< "${_BUILD_ARGS}"   # KEY=VALUE pairs joined with +
+        for kv in "$${pairs[@]}"; do args+=(--build-arg "$$kv"); done
+        docker build -f "${_DOCKERFILE}" "$${target[@]}" "$${args[@]}" \
+          -t "${_REGION}-docker.pkg.dev/${PROJECT_ID}/sippolusi/${_IMAGE}:${_TAG}" .
+images:
+  - ${_REGION}-docker.pkg.dev/${PROJECT_ID}/sippolusi/${_IMAGE}:${_TAG}
+substitutions:
+  _REGION: asia-southeast2
+  _DOCKERFILE: Dockerfile
+  _TARGET: ""
+  _BUILD_ARGS: ""
+  _TAG: latest
+options:
+  machineType: E2_HIGHCPU_8
+  logging: CLOUD_LOGGING_ONLY
+timeout: 3600s

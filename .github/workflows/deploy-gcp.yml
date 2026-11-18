@@ -1,0 +1,81 @@
+# Deploy to Google Cloud (project sippolusi). Called by ci.yml after ci-passed on a push to dev; can also be
+# started by hand on dev (Actions > Deploy to GCP > Run workflow). Other branches are refused by Google:
+# the workload identity provider accepts only this repository's refs/heads/dev. No key is stored in GitHub.
+# Setup and resources: scripts/gcp/README.md.
+name: Deploy to GCP
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: gcp-deploy
+  cancel-in-progress: false
+
+env:
+  PROJECT: sippolusi
+  PROJECT_NUMBER: "87531247158"
+  REGION: asia-southeast2
+  IMAGES: asia-southeast2-docker.pkg.dev/sippolusi/sippolusi
+  WIF_PROVIDER: projects/87531247158/locations/global/workloadIdentityPools/github/providers/sippolusi-dev
+  DEPLOYER: sippolusi-deployer@sippolusi.iam.gserviceaccount.com
+
+jobs:
+  images:
+    name: image / ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - {name: model-registry, scope: model-registry, context: src/model_registry, file: src/model_registry/Dockerfile, target: ""}
+          - {name: cache-api, scope: cache-api, context: src/backend, file: src/backend/osm/Dockerfile, target: runtime}
+          - {name: gateway, scope: gateway, context: src/gateway, file: src/gateway/Dockerfile, target: runtime}
+          - {name: frontend, scope: frontend, context: src/frontend, file: src/frontend/Dockerfile, target: ""}
+          - {name: data-worker, scope: data-worker, context: src/data_worker, file: src/data_worker/Dockerfile, target: ""}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
+        with:
+          workload_identity_provider: ${{ env.WIF_PROVIDER }}
+          service_account: ${{ env.DEPLOYER }}
+      - uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3.0.1
+      - run: gcloud auth configure-docker "$REGION-docker.pkg.dev" --quiet
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - name: Build and push
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.file }}
+          target: ${{ matrix.target }}
+          push: true
+          tags: ${{ env.IMAGES }}/${{ matrix.name }}:${{ github.sha }}
+          cache-from: type=gha,scope=${{ matrix.scope }}
+          # Same request timeouts as docker-compose.yml; ignored by the other images.
+          build-args: |
+            VITE_ROUTE_TIMEOUT_MS=45000
+            VITE_SURFACE_TIMEOUT_MS=45000
+
+  deploy:
+    name: deploy / cloud run
+    needs: images
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      IMAGE_TAG: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
+        with:
+          workload_identity_provider: ${{ env.WIF_PROVIDER }}
+          service_account: ${{ env.DEPLOYER }}
+      - uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3.0.1
+      - name: Deploy services and jobs
+        run: bash scripts/gcp/deploy.sh all
+      - name: Smoke test through the gateway
+        run: python3 scripts/smoke_test.py --gateway "https://gateway-$PROJECT_NUMBER.$REGION.run.app" --health-path /gateway-health
