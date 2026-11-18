@@ -132,16 +132,68 @@ setelah teks keluaran dirapikan; hasilnya sama: satu versi per model, alias `can
 
 Uji otomatis setelah perubahan ini: `test_register_from_bucket.py` + `test_model_package.py`, **28 lulus**.
 
-## 4. Railway *development*
+## 4. Lingkungan cloud: Google Cloud
 
-**Belum dijalankan.** Pada 17 November 2026 seluruh *deployment* di environment `development` (termasuk `database`,
-`model_registry`, `cache-api`, `data_worker`) berstatus `REMOVED`: *workspace* melewati *hard limit* pemakaian
-(US$10,01 dari US$10 untuk periode 27 Oktober–27 November). Railway tidak menjalankan *deployment* baru sampai batas
-itu dinaikkan atau periode berganti, sehingga service `model-register` belum dibuat. Setelah registry dapat berjalan,
-yang perlu dicatat di sini: log *job* untuk bundel PM2.5 asli dan satu paket rute, serta daftar versi registry.
+Bukti #91 diambil di Google Cloud (project `sippolusi`, `asia-southeast2`), 18 November 2026. Railway *development* tidak
+dapat menjalankan registry karena *workspace* melewati *hard limit* pemakaian, jadi service `model-register` di Railway
+**belum pernah dijalankan**. Padanannya di GCP memakai image Data Worker dan perintah yang sama (`railway-job`):
+Cloud Run Job `model-register`, di dalam VPC, terhadap registry MLflow berjenis *ingress internal* dengan artefak di
+Cloud Storage. Akun layanan *job* (`sippolusi-app`) tidak punya akses ke *bucket* model dan tidak memegang kunci S3.
+
+Bundel PM2.5 dan NO₂ yang dipakai adalah paket **asli** dari *bucket* Railway (`packaged/spatial/...`), disalin ke
+`artifacts/incoming/spatial/...`. Paket rute dibuat dari set TI-AI-09 di repositori.
+
+```
+$ gcloud run jobs execute model-register --update-env-vars REGISTER_PREFIX=incoming/spatial/pm25/ds-v0.3.0-723c4558fd2f/ --wait
+downloaded 14 files from mlflow-artifacts:/incoming/spatial/pm25/ds-v0.3.0-723c4558fd2f
+verified: spatial-downscaling-pm25 ds-v0.3.0-723c4558fd2f bundle_sha256 723c4558fd2f1685... package_sha256 ce84b2d719560416... 13 files + package.json
+registered: spatial-downscaling-pm25 version 1 aliases candidate
+RESOLVED spatial-downscaling-pm25:1: all 13 files + package.json match.  RESULT: PASS
+
+$ # dijalankan lagi
+already registered: spatial-downscaling-pm25 version 1 holds this package; nothing registered
+
+$ ... REGISTER_PREFIX=incoming/spatial/no2/ds-v0.3.0-f658e5d2feb9/
+verified: spatial-downscaling-no2 ds-v0.3.0-f658e5d2feb9 bundle_sha256 f658e5d2feb9372e... package_sha256 99ab5fcedd1752c0... 5 files + package.json
+registered: spatial-downscaling-no2 version 1 aliases candidate
+RESOLVED spatial-downscaling-no2:1: all 5 files + package.json match.  RESULT: PASS
+
+$ ... REGISTER_PREFIX=incoming/route/20261102T145533Z-multi-policy-bike-v1-201e7d41/
+verified: morl-route-policy 20261102T145533Z-multi-policy-bike-v1-201e7d41 package_sha256 7774d98c5939af17... 23 files + package.json
+registered: morl-route-policy version 1 aliases candidate
+RESOLVED morl-route-policy:1: all 23 files + package.json match.  RESULT: PASS
+```
+
+**Sama dengan prosedur manual.** `bundle_sha256` `723c4558fd2f1685` dan `package_sha256` `ce84b2d719560416` (PM2.5) serta
+`package_sha256` `99ab5fce…` (NO₂) sama dengan versi yang didaftarkan manual di Railway
+([bukti TI-AI-11](../experiments/TI-AI-11/railway_registry_evidence.md)). Paket rute berbeda hash dari versi Railway
+(`4ad8f8a9…`) karena dikemas ulang untuk kontrak 1.1.0.
+
+**Paket rusak** (salinan NO₂, dihapus setelah uji). Semua berakhir dengan kode keluar 1 dan tanpa versi baru:
+
+| Paket | Keluaran |
+|---|---|
+| `metrics.json` diubah | `railway-job: FAILED: Package refused: Model artifact integrity failure: metrics.json` |
+| ditambah `notes.txt` | `railway-job: FAILED: Package refused: Package holds files its manifest does not list: notes.txt` |
+| `config.json` berisi `aws_secret_access_key` | `railway-job: FAILED: Package refused: Package would carry credentials or sensitive files: config.json: secret_assignment` |
+
+**Daftar versi di registry** setelah semua langkah:
+
+```
+morl-route-policy aliases {'candidate': '1', 'production': '1'}
+  1 READY package_sha256 7774d98c5939af17  mlflow-artifacts:/1/e79fb2776fef426e8f1e25b40806cccb/artifacts/package
+spatial-downscaling-no2 aliases {'candidate': '1'}
+  1 READY bundle_sha256 f658e5d2feb9372e, package_sha256 99ab5fcedd1752c0  mlflow-artifacts:/2/92915b7e2f654f1dae1894dcc841bf69/artifacts/bundle
+spatial-downscaling-pm25 aliases {'candidate': '1'}
+  1 READY bundle_sha256 723c4558fd2f1685, package_sha256 ce84b2d719560416  mlflow-artifacts:/2/df33a040d36645f28eedc49a58a0eb7b/artifacts/bundle
+```
+
+PM2.5 dan NO₂ sengaja tetap `candidate`: `production` adalah keputusan tim. `morl-route-policy:1` dipromosikan dengan
+`PROMOTE=route:1` agar Cache API di GCP punya *policy* untuk dilayani.
 
 ## 5. Belum dicakup
 
+- **Service `model-register` di Railway** belum dibuat atau dijalankan (lihat bagian 4).
 - **Rollback `production`** ke versi yang bukan `candidate` tidak dilayani `railway-job`.
 - **Pemeriksaan muat bundel spasial di CI**: tidak ada bundel PM2.5/NO₂ di git; jalankan
   `scripts/verify_model_packages.py spatial` secara manual sebelum mengunggah.
