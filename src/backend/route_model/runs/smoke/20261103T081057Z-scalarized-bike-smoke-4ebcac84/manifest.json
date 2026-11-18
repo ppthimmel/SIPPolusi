@@ -1,0 +1,135 @@
+{
+  "run_id": "20261103T081057Z-scalarized-bike-smoke-4ebcac84",
+  "experiment": "morl-route-policy",
+  "status": "failed",
+  "stop_reason": "ImportError: Unable to find a usable engine; tried using: 'pyarrow', 'fastparquet'.\nA suitable version of pyarrow or fastparquet is required for parquet support.\nTrying to import the above resulted in these errors:\n - `Import pyarrow` failed. pyarrow is required for parquet support. Use pip or conda to install the pyarrow package.\n - `Import fastparquet` failed. fastparquet is required for parquet support. Use pip or conda to install the fastparquet package.",
+  "started_at": "2026-11-03T08:10:57+00:00",
+  "finished_at": "2026-11-03T08:11:23+00:00",
+  "algorithm": "ppo-scalarized-1",
+  "env_version": "route-env-1",
+  "feature_version": "ego-3",
+  "threads": 6,
+  "resource_limits": {
+    "max_rss_gb": 12.0,
+    "growth_window_updates": 150,
+    "growth_limit_mb": 512.0,
+    "min_free_disk_gb": 2.0,
+    "keep_checkpoints": 3
+  },
+  "config_sha256": "4ebcac84445ca030c72747d49729397f5e8c1878c1a126658013ee380168a047",
+  "config": {
+    "name": "scalarized-bike-smoke",
+    "algorithm": "ppo-scalarized-1",
+    "mode": "bike",
+    "seed": 42,
+    "preference": {
+      "train": "alpha ~ U[0, 1], beta = 1 - alpha",
+      "selection_alphas": [
+        0.0,
+        0.5,
+        1.0
+      ],
+      "report_alphas": [
+        0.0,
+        0.5,
+        1.0
+      ]
+    },
+    "model": {
+      "hidden_dim": 64,
+      "graph_layers": 3,
+      "ego_hops": 4,
+      "ego_max_nodes": 64,
+      "preference_dim": 16,
+      "fourier": 4
+    },
+    "env": {
+      "max_steps": 400,
+      "max_steps_factor": 3.0,
+      "failure_return": 4.0,
+      "illegal_action_penalty": 0.1
+    },
+    "od": {
+      "split_seed": 42,
+      "seed": 42,
+      "train_pairs": 100,
+      "val_pairs": 10,
+      "min_distance_m": 500.0,
+      "max_distance_m": 3000.0
+    },
+    "warm_start": {
+      "teacher": "weighted",
+      "episodes": 40,
+      "epochs": 2,
+      "minibatch_size": 256,
+      "learning_rate": 0.001
+    },
+    "ppo": {
+      "actors": 8,
+      "rollout_steps": 32,
+      "learning_rate": 0.0001,
+      "gamma": 1.0,
+      "gae_lambda": 0.95,
+      "clip": 0.1,
+      "epochs": 2,
+      "minibatch_size": 128,
+      "value_coef": 0.5,
+      "entropy_coef": 0.001,
+      "max_grad_norm": 0.5,
+      "critic_warmup_updates": 1
+    },
+    "schedule": {
+      "max_updates": 4,
+      "eval_every": 2,
+      "early_stop_patience": 5,
+      "eval_batch": 32
+    },
+    "augmentation": {
+      "probability": 0.75,
+      "max_log_std": 0.5,
+      "min_wavelength_m": 1000.0,
+      "max_wavelength_m": 4000.0,
+      "components": 4
+    },
+    "resources": {
+      "max_rss_gb": 12.0,
+      "growth_window_updates": 150,
+      "growth_limit_mb": 512.0,
+      "min_free_disk_gb": 2.0,
+      "keep_checkpoints": 3
+    },
+    "threads": 6
+  },
+  "alpha": null,
+  "seed": 42,
+  "device": "cpu",
+  "code": {
+    "commit": "6efe87f826fff341fadef47d74d8b1b7f39a064c",
+    "branch": "TI-AI-09",
+    "dirty": false
+  },
+  "versions": {
+    "python": "3.14.6",
+    "torch": "2.13.0+cpu",
+    "numpy": "2.5.0"
+  },
+  "fields_dir": "src\\backend\\route_model\\runs\\fields",
+  "graph_dir": "D:\\college\\semester_9\\ppt\\SIPPolusi\\src\\data_worker\\dataset_processed\\OSM",
+  "data": {},
+  "checkpoint_selection": {
+    "metric": "validation mean_return (greedy policy; failure = -failure_return)",
+    "split": "val",
+    "test_split_loaded": false
+  },
+  "progress": {
+    "updates": 0,
+    "env_steps": 0,
+    "episodes": 0
+  },
+  "best": null,
+  "artifacts": [
+    "config.json",
+    "od_pairs.json"
+  ],
+  "traceback": "Traceback (most recent call last):\n  File \"D:\\college\\semester_9\\ppt\\SIPPolusi\\src\\backend\\route_model\\morl\\train.py\", line 516, in train\n    status, reason = _train(run, config, fields_dir, graph_dir, device, router, max_seconds, od_pairs, guard,\n                     ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n                            resume is not None, approach)\n                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"D:\\college\\semester_9\\ppt\\SIPPolusi\\src\\backend\\route_model\\morl\\train.py\", line 581, in _train\n    result = _optimise(run, config, fields_dir, graph_dir, device, router, max_seconds, od_pairs, guard, resuming,\n                       approach)\n  File \"D:\\college\\semester_9\\ppt\\SIPPolusi\\src\\backend\\route_model\\morl\\train.py\", line 596, in _optimise\n    train_envs, fields = build_envs(router, fields_dir, train_od, config[\"env\"], \"train\", config[\"seed\"])\n                         ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"D:\\college\\semester_9\\ppt\\SIPPolusi\\src\\backend\\route_model\\morl\\train.py\", line 114, in build_envs\n    weights = load_weights(Path(fields_dir) / manifest[\"windows\"][window][\"file\"], router.version, window)\n  File \"D:\\college\\semester_9\\ppt\\SIPPolusi\\src\\backend\\route_model\\training_env.py\", line 244, in load_weights\n    frame = pd.read_parquet(path, columns=[\"edge_id\", column]).dropna(subset=[column])\n            ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\evely\\AppData\\Local\\Python\\pythoncore-3.14-64\\Lib\\site-packages\\pandas\\io\\parquet.py\", line 668, in read_parquet\n    impl = get_engine(engine)\n  File \"C:\\Users\\evely\\AppData\\Local\\Python\\pythoncore-3.14-64\\Lib\\site-packages\\pandas\\io\\parquet.py\", line 68, in get_engine\n    raise ImportError(\n    ...<7 lines>...\n    )\nImportError: Unable to find a usable engine; tried using: 'pyarrow', 'fastparquet'.\nA suitable version of pyarrow or fastparquet is required for parquet support.\nTrying to import the above resulted in these errors:\n - `Import pyarrow` failed. pyarrow is required for parquet support. Use pip or conda to install the pyarrow package.\n - `Import fastparquet` failed. fastparquet is required for parquet support. Use pip or conda to install the fastparquet package.\n"
+}

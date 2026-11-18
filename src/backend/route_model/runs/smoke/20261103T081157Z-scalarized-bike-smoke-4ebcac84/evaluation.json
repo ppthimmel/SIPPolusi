@@ -1,0 +1,110 @@
+{
+  "checkpoint": {
+    "update": 0,
+    "sha256": "c7cf2afd150e8a965dcbbc12f0319f0e0c65d223c1544d5c32c55964f6fcc16a"
+  },
+  "split": "val",
+  "alpha": null,
+  "alphas": [
+    0.0,
+    0.5,
+    1.0
+  ],
+  "summary": {
+    "episodes": 30,
+    "mean_return": -1.611625222052458,
+    "success_rate": 0.8,
+    "outcomes": {
+      "reached": 24,
+      "dead_end": 6,
+      "truncated": 0
+    },
+    "mean_steps": 81.6,
+    "by_alpha": {
+      "0": {
+        "episodes": 10,
+        "success_rate": 0.8,
+        "mean_return": -1.61164078626959,
+        "time_ratio": 1.0145120722941576,
+        "exposure_ratio": 1.0145509828369876,
+        "weighted_cost": 1.0145509828369876,
+        "oracle_time_ratio": 1.0,
+        "oracle_exposure_ratio": 1.0
+      },
+      "0.5": {
+        "episodes": 10,
+        "success_rate": 0.8,
+        "mean_return": -1.6116252220524583,
+        "time_ratio": 1.0145120722941576,
+        "exposure_ratio": 1.0145509828369876,
+        "weighted_cost": 1.0145315275655726,
+        "oracle_time_ratio": 1.0,
+        "oracle_exposure_ratio": 1.0
+      },
+      "1": {
+        "episodes": 10,
+        "success_rate": 0.8,
+        "mean_return": -1.611609657835326,
+        "time_ratio": 1.0145120722941576,
+        "exposure_ratio": 1.0145509828369876,
+        "weighted_cost": 1.0145120722941576,
+        "oracle_time_ratio": 1.0,
+        "oracle_exposure_ratio": 1.0
+      }
+    },
+    "mean_optimality_gap": 0.014531527565572536
+  },
+  "reload_check": {
+    "od_pairs": 10,
+    "routes": 30,
+    "identical": true,
+    "routes_reached": 24
+  },
+  "perturbed_fields": {
+    "note": "Synthetic perturbation of the validation fields; not used to select the checkpoint.",
+    "summary": {
+      "episodes": 30,
+      "mean_return": -1.609443996450512,
+      "success_rate": 0.8,
+      "outcomes": {
+        "reached": 24,
+        "dead_end": 6,
+        "truncated": 0
+      },
+      "mean_steps": 81.2,
+      "by_alpha": {
+        "0": {
+          "episodes": 10,
+          "success_rate": 0.8,
+          "mean_return": -1.6071692913484572,
+          "time_ratio": 1.0219407596648427,
+          "exposure_ratio": 1.0089616141855715,
+          "weighted_cost": 1.0089616141855715,
+          "oracle_time_ratio": 1.006706639580703,
+          "oracle_exposure_ratio": 0.9875927824069952
+        },
+        "0.5": {
+          "episodes": 10,
+          "success_rate": 0.8,
+          "mean_return": -1.609553040167753,
+          "time_ratio": 1.0174412468949632,
+          "exposure_ratio": 1.006441353524419,
+          "weighted_cost": 1.011941300209691,
+          "oracle_time_ratio": 1.006417915491995,
+          "oracle_exposure_ratio": 0.9877741766654011
+        },
+        "1": {
+          "episodes": 10,
+          "success_rate": 0.8,
+          "mean_return": -1.611609657835326,
+          "time_ratio": 1.0145120722941576,
+          "exposure_ratio": 1.0145106736592922,
+          "weighted_cost": 1.0145120722941576,
+          "oracle_time_ratio": 1.0,
+          "oracle_exposure_ratio": 1.0
+        }
+      },
+      "mean_optimality_gap": 0.015527310966031707
+    }
+  }
+}

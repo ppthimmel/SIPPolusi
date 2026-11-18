@@ -1,0 +1,107 @@
+{
+  "run_id": "20261103T081938Z-scalarized-bike-v1-6eab87d4",
+  "code_commit": "6efe87f826fff341fadef47d74d8b1b7f39a064c",
+  "status": "early_stopped",
+  "selected_update": 0,
+  "checkpoint_matches_manifest": true,
+  "checkpoint_selection": {
+    "metric": "validation mean_return (greedy policy; failure = -failure_return)",
+    "split": "val",
+    "test_split_loaded": false,
+    "alphas": [
+      0.0,
+      0.25,
+      0.5,
+      0.75,
+      1.0
+    ]
+  },
+  "reload": {
+    "routes": 750,
+    "identical": true,
+    "reached": 750,
+    "failures": {}
+  },
+  "route_seconds_cpu": {
+    "median": 0.452,
+    "p95": 1.771,
+    "max": 12.916
+  },
+  "regret_prior": {
+    "note": "Greedy on the scalarized regret alone, no learned part.",
+    "real_fields": {
+      "episodes": 450,
+      "mean_return": -1.006078378971543,
+      "success_rate": 0.9977777777777778,
+      "outcomes": {
+        "reached": 449,
+        "dead_end": 1,
+        "truncated": 0
+      },
+      "mean_steps": 72.81333333333333,
+      "by_alpha": {
+        "0": {
+          "episodes": 150,
+          "success_rate": 1.0,
+          "mean_return": -0.9983242355778795,
+          "time_ratio": 1.0023394173086146,
+          "exposure_ratio": 0.9983242355778795,
+          "weighted_cost": 0.9983242355778795
+        },
+        "0.5": {
+          "episodes": 150,
+          "success_rate": 0.9933333333333333,
+          "mean_return": -1.0199109013367498,
+          "time_ratio": 1.0001735770028677,
+          "exposure_ratio": 0.9996470297154205,
+          "weighted_cost": 0.9999103033591441
+        },
+        "1": {
+          "episodes": 150,
+          "success_rate": 1.0,
+          "mean_return": -1.0,
+          "time_ratio": 1.0,
+          "exposure_ratio": 1.0,
+          "weighted_cost": 1.0
+        }
+      }
+    },
+    "perturbed_fields": {
+      "episodes": 450,
+      "mean_return": -1.0536268835559566,
+      "success_rate": 0.98,
+      "outcomes": {
+        "reached": 441,
+        "dead_end": 9,
+        "truncated": 0
+      },
+      "mean_steps": 72.44888888888889,
+      "by_alpha": {
+        "0": {
+          "episodes": 150,
+          "success_rate": 1.0,
+          "mean_return": -0.9809641145571415,
+          "time_ratio": 1.0246701500084092,
+          "exposure_ratio": 0.9809641145571415,
+          "weighted_cost": 0.9809641145571415
+        },
+        "0.5": {
+          "episodes": 150,
+          "success_rate": 0.94,
+          "mean_return": -1.1799165361107284,
+          "time_ratio": 1.0037502747388527,
+          "exposure_ratio": 0.9960721425180163,
+          "weighted_cost": 0.9999112086284344
+        },
+        "1": {
+          "episodes": 150,
+          "success_rate": 1.0,
+          "mean_return": -1.0,
+          "time_ratio": 1.0,
+          "exposure_ratio": 1.0,
+          "weighted_cost": 1.0
+        }
+      }
+    }
+  }
+}
