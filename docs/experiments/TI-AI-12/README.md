@@ -1,25 +1,30 @@
-# TI-AI-12: audit awal dan pekerjaan evaluasi final
+# TI-AI-12: hasil dan artefak evaluasi akhir
 
-**Status: bukti evaluasi dan keterbatasan tersedia untuk review.** [Benchmark v1](run-v1/REPORT.md) membandingkan PIC A dan weighted Dijkstra pada field IDW; [benchmark v2](run-v2/REPORT.md) mengulang 50 OD yang sama pada field keluaran model spasial terdaftar. [Replay gateway](gateway-v1/REPORT.md) menguji jalur layanan dan kasus fallback. Kedua field dibekukan di [`inputs/`](inputs/). Bukti ini tidak membuktikan keunggulan model atau generalisasi ke kondisi operasi yang lebih luas. TI-AI-11 menyediakan paket dan bukti reload kedua model ([verifikasi](../TI-AI-11/container-verification.md)).
+Evaluasi ini membekukan model rute scalarized PIC A, graf, skenario, konfigurasi dan dua field, serta menyimpan hasil per permintaan dan batasannya. TI-AI-11 menyediakan [paket dan bukti reload](../TI-AI-11/container-verification.md) model rute dan spasial. Hasil tetap bersifat eksploratif: tidak menunjukkan bahwa MORL lebih unggul atau mengurangi paparan secara umum.
 
-## Bukti yang sudah tersedia
+## Hasil dan keputusan
 
-Perbandingan [TI-AI-11](../TI-AI-11/morl-comparison/README.md) memakai 200 pasangan OD utama, 11 preferensi, graf dan medan yang sama untuk PIC A, PIC B, regret prior dan weighted Dijkstra. Manifest merekam commit, konfigurasi, hash checkpoint, graf, medan dan sampling; hasil per permintaan, ringkasan, keputusan dan kasus gagal tersedia di folder itu. PIC A adalah checkpoint scalarized terpilih; pada α=0,5, 141 dari 200 rute utama identik dengan weighted Dijkstra. Hasil utama PIC A: keberhasilan 99,95%, pemenuhan preferensi 88,5%, dan median perubahan paparan 0%. Klasifikasinya tetap `conditional_candidate` karena target pengurangan paparan tidak tercapai.
+| Bukti | Cakupan dan hasil |
+|---|---|
+| [Run v1](run-v1/REPORT.md) | 50 OD × 3 preferensi pada satu field IDW historis; 150/150 rute PIC A valid. |
+| [Run v2](run-v2/REPORT.md) dan [v3](run-v3/REPORT.md) | OD dan preferensi yang sama pada satu field keluaran PM2.5 dan NO₂ terdaftar. Kedua metode menghasilkan 150/150 rute valid. Seluruh keluaran nonwaktu cocok di kedua run. Pada α=0,5, PIC A cocok dengan optimum weighted Dijkstra pada 33/50 pasangan; median pengurangan paparan terhadap rute tercepat 0%, di bawah target 4%. Pemenuhan preferensi 47/50, dengan 12/50 benar-benar bergeser dalam arah yang dimaksud. |
+| [Run v3](run-v3/REPORT.md) | Acuan latensi, tanpa permintaan gateway yang sengaja berjalan bersamaan: median/p95 PIC A 194,4/517,4 ms dan Dijkstra 13,3/48,5 ms. Pengukuran lokal satu thread ini tidak mencakup pemuatan, jaringan atau API. |
+| [Gateway v1](gateway-v1/REPORT.md) | Sembilan permintaan sepeda berhasil memakai PIC A tanpa fallback; permintaan jalan kaki memakai baseline dengan fallback bertanda, dan preferensi tidak valid ditolak HTTP 400. Window replay ditandai kedaluwarsa. |
 
-Jalankan `python scripts/audit_ti_ai12_evidence.py` dari root untuk menghitung ulang [audit](evidence-audit.json) dari rekaman yang ada dan memverifikasi identitas input dengan SHA-256. Hitungan kegagalan di audit adalah **rekaman per permintaan/preferensi**, bukan jumlah decode unik: PIC B menggunakan ulang hasil satu decode untuk beberapa preferensi. Hash rute yang dibandingkan adalah hash ringkas yang tersimpan, bukan geometri lengkap. Rincian statistik dan denominasi decode ada di laporan sumber.
+PIC A tetap **`conditional_candidate`**, sesuai [keputusan perbandingan TI-AI-11](../TI-AI-11/morl-comparison/decision.json): target pengurangan paparan tidak terpenuhi. Pada v2 dan v3, Dijkstra optimal untuk objektif yang sama dan lebih cepat pada lingkungan uji ini. Hasil tidak mendukung klaim keunggulan praktis PIC A. Weighted A* proyek dan penggunaan sumber daya per metode belum diukur; keduanya merupakan celah yang diketahui, bukan hasil yang diklaim dalam evaluasi ini.
 
-## Batasan yang menghalangi penutupan
+## Artefak dan reproduksi
 
-- Skenario test sudah diperiksa sebelum pemilihan model. Hasil adalah eksploratif; tidak boleh disebut evaluasi buta independen. Medan utama berasal dari IDW ds-v0.3.0, bukan keluaran model spasial terdaftar; medan perturbasi adalah uji sintetis.
-- Pada perbandingan TI-AI-11, runtime weighted Dijkstra tidak direkam. [Benchmark v1](run-v1/REPORT.md) mengukur kedua metode pada input dan mesin yang sama, tetapi tidak mengukur API end-to-end.
-- Parquet field asli TI-AI-10 tidak ada di Git. CSV dari window yang digunakan run v1 dan keluaran model spasial untuk run v2 kini dibekukan di [`inputs/`](inputs/); hash dan asalnya dicatat. Hasil per skenario tidak menyimpan geometri lengkap.
-- Model spasial NO2 serving fit tidak memiliki evaluasi tersendiri; evaluasi berasal dari checkpoint LOSO terpisah. Hasil PM2.5 split tetap bersifat eksploratif karena test pernah dilihat. Lihat [protokol spasial](../../PROTOKOL_EVALUASI.md) dan [bukti registry](../TI-AI-11/railway_registry_evidence.md).
+[Protokol v1](benchmark-protocol.md) dan [protokol field spasial](benchmark-spatial-protocol.md) dicatat sebelum run. Manifest setiap run memuat commit, image, hash checkpoint, graf dan field, konfigurasi sampling serta pasangan OD. Field IDW dan field spasial beserta lineage dibekukan di [`inputs/`](inputs/); kedua CSV terkompresi menambah sekitar **4,2 MB** ke Git sebagai input audit. Berkas asli parquet dan image tidak disimpan di Git; batas pengulangan dicatat pada laporan masing-masing.
 
-## Sebelum run final
+Setiap folder run menyimpan `scenarios.jsonl.gz`, `summary.json`, `quality-summary.json` dan manifest. Jalankan `python scripts/summarize_ti_ai12.py docs/experiments/TI-AI-12/run-v3/scenarios.jsonl.gz` untuk menghitung ulang ringkasan kualitas. Kasus gagal dihitung dalam denominator; tidak ada kegagalan pada v1–v3. Kegagalan dan perlakuannya dari evaluasi terdahulu tetap tersedia pada [TI-AI-10](../TI-AI-10/README.md) dan [perbandingan TI-AI-11](../TI-AI-11/morl-comparison/README.md). Gateway mencatat fallback dan penolakan input secara terpisah.
 
-1. Tetapkan dan catat protokol, kriteria keputusan, populasi, sampel, timeout, perlakuan kegagalan dan metode pembanding **sebelum** melihat hasil. Gunakan data held-out yang independensinya terhadap pelatihan, validasi dan pemilihan model dapat dibuktikan; bila tidak tersedia, laporkan hasil sebagai eksploratif, bukan blind.
-2. Bekukan dengan hash dataset dan field, graf, paket PIC A dan model spasial, konfigurasi, skenario, kode serta lingkungan. Perubahan input atau model setelah run dimulai harus menghasilkan versi run baru. Catat data yang dikecualikan dan alasannya.
-3. Jalankan PIC A dan baseline weighted Dijkstra serta implementasi weighted A* proyek pada OD, bobot, batas dan perangkat yang sama. Ukur latensi dengan batas pengukuran yang sama, termasuk pencarian dan persiapan yang relevan; laporkan distribusi, kegagalan, fallback, sumber daya dan biaya pemuatan secara terpisah. Jangan gunakan hasil sukses saja sebagai denominator.
-4. Simpan log, hasil mentah per skenario, metrik agregat, versi dan checksum artefak serta instruksi reproduksi. Jelaskan bila data atau lingkungan tidak dapat disediakan. Laporkan ancaman validitas, termasuk perbedaan antara replay dan operasi nyata.
+**Koreksi p95 setelah review:** ringkasan waktu v1–v3 dihitung ulang dari waktu per skenario menggunakan *nearest rank*, yaitu nilai urutan `ceil(0,95 × n)`. Ringkasan awal memilih urutan ke-142 dari 150, sedangkan definisi ini memakai urutan ke-143. Data per skenario, input, manifest dan commit yang menjalankan eksperimen tidak diubah; skrip benchmark terkini memakai definisi yang sama. Koreksi ini tidak mengubah kesimpulan.
 
-Kriteria TI-AI-12 baru dapat dinilai terhadap paket bukti run final tersebut. Hasil negatif tetap merupakan hasil yang sah; jangan mengubah ambang atau menyembunyikan kasus gagal agar model tampak memenuhi target.
+## Ancaman validitas dan batas pengulangan
+
+- Field dan populasi test sudah pernah diperiksa sebelum pemilihan model; hasil ini bukan evaluasi buta independen. Hanya 50 OD sepeda, tiga preferensi dan satu window per field diuji; titik akhir berada di blok test tetapi ruasnya dapat melintasi blok lain.
+- Field spasial berasal dari satu replay data yang dikumpulkan sebelumnya. PM2.5 dan NO₂ dipakai tanpa fallback; paket PM2.5 ditandai akibat perbedaan versi minor kontrak. Model NO₂ *serving fit* tidak memiliki evaluasi akurasi sendiri; evaluasi LOSO memakai checkpoint terpisah. Split test PM2.5 pernah dilihat saat pengembangan.
+- Sebanyak 1.177 ruas graf yang tidak memiliki bobot diisi median pada benchmark; jumlah ruas imputasi yang dilalui tiap rute tidak direkam. Hasil menyimpan hash rute ringkas, bukan geometri lengkap.
+- Gateway diuji dari cache yang sudah tersedia, bukan dari satu siklus akuisisi Worker live tanpa putus. Uji layanan hanya memakai satu OD, window yang sudah kedaluwarsa, serta kasus fallback dan validasi terbatas; tidak membuktikan ketahanan upstream atau performa produksi.
+- Sebagian run v2 dan uji gateway berlangsung bersamaan; v3 dipakai untuk pelaporan latensi tanpa permintaan gateway yang sengaja berjalan bersamaan. Beban host tidak sepenuhnya dikendalikan; timeout, weighted A* dan sumber daya belum diukur.

@@ -7,7 +7,7 @@ Run menyelesaikan 50 pasangan OD × 3 preferensi pada satu field IDW historis. P
 | Rute berhasil / permintaan | 150/150 | 150/150 |
 | Rute berhasil yang tidak valid | 0 | 0 |
 | Latensi median | 173,1 ms | 12,9 ms |
-| Latensi p95 | 407,1 ms | 45,3 ms |
+| Latensi p95 | 422,7 ms | 45,4 ms |
 | Latensi maksimum | 1.473,2 ms | 67,2 ms |
 
 Pada α=0,5, 35/50 hash rute PIC A sama dengan optimum. Rata-rata selisih objektif terhadap optimum 0,043%, maksimum 0,505%; 11/50 rute PIC A lebih lambat sekaligus lebih terpapar daripada rute tercepat. Median perubahan paparan terhadap rute tercepat adalah 0%, sehingga target pengurangan 4% tidak tercapai pada sampel ini. Arah preferensi terpenuhi pada 46/50 pasangan (92%); hanya 7/50 (14%) benar-benar berganti rute dalam arah yang dimaksud. Rute identik dihitung terpenuhi sesuai definisi TI-AI-10.
@@ -22,3 +22,5 @@ Sampel OD baru tidak beririsan dengan 250 pasangan TI-AI-11; kedua titik masing-
 - Python 3.11.18, PyTorch 2.15.0+cpu, satu thread, Linux WSL2; image Data Worker `sha256:ce0b1db66e998cdd73cf0a90dfb138b028ce2c922740d0d8e34a13b8fe152496`, host Docker 16 CPU dan 16.643.186.688 byte memori. Identitas image tidak menjamin waktu yang sama pada hardware lain.
 - CSV yang dipakai kini dibekukan di [`inputs/idw-20260929.csv.gz`](../inputs/idw-20260929.csv.gz). Fixture awal dibuat dari parquet asli yang hash-nya diverifikasi terhadap manifest TI-AI-11 menggunakan `scripts/prepare_ti_ai11_route_fixture.py`; lihat [petunjuk reload](../../TI-AI-11/container-verification.md). Script benchmark menolak CSV jika hash berbeda. Parquet asli dan image tidak disimpan di repositori, sehingga membangun ulang field dan lingkungan sepenuhnya masih memerlukan artefak tersebut.
 - Jalankan pada checkout commit `fb4faa4` dalam image tersebut dengan repository di `/repo`, fixture di `/fixture`, `PYTHONPATH=/repo`, dan `python scripts/benchmark_ti_ai12.py --weights /fixture/weights.csv --out <direktori-baru> --revision fb4faa4 --image-id ce0b1db66e99`. Waktu dapat berubah antar run; jangan menimpa artefak ini.
+
+**Koreksi ringkasan setelah review:** p95 dihitung ulang dari hasil per skenario dengan *nearest rank* (`ceil(0,95 × n)`), bukan indeks pada kode run semula. Input dan hasil per skenario tidak diubah. Untuk memeriksa ringkasan waktu ini pada checkout saat ini, jalankan `python scripts/summarize_ti_ai12_latency.py docs/experiments/TI-AI-12/run-v1/scenarios.jsonl.gz`.

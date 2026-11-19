@@ -4,6 +4,7 @@ import datetime
 import gzip
 import hashlib
 import json
+import math
 import platform
 import statistics
 import time
@@ -94,7 +95,7 @@ def main():
         times = sorted(r[method]['elapsed_ms'] for r in records)
         summary[method] = {'requests': len(records), 'success': sum(r[method]['reached'] for r in records),
                            'invalid': sum(r[method].get('valid') is False for r in records),
-                           'median_ms': statistics.median(times), 'p95_ms': times[int(len(times)*0.95)-1], 'max_ms': max(times)}
+                           'median_ms': statistics.median(times), 'p95_ms': times[math.ceil(len(times)*0.95)-1], 'max_ms': max(times)}
     (args.out / 'summary.json').write_text(json.dumps(summary, indent=2) + '\n', encoding='utf-8')
 
 if __name__ == '__main__':
