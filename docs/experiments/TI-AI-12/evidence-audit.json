@@ -1,0 +1,59 @@
+{
+  "groups": {
+    "longer-trips/perturbed": {
+      "alpha_05": {
+        "count": 43,
+        "same_optimal": 7
+      },
+      "failures": {
+        "fixed_preference_set:dead_end": 46,
+        "regret_prior:dead_end": 148,
+        "scalarized:dead_end": 43
+      },
+      "records": 550
+    },
+    "longer-trips/real": {
+      "alpha_05": {
+        "count": 48,
+        "same_optimal": 11
+      },
+      "failures": {
+        "fixed_preference_set:dead_end": 38,
+        "regret_prior:dead_end": 71,
+        "scalarized:dead_end": 8
+      },
+      "records": 550
+    },
+    "trained-range/perturbed": {
+      "alpha_05": {
+        "count": 197,
+        "same_optimal": 131
+      },
+      "failures": {
+        "fixed_preference_set:dead_end": 12,
+        "regret_prior:dead_end": 78,
+        "scalarized:dead_end": 16
+      },
+      "records": 2200
+    },
+    "trained-range/real": {
+      "alpha_05": {
+        "count": 200,
+        "same_optimal": 141
+      },
+      "failures": {
+        "regret_prior:dead_end": 11,
+        "scalarized:dead_end": 1
+      },
+      "records": 2200
+    }
+  },
+  "input_sha256": {
+    "decision.json": "50fdb6ccd67b77489b7f1f9be849ec57beb3b0277af8951966dc7da03db1afd8",
+    "manifest.json": "605d1c50000bf5b11b59b6ed962fae2b253d042f16769e46846a72449ad179f9",
+    "scenario_od_pairs.json": "b077934f296cc5f5d56a19fd3dd4d7feb02e24704ed207b3880c157c3f547338",
+    "scenarios.jsonl.gz": "1bd1d5d06bb8041e851c021a179b91b4ff86d9264494384f85a81b0b5147bb1d",
+    "summary.json": "5fb32bf5b3ca09d6ed802501042c211d7bda02c082ab21d52746d873fe92501c"
+  },
+  "scope": "exploratory evidence audit; not a new model run"
+}

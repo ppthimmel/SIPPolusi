@@ -1,0 +1,12 @@
+{
+  "complete_pairs": 50,
+  "alpha_05_same_as_optimum": 35,
+  "alpha_05_mean_objective_gap_pct": 0.04294355686141538,
+  "alpha_05_median_objective_gap_pct": 0.0,
+  "alpha_05_max_objective_gap_pct": 0.5054431102662793,
+  "alpha_05_median_exposure_change_vs_fastest_pct": 0.0,
+  "alpha_05_median_time_change_vs_fastest_pct": 0.0,
+  "alpha_05_slower_and_more_exposed": 11,
+  "preference_fulfilled": 46,
+  "preference_shifted": 7
+}

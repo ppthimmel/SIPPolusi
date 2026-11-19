@@ -1,0 +1,73 @@
+{
+  "run_id": "20261113T0900Z-spatial-73d4d1c9ed25d85ae2b15769a184d805e4a577c52014ecaa4cda9c551ba3982a-729cc3b2426d-0a158c87",
+  "time_window_start": "2026-11-13T09:00:00+00:00",
+  "trace_sha256": "88595c29de4633a51dd82534d5ce7868df9cbcf3420d00320b61a502846cf6e7",
+  "manifest": {
+    "unit": "ug/m3",
+    "settings": {
+      "qc": {
+        "exclude": [
+          {
+            "kode": "DKI_PM25_40",
+            "reason": "PM2.5 macet pada 32,00 sepanjang periode",
+            "pollutant": "pm25"
+          },
+          {
+            "kode": "DKI_PM25_33",
+            "reason": "PM2.5 macet pada 14,00 sejak 2026-09-19T10:00Z",
+            "pollutant": "pm25",
+            "since_utc": "2026-09-19T10:00:00Z"
+          }
+        ],
+        "sentinel_min": 999.99,
+        "max_value_ugm3": 2000.0,
+        "drop_nonpositive": true,
+        "require_clean_flag": true
+      },
+      "power": 2.0,
+      "cell_m": 100.0,
+      "neighbors": 8,
+      "config_sha256": "021c00fc375d7fa87dd87ce848c6db7c319308a0b4fced99bbd89fceb1130723"
+    },
+    "grid_spec": {
+      "nx": 334,
+      "ny": 334,
+      "x0": 685800.0,
+      "y0": 9294300.0,
+      "crs": "EPSG:32748",
+      "cell_m": 100.0
+    },
+    "confidence": {
+      "cap": 0.39,
+      "status": "provisional",
+      "length_scale_m": 3000.0
+    },
+    "aggregation": "sum(length_m * concentration) / sum(length_m) over finite values",
+    "grid_sha256": "6c1cabf7f16028cf6be6b5bf52940f86e78af7ae3032e29b5cca3ec28ff437f0",
+    "graph_version": "jakarta-20261005",
+    "model_version": "spatial-73d4d1c9ed25d85ae2b15769a184d805e4a577c52014ecaa4cda9c551ba3982a-729cc3b2426d",
+    "pieces_sha256": "0f068c4160adbdae84d95cfcad8bdcd06760d97702590700c6595c4c945bb00d",
+    "format_version": 1,
+    "model_metadata": {
+      "no2": {
+        "source": "lightgbm",
+        "model_version": "spatial-downscaling-no2:1",
+        "fallback_cells": 0
+      },
+      "pm25": {
+        "source": "idw_stgnn_residual",
+        "compatibility": {
+          "status": "flagged",
+          "reasons": [
+            "Contract version differs: package 1.0.0, runtime 1.1.0"
+          ]
+        },
+        "model_version": "spatial-downscaling-pm25:1",
+        "fallback_cells": 0
+      }
+    },
+    "time_window_end": "2026-11-13T10:00:00+00:00",
+    "input_fingerprint": "ae97c4535f0f98e06cc9ff6f03d6382907cd641321dfccb02a1ca6ce2894446b",
+    "time_window_start": "2026-11-13T09:00:00+00:00"
+  }
+}
