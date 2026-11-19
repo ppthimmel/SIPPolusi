@@ -162,7 +162,7 @@ def train(snapshot, output, *, protocol="fixed_split", fold=None, seed=DEFAULT_S
         if stale >= PATIENCE:
             print("Early stopping")
             break
-    metadata = dict(model_family="stgnn", configuration=config, temporal_columns=list(preprocessing.temporal.columns), local_columns=list(preprocessing.local.columns), dataset="ds-v0.3.0", features="forecast and calendar included",
+    metadata = dict(model_family="stgnn", configuration=config, temporal_columns=list(preprocessing.temporal.columns), local_columns=list(preprocessing.local.columns), dataset=data.dataset, features="forecast and calendar included",
         training_config=dict(epochs=EPOCHS, patience=PATIENCE, batch_size=BATCH_SIZE,
             learning_rate=LEARNING_RATE, weight_decay=WEIGHT_DECAY, gradient_clip=GRADIENT_CLIP),
         fit_times=fit_times, fit_nodes=training_nodes.tolist(),

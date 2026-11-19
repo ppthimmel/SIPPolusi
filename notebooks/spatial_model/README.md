@@ -3,6 +3,14 @@
 Open `train_stgnn.ipynb` for IDW + ST-GNN correction or `train_lightgbm.ipynb`
 for full-feature LightGBM. Both call the maintained Python training/evaluation APIs.
 
+`train_all_models_colab.ipynb` runs on Google Colab with only the ds-v0.4.0 data bundle
+(`sippolusi_ds-v0.4.0_bundle.zip`, the frozen snapshot) uploaded; it does not clone the
+repository. Its model code is ported from `src/data_worker/spatial_model`, and
+`src/data_worker/scripts/dataset_extension/check_notebook_parity.py` checks the port against the
+repository. It compares IDW, ST-GNN, LightGBM and XGBoost for PM2.5 and NO₂ under the fixed split
+and LOSO, and writes `results.csv` and `summary.csv`. XGBoost and the NO₂ temporal-only split exist
+only in that notebook. Regenerate it with `scripts/dataset_extension/make_colab_notebook.py`.
+
 | Target | Fixed spatial/temporal held-out split | LOSO per station group |
 |---|---|---|
 | PM2.5 | Both models | Both models |

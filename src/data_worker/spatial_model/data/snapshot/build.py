@@ -84,6 +84,9 @@ def station_hour_labels(readings: pd.DataFrame, cfg: dict) -> pd.DataFrame:
     r = readings.assign(time_window_start=readings.ts_utc.dt.floor("h").astype("datetime64[ns, UTC]"))
     r = r[(r.time_window_start >= pd.Timestamp(scope["first_window"]))
           & (r.time_window_start < pd.Timestamp(scope["end_window"]))]
+    # Opsional (sejak ds-v0.4.0): rentang [awal, akhir) tanpa label, mis. jeda pengumpulan ground truth.
+    for start, end in scope.get("exclude_windows", []):
+        r = r[~((r.time_window_start >= pd.Timestamp(start)) & (r.time_window_start < pd.Timestamp(end)))]
     rank = {reason: i for i, reason in enumerate(REASONS)}
     out = None
     for target in scope["targets"]:
@@ -260,8 +263,8 @@ def build_snapshot(ground_truth_dir: Path | str, out_dir: Path | str, config_pat
                                         weather_delay_hours=feat["weather_delay_hours"],
                                         weather_run_interval_hours=reader.weather_run_interval_hours,
                                         snapshot=cfg["version"],
-                                        sensor_set="stasiun split train ds-v0.3.0",
-                                        split_policy="split = PM2.5 blind ganda ds-v0.3.0 (stasiun x blok); "
+                                        sensor_set=f"stasiun split train {cfg['version']}",
+                                        split_policy=f"split = PM2.5 blind ganda {cfg['version']} (stasiun x blok); "
                                                      "none = di luar split"))
     write_feature_report(stgnn_dir)
     labels["node_index"] = labels.grid_id.map(nodes.set_index("grid_id").node_index).astype("Int64")

@@ -10,6 +10,7 @@ from pyproj import Transformer
 from .preprocessing import BASE_TEMPORAL_COLUMNS, LOCAL_COLUMNS
 from .sensors import idw_features, IDW_COLUMNS
 from spatial_model.data.validation import verify_snapshot
+from spatial_model.configs import snapshot_version
 
 from types import SimpleNamespace
 
@@ -19,8 +20,7 @@ def prepare(snapshot, protocol="fixed_split", fold=None, *, target="pm25"):
     if target not in ("pm25", "no2"):
         raise ValueError("Choose pm25 or no2")
     hashes = verify_snapshot(DATA_DIR)
-    if json.loads((DATA_DIR / "manifest.json").read_text(encoding="utf-8"))["version"] != "ds-v0.3.0":
-        raise ValueError("Require ds-v0.3.0")
+    dataset = snapshot_version(DATA_DIR)
     if PROTOCOL not in ("fixed_split", "loso"):
         raise ValueError("Choose fixed_split or loso")
     if PROTOCOL == "fixed_split" and (TARGET != "pm25" or FOLD is not None):
@@ -163,7 +163,7 @@ def prepare(snapshot, protocol="fixed_split", fold=None, *, target="pm25"):
     # The dynamic IDW distance replaces distance to a sensor that may be the target itself.
 
     local_features = local_features[..., :-1]
-    return SimpleNamespace(hashes=hashes, split_labels=split_labels, split_hours=split_hours, edge_index=edge_index, training_nodes=training_nodes, hours=hours, hour_index=hour_index, window=window, temporal_features=temporal_features, local_features=local_features, skipped_training_labels=skipped_training_labels, source_ids=source_ids)
+    return SimpleNamespace(dataset=dataset, hashes=hashes, split_labels=split_labels, split_hours=split_hours, edge_index=edge_index, training_nodes=training_nodes, hours=hours, hour_index=hour_index, window=window, temporal_features=temporal_features, local_features=local_features, skipped_training_labels=skipped_training_labels, source_ids=source_ids)
 
 def make_batch(data, preprocessing, hours, split, device="cpu"):
     DEVICE = device
