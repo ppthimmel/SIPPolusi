@@ -1,0 +1,52 @@
+apiVersion: run.googleapis.com/v1
+kind: Job
+metadata:
+  name: feature-backfill
+  labels:
+    cloud.googleapis.com/location: asia-southeast2
+spec:
+  template:
+    metadata:
+      annotations:
+        run.googleapis.com/execution-environment: gen2
+    spec:
+      # 0 GEOS-CF ana, 1 GEOS-CF fcst, 2 Open-Meteo + Sentinel-5P, 3 Landsat
+      taskCount: 4
+      parallelism: 4
+      template:
+        spec:
+          maxRetries: 0
+          timeoutSeconds: '14400'
+          serviceAccountName: sippolusi-tools@sippolusi.iam.gserviceaccount.com
+          volumes:
+          - name: seed
+            csi:
+              driver: gcsfuse.run.googleapis.com
+              readOnly: false
+              volumeAttributes:
+                bucketName: sippolusi-seed-87531247158
+          containers:
+          - image: asia-southeast2-docker.pkg.dev/sippolusi/sippolusi/data-worker:latest
+            resources:
+              limits:
+                cpu: '2'
+                memory: 4Gi
+            volumeMounts:
+            - name: seed
+              mountPath: /bucket
+            env:
+            - name: PYTHONPATH
+              value: /bucket/backfill/code
+            - name: PYTHONDONTWRITEBYTECODE
+              value: '1'
+            - name: PYTHONUNBUFFERED
+              value: '1'
+            command:
+            - python
+            - /bucket/backfill/code/backfill_features.py
+            - --start
+            - '2026-09-27T00:00Z'
+            - --end
+            - '2026-11-19T12:00Z'
+            - --out
+            - /bucket/backfill/out/20261119

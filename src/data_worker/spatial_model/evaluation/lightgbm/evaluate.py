@@ -9,6 +9,7 @@ import pandas as pd
 
 from spatial_model.data.features import Panel, spatial_features
 from spatial_model.data.validation import verify_snapshot
+from spatial_model.configs import SUPPORTED_DATASETS
 from spatial_model.models.lightgbm.data import design
 from spatial_model.models.lightgbm.model import predict
 from spatial_model.evaluation.metrics import compute_metrics
@@ -20,8 +21,9 @@ def evaluate(snapshot, checkpoint, output, *, splits=("val", "test"), _panel=Non
     checkpoint, output = Path(checkpoint), Path(output)
     metadata = json.loads((checkpoint / "metadata.json").read_text(encoding="utf-8"))
     target = metadata.get("target")
-    if target not in ("pm25", "no2") or metadata.get("dataset") != "ds-v0.3.0":
-        raise ValueError("Require a ds-v0.3.0 pollutant checkpoint")
+    # The snapshot hash check below ties the checkpoint to this exact snapshot.
+    if target not in ("pm25", "no2") or metadata.get("dataset") not in SUPPORTED_DATASETS:
+        raise ValueError(f"Require a pollutant checkpoint of a supported dataset {SUPPORTED_DATASETS}")
     fold = metadata.get("fold")
     protocol = metadata.get("protocol", "loso" if fold is not None else "serving")
     if protocol == "fixed_split" and (target != "pm25" or fold is not None):

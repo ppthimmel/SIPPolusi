@@ -1,0 +1,64 @@
+# ds-v0.4.0: ds-v0.3.0 rules over 13 Sep - 19 Nov 2026 (Railway + GCP ground truth, backfilled features).
+# Label rules, groups, split method and lag window are unchanged from ds-v0.3.0; only the period, blocks and
+# the label gap differ.
+version = "ds-v0.4.0"
+seed = 42
+
+[scope]
+# Label time windows (UTC, start of hour). Ground truth: Railway 13 Sep - 11 Nov 04:00, GCP 15 Nov 06:30 - 19 Nov 11:06.
+first_window = "2026-09-13T00:00:00Z"
+end_window = "2026-11-19T10:00:00Z"        # exclusive
+readings_until = "2026-11-19T11:00:00Z"
+targets = ["pm25", "no2"]
+# Label windows dropped although readings exist on one side: no station readings between Railway's last cycle
+# (11 Nov 04:00) and GCP's first backfilled reading (15 Nov 06:30), plus 24 h after it, so no kept label has a
+# station-reading history (L = 24) that crosses the outage.
+exclude_windows = [["2026-11-11T04:00:00Z", "2026-11-16T07:00:00Z"]]
+
+[features]
+lag_windows = 24
+context_hops = 1
+viirs_cell_rule = "tile"
+weather_delay_hours = 8.0
+
+[labels]
+sentinel = 999.99
+excluded_stations = ["DKI_PM25_40"]
+stuck_run_min = 12
+require_complete_hour = true
+
+[labels.shared_signal]
+min_corr = 0.98
+max_ratio_deviation = 0.02
+min_shared_hours = 100
+
+[[labels.excluded_from]]
+kode = "DKI_PM25_33"
+metric = "PM25"
+since = "2026-09-19T10:00:00Z"
+
+[labels.low_bias_suspect]
+kode_prefix = "DKI_PM25_"
+station_type = "Sensor"
+max_mean_ugm3 = 10.0
+
+[groups]
+max_distance_m = 300.0
+duplicate_identical_fraction = 0.2
+near_duplicate = [0.98, 0.02, 100]
+
+[station_split]
+fractions = { train = 0.70, val = 0.15, test = 0.15 }
+strata = ["station_type", "kota"]
+
+# Blocks (UTC, start of label window, upper bound exclusive), >= 24 h apart.
+# train: 45 days of dry-to-wet season; val: late Oct - early Nov; test: Nov (rainy season), incl. the GCP period.
+[blocks]
+train = ["2026-09-13T00:00:00Z", "2026-10-28T00:00:00Z"]
+val = ["2026-10-29T00:00:00Z", "2026-11-05T00:00:00Z"]
+test = ["2026-11-06T00:00:00Z", "2026-11-19T10:00:00Z"]
+min_gap_hours = 24
+
+[evaluation]
+pm25 = ["fixed_split", "loso"]
+no2 = ["loso"]

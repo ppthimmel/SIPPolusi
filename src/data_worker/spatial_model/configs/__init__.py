@@ -11,6 +11,16 @@ ROOT = Path(__file__).resolve().parent
 DEFAULT_SEED = 42
 IDW_CONFIG = ROOT / "idw_baseline.toml"
 SNAPSHOT_CONFIG = ROOT / "ds-v0.3.0.toml"
+#: Snapshot versions the training, evaluation and bundle code accept (same layout and label rules).
+SUPPORTED_DATASETS = ("ds-v0.3.0", "ds-v0.4.0")
+
+
+def snapshot_version(snapshot) -> str:
+    """``version`` of a frozen snapshot; raises if it is not a supported dataset."""
+    version = json.loads((Path(snapshot) / "manifest.json").read_text(encoding="utf-8"))["version"]
+    if version not in SUPPORTED_DATASETS:
+        raise ValueError(f"Unsupported dataset {version}; expected one of {SUPPORTED_DATASETS}")
+    return version
 
 
 def load_model_config(model):
