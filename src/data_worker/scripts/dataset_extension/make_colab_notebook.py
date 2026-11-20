@@ -37,9 +37,9 @@ ported from the repository (`src/data_worker/spatial_model`).
 | 2. Data loading | Snapshot check, period and blocks, labels, stations, LOSO folds |
 | 3. Preprocessing | What the snapshot already did; station-hour features (IDW, LightGBM, XGBoost); ST-GNN inputs |
 | 4. Models | IDW, LightGBM, XGBoost, ST-GNN — definitions and runners |
-| 5. PM2.5 | 5.1 Fixed split, 5.2 LOSO — each model in its own cell, then a comparison |
+| 5. PM2.5 | 5.1 Fixed split, 5.2 LOSO — IDW, then ST-GNN, LightGBM and XGBoost each **direct** and **+ IDW correction**, each in its own cell, then a comparison |
 | 6. NO₂ | 6.1 Fixed (temporal-only) split, 6.2 LOSO |
-| 7. Summary | Every test result, and whether each model beats IDW |
+| 7. Summary | Validation and test RMSE, MAE and R² of every model, and whether it beats IDW |
 
 **Runtime:** choose a GPU (*Runtime → Change runtime type → T4 GPU*) for ST-GNN. Rough times on Colab: IDW
 seconds; LightGBM/XGBoost about 0.5–1 min per LOSO fold (PM2.5 has 109 folds, NO₂ 15); ST-GNN several minutes
@@ -56,7 +56,8 @@ code('''
 # Data bundle: a path on Google Drive, or None to upload it from your computer when 1.3 runs.
 BUNDLE_ZIP = "/content/drive/MyDrive/SIPPolusi/sippolusi_ds-v0.4.0_bundle.zip"
 
-# Outputs (on Drive, so a disconnect does not lose finished work). Finished ST-GNN units are skipped on rerun.
+# Outputs (on Drive, so a disconnect does not lose finished work). Finished ST-GNN, LightGBM and XGBoost
+# folds are saved there and skipped on a rerun.
 RUN_ROOT = "/content/drive/MyDrive/SIPPolusi/runs"
 
 # What to run
@@ -147,7 +148,8 @@ n_files = verify_snapshot(SNAPSHOT)
 manifest = json.loads((SNAPSHOT / "manifest.json").read_text())
 split_spec = json.loads((SNAPSHOT / "split_spec.json").read_text())
 print("dataset:", manifest["version"], "| files verified:", n_files)
-print("GPU:", torch.cuda.get_device_name(0) if torch.cuda.is_available() else "none (CPU)")
+DEVICE = "cuda" if torch.cuda.is_available() else "cpu"      # used by the IDW features, ST-GNN and XGBoost
+print("GPU:", torch.cuda.get_device_name(0) if torch.cuda.is_available() else "none (CPU) - expect slow runs")
 pd.DataFrame(split_spec["blocks"]).T
 ''')
 
@@ -226,6 +228,9 @@ These three models work on a table with one row per (station, hour).
   lags, and GEOS-CF fields corrected by the sensors.
 - `design` turns selected (hour, station) cells into a table.
 
+`spatial_features` runs on the GPU with PyTorch (float64, blocks of 256 hours). It is a port of the repository's
+numpy code and gives the same numbers; it is the heavy step of every LOSO fold.
+
 Lags are positional over the label hours, so the first hours of a block (and after the 11–16 Nov gap) take their
 lag from the previous labelled hour. (Ported from `spatial_model/data/features.py` and `models/lightgbm/data.py`.)
 """)
@@ -292,47 +297,82 @@ class Panel:
         return out
 
 
+NAN = float("nan")
+
+
 def _idw(dist, val, power, k=None):
     """dist/val sorted ascending along the last axis; inf/NaN for unavailable sources."""
     if k is not None:
         dist, val = dist[..., :k], val[..., :k]
-    w = np.where(np.isfinite(dist), 1.0 / np.maximum(dist, 1.0) ** power, 0.0)
+    w = torch.where(torch.isfinite(dist), 1.0 / torch.clamp(dist, min=1.0) ** power, torch.zeros_like(dist))
     s = w.sum(-1)
-    return np.where(s > 0, (w * np.nan_to_num(val)).sum(-1) / np.where(s > 0, s, 1), np.nan)
+    return torch.where(s > 0, (w * torch.nan_to_num(val)).sum(-1) / torch.where(s > 0, s, torch.ones_like(s)), NAN)
 
 
-def spatial_features(p, allowed):
-    """Sensor-derived features for every (hour, station) from allowed stations outside the own group."""
+def _nanmean(x):
+    ok = ~torch.isnan(x)
+    return torch.where(ok, x, 0.0).sum(-1) / ok.sum(-1)          # 0/0 -> NaN when nothing is available
+
+
+def _nanpercentile(x, q):
+    """numpy.nanpercentile (linear) along the last axis."""
+    k = (~torch.isnan(x)).sum(-1)
+    xs = torch.sort(torch.where(torch.isnan(x), float("inf"), x), dim=-1).values
+    pos = (k - 1).clamp(min=0).double() * (q / 100)
+    lo = pos.floor().long()
+    t = pos - lo
+    a = torch.gather(xs, -1, lo[..., None])[..., 0]
+    b = torch.gather(xs, -1, pos.ceil().long()[..., None])[..., 0]
+    out = torch.where(t >= 0.5, b - (b - a) * (1 - t), a + (b - a) * t)
+    return torch.where(k > 0, out, NAN)
+
+
+def spatial_features(p, allowed, chunk=256):
+    """Sensor-derived features for every (hour, station) from allowed stations outside the own group.
+
+    Runs on the GPU (DEVICE) in float64, a block of hours at a time."""
     H, N = p.Y.shape
-    src = np.isfinite(p.Y) & allowed[None, :]
-    mask = src[:, None, :] & ~p.same_group[None, :, :]                  # (hour, target, source)
-    Dm = np.where(mask, p.D[None], np.inf)
-    order = np.argsort(Dm, axis=2, kind="stable")
-    ds = np.take_along_axis(Dm, order, 2)
-    vs = np.where(np.isfinite(ds), np.take_along_axis(np.broadcast_to(p.Y[:, None, :], (H, N, N)), order, 2), np.nan)
-    g = p.G[f"geoscf_fcst_{p.target}_ugm3"]                             # GEOS-CF forecast at each station cell
-    gs = np.take_along_axis(np.broadcast_to(g[:, None, :], (H, N, N)), order, 2)
-    refs = np.take_along_axis(np.broadcast_to(p.is_ref[None, None, :].astype(float), (H, N, N)), order, 2)
-    with np.errstate(all="ignore"):
+    T = lambda a, dtype=torch.float64: torch.as_tensor(np.asarray(a), dtype=dtype, device=DEVICE)  # noqa: E731
+    Y, D, ok_src = T(p.Y), T(p.D), T(allowed, torch.bool)
+    other = ~T(p.same_group, torch.bool)
+    G = T(p.G[f"geoscf_fcst_{p.target}_ugm3"])                          # GEOS-CF forecast at each station cell
+    ref = T(p.is_ref.astype(float))
+    parts = {}
+    for h0 in range(0, H, chunk):
+        y, g = Y[h0:h0 + chunk], G[h0:h0 + chunk]
+        h = len(y)
+        src = torch.isfinite(y) & ok_src[None, :]
+        mask = src[:, None, :] & other[None]                             # (hour, target, source)
+        ds, order = torch.sort(torch.where(mask, D[None], float("inf")), dim=2, stable=True)
+        fin = torch.isfinite(ds)
+        vs = torch.where(fin, torch.gather(y[:, None, :].expand(h, N, N), 2, order), NAN)
+        gs = torch.gather(g[:, None, :].expand(h, N, N), 2, order)
+        refs = torch.gather(ref[None, None, :].expand(h, N, N), 2, order)
+        mean = _nanmean(vs)
         F = {
-            "n_src": np.isfinite(ds).sum(-1).astype(float),
-            "src_mean": np.nanmean(vs, -1), "src_median": np.nanmedian(vs, -1), "src_std": np.nanstd(vs, -1),
-            "src_p25": np.nanpercentile(vs, 25, axis=-1), "src_p75": np.nanpercentile(vs, 75, axis=-1),
-            "nn_val": vs[..., 0], "nn_dist": np.where(np.isfinite(ds[..., 0]), ds[..., 0], np.nan),
-            "mean_dist_k8": np.nanmean(np.where(np.isfinite(ds[..., :8]), ds[..., :8], np.nan), -1),
+            "n_src": fin.sum(-1).double(),
+            "src_mean": mean, "src_median": _nanpercentile(vs, 50),
+            "src_std": torch.sqrt(_nanmean((vs - mean[..., None]) ** 2)),
+            "src_p25": _nanpercentile(vs, 25), "src_p75": _nanpercentile(vs, 75),
+            "nn_val": vs[..., 0], "nn_dist": torch.where(fin[..., 0], ds[..., 0], NAN),
+            "mean_dist_k8": _nanmean(torch.where(fin[..., :8], ds[..., :8], NAN)),
             "idw_p2_k8": _idw(ds, vs, 2, 8), "idw_p1_k8": _idw(ds, vs, 1, 8), "idw_p1_all": _idw(ds, vs, 1),
             "idw_p2_all": _idw(ds, vs, 2), "idw_p3_k4": _idw(ds, vs, 3, 4),
-            "ref_frac_k8": np.nanmean(np.where(np.isfinite(ds[..., :8]), refs[..., :8], np.nan), -1),
+            "ref_frac_k8": _nanmean(torch.where(fin[..., :8], refs[..., :8], NAN)),
         }
         for bw in (2000, 5000, 10000):
-            w = np.where(np.isfinite(ds), np.exp(-0.5 * (ds / bw) ** 2), 0.0)
-            F[f"gauss_{bw // 1000}km"] = np.where(w.sum(-1) > 1e-6, (w * np.nan_to_num(vs)).sum(-1)
-                                                  / np.maximum(w.sum(-1), 1e-12), np.nan)
-            F[f"gauss_wsum_{bw // 1000}km"] = w.sum(-1)
+            w = torch.where(fin, torch.exp(-0.5 * (ds / bw) ** 2), 0.0)
+            ws = w.sum(-1)
+            F[f"gauss_{bw // 1000}km"] = torch.where(ws > 1e-6, (w * torch.nan_to_num(vs)).sum(-1)
+                                                     / torch.clamp(ws, min=1e-12), NAN)
+            F[f"gauss_wsum_{bw // 1000}km"] = ws
         F["ctm_add_idw"] = g + _idw(ds, vs - gs, 2, 8)                  # GEOS-CF + IDW of its error
         F["ctm_mul_idw"] = g * _idw(ds, vs / gs, 2, 8)                  # GEOS-CF x IDW of its ratio
         F["ctm_grad"] = g - _idw(ds, gs, 2, 8)
         F["idw_minus_median"] = F["idw_p2_k8"] - F["src_median"]
+        for k, v in F.items():
+            parts.setdefault(k, []).append(v.cpu().numpy())
+    F = {k: np.concatenate(v) for k, v in parts.items()}
     for name in ("idw_p2_k8", "src_median"):
         a = F[name]
         lag1 = np.vstack([np.full((1, N), np.nan), a[:-1]])
@@ -572,6 +612,10 @@ def prepare_stgnn(target, protocol, fold=None):
             eligible = lab.group_id == held if split == "test" else lab.group_id != held
             t = lab[eligible & (lab.period == split) & lab[tcol].notna()].copy()
             split_labels[split] = t.rename(columns={tcol: "value_ugm3"})
+        # The hidden group in the validation block: never used for training or early stopping; scored after
+        # training so every model can be compared on the same held-out validation rows.
+        t = lab[(lab.group_id == held) & (lab.period == "val") & lab[tcol].notna()].copy()
+        split_labels["val_held"] = t.rename(columns={tcol: "value_ugm3"})
     for split, t in split_labels.items():
         t["time_utc"] = pd.to_datetime(t.time_utc, utc=True)
         split_labels[split] = t.sort_values(["time_utc", "station_uuid"]).reset_index(drop=True)
@@ -628,20 +672,33 @@ def prepare_stgnn(target, protocol, fold=None):
                 split_hours={s: t.time_utc.drop_duplicates().tolist() for s, t in split_labels.items()})
 
 
-def make_batch(data, prep, hours, split, device):
-    """Batch of hours: 24-hour inputs of every node, plus the labels of those hours."""
-    w, temporal, local, labs = data["window"], [], [], []
-    table = data["split_labels"][split]
-    for b, hour in enumerate(hours):
-        i = data["hour_index"][pd.Timestamp(hour)]
-        temporal.append(data["temporal"][i - w + 1:i + 1].transpose(1, 0, 2))
-        local.append(data["local"][i])
-        labs.append(table[table.time_utc == hour].assign(batch_index=b))
-    t, s = prep.transform(np.stack(temporal), np.stack(local))
-    lab = pd.concat(labs, ignore_index=True)
+def scale_inputs(data, prep, device, chunk=128):
+    """Scale every hour once with the fitted statistics and keep the result on the GPU.
+
+    Scaling is per value, so slicing the scaled array gives exactly what scaling each batch would give;
+    batches then become plain tensor slices. Labels are indexed by hour once."""
+    def scaled(scaler, array):
+        return torch.cat([torch.from_numpy(scaler.transform(array[h:h + chunk]))
+                          for h in range(0, len(array), chunk)]).to(device)
+    data["temporal_scaled"] = scaled(prep.temporal, data["temporal"])   # (hours, nodes, 58)
+    data["local_scaled"] = scaled(prep.local, data["local"])            # (hours, nodes, 8)
+    data["rows_by_hour"] = {split: table.groupby("time_utc", sort=False).indices
+                            for split, table in data["split_labels"].items()}
+    data["edge_index_dev"] = data["edge_index"].to(device)
+
+
+def make_batch(data, hours, split, device):
+    """Batch of hours: the last 24 scaled hours of every node, plus the labels of those hours."""
+    w = data["window"]
+    idx = torch.tensor([data["hour_index"][pd.Timestamp(h)] for h in hours], device=device)
+    window = idx[:, None] + torch.arange(-w + 1, 1, device=device)              # (batch, 24)
+    temporal = data["temporal_scaled"][window].permute(0, 2, 1, 3)             # (batch, nodes, 24, 58)
+    local = data["local_scaled"][idx]                                          # (batch, nodes, 8)
+    rows = [data["rows_by_hour"][split][h] for h in hours]
+    lab = data["split_labels"][split].iloc[np.concatenate(rows)].reset_index(drop=True)
+    lab["batch_index"] = np.repeat(np.arange(len(hours)), [len(r) for r in rows])
     as_t = lambda a, dtype: torch.tensor(a, dtype=dtype, device=device)  # noqa: E731
-    return dict(temporal=torch.from_numpy(t).to(device), local=torch.from_numpy(s).to(device),
-                edge_index=data["edge_index"].to(device), labels=lab,
+    return dict(temporal=temporal, local=local, edge_index=data["edge_index_dev"], labels=lab,
                 label_batch=as_t(lab.batch_index.to_numpy(), torch.long),
                 label_node=as_t(lab.node_index.to_numpy("int64"), torch.long),
                 idw=as_t(lab.idw_prediction.to_numpy(), torch.float32),
@@ -670,13 +727,16 @@ def compute_metrics(observed, predicted):
                 r2=float(1 - np.sum(err ** 2) / ss) if ss > 0 else np.nan, bias=float(err.mean()))
 
 def record(target, protocol, model, table, column):
+    """Add (or replace) one model's scores per split."""
+    RESULTS[:] = [r for r in RESULTS if (r["target"], r["protocol"], r["model"]) != (target, protocol, model)]
     for split, part in table.groupby("split"):
         RESULTS.append(dict(target=target, protocol=protocol, model=model, split=split,
                             **compute_metrics(part.observed, part[column])))
 
 def show(target, protocol):
     r = pd.DataFrame(RESULTS)
-    r = r[(r.target == target) & (r.protocol == protocol)]
+    r = r[(r.target == target) & (r.protocol == protocol) & ~r.model.str.startswith("IDW paired")
+          & r.split.isin(["val", "test"])]
     return r.pivot_table(index="model", columns="split", values=["rmse", "mae", "r2", "n"]).round(3)
 ''')
 
@@ -697,8 +757,16 @@ def run_idw(target, protocol):
 
 md("""
 ### 4.2 LightGBM
-Gradient-boosted trees on every feature group of 3.2, predicting the concentration directly. Hyperparameters per
-target are the repository's (`configs/lightgbm.json`), chosen on ds-v0.3.0. One model per fixed split or fold.
+Gradient-boosted trees on every feature group of 3.2. Hyperparameters per target are the repository's
+(`configs/lightgbm.json`), chosen on ds-v0.3.0. One model per fixed split or fold. Two variants:
+
+- **LightGBM** (direct): predicts the concentration itself.
+- **LightGBM + IDW corr**: predicts how far IDW (p=2, k=8) is off at that station-hour (`label − IDW`), and the
+  estimate is `max(0, IDW + prediction)` — the same idea as ST-GNN + IDW corr.
+
+LightGBM and XGBoost save each fold's model (`model.txt` / `model.json`), settings and predictions under
+`RUN_ROOT/<model>/<target>/<protocol>/<fold>/`. On a rerun, a fold saved with the same settings is read back
+instead of trained again; change the settings and it is retrained.
 """)
 code('''
 import lightgbm as lgb
@@ -712,33 +780,66 @@ LGBM_HP = {
                 colsample_bytree=0.4, reg_lambda=50, min_split_gain=0),
 }
 
-def fit_predict(target, protocol, name, make):
-    """Fit one model per fold on its training table and predict that fold's val/test rows."""
+KEYS = ["split", "hour", "station"]
+
+def fit_predict(target, protocol, name, make, params, idw_corr=False):
+    """Fit one model per fold on its training table and predict that fold's val/test rows.
+
+    idw_corr=False: learn the concentration. idw_corr=True: learn label - IDW(p=2, k=8) and add IDW back.
+    Each fold's model, settings and predictions are saved to RUN_ROOT/<model>/<target>/<protocol>/<fold>/.
+    A fold that is already saved with the same settings is read back instead of trained again."""
     table, cols = EVAL[(target, protocol)], feature_columns(target)
     table[name] = np.nan
+    trained = reused = 0
+    folder = name.lower().replace(" + idw corr", "_idwcorr")
     for fold in table.fold.drop_duplicates():
-        train = train_table(target, protocol, fold)
-        model = make().fit(train[cols].astype("float64"), train["y"].to_numpy("float32"))
         rows = table.fold.isna() if pd.isna(fold) else table.fold == fold
-        table.loc[rows, name] = np.maximum(model.predict(table.loc[rows, cols].astype("float64")), 0)
+        out = RUN_ROOT / folder / target / protocol / ("fixed-split" if pd.isna(fold) else f"fold-{int(fold)}")
+        settings = json.dumps(params | ({"idw_corr": True} if idw_corr else {}), sort_keys=True, default=str)
+        saved = out / "predictions.parquet"
+        if saved.exists() and (out / "params.json").read_text() == settings:
+            pred = table.loc[rows, KEYS].merge(pd.read_parquet(saved), on=KEYS, how="left")["predicted"]
+            if pred.notna().all():
+                table.loc[rows, name] = pred.to_numpy()
+                reused += 1
+                continue
+        train = train_table(target, protocol, fold)
+        y = train["y"] - train["idw_p2_k8"] if idw_corr else train["y"]
+        keep = np.isfinite(y.to_numpy())
+        model = make().fit(train.loc[keep, cols].astype("float64"), y[keep].to_numpy("float32"))
+        raw = model.predict(table.loc[rows, cols].astype("float64"))
+        base = table.loc[rows, "idw_p2_k8"].to_numpy() if idw_corr else 0
+        table.loc[rows, name] = np.maximum(base + raw, 0)
+        out.mkdir(parents=True, exist_ok=True)
+        if name.startswith("LightGBM"):
+            model.booster_.save_model(str(out / "model.txt"))
+        else:
+            model.save_model(str(out / "model.json"))
+        (out / "params.json").write_text(settings)
+        table.loc[rows, KEYS + [name]].rename(columns={name: "predicted"}).to_parquet(saved, index=False)
+        trained += 1
+    print(f"{name} {target} {protocol}: trained {trained} fold(s), reused {reused} saved fold(s)")
     record(target, protocol, name, table, name)
 
-def run_lightgbm(target, protocol):
-    fit_predict(target, protocol, "LightGBM", lambda: lgb.LGBMRegressor(
-        **(LGBM_BASE | LGBM_HP[target]), random_state=SEED, n_jobs=os.cpu_count(),
-        deterministic=True, force_row_wise=True, verbose=-1))
+def run_lightgbm(target, protocol, idw_corr=False):
+    params = LGBM_BASE | LGBM_HP[target]
+    fit_predict(target, protocol, "LightGBM + IDW corr" if idw_corr else "LightGBM", lambda: lgb.LGBMRegressor(
+        **params, random_state=SEED, n_jobs=os.cpu_count(),
+        deterministic=True, force_row_wise=True, verbose=-1), params | {"seed": SEED}, idw_corr)
 ''')
 
 md("""
 ### 4.3 XGBoost
-Same features, rows and target as LightGBM, with `XGB_PARAMS` from 1.1.
+Same features, rows and two variants (direct, + IDW corr) as LightGBM, with `XGB_PARAMS` from 1.1. Runs on the GPU
+when there is one (LightGBM stays on CPU: its pip build has no GPU support, and it is fast anyway).
 """)
 code('''
 import xgboost as xgb
 
-def run_xgboost(target, protocol):
-    fit_predict(target, protocol, "XGBoost", lambda: xgb.XGBRegressor(
-        **XGB_PARAMS, random_state=SEED, n_jobs=os.cpu_count()))
+def run_xgboost(target, protocol, idw_corr=False):
+    params = ({"device": "cuda"} if DEVICE == "cuda" else {}) | XGB_PARAMS
+    fit_predict(target, protocol, "XGBoost + IDW corr" if idw_corr else "XGBoost", lambda: xgb.XGBRegressor(
+        **params, random_state=SEED, n_jobs=os.cpu_count()), params | {"seed": SEED}, idw_corr)
 ''')
 
 md("""
@@ -829,15 +930,25 @@ class STGNN(nn.Module):
 md("""
 **Training** (ported from `models/stgnn/train.py`): AdamW (lr 3e-4, weight decay 1e-3), learning rate halved
 after 3 epochs without improvement, gradient clipping at 1.0, early stopping after 12 epochs without improvement.
-The loss is the squared error of the standardised correction `(label − IDW) / scale`. The epoch with the lowest
-validation RMSE is kept; epoch 0 (plain IDW) can win.
+Two variants, same architecture and inputs (the IDW sensor channels are inputs in both):
 
-**Evaluation:** ST-GNN and its paired IDW are scored on the same labels. In LOSO, ST-GNN validates on the groups it
-is *not* holding out, so only its **test** score (the held-out group) is an out-of-sample LOSO estimate; its
-validation rows are labelled `val (non-held)`.
+- **ST-GNN** (direct): learns the standardised concentration `(label − mean) / scale`; the estimate is
+  `max(0, mean + scale × output)`. Saved under `RUN_ROOT/stgnn_direct/`.
+- **ST-GNN + IDW corr**: learns the standardised correction `(label − IDW) / scale`; the estimate is
+  `max(0, IDW + scale × output)` — the repository's model. Saved under `RUN_ROOT/stgnn/`.
+
+The epoch with the lowest validation RMSE is kept. Epoch 0 is the untrained model: plain IDW for + IDW corr, the
+training mean for direct.
+
+**Validation in LOSO has two roles:**
+- *Early stopping* uses the visible groups in the validation block (`val (non-held)`), so the hidden group is never
+  seen during training.
+- *Model comparison* uses the **hidden group** in the validation block (`val`), scored after training — the same
+  rows every other model is scored on. The summary picks the model on this `val` and reports its `test`.
+
+ST-GNN and its paired IDW are scored on the same labels.
 """)
 code('''
-DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 OPT = dict(lr=3e-4, weight_decay=1e-3, patience=12, clip=1.0)
 
 def seed_everything(seed):
@@ -846,25 +957,28 @@ def seed_everything(seed):
         torch.cuda.manual_seed_all(seed)
     torch.use_deterministic_algorithms(True, warn_only=True)
 
+def stgnn_base(prep, idw, idw_corr):
+    """What the network's output is added to: IDW (+ IDW corr) or the training mean (direct)."""
+    return idw if idw_corr else prep.target_mean
+
 @torch.no_grad()
-def stgnn_predict(model, data, prep, split):
+def stgnn_predict(model, data, prep, split, idw_corr=True):
     model.eval()
     frames = []
     hours = data["split_hours"][split]
     for start in range(0, len(hours), STGNN_BATCH_SIZE):
-        b = make_batch(data, prep, hours[start:start + STGNN_BATCH_SIZE], split, DEVICE)
+        b = make_batch(data, hours[start:start + STGNN_BATCH_SIZE], split, DEVICE)
         z = model(b["temporal"], b["local"], b["edge_index"])[b["label_batch"], b["label_node"], 0]
         f = b["labels"][["station_uuid", "time_utc", "value_ugm3", "idw_prediction"]].copy()
-        f["predicted"] = np.maximum(f.idw_prediction.to_numpy() + z.cpu().numpy() * prep.target_scale, 0)
+        base = stgnn_base(prep, f.idw_prediction.to_numpy(), idw_corr)
+        f["predicted"] = np.maximum(base + z.cpu().numpy() * prep.target_scale, 0)
         frames.append(f)
     return pd.concat(frames, ignore_index=True).rename(columns={"value_ugm3": "observed"})
 
-def train_stgnn(target, protocol, fold=None):
-    """Train one ST-GNN; return val/test predictions with the paired IDW. Finished units are read back."""
-    out = RUN_ROOT / "stgnn" / target / protocol / ("fixed-split" if fold is None else f"fold-{fold}")
-    if (out / "predictions.parquet").exists():
-        return pd.read_parquet(out / "predictions.parquet")
-    seed_everything(SEED)
+SCORED_SPLITS = ("val", "test", "val_held")             # val_held exists only in LOSO
+
+def fitted_inputs(target, protocol, fold):
+    """Graph inputs with the scaler fitted on training hours and nodes (deterministic)."""
     data = prepare_stgnn(target, protocol, fold)
     train = data["split_labels"]["train"]
     first = data["hour_index"][train.time_utc.min()] - data["window"] + 1
@@ -872,6 +986,28 @@ def train_stgnn(target, protocol, fold=None):
     fit = data["fit_nodes"]
     prep = Preprocessor().fit(data["temporal"][first:last, fit], data["local"][first:last, fit],
                               train.value_ugm3.to_numpy())
+    scale_inputs(data, prep, DEVICE)                     # scale once, keep on the GPU
+    return data, prep
+
+def train_stgnn(target, protocol, fold=None, idw_corr=True):
+    """Train one ST-GNN; return its predictions with the paired IDW. Finished units are read back."""
+    folder = "stgnn" if idw_corr else "stgnn_direct"
+    out = RUN_ROOT / folder / target / protocol / ("fixed-split" if fold is None else f"fold-{fold}")
+    if (out / "predictions.parquet").exists():
+        preds = pd.read_parquet(out / "predictions.parquet")
+        if protocol != "loso" or "val_held" in set(preds.split) or not (out / "best.pt").exists():
+            return preds
+        # Saved by an older notebook without the held-out validation: score it with the saved weights.
+        data, prep = fitted_inputs(target, protocol, fold)
+        model = STGNN().to(DEVICE)
+        model.load_state_dict(torch.load(out / "best.pt", map_location=DEVICE)["state_dict"])
+        if data["split_hours"]["val_held"]:
+            extra = stgnn_predict(model, data, prep, "val_held", idw_corr).assign(split="val_held", fold=fold)
+            preds = pd.concat([preds, extra], ignore_index=True)
+        preds.to_parquet(out / "predictions.parquet", index=False)
+        return preds
+    seed_everything(SEED)
+    data, prep = fitted_inputs(target, protocol, fold)
     model = STGNN().to(DEVICE)
     nn.init.zeros_(model.regression[-1].weight); nn.init.zeros_(model.regression[-1].bias)
     optimizer = torch.optim.AdamW(model.parameters(), lr=OPT["lr"], weight_decay=OPT["weight_decay"])
@@ -879,23 +1015,24 @@ def train_stgnn(target, protocol, fold=None):
     rng = np.random.default_rng(SEED)
 
     def val_rmse():
-        p = stgnn_predict(model, data, prep, "val")
+        p = stgnn_predict(model, data, prep, "val", idw_corr)
         return float(np.sqrt(np.mean((p.predicted - p.observed) ** 2)))
 
     best_rmse, best_epoch, stale = val_rmse(), 0, 0
     best = {k: v.detach().cpu().clone() for k, v in model.state_dict().items()}
     history = [dict(epoch=0, val_rmse=best_rmse)]
-    print(f"{target} {protocol} {'' if fold is None else f'fold {fold} '}| plain IDW val RMSE {best_rmse:.3f}")
+    print(f"ST-GNN{' + IDW corr' if idw_corr else ''} {target} {protocol} {'' if fold is None else f'fold {fold} '}"
+          f"| epoch 0 ({'plain IDW' if idw_corr else 'training mean'}) val RMSE {best_rmse:.3f}")
     for epoch in range(1, STGNN_EPOCHS + 1):
         if stale >= OPT["patience"]:
             break
         model.train()
         hours = rng.permutation(data["split_hours"]["train"]).tolist()
         for start in range(0, len(hours), STGNN_BATCH_SIZE):
-            b = make_batch(data, prep, hours[start:start + STGNN_BATCH_SIZE], "train", DEVICE)
+            b = make_batch(data, hours[start:start + STGNN_BATCH_SIZE], "train", DEVICE)
             optimizer.zero_grad(set_to_none=True)
             z = model(b["temporal"], b["local"], b["edge_index"])[b["label_batch"], b["label_node"], 0]
-            loss = ((z - (b["y"] - b["idw"]) / prep.target_scale) ** 2).mean()
+            loss = ((z - (b["y"] - stgnn_base(prep, b["idw"], idw_corr)) / prep.target_scale) ** 2).mean()
             loss.backward()
             nn.utils.clip_grad_norm_(model.parameters(), OPT["clip"])
             optimizer.step()
@@ -909,72 +1046,84 @@ def train_stgnn(target, protocol, fold=None):
         else:
             stale += 1
     model.load_state_dict(best)
-    print(f"  best epoch {best_epoch} (0 = plain IDW), val RMSE {best_rmse:.3f}")
-    preds = pd.concat([stgnn_predict(model, data, prep, s).assign(split=s)
-                       for s in ("val", "test") if data["split_hours"][s]], ignore_index=True)
+    print(f"  best epoch {best_epoch} (0 = untrained), val RMSE {best_rmse:.3f}")
+    preds = pd.concat([stgnn_predict(model, data, prep, s, idw_corr).assign(split=s)
+                       for s in SCORED_SPLITS if data["split_hours"].get(s)], ignore_index=True)
     out.mkdir(parents=True, exist_ok=True)
-    torch.save(dict(state_dict=best, best_epoch=best_epoch, target_scale=prep.target_scale), out / "best.pt")
+    torch.save(dict(state_dict=best, best_epoch=best_epoch, target_scale=prep.target_scale,
+                    target_mean=prep.target_mean, idw_corr=idw_corr), out / "best.pt")
     pd.DataFrame(history).to_csv(out / "history.csv", index=False)
     preds.assign(fold=fold).to_parquet(out / "predictions.parquet", index=False)
     return preds.assign(fold=fold)
 
-def run_stgnn(target, protocol, fold_list=None):
+def run_stgnn(target, protocol, fold_list=None, idw_corr=True):
     folds = [None] if protocol != "loso" else [int(f) for f in selected_folds(target, fold_list).fold]
-    table = pd.concat([train_stgnn(target, protocol, f) for f in folds], ignore_index=True)
+    table = pd.concat([train_stgnn(target, protocol, f, idw_corr) for f in folds], ignore_index=True)
     table = table.rename(columns={"predicted": "ST-GNN", "idw_prediction": "IDW paired"})
     if protocol == "loso":
-        table["split"] = table.split.replace({"val": "val (non-held)"})
+        # "val" = the hidden group (comparable with the other models); "val (non-held)" = early-stopping set
+        table["split"] = table.split.replace({"val": "val (non-held)", "val_held": "val"})
     suffix = f" ({len(folds)} folds)" if protocol == "loso" else ""
-    record(target, protocol, "ST-GNN" + suffix, table, "ST-GNN")
-    record(target, protocol, "IDW paired with ST-GNN" + suffix, table, "IDW paired")
+    record(target, protocol, ("ST-GNN + IDW corr" if idw_corr else "ST-GNN") + suffix, table, "ST-GNN")
+    record(target, protocol, "IDW paired with ST-GNN" + suffix, table, "IDW paired")   # same labels either way
     return table
 ''')
 
 # ============================================================================================ 5 PM2.5
+VARIANTS = [  # (heading, call, needs ST-GNN)
+    ("IDW", "run_idw({t!r}, {p!r})", False),
+    ("ST-GNN", "run_stgnn({t!r}, {p!r}{f}, idw_corr=False)", True),
+    ("ST-GNN + IDW correction", "run_stgnn({t!r}, {p!r}{f}, idw_corr=True)", True),
+    ("LightGBM", "run_lightgbm({t!r}, {p!r})", False),
+    ("LightGBM + IDW correction", "run_lightgbm({t!r}, {p!r}, idw_corr=True)", False),
+    ("XGBoost", "run_xgboost({t!r}, {p!r})", False),
+    ("XGBoost + IDW correction", "run_xgboost({t!r}, {p!r}, idw_corr=True)", False),
+]
+
+
+def protocol_cells(number, flag, target, protocol, tab_folds, stgnn_folds, stgnn_ok=True):
+    """Prepare cell, one subsection per model variant, then a comparison."""
+    prep_args = f", {tab_folds}" if tab_folds else ""
+    code(f"""
+if {flag}:
+    prepare({target!r}, {protocol!r}{prep_args})
+""")
+    for i, (heading, call, needs_stgnn) in enumerate(VARIANTS, 1):
+        if needs_stgnn and not stgnn_ok:
+            md(f"""
+#### {number}.{i} {heading}
+Not run here: ST-GNN's fixed split needs held-out stations, which NO₂ does not have.
+""")
+            continue
+        md(f"#### {number}.{i} {heading}")
+        cond = f"{flag} and RUN_STGNN" if needs_stgnn else flag
+        f = f", {stgnn_folds}" if (needs_stgnn and stgnn_folds) else ""
+        code(f"""
+if {cond}:
+    {call.format(t=target, p=protocol, f=f)}
+    display(show({target!r}, {protocol!r}))
+""")
+    md(f"""
+#### {number}.{len(VARIANTS) + 1} Comparison
+Lower RMSE is better. Pick on **val**; the summary (section 7) does this for every target and protocol.
+""")
+    code(f"""
+if {flag}:
+    display(show({target!r}, {protocol!r}))
+""")
+
+
 md("""
 ## 5. PM2.5
+Every learned model runs in two variants: **direct** (predicts the concentration) and **+ IDW correction**
+(predicts how far IDW p=2, k=8 is off, and adds that to IDW).
+
 ### 5.1 Fixed split
 Stations **and** time are held out together: train = training stations in the training block, validation =
 validation stations in the validation block, test = test stations in the test block. Only training stations are
 used as sensor inputs.
 """)
-code('''
-if RUN_PM25_FIXED:
-    prepare("pm25", "fixed_split")
-''')
-md("#### 5.1.1 IDW")
-code('''
-if RUN_PM25_FIXED:
-    run_idw("pm25", "fixed_split")
-    display(show("pm25", "fixed_split"))
-''')
-md("#### 5.1.2 ST-GNN")
-code('''
-if RUN_PM25_FIXED and RUN_STGNN:
-    run_stgnn("pm25", "fixed_split")
-    display(show("pm25", "fixed_split"))
-''')
-md("#### 5.1.3 LightGBM")
-code('''
-if RUN_PM25_FIXED:
-    run_lightgbm("pm25", "fixed_split")
-    display(show("pm25", "fixed_split"))
-''')
-md("#### 5.1.4 XGBoost")
-code('''
-if RUN_PM25_FIXED:
-    run_xgboost("pm25", "fixed_split")
-    display(show("pm25", "fixed_split"))
-''')
-md("""
-#### 5.1.5 Comparison
-Lower RMSE is better. A model beats IDW when its **test** RMSE is below the better IDW row (ST-GNN: below its
-paired IDW row).
-""")
-code('''
-if RUN_PM25_FIXED:
-    display(show("pm25", "fixed_split"))
-''')
+protocol_cells("5.1", "RUN_PM25_FIXED", "pm25", "fixed_split", None, None)
 
 md("""
 ### 5.2 LOSO (leave one station group out)
@@ -982,42 +1131,7 @@ Each fold holds out one station group, trains on the training block with every o
 the held-out group in the validation and test blocks — the closest test of the estimate where there is no sensor.
 Scores are pooled over all station-hours of the selected folds.
 """)
-code('''
-if RUN_PM25_LOSO:
-    prepare("pm25", "loso", TABULAR_LOSO_FOLDS)
-''')
-md("#### 5.2.1 IDW")
-code('''
-if RUN_PM25_LOSO:
-    run_idw("pm25", "loso")
-    display(show("pm25", "loso"))
-''')
-md("""
-#### 5.2.2 ST-GNN
-Uses `STGNN_LOSO_FOLDS`, which can differ from the folds above; compare it with its own paired IDW row.
-""")
-code('''
-if RUN_PM25_LOSO and RUN_STGNN:
-    run_stgnn("pm25", "loso", STGNN_LOSO_FOLDS)
-    display(show("pm25", "loso"))
-''')
-md("#### 5.2.3 LightGBM")
-code('''
-if RUN_PM25_LOSO:
-    run_lightgbm("pm25", "loso")
-    display(show("pm25", "loso"))
-''')
-md("#### 5.2.4 XGBoost")
-code('''
-if RUN_PM25_LOSO:
-    run_xgboost("pm25", "loso")
-    display(show("pm25", "loso"))
-''')
-md("#### 5.2.5 Comparison")
-code('''
-if RUN_PM25_LOSO:
-    display(show("pm25", "loso"))
-''')
+protocol_cells("5.2", "RUN_PM25_LOSO", "pm25", "loso", "TABULAR_LOSO_FOLDS", "STGNN_LOSO_FOLDS")
 
 # ============================================================================================ 6 NO2
 md("""
@@ -1030,78 +1144,25 @@ Train on the training block and score the validation and test blocks, with **all
 Each station's inputs still come only from other station groups. This measures how well a model carries over to a
 later period (November, rainy season), not to a new place; LOSO (6.2) measures that.
 """)
-code('''
-if RUN_NO2_FIXED:
-    prepare("no2", "temporal_split")
-''')
-md("#### 6.1.1 IDW")
-code('''
-if RUN_NO2_FIXED:
-    run_idw("no2", "temporal_split")
-    display(show("no2", "temporal_split"))
-''')
-md("""
-#### 6.1.2 ST-GNN
-Not run here: ST-GNN's fixed split needs held-out stations, which NO₂ does not have.
-""")
-md("#### 6.1.3 LightGBM")
-code('''
-if RUN_NO2_FIXED:
-    run_lightgbm("no2", "temporal_split")
-    display(show("no2", "temporal_split"))
-''')
-md("#### 6.1.4 XGBoost")
-code('''
-if RUN_NO2_FIXED:
-    run_xgboost("no2", "temporal_split")
-    display(show("no2", "temporal_split"))
-''')
-md("#### 6.1.5 Comparison")
-code('''
-if RUN_NO2_FIXED:
-    display(show("no2", "temporal_split"))
-''')
+protocol_cells("6.1", "RUN_NO2_FIXED", "no2", "temporal_split", None, None, stgnn_ok=False)
 
-md("### 6.2 LOSO")
-code('''
-if RUN_NO2_LOSO:
-    prepare("no2", "loso", TABULAR_LOSO_FOLDS)
-''')
-md("#### 6.2.1 IDW")
-code('''
-if RUN_NO2_LOSO:
-    run_idw("no2", "loso")
-    display(show("no2", "loso"))
-''')
-md("#### 6.2.2 ST-GNN")
-code('''
-if RUN_NO2_LOSO and RUN_STGNN:
-    run_stgnn("no2", "loso", STGNN_LOSO_FOLDS)
-    display(show("no2", "loso"))
-''')
-md("#### 6.2.3 LightGBM")
-code('''
-if RUN_NO2_LOSO:
-    run_lightgbm("no2", "loso")
-    display(show("no2", "loso"))
-''')
-md("#### 6.2.4 XGBoost")
-code('''
-if RUN_NO2_LOSO:
-    run_xgboost("no2", "loso")
-    display(show("no2", "loso"))
-''')
-md("#### 6.2.5 Comparison")
-code('''
-if RUN_NO2_LOSO:
-    display(show("no2", "loso"))
-''')
+md("""
+### 6.2 LOSO
+""")
+protocol_cells("6.2", "RUN_NO2_LOSO", "no2", "loso", "TABULAR_LOSO_FOLDS", "STGNN_LOSO_FOLDS")
 
 # ============================================================================================ 7 summary
 md("""
 ## 7. Summary
-Test RMSE of every model and its difference from the IDW it has to beat (negative = better than IDW): the better
-of the two IDW rows for LightGBM and XGBoost, the paired IDW for ST-GNN.
+The usual flow: **pick the model on validation, then report its test once.**
+
+1. **`summary`** — every model with validation and test RMSE, MAE, R². All models' `val` is scored on the same
+   held-out rows (in LOSO: the hidden group in the validation block). `selected` marks the model with the lowest
+   validation RMSE per target and protocol (IDW can win). Every model is compared with the same IDW: the one with
+   the lower **validation** RMSE (`idw_reference`). `test_vs_idw` = test RMSE minus that IDW's test RMSE;
+   negative = better than IDW.
+2. **`report`** — one row per target and protocol: the selected model and its test scores, next to the best IDW.
+   This is the result to report; the other test scores are for reference only.
 """)
 code('''
 results = pd.DataFrame(RESULTS)
@@ -1112,23 +1173,51 @@ for (target, protocol), table in EVAL.items():
     table[keep].to_parquet(RUN_ROOT / f"predictions_{target}_{protocol}.parquet", index=False)
 
 rows = []
-for (target, protocol), g in results[results.split == "test"].groupby(["target", "protocol"]):
-    best_idw = g[g.model.isin(["IDW p=2 k=8", "IDW p=1 all"])].rmse.min()
-    for r in g.itertuples():
-        if r.model.startswith("IDW"):
-            reference = np.nan                                  # baselines get no verdict
-        elif r.model.startswith("ST-GNN"):
-            reference = g[g.model == r.model.replace("ST-GNN", "IDW paired with ST-GNN")].rmse.iloc[0]
+for (target, protocol), g in results.groupby(["target", "protocol"]):
+    test = g[g.split == "test"].set_index("model")
+    val_idw = g[(g.split == "val") & g.model.isin(["IDW p=2 k=8", "IDW p=1 all"])].set_index("model")
+    idw_ref = val_idw.rmse.idxmin()                              # the IDW chosen on validation
+    best_idw = test.loc[idw_ref, "rmse"]
+    for model, m in g.groupby("model", sort=False):
+        if model.startswith("IDW paired"):
+            continue                                             # same as IDW p=2 k=8; used only as ST-GNN's reference
+        val = m[m.split == "val"]                                # held-out validation only
+        v = val.iloc[0] if len(val) else None
+        t = test.loc[model] if model in test.index else None
+        if model.startswith("IDW") or t is None:
+            reference = np.nan                                   # baselines get no verdict
         else:
-            reference = best_idw
-        rows.append(dict(target=target, protocol=protocol, model=r.model, n=r.n, test_rmse=round(r.rmse, 3),
-                         idw_reference_rmse=round(reference, 3) if pd.notna(reference) else np.nan,
-                         vs_idw=round(r.rmse - reference, 3) if pd.notna(reference) else np.nan,
-                         beats_idw=bool(r.rmse < reference) if pd.notna(reference) else None))
-summary = pd.DataFrame(rows).sort_values(["target", "protocol", "test_rmse"])
+            reference = best_idw                                 # same IDW for every model
+        rows.append(dict(
+            target=target, protocol=protocol, model=model,
+            val_n=None if v is None else int(v.n), val_rmse=np.nan if v is None else v.rmse,
+            val_mae=np.nan if v is None else v.mae, val_r2=np.nan if v is None else v.r2,
+            test_n=None if t is None else int(t.n), test_rmse=np.nan if t is None else t.rmse,
+            test_mae=np.nan if t is None else t.mae, test_r2=np.nan if t is None else t.r2,
+            idw_reference=None if pd.isna(reference) else idw_ref, idw_reference_test_rmse=reference,
+            test_vs_idw=t.rmse - reference if pd.notna(reference) else np.nan,
+            beats_idw=bool(t.rmse < reference) if pd.notna(reference) else None))
+summary = pd.DataFrame(rows).sort_values(["target", "protocol", "val_rmse"]).reset_index(drop=True)
+summary["selected"] = summary.index.isin(summary.groupby(["target", "protocol"]).val_rmse.idxmin().dropna())
 summary.to_csv(RUN_ROOT / "summary.csv", index=False)
-print("Saved", RUN_ROOT / "results.csv", "and", RUN_ROOT / "summary.csv")
-summary
+
+# The result to report: the model chosen on validation, with its test scores.
+report = []
+for (target, protocol), g in summary.groupby(["target", "protocol"]):
+    chosen = g[g.selected]
+    idw = g[g.model.isin(["IDW p=2 k=8", "IDW p=1 all"])].sort_values("val_rmse").iloc[0]
+    if chosen.empty:
+        continue
+    c = chosen.iloc[0]
+    report.append(dict(target=target, protocol=protocol, selected_model=c.model, val_rmse=c.val_rmse,
+                       test_rmse=c.test_rmse, test_mae=c.test_mae, test_r2=c.test_r2,
+                       best_idw_on_val=idw.model, idw_test_rmse=idw.test_rmse,
+                       test_vs_idw=c.test_rmse - idw.test_rmse))
+report = pd.DataFrame(report)
+report.to_csv(RUN_ROOT / "report.csv", index=False)
+print("Saved", RUN_ROOT / "results.csv", RUN_ROOT / "summary.csv", "and", RUN_ROOT / "report.csv")
+display(summary.round(3))
+report.round(3)
 ''')
 md("""
 ### Reading the results

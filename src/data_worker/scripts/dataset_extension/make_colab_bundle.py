@@ -16,7 +16,7 @@ def main(snapshot: Path, out: Path) -> None:
     version = json.loads((snapshot / "manifest.json").read_text(encoding="utf-8"))["version"]
     files = sorted(p for p in snapshot.rglob("*") if p.is_file())
     out.parent.mkdir(parents=True, exist_ok=True)
-    with zipfile.ZipFile(out, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=6) as z:
+    with zipfile.ZipFile(out, "w", compression=zipfile.ZIP_LZMA) as z:
         for p in files:
             z.write(p, f"{version}/{p.relative_to(snapshot).as_posix()}")
     digest = hashlib.sha256(out.read_bytes()).hexdigest()

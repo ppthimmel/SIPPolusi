@@ -13,7 +13,7 @@ import pandas as pd
 
 nb_path, snapshot, repo = Path(sys.argv[1]), Path(sys.argv[2]), Path(sys.argv[3])
 nb = json.loads(nb_path.read_text(encoding="utf-8"))
-ns = {"display": print, "SNAPSHOT": snapshot, "SEED": 42, "STGNN_BATCH_SIZE": 8}
+ns = {"display": print, "SNAPSHOT": snapshot, "SEED": 42, "STGNN_BATCH_SIZE": 8, "DEVICE": "cpu"}
 defs = []
 for c in nb["cells"]:
     src = "".join(c["source"])
@@ -77,7 +77,11 @@ for target, protocol, fold in (("pm25", "fixed_split", None), ("no2", "loso", 0)
                                      train.value_ugm3.to_numpy())
     hours = r.split_hours["val"][:4]
     rb = repo_batch(r, rprep, hours, "val")
-    nb_ = ns["make_batch"](n, nprep, hours, "val", "cpu")
+    ns["scale_inputs"](n, nprep, "cpu")
+    nb_ = ns["make_batch"](n, hours, "val", "cpu")
+    check(f"{target} {protocol} batch labels", rb["labels"].reset_index(drop=True)[["station_uuid", "node_index"]]
+          .equals(nb_["labels"][["station_uuid", "node_index"]]) and
+          torch.equal(rb["label_batch"], nb_["label_batch"]) and torch.allclose(rb["idw_values"], nb_["idw"]))
     check(f"{target} {protocol} scaled batch", torch.allclose(rb["temporal"], nb_["temporal"], atol=1e-5)
           and torch.allclose(rb["local"], nb_["local"], atol=1e-5) and abs(rprep.target_scale - nprep.target_scale) < 1e-9)
     torch.manual_seed(0)
