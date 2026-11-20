@@ -62,6 +62,11 @@ GitHub.
 
 - Secret Manager: `database-url`, `mlflow-backend-store-uri`. Kata sandi dibuat acak saat penyiapan dan tidak pernah
   ditulis ke repositori atau *chat*.
+- Secret Manager: `earthdata-token`, token Earthdata Login untuk VIIRS VNP46A2 (`EARTHDATA_TOKEN` pada Data Worker).
+  Token berlaku 60 hari. Perpanjang dengan menambah versi baru, tanpa *deploy* ulang (job memakai `:latest`):
+  `printf '%s' "$TOKEN" | gcloud secrets versions add earthdata-token --project=sippolusi --data-file=-`.
+  Bila token kedaluwarsa, sumber VIIRS (diperiksa sekali sehari) gagal, sehingga siklus itu tercatat `failed` dan
+  eksekusi job keluar dengan galat, walaupun langkah lain tetap berjalan dan estimasi tetap ditulis.
 - `sippolusi-registry`: menulis/membaca *bucket* MLflow (satu-satunya yang memegang akses ke artefak, seperti di Railway).
 - `sippolusi-app`: Cache API, gateway, frontend, Data Worker, `model-register`. Tanpa akses ke *bucket*.
 - `sippolusi-tools`: *job* seed dan pengemasan, serta pemicu Cloud Scheduler.
