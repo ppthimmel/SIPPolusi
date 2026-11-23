@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Deploy the SIPPolusi services to Cloud Run (project sippolusi, asia-southeast2). See scripts/gcp/README.md.
 # Usage: scripts/gcp/deploy.sh <registry|cache-api|gateway|frontend|data-worker|model-register|all>
-# Needs: gcloud signed in, images built with scripts/gcp/cloudbuild.yaml, secrets database-url and
-# mlflow-backend-store-uri in Secret Manager. No secret value is written here.
+# Needs: gcloud signed in, images built with scripts/gcp/cloudbuild.yaml, secrets database-url,
+# mlflow-backend-store-uri and earthdata-token in Secret Manager. No secret value is written here.
 set -euo pipefail
 
 GCLOUD="${GCLOUD:-gcloud}"
@@ -56,7 +56,7 @@ data_worker() {
     # One acquisition cycle per execution (image CMD: python main.py cycle); Cloud Scheduler runs it at minute 15.
     "$GCLOUD" run jobs deploy data-worker "${COMMON[@]}" --image="$IMAGES/data-worker:$TAG" \
         --service-account="$APP_SA" "${VPC[@]}" --cpu=2 --memory=4Gi --max-retries=0 --task-timeout=3000 \
-        --set-secrets=DATABASE_URL=database-url:latest \
+        --set-secrets=DATABASE_URL=database-url:latest,EARTHDATA_TOKEN=earthdata-token:latest \
         --set-env-vars="MLFLOW_TRACKING_URI=$(url model-registry),SPATIAL_PM25_MODEL=spatial-downscaling-pm25,SPATIAL_NO2_MODEL=spatial-downscaling-no2,SPATIAL_PM25_VERSION=production,SPATIAL_NO2_VERSION=production,SPATIAL_MODEL_CACHE=/tmp/model-cache,DOWNSCALE_WRITE_CACHE=1,DOWNSCALE_KEEP_WINDOWS=2,THREADS=2,OMP_NUM_THREADS=2,MKL_NUM_THREADS=2,ENVIRONMENT=DEV,SPKU_DB_SCHEMA=ground_truth,LOG_FORMAT=json"
 }
 
