@@ -10,7 +10,8 @@ describe("describeRouteError — every state of Tabel 3.12 / 3.16", () => {
     const v = http(422, "point_not_on_network", "Titik tujuan berjarak lebih dari 200 m dari ruas yang dapat dilalui.");
     expect(v.field).toBe("destination");
     expect(v.action).toBe("edit");
-    expect(v.message).toMatch(/Geser titik ke dekat jalan/);
+    expect(v.message).toBe("Geser titik tujuan ke dekat jalan yang bisa dilalui.");
+    expect(v.message).not.toMatch(/200 m/); // the server's wording is not shown
   });
 
   it("point_not_on_network for the origin outlines the origin", () => {
@@ -50,9 +51,25 @@ describe("describeRouteError — every state of Tabel 3.12 / 3.16", () => {
   });
 
   it("maps timeout, network failure and an unreadable response, each with a retry", () => {
-    expect(describeRouteError(new ApiError("timeout", "t")).message).toMatch(/12 detik/);
     for (const kind of ["timeout", "network", "invalid_response"] as const) {
       expect(describeRouteError(new ApiError(kind, "x")).action).toBe("retry");
+    }
+  });
+
+  it("gives every problem on the system side the same general message", () => {
+    const views = [
+      describeRouteError(new ApiError("timeout", "t")),
+      describeRouteError(new ApiError("network", "n")),
+      describeRouteError(new ApiError("invalid_response", "i")),
+      describeRouteError(new Error("boom")),
+      http(503, "cache_unavailable"),
+      http(503, "route_service_unavailable"),
+      http(502, "upstream_unavailable"),
+      http(500, undefined),
+    ];
+    for (const v of views) {
+      expect(v.title).toBe("Rute belum dapat dicari");
+      expect(v.message).toBe("Terjadi kendala saat mencari rute. Coba lagi beberapa saat lagi.");
     }
   });
 

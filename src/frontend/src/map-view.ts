@@ -10,6 +10,7 @@ import {
 import { EXPOSURE_STOPS, NO_DATA_COLOR, allLowConfidence, layerRatio } from "./exposure";
 import { circle } from "./nav-geometry";
 import type { BBox, ExposureSurface, HeatLayer, Point, RouteResponse, SurfaceFeature } from "./types";
+import { tr } from "./i18n";
 
 const ROUTE_SOURCE = "routes";
 const HEAT_SOURCE = "heat";
@@ -220,7 +221,7 @@ export class MapView {
     const el = document.createElement("div");
     el.className = `marker marker-${which}`;
     el.setAttribute("role", "img");
-    el.setAttribute("aria-label", which === "origin" ? "Titik asal" : "Titik tujuan");
+    el.setAttribute("aria-label", which === "origin" ? tr("Titik asal", "Starting point") : tr("Titik tujuan", "Destination"));
     const marker = new maplibregl.Marker({ element: el, draggable: this.pointsDraggable, anchor: which === "origin" ? "center" : "bottom" })
       .setLngLat([p.lon, p.lat])
       .addTo(this.map);
@@ -261,6 +262,14 @@ export class MapView {
       maxZoom: 16,
       duration: 600,
     });
+  }
+
+  /** Emphasises the route chosen in the list; the other one stays visible but faded. */
+  async selectRoute(role: "recommended" | "comparison"): Promise<void> {
+    await this.ready;
+    this.map.setPaintProperty("route-recommended", "line-opacity", role === "recommended" ? 1 : 0.4);
+    this.map.setPaintProperty("route-comparison", "line-opacity", role === "comparison" ? 1 : 0.4);
+    this.map.setPaintProperty("route-comparison", "line-width", role === "comparison" ? 6 : 4);
   }
 
   async clearRoutes(): Promise<void> {

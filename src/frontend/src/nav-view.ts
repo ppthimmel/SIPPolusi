@@ -1,17 +1,18 @@
 import { clear, h, icon, type IconName } from "./dom";
 import { fmtDistance, fmtMinutes, fmtNumber } from "./format";
+import { tr } from "./i18n";
 import type { Maneuver } from "./nav-geometry";
 import type { NavSnapshot } from "./navigation";
 
-const TURN: Record<Maneuver["kind"], { text: string; icon: IconName }> = {
-  slight_left: { text: "Sedikit ke kiri", icon: "slight_left" },
-  slight_right: { text: "Sedikit ke kanan", icon: "slight_right" },
-  left: { text: "Belok kiri", icon: "turn_left" },
-  right: { text: "Belok kanan", icon: "turn_right" },
-  sharp_left: { text: "Belok tajam ke kiri", icon: "turn_left" },
-  sharp_right: { text: "Belok tajam ke kanan", icon: "turn_right" },
-  uturn: { text: "Putar balik", icon: "uturn" },
-  arrive: { text: "Tiba di tujuan", icon: "flag" },
+const TURN: Record<Maneuver["kind"], { text: () => string; icon: IconName }> = {
+  slight_left: { text: () => tr("Sedikit ke kiri", "Bear left"), icon: "slight_left" },
+  slight_right: { text: () => tr("Sedikit ke kanan", "Bear right"), icon: "slight_right" },
+  left: { text: () => tr("Belok kiri", "Turn left"), icon: "turn_left" },
+  right: { text: () => tr("Belok kanan", "Turn right"), icon: "turn_right" },
+  sharp_left: { text: () => tr("Belok tajam ke kiri", "Sharp left"), icon: "turn_left" },
+  sharp_right: { text: () => tr("Belok tajam ke kanan", "Sharp right"), icon: "turn_right" },
+  uturn: { text: () => tr("Putar balik", "Make a U-turn"), icon: "uturn" },
+  arrive: { text: () => tr("Tiba di tujuan", "Arrive at destination"), icon: "flag" },
 };
 
 /** Coarser the farther away, as spoken directions are: 15 m, 120 m, 1,2 km. */
@@ -22,21 +23,25 @@ export function fmtAhead(meters: number): string {
 
 /** The instruction for the next maneuver, e.g. { action: "Belok kiri", when: "dalam 120 m" }. */
 export function instruction(next: NavSnapshot["next"]): { action: string; when: string; icon: IconName } {
-  if (!next) return { action: "Ikuti rute", when: "", icon: "straight" };
+  if (!next) return { action: tr("Ikuti rute", "Follow the route"), when: "", icon: "straight" };
   const { maneuver, distanceM } = next;
   if (maneuver.kind === "arrive") {
     return distanceM <= 50
-      ? { action: "Tujuan di depan", when: `${fmtAhead(distanceM)} lagi`, icon: "flag" }
-      : { action: "Ikuti jalan ini sampai tujuan", when: fmtAhead(distanceM), icon: "straight" };
+      ? { action: tr("Tujuan di depan", "Destination ahead"), when: tr(`${fmtAhead(distanceM)} lagi`, `in ${fmtAhead(distanceM)}`), icon: "flag" }
+      : { action: tr("Ikuti jalan ini sampai tujuan", "Continue on this road to the destination"), when: fmtAhead(distanceM), icon: "straight" };
   }
   const t = TURN[maneuver.kind];
-  return { action: t.text, when: distanceM < 15 ? "sekarang" : `dalam ${fmtAhead(distanceM)}`, icon: t.icon };
+  return {
+    action: t.text(),
+    when: distanceM < 15 ? tr("sekarang", "now") : tr(`dalam ${fmtAhead(distanceM)}`, `in ${fmtAhead(distanceM)}`),
+    icon: t.icon,
+  };
 }
 
-/** "14.32" for the arrival time, local clock. */
+/** "14.32" (Indonesian) or "14:32" (English) for the arrival time, local clock. */
 export function fmtArrival(remainingMin: number, now = new Date()): string {
   const at = new Date(now.getTime() + remainingMin * 60_000);
-  return `${String(at.getHours()).padStart(2, "0")}.${String(at.getMinutes()).padStart(2, "0")}`;
+  return `${String(at.getHours()).padStart(2, "0")}${tr(".", ":")}${String(at.getMinutes()).padStart(2, "0")}`;
 }
 
 export interface NavMessage {
@@ -66,7 +71,7 @@ export class NavView {
   private readonly live = h("p", { class: "visually-hidden", "aria-live": "polite" });
   private readonly target = h("div", { class: "trip-line" });
   /** Receives focus when navigation starts. */
-  readonly title = h("h2", { class: "title result-title", tabindex: "-1" }, "Navigasi");
+  readonly title = h("h2", { class: "title result-title", tabindex: "-1" }, tr("Navigasi", "Navigation"));
   private readonly recenter: HTMLButtonElement;
   private readonly finish: HTMLButtonElement;
   private announced = "";
@@ -75,11 +80,11 @@ export class NavView {
   private shownMessage = "";
 
   constructor(container: HTMLElement, handlers: { onEnd: () => void; onRecenter: () => void }) {
-    this.recenter = h("button", { type: "button", class: "secondary", onclick: handlers.onRecenter }, icon("locate", 18), " Ikuti posisi");
-    this.finish = h("button", { type: "button", class: "secondary dark nav-end", onclick: handlers.onEnd }, "Akhiri navigasi");
+    this.recenter = h("button", { type: "button", class: "secondary", onclick: handlers.onRecenter }, icon("locate", 18), ` ${tr("Ikuti posisi", "Follow position")}`);
+    this.finish = h("button", { type: "button", class: "secondary dark nav-end", onclick: handlers.onEnd }, tr("Akhiri navigasi", "End navigation"));
     clear(container);
     container.append(
-      h("div", { class: "result-head" }, h("div", { class: "trip-summary" }, h("div", { class: "trip-sub" }, "Navigasi ke"), this.target)),
+      h("div", { class: "result-head" }, h("div", { class: "trip-summary" }, h("div", { class: "trip-sub" }, tr("Navigasi ke", "Navigating to")), this.target)),
       this.title,
       // Above the instruction: on a phone the sheet shows only its top part.
       this.status,
@@ -87,16 +92,19 @@ export class NavView {
       h(
         "dl",
         { class: "metrics nav-metrics" },
-        h("div", { class: "metric" }, h("dt", {}, "Sisa jarak"), this.remaining),
-        h("div", { class: "metric" }, h("dt", {}, "Sisa waktu"), this.time),
-        h("div", { class: "metric" }, h("dt", {}, "Tiba sekitar"), this.arrival),
+        h("div", { class: "metric" }, h("dt", {}, tr("Sisa jarak", "Distance left")), this.remaining),
+        h("div", { class: "metric" }, h("dt", {}, tr("Sisa waktu", "Time left")), this.time),
+        h("div", { class: "metric" }, h("dt", {}, tr("Tiba sekitar", "Arrival around")), this.arrival),
       ),
       this.live,
       h("div", { class: "nav-actions" }, this.recenter, this.finish),
       h(
         "p",
         { class: "place-notice" },
-        "Posisi Anda diproses di perangkat ini. Server hanya menerimanya saat rute dihitung ulang dan tidak menyimpannya.",
+        tr(
+          "Posisi Anda diproses di perangkat ini. Server hanya menerimanya saat rute dihitung ulang dan tidak menyimpannya.",
+          "Your position is processed on this device. The server only receives it when the route is recalculated and does not store it.",
+        ),
       ),
     );
   }
@@ -105,13 +113,13 @@ export class NavView {
     const { snapshot: s } = state;
     this.target.textContent = state.destination;
     const arrived = s.status === "arrived";
-    const step = arrived ? { action: "Anda telah tiba", when: "", icon: "flag" as IconName } : instruction(s.next);
+    const step = arrived ? { action: tr("Anda telah tiba", "You have arrived"), when: "", icon: "flag" as IconName } : instruction(s.next);
     clear(this.turnIcon);
     this.turnIcon.append(icon(step.icon, 34));
     this.action.textContent = step.action;
     this.when.textContent = step.when;
     this.remaining.textContent = arrived ? fmtDistance(0) : fmtAhead(s.remainingM);
-    this.time.textContent = s.remainingMin < 1 ? "< 1 menit" : fmtMinutes(s.remainingMin);
+    this.time.textContent = s.remainingMin < 1 ? tr("< 1 menit", "< 1 min") : fmtMinutes(s.remainingMin);
     this.arrival.textContent = arrived ? "—" : fmtArrival(s.remainingMin);
 
     const message = state.message ?? statusMessage(s);
@@ -131,10 +139,10 @@ export class NavView {
       }
     }
     this.recenter.hidden = state.following || arrived;
-    this.finish.textContent = arrived ? "Selesai" : "Akhiri navigasi";
+    this.finish.textContent = arrived ? tr("Selesai", "Done") : tr("Akhiri navigasi", "End navigation");
 
     // Announce the turn, not every metre of the countdown.
-    const spoken = arrived ? "Anda telah tiba di tujuan." : `${step.action}${message ? `. ${message.title}` : ""}`;
+    const spoken = arrived ? tr("Anda telah tiba di tujuan.", "You have arrived at your destination.") : `${step.action}${message ? `. ${message.title}` : ""}`;
     if (spoken !== this.announced) {
       this.announced = spoken;
       this.live.textContent = spoken;
@@ -145,18 +153,31 @@ export class NavView {
 function statusMessage(s: NavSnapshot): NavMessage | null {
   switch (s.status) {
     case "waiting":
-      return { kind: "info", title: "Menunggu posisi GPS…", text: "Posisi Anda akan tampil di peta begitu sinyal didapat." };
-    case "weak_signal":
+      return {
+        kind: "info",
+        title: tr("Menunggu posisi GPS…", "Waiting for GPS position…"),
+        text: tr("Posisi Anda akan tampil di peta begitu sinyal didapat.", "Your position will appear on the map as soon as there is a signal."),
+      };
+    case "weak_signal": {
+      // In steps of 10 m: the text (and so the notice) does not change with every fix.
+      const acc = fmtNumber(Math.ceil((s.fix?.accuracyM ?? 0) / 10) * 10, 0);
       return {
         kind: "warn",
-        title: "Sinyal GPS lemah",
-        // In steps of 10 m: the text (and so the notice) does not change with every fix.
-        text: `Akurasi sekitar ±${fmtNumber(Math.ceil((s.fix?.accuracyM ?? 0) / 10) * 10, 0)} m, jadi posisi di peta bisa meleset. Deteksi keluar rute ditunda sampai sinyal membaik.`,
+        title: tr("Sinyal GPS lemah", "Weak GPS signal"),
+        text: tr(
+          `Akurasi sekitar ±${acc} m, jadi posisi di peta bisa meleset. Deteksi keluar rute ditunda sampai sinyal membaik.`,
+          `Accuracy is about ±${acc} m, so the position on the map may be off. Off-route detection is paused until the signal improves.`,
+        ),
       };
+    }
     case "off_route":
-      return { kind: "warn", title: "Anda keluar dari rute", text: "Mencari rute baru dari posisi Anda…" };
+      return { kind: "warn", title: tr("Anda keluar dari rute", "You left the route"), text: tr("Mencari rute baru dari posisi Anda…", "Finding a new route from your position…") };
     case "arrived":
-      return { kind: "done", title: "Anda telah tiba di tujuan", text: "Navigasi selesai dan pelacakan posisi dihentikan." };
+      return {
+        kind: "done",
+        title: tr("Anda telah tiba di tujuan", "You have arrived at your destination"),
+        text: tr("Navigasi selesai dan pelacakan posisi dihentikan.", "Navigation is finished and position tracking has stopped."),
+      };
     case "tracking":
       return null;
   }

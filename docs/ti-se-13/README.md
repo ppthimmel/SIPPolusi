@@ -115,6 +115,15 @@ Hanya pada `npm run dev`: tambahkan `?simulasi=<skenario>` ke alamat, dan `&kece
 Contoh: `http://localhost:5173/?simulasi=keluar&kecepatan=25`. Untuk melihat rute ulang yang gagal, jalankan
 `curl "localhost:8000/__mock/scenario?name=timeout"` setelah navigasi dimulai.
 
+### Lokasi tetap di Jakarta
+
+Juga hanya pada `npm run dev`: `?lokasi=<tempat>` membuat peramban melaporkan satu titik tetap sebagai posisi
+perangkat, sehingga "Lokasi saya", "Gunakan lokasi saya sebagai asal", dan navigasi bisa diuji dari luar Jakarta.
+Tempat yang dikenal: `monas`, `bundaran-hi`, `sudirman`, `blok-m`, `kota`, atau koordinat `lat,lon`
+(mis. `?lokasi=-6.2,106.8`). Posisinya diam; untuk bergerak sepanjang rute saat navigasi, gabungkan dengan
+`?simulasi=` (mis. `?lokasi=monas&simulasi=normal`), yang mengambil alih posisi selama navigasi. Modulnya
+(`src/dev-location.ts`) dimuat dinamis di bawah `import.meta.env.DEV`, jadi tidak ikut build produksi.
+
 ## Batasan
 
 - **Belum diuji di lapangan.** Bukti di atas berasal dari simulasi. Uji jalan kaki atau sepeda dengan ponsel di

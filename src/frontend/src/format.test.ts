@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { confidenceCategory, estimationSourceLabel, fmtDistance, fmtMinutes, fmtNumber, fmtPercent, fmtWib, isOlderThanStaleLimit } from "./format";
+import { confidenceCategory, estimationSourceLabel, fmtDateTimeWib, fmtDistance, fmtGraphVersionDate, fmtMinutes, fmtNumber, fmtPercent, fmtWib, isOlderThanStaleLimit } from "./format";
 
 describe("confidenceCategory (UT-FE-09a)", () => {
   it.each([
@@ -44,6 +44,24 @@ describe("fmtWib", () => {
   it("returns null for missing or invalid input", () => {
     expect(fmtWib(null)).toBeNull();
     expect(fmtWib("bukan tanggal")).toBeNull();
+  });
+});
+
+describe("fmtDateTimeWib", () => {
+  it("gives day, month, year and Jakarta time with its UTC offset", () => {
+    expect(fmtDateTimeWib("2026-11-23T15:00:00Z")).toBe("23 November 2026, 22.00 WIB (GMT+7)");
+    // Crosses midnight in Jakarta: the date is Jakarta's, not UTC's.
+    expect(fmtDateTimeWib("2026-11-23T18:30:00Z")).toBe("24 November 2026, 01.30 WIB (GMT+7)");
+    expect(fmtDateTimeWib(null)).toBeNull();
+  });
+});
+
+describe("fmtGraphVersionDate", () => {
+  it("reads the date in a road-graph version", () => {
+    expect(fmtGraphVersionDate("jakarta-20261005")).toBe("5 Oktober 2026");
+    expect(fmtGraphVersionDate("jakarta")).toBeNull();
+    expect(fmtGraphVersionDate("jakarta-20261341")).toBeNull();
+    expect(fmtGraphVersionDate(null)).toBeNull();
   });
 });
 

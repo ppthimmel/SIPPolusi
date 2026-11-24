@@ -4,18 +4,17 @@ import "./style.css";
 import { compareRoutes } from "./compare";
 import { ApiError, requestExposureSurface, reversePlace, searchPlaces, submitRouteRequest, surfaceZoom } from "./api";
 import {
-  DISCLAIMER,
   GEOCODE_DEBOUNCE_MS,
   GEOCODE_MIN_CHARS,
-  GEOCODE_NOTE,
-  ROUTE_TIMEOUT_MS,
   STUDY_AREA,
   SURFACE_DEBOUNCE_MS,
 } from "./config";
 import { clear, h, icon } from "./dom";
 import { describeRouteError, type ErrorField, type ErrorView } from "./errors";
+import { getLang, onLangChange, setLang, tr, translateDom, type Lang } from "./i18n";
 import { HEAT_LAYER_LABELS, allLowConfidence, exposureClass, layerRatio } from "./exposure";
-import { confidenceBadge, renderResult } from "./results-view";
+import { confidenceBadge, renderResult, setRouteVia } from "./results-view";
+import { routeMidpoint, streetFromPlace } from "./route-names";
 import { fmtCoord, fmtNumber, fmtWib } from "./format";
 import { Legend } from "./legend";
 import { MapView, type SegmentClick } from "./map-view";
@@ -62,18 +61,20 @@ const pickHint = $("pick-hint");
 const slider = $<HTMLInputElement>("priority");
 const heatToggle = $<HTMLButtonElement>("heat-toggle");
 
-const fields: Record<Which, { input: HTMLInputElement; error: HTMLElement; wrap: HTMLElement; pick: HTMLButtonElement }> = {
+const fields: Record<Which, { input: HTMLInputElement; error: HTMLElement; wrap: HTMLElement; pick: HTMLButtonElement; clear: HTMLButtonElement }> = {
   origin: {
     input: $("input-origin"),
     error: $("error-origin"),
     wrap: $("field-origin"),
     pick: $("pick-origin"),
+    clear: $("clear-origin"),
   },
   destination: {
     input: $("input-destination"),
     error: $("error-destination"),
     wrap: $("field-destination"),
     pick: $("pick-destination"),
+    clear: $("clear-destination"),
   },
 };
 
@@ -89,7 +90,17 @@ const state = {
   serverError: { origin: null, destination: null } as Record<Which, string | null>,
   pick: "origin" as Which | null,
   /** The route search on screen, kept so navigation can return to it. */
-  result: null as { response: RouteResponse; request: RouteRequest; places: Record<Which, string | null> } | null,
+  result: null as {
+    response: RouteResponse;
+    request: RouteRequest;
+    places: Record<Which, string | null>;
+    /** Streets for the routes' "via" lines, filled in as they are found. */
+    names: Partial<Record<RouteResult["role"], string>>;
+    /** The route chosen in the list. */
+    selected: RouteResult["role"];
+  } | null,
+  /** Why the result panel shows a notice (e.g. navigation could not start); rebuilt on a language switch. */
+  resultNotice: null as Notice,
   busy: false,
   controller: null as AbortController | null,
   waitUntil: 0,
@@ -106,14 +117,23 @@ if (import.meta.env.DEV) (window as unknown as { __map: unknown }).__map = mapVi
 const legend = new Legend($("legend"));
 
 // -------------------------------------------------------------------- static
-$("disclaimer").textContent = DISCLAIMER;
-$("place-notice").textContent = GEOCODE_NOTE;
-$("mode-walk-label").append(icon("walk"), " Jalan kaki");
-$("mode-bike-label").append(icon("bike"), " Sepeda");
+/** Texts that are not part of a view: index.html markup, fine print and mode labels. */
+function applyStaticText(): void {
+  translateDom();
+  $("mode-walk-label").replaceChildren(icon("walk"), ` ${tr("Jalan kaki", "Walk")}`);
+  $("mode-bike-label").replaceChildren(icon("bike"), ` ${tr("Sepeda", "Bike")}`);
+  for (const b of Array.from(document.querySelectorAll<HTMLButtonElement>(".lang-btn"))) {
+    b.setAttribute("aria-pressed", String(b.dataset.lang === getLang()));
+  }
+}
+applyStaticText();
 $("swap-btn").append(icon("swap", 20));
 $("locate-btn").append(icon("locate", 22));
 heatToggle.append(icon("layers", 22));
-for (const w of ["origin", "destination"] as const) fields[w].pick.append(icon("pin", 20));
+for (const w of ["origin", "destination"] as const) {
+  fields[w].pick.append(icon("pin", 20));
+  fields[w].clear.append(icon("close", 18));
+}
 
 const mode = (): Mode => (tripForm.elements.namedItem("mode") as RadioNodeList).value === "bike" ? "bike" : "walk";
 
@@ -157,7 +177,12 @@ function currentErrors(): Record<Which, string | null> {
   const trip = validateTrip(state.points.origin, state.points.destination, mode());
   const out: Record<Which, string | null> = { origin: trip.origin, destination: trip.destination };
   for (const w of ["origin", "destination"] as const) {
-    if (state.parseError[w]) out[w] = 'Pilih salah satu saran, pilih titik di peta, atau ketik koordinat "lat, lon".';
+    if (state.parseError[w]) {
+      out[w] = tr(
+        'Pilih salah satu saran atau pilih titik di peta.',
+        'Choose one of the suggestions or pick a point on the map.',
+      );
+    }
   }
   return out;
 }
@@ -173,24 +198,36 @@ function refreshForm(): void {
     f.wrap.classList.toggle("is-invalid", !!shown);
     f.input.setAttribute("aria-invalid", String(!!shown));
     f.pick.setAttribute("aria-pressed", String(state.pick === w));
+    f.clear.hidden = f.input.value === "";
   }
 
   const waiting = state.waitUntil > Date.now();
   submitBtn.disabled = !valid || state.busy || waiting;
-  submitBtn.textContent = state.busy ? "Mencari rute…" : "Cari rute";
+  // While searching the button is disabled and shows only a spinner; its name stays for screen readers.
+  if (state.busy) {
+    submitBtn.replaceChildren(
+      h("span", { class: "spinner", "aria-hidden": "true" }),
+      h("span", { class: "visually-hidden" }, tr("Mencari rute…", "Finding routes…")),
+    );
+  } else {
+    submitBtn.textContent = tr("Cari rute", "Find routes");
+  }
   submitBtn.classList.toggle("is-busy", state.busy);
   submitBtn.setAttribute("aria-busy", String(state.busy));
   cancelBtn.hidden = !state.busy;
-  submitHelp.textContent = state.busy
-    ? ""
-    : waiting
-      ? `Tunggu ${Math.ceil((state.waitUntil - Date.now()) / 1000)} detik sebelum mencari lagi.`
-      : !valid
-        ? "Lengkapi titik asal dan tujuan yang valid untuk mulai mencari."
-        : "";
+  // Only the rate-limit wait needs saying; an incomplete form shows on its fields.
+  submitHelp.textContent =
+    !state.busy && waiting
+      ? tr(
+          `Tunggu ${Math.ceil((state.waitUntil - Date.now()) / 1000)} detik sebelum mencari lagi.`,
+          `Wait ${Math.ceil((state.waitUntil - Date.now()) / 1000)} seconds before searching again.`,
+        )
+      : "";
 
   pickHint.textContent = state.pick
-    ? `Klik peta untuk memilih titik ${state.pick === "origin" ? "asal" : "tujuan"}.`
+    ? state.pick === "origin"
+      ? tr("Klik peta untuk memilih titik asal.", "Click the map to pick the starting point.")
+      : tr("Klik peta untuk memilih titik tujuan.", "Click the map to pick the destination.")
     : "";
   mapView.setPickCursor(state.pick !== null);
 }
@@ -234,10 +271,31 @@ for (const w of ["origin", "destination"] as const) {
 for (const w of ["origin", "destination"] as const) {
   const f = fields[w];
   f.input.addEventListener("input", () => onTyped(w));
-  f.input.addEventListener("blur", () => {
+  f.input.addEventListener("blur", (e) => {
     searches[w].stop();
-    state.touched[w] = true;
+    // Focus moving to the map (a click there sets this point) or to this field's own buttons
+    // (clear, pick on map) means the user is still choosing: judging the field now would flash
+    // an error for a moment before the point arrives. Any other move counts as leaving it.
+    const to = e.relatedTarget as Node | null;
+    const stillChoosing = !!to && (f.wrap.contains(to) || $("map").contains(to));
+    if (!stillChoosing) state.touched[w] = true;
     refreshForm();
+  });
+  // Empties the field and its point, and leaves the cursor there for a new place.
+  const clearField = () => {
+    setPoint(w, null);
+    state.touched[w] = false;
+    refreshForm();
+    f.input.focus();
+  };
+  f.clear.addEventListener("click", clearField);
+  // Escape clears the field, but only when no suggestion list is open: then Escape closes the
+  // list instead (the combobox handles it first and marks the event, WAI-ARIA combobox pattern).
+  f.input.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && !e.defaultPrevented && f.input.value !== "") {
+      e.preventDefault();
+      clearField();
+    }
   });
   f.pick.addEventListener("click", () => {
     state.pick = state.pick === w ? null : w;
@@ -277,7 +335,10 @@ function updatePriority(): void {
   // The slider runs from "Lebih cepat" (left) to "Lebih bersih" (right).
   const { alpha, beta } = preferenceFromSlider(Number(slider.value));
   $("priority-values").textContent = `α ${fmtNumber(alpha, 2)} · β ${fmtNumber(beta, 2)}`;
-  $("priority-text").textContent = `Bobot waktu tempuh ${fmtNumber(alpha, 2)}, bobot paparan ${fmtNumber(beta, 2)}.`;
+  $("priority-text").textContent = tr(
+    `Bobot waktu tempuh ${fmtNumber(alpha, 2)}, bobot paparan ${fmtNumber(beta, 2)}.`,
+    `Travel-time weight ${fmtNumber(alpha, 2)}, exposure weight ${fmtNumber(beta, 2)}.`,
+  );
   slider.style.setProperty("--fill", `${Number(slider.value) * 100}%`);
 }
 slider.addEventListener("input", updatePriority);
@@ -310,12 +371,12 @@ function segmentCard(f: NonNullable<SegmentClick["feature"]>, at: Point): HTMLEl
   const isCell = f.geometry.type === "Polygon" || f.geometry.type === "MultiPolygon";
   const shown =
     layer === "combined" ? f.exposureIndex : layer === "pm25" ? f.pm25 : f.no2;
-  const unit = layer === "combined" ? "indeks paparan" : "µg/m³";
-  const conc = (v: number | null) => (v == null ? "tidak tersedia" : `${fmtNumber(v, 0)} µg/m³`);
+  const unit = layer === "combined" ? tr("indeks paparan", "exposure index") : "µg/m³";
+  const conc = (v: number | null) => (v == null ? tr("tidak tersedia", "unavailable") : `${fmtNumber(v, 0)} µg/m³`);
   return h(
     "div",
     { class: "segment-card" },
-    h("div", { class: "segment-name" }, f.name ?? (isCell ? "Rata-rata area sekitar" : "Ruas jalan")),
+    h("div", { class: "segment-name" }, f.name ?? (isCell ? tr("Rata-rata area sekitar", "Average of the surrounding area") : tr("Ruas jalan", "Road segment"))),
     h(
       "div",
       { class: "segment-value" },
@@ -324,13 +385,13 @@ function segmentCard(f: NonNullable<SegmentClick["feature"]>, at: Point): HTMLEl
       layer !== "combined" && h("span", { class: "segment-layer" }, ` (${HEAT_LAYER_LABELS[layer]})`),
     ),
     h("div", { class: "segment-conc mono" }, `PM2.5 ${conc(f.pm25)} · NO2 ${conc(f.no2)}`),
-    h("div", { class: "segment-class" }, ratio == null ? "Tanpa estimasi" : exposureClass(ratio)),
+    h("div", { class: "segment-class" }, ratio == null ? tr("Tanpa estimasi", "No estimate") : exposureClass(ratio)),
     confidenceBadge(f.confidence),
     h(
       "div",
       { class: "segment-actions" },
-      h("button", { type: "button", class: "secondary dark", onclick: () => useSegment("origin", at) }, "Cari rute dari sini"),
-      h("button", { type: "button", class: "secondary", onclick: () => useSegment("destination", at) }, "Jadikan tujuan"),
+      h("button", { type: "button", class: "secondary dark", onclick: () => useSegment("origin", at) }, tr("Cari rute dari sini", "Find routes from here")),
+      h("button", { type: "button", class: "secondary", onclick: () => useSegment("destination", at) }, tr("Jadikan tujuan", "Set as destination")),
     ),
   );
 }
@@ -355,9 +416,13 @@ function panelInset(): { bottom: number } {
   return { bottom: window.matchMedia("(max-width: 899px)").matches ? panel.offsetHeight + 16 : 0 };
 }
 
+/** A notice shown above the routes, built when shown so it follows the interface language. */
+type Notice = (() => { title: string; text: string }) | null;
+
 /** Renders state.result into the result panel and returns its heading. */
-function showResultView(notice: { title: string; text: string } | null = null): HTMLElement | null {
+function showResultView(notice: Notice = null): HTMLElement | null {
   const r = state.result;
+  state.resultNotice = notice;
   if (!r) return null;
   formView.hidden = true;
   navViewEl.hidden = true;
@@ -366,36 +431,67 @@ function showResultView(notice: { title: string; text: string } | null = null): 
     ...r,
     onBack: backToForm,
     onNavigate: (role) => void startNavigation(role),
-    notice,
+    onSelect: (role) => {
+      r.selected = role;
+      void mapView.selectRoute(role);
+    },
+    notice: notice?.() ?? null,
   });
 }
 
+/** Looks up a street near the middle of each route for its "via" line (one reverse-geocoding
+ *  request per route). Failures leave the route's own title in place. */
+function nameRoutes(result: NonNullable<typeof state.result>): void {
+  const { response } = result;
+  const routes = compareRoutes(response).kind === "identical" || !response.comparison ? [response.recommended] : [response.recommended, response.comparison];
+  for (const route of routes) {
+    const mid = routeMidpoint(route.coordinates);
+    if (!mid) continue;
+    reversePlace(mid)
+      .then((place) => {
+        const street = streetFromPlace(place);
+        if (!street || state.result !== result) return;
+        result.names[route.role] = street;
+        if (!resultView.hidden) setRouteVia(resultView, route.role, street);
+      })
+      .catch(() => {});
+  }
+}
+
+/** Draws the form status; kept so a language switch can draw it again. */
+let statusRender: (() => void) | null = null;
+
+function setStatus(render: (() => void) | null): void {
+  statusRender = render;
+  clear(formStatus);
+  render?.();
+}
+
 function clearStatus(): void {
-  clear(formStatus);
+  setStatus(null);
 }
 
+/** The spinner is in the button; the live region only tells screen readers the search started. */
 function showStatusLoading(): void {
-  clear(formStatus);
-  formStatus.append(h("div", { class: "loading" }, h("span", { class: "spinner", "aria-hidden": "true" }), `Menghitung rute… maksimal ${ROUTE_TIMEOUT_MS / 1000} detik.`));
+  setStatus(() => formStatus.append(h("p", { class: "visually-hidden" }, tr("Mencari rute…", "Finding routes…"))));
 }
 
-function showError(view: ErrorView, retry: () => void): void {
-  clear(formStatus);
-  const actions = h("div", { class: "error-actions" });
-  if (view.action === "retry") actions.append(h("button", { type: "button", class: "secondary", onclick: retry }, "Coba lagi"));
+function statusNote(text: () => string): void {
+  setStatus(() => formStatus.append(h("p", { class: "status-note" }, text())));
+}
+
+function showError(err: unknown): void {
+  setStatus(() => drawError(describeRouteError(err)));
+}
+
+/** The error's title and message only: the main button below already searches again. */
+function drawError(view: ErrorView): void {
   formStatus.append(
     h(
       "div",
       { class: "notice notice-error", role: "alert" },
       icon("warn", 18),
-      h(
-        "div",
-        {},
-        h("strong", {}, view.title),
-        h("p", {}, view.message),
-        view.requestId && h("p", { class: "req-id" }, `ID permintaan: ${view.requestId}`),
-        actions,
-      ),
+      h("div", {}, h("strong", {}, view.title), h("p", {}, view.message)),
     ),
   );
 }
@@ -442,13 +538,15 @@ async function submit(): Promise<void> {
     if (state.controller !== controller) return;
     state.busy = false;
     clearStatus();
-    state.result = { response, request, places: { ...state.labels } };
+    state.result = { response, request, places: { ...state.labels }, names: {}, selected: "recommended" };
     const title = showResultView()!;
     legend.setRoutes({
       fallback: response.recommended.routeSource === "baseline",
       hasComparison: compareRoutes(response).kind !== "none" && compareRoutes(response).kind !== "identical",
     });
     void mapView.showRoutes(response, panelInset());
+    void mapView.selectRoute("recommended");
+    nameRoutes(state.result);
     title.focus({ preventScroll: true });
     refreshForm();
     // Exposure surface is requested once the route is displayed (Tabel 3.4).
@@ -459,13 +557,12 @@ async function submit(): Promise<void> {
     if (state.controller !== controller) return;
     state.busy = false;
     if (err instanceof ApiError && err.kind === "aborted") {
-      clear(formStatus);
-      formStatus.append(h("p", { class: "status-note" }, "Pencarian dibatalkan."));
+      statusNote(() => tr("Pencarian dibatalkan.", "Search cancelled."));
     } else {
       const view = describeRouteError(err);
       // An error about one point is shown on that field only (Gambar 3.2c).
       if (view.field) clearStatus();
-      else showError(view, () => void submit());
+      else showError(err);
       applyServerField(view.field, view.message);
       if (view.waitSec) startWait(view.waitSec);
     }
@@ -543,7 +640,7 @@ function setHeat(on: boolean, immediate = true): void {
   const hs = state.heat;
   hs.on = on;
   heatToggle.setAttribute("aria-pressed", String(on));
-  heatToggle.setAttribute("aria-label", on ? "Sembunyikan heatmap paparan" : "Tampilkan heatmap paparan");
+  heatToggle.setAttribute("aria-label", on ? tr("Sembunyikan heatmap paparan", "Hide exposure heatmap") : tr("Tampilkan heatmap paparan", "Show exposure heatmap"));
   void mapView.showHeat(on);
   if (on) heatSurface.schedule(immediate);
   else heatSurface.stop();
@@ -591,27 +688,32 @@ const insideStudyArea = (p: Point) =>
 /** "Lokasi saya" on the map and "Gunakan lokasi saya sebagai asal" on the form. */
 function useMyLocation(): void {
   clearStatus();
-  const say = (text: string) => {
+  const say = (text: () => string) => {
     showFormView();
-    clear(formStatus);
-    formStatus.append(h("p", { class: "status-note" }, text));
+    statusNote(text);
   };
+  const pickOnMap = () => tr("Pilih titik asal di peta.", "Pick the starting point on the map.");
   const problem = positionProblem();
-  if (problem) return say(`${describePositionProblem(problem)} Pilih titik asal di peta.`);
+  if (problem) return say(() => `${describePositionProblem(problem)} ${pickOnMap()}`);
   // Navigation may have started while this request was pending; it must not touch the form then.
   navigator.geolocation.getCurrentPosition(
     (pos) => {
       if (nav.session) return;
       const p = { lat: pos.coords.latitude, lon: pos.coords.longitude };
       if (!insideStudyArea(p)) {
-        say("Lokasi Anda berada di luar wilayah studi (Jakarta), jadi tidak dipakai sebagai titik asal.");
+        say(() =>
+          tr(
+            "Lokasi Anda berada di luar wilayah studi (Jakarta), jadi tidak dipakai sebagai titik asal.",
+            "Your location is outside the study area (Jakarta), so it is not used as the starting point.",
+          ),
+        );
         return;
       }
       state.pick = state.points.destination ? null : "destination";
       setPoint("origin", p, { fly: true });
     },
     (err) => {
-      if (!nav.session) say(`${describePositionProblem(problemFromCode(err.code))} Pilih titik asal di peta.`);
+      if (!nav.session) say(() => `${describePositionProblem(problemFromCode(err.code))} ${pickOnMap()}`);
     },
     { enableHighAccuracy: true, timeout: 10_000, maximumAge: 60_000 },
   );
@@ -632,6 +734,15 @@ $("use-location").addEventListener("click", useMyLocation);
 /** Development only: `?simulasi=normal|keluar|lemah|tolak|tanpa-gps` replaces the GPS. */
 const SIMULATION = import.meta.env.DEV ? new URLSearchParams(location.search) : null;
 
+/** Development only: `?lokasi=monas|bundaran-hi|sudirman|blok-m|kota|<lat,lon>` reports that place as the device's position. */
+if (import.meta.env.DEV && SIMULATION?.get("lokasi")) {
+  void import("./dev-location").then((dev) => {
+    const p = dev.parseDevLocation(SIMULATION.get("lokasi"));
+    if (p) dev.useFakeLocation(p);
+    else console.warn(`[dev] ?lokasi tidak dikenal; pakai salah satu dari ${Object.keys(dev.DEV_PLACES).join(", ")} atau "lat,lon"`);
+  });
+}
+
 const nav = {
   session: null as NavigationSession | null,
   source: null as PositionSource | null,
@@ -641,7 +752,7 @@ const nav = {
   following: true,
   firstFix: true,
   /** Replaces the status message until `clearOn` happens. */
-  message: null as { view: NavMessage; clearOn: "fix" | "on_route" | number } | null,
+  message: null as { make: () => NavMessage; view: NavMessage; clearOn: "fix" | "on_route" | number } | null,
   wakeLock: null as WakeLockSentinel | null,
 };
 
@@ -666,7 +777,10 @@ async function startNavigation(role: RouteResult["role"]): Promise<void> {
   if (!r || nav.session) return;
   const problem = positionProblem();
   if (problem) {
-    showResultView({ title: "Navigasi tidak dapat dimulai", text: `${describePositionProblem(problem)} Rute tetap ditampilkan.` })?.focus();
+    showResultView(() => ({
+      title: tr("Navigasi tidak dapat dimulai", "Navigation could not start"),
+      text: `${describePositionProblem(problem)} ${tr("Rute tetap ditampilkan.", "The route stays on screen.")}`,
+    }))?.focus();
     return;
   }
   nav.role = role;
@@ -695,7 +809,7 @@ async function startNavigation(role: RouteResult["role"]): Promise<void> {
 }
 
 /** Ends navigation and returns to the route result. `notice` says why, when it was not the user. */
-function endNavigation(notice: { title: string; text: string } | null = null): void {
+function endNavigation(notice: Notice = null): void {
   nav.source?.stop();
   nav.source = null;
   nav.controller?.abort();
@@ -710,7 +824,10 @@ function endNavigation(notice: { title: string; text: string } | null = null): v
   setLocateLabel(false);
   clear(navViewEl);
   const title = showResultView(notice);
-  if (state.result) void mapView.showRoutes(state.result.response, panelInset());
+  if (state.result) {
+    void mapView.showRoutes(state.result.response, panelInset());
+    void mapView.selectRoute(state.result.selected);
+  }
   title?.focus({ preventScroll: true });
 }
 
@@ -754,7 +871,14 @@ async function reroute(session: NavigationSession, from: Point): Promise<void> {
   if (!insideStudyArea(from)) {
     const wait = session.rerouteFailed(Date.now());
     setNavMessage(
-      { kind: "error", title: "Rute baru tidak dapat dihitung", text: `Anda berada di luar wilayah studi (Jakarta). Dicoba lagi dalam ${wait} detik.` },
+      () => ({
+        kind: "error",
+        title: tr("Rute baru tidak dapat dihitung", "A new route cannot be calculated"),
+        text: tr(
+          `Anda berada di luar wilayah studi (Jakarta). Dicoba lagi dalam ${wait} detik.`,
+          `You are outside the study area (Jakarta). Trying again in ${wait} seconds.`,
+        ),
+      }),
       "on_route",
     );
     return;
@@ -762,7 +886,14 @@ async function reroute(session: NavigationSession, from: Point): Promise<void> {
   session.rerouteStarted(Date.now());
   const controller = new AbortController();
   nav.controller = controller;
-  setNavMessage({ kind: "warn", title: "Anda keluar dari rute", text: "Mencari rute baru dari posisi Anda…" }, "on_route");
+  setNavMessage(
+    () => ({
+      kind: "warn",
+      title: tr("Anda keluar dari rute", "You left the route"),
+      text: tr("Mencari rute baru dari posisi Anda…", "Finding a new route from your position…"),
+    }),
+    "on_route",
+  );
   try {
     const response = await submitRouteRequest({ ...r.request, origin: { lat: from.lat, lon: from.lon } }, controller.signal);
     if (nav.session !== session) return;
@@ -773,7 +904,14 @@ async function reroute(session: NavigationSession, from: Point): Promise<void> {
     if (session.isArrived) {
       stopTracking();
     } else {
-      setNavMessage({ kind: "info", title: "Rute diperbarui", text: "Rute baru dihitung dari posisi Anda." }, Date.now() + 6_000);
+      setNavMessage(
+        () => ({
+          kind: "info",
+          title: tr("Rute diperbarui", "Route updated"),
+          text: tr("Rute baru dihitung dari posisi Anda.", "A new route was calculated from your position."),
+        }),
+        Date.now() + 6_000,
+      );
       scheduleSurface(true); // the heatmap follows the new route's area
     }
   } catch (err) {
@@ -784,14 +922,16 @@ async function reroute(session: NavigationSession, from: Point): Promise<void> {
     } else {
       // The title only: the messages of the route form ("Tidak ada hasil yang ditampilkan")
       // are not true here, where the previous route stays on the map.
-      const view = describeRouteError(err);
-      const wait = session.rerouteFailed(Date.now(), view.waitSec);
+      const wait = session.rerouteFailed(Date.now(), describeRouteError(err).waitSec);
       setNavMessage(
-        {
+        () => ({
           kind: "error",
-          title: "Rute baru belum didapat",
-          text: `${view.title}. Rute sebelumnya tetap ditampilkan; dicoba lagi dalam ${wait} detik bila Anda masih di luar rute.`,
-        },
+          title: tr("Rute baru belum didapat", "No new route yet"),
+          text: tr(
+            `${describeRouteError(err).title}. Rute sebelumnya tetap ditampilkan; dicoba lagi dalam ${wait} detik bila Anda masih di luar rute.`,
+            `${describeRouteError(err).title}. The previous route stays on screen; trying again in ${wait} seconds if you are still off the route.`,
+          ),
+        }),
         "on_route",
       );
     }
@@ -805,29 +945,30 @@ function onPositionProblem(problem: PositionProblem): void {
   if (!nav.session) return;
   if (isFatal(problem)) {
     const started = nav.session.snapshot.status !== "waiting";
-    endNavigation({
-      title: started ? "Navigasi dihentikan" : "Navigasi tidak dapat dimulai",
-      text: `${describePositionProblem(problem)} Rute tetap ditampilkan.`,
-    });
+    endNavigation(() => ({
+      title: started ? tr("Navigasi dihentikan", "Navigation stopped") : tr("Navigasi tidak dapat dimulai", "Navigation could not start"),
+      text: `${describePositionProblem(problem)} ${tr("Rute tetap ditampilkan.", "The route stays on screen.")}`,
+    }));
     return;
   }
   // Unavailable or timed out: the watch keeps trying, and the next fix clears this.
   setNavMessage(
-    {
+    () => ({
       kind: "warn",
-      title: problem === "timeout" ? "Sinyal GPS lemah" : "GPS tidak tersedia",
-      text: `${describePositionProblem(problem)} Pelacakan terus mencoba; rute tetap di peta.`,
-    },
+      title: problem === "timeout" ? tr("Sinyal GPS lemah", "Weak GPS signal") : tr("GPS tidak tersedia", "GPS unavailable"),
+      text: `${describePositionProblem(problem)} ${tr("Pelacakan terus mencoba; rute tetap di peta.", "Tracking keeps trying; the route stays on the map.")}`,
+    }),
     "fix",
   );
   renderNav();
 }
 
-function setNavMessage(view: NavMessage, clearOn: "fix" | "on_route" | number): void {
-  nav.message = { view, clearOn };
+function setNavMessage(make: () => NavMessage, clearOn: "fix" | "on_route" | number): void {
+  const entry = { make, view: make(), clearOn };
+  nav.message = entry;
   if (typeof clearOn === "number") {
     window.setTimeout(() => {
-      if (nav.message?.view === view) {
+      if (nav.message === entry) {
         nav.message = null;
         renderNav();
       }
@@ -836,9 +977,9 @@ function setNavMessage(view: NavMessage, clearOn: "fix" | "on_route" | number): 
 }
 
 function setLocateLabel(navigating: boolean): void {
-  const label = navigating ? "Ikuti posisi saya" : "Pakai lokasi saya sebagai titik asal";
+  const label = navigating ? tr("Ikuti posisi saya", "Follow my position") : tr("Pakai lokasi saya sebagai titik asal", "Use my location as the starting point");
   $("locate-btn").setAttribute("aria-label", label);
-  $("locate-btn").title = navigating ? "Ikuti posisi" : "Lokasi saya";
+  $("locate-btn").title = navigating ? tr("Ikuti posisi", "Follow position") : tr("Lokasi saya", "My location");
 }
 
 function recenter(): void {
@@ -899,11 +1040,45 @@ mapView.onUserCamera = () => {
 
 // ------------------------------------------------------------- bottom sheet
 const sheetHandle = $("sheet-handle");
+function sheetLabel(): void {
+  const collapsed = panel.classList.contains("collapsed");
+  sheetHandle.setAttribute("aria-label", collapsed ? tr("Perbesar panel", "Expand panel") : tr("Ciutkan panel", "Collapse panel"));
+}
 sheetHandle.addEventListener("click", () => {
   const collapsed = panel.classList.toggle("collapsed");
   sheetHandle.setAttribute("aria-expanded", String(!collapsed));
-  sheetHandle.setAttribute("aria-label", collapsed ? "Perbesar panel" : "Ciutkan panel");
+  sheetLabel();
 });
 
+// ------------------------------------------------------------------ language
+for (const b of Array.from(document.querySelectorAll<HTMLButtonElement>(".lang-btn"))) {
+  b.addEventListener("click", () => setLang(b.dataset.lang as Lang));
+}
+
+/** Redraws every text on screen in the new language; the trip, result and navigation stay as they are. */
+onLangChange(() => {
+  applyStaticText();
+  sheetLabel();
+  setLocateLabel(!!nav.session);
+  heatToggle.setAttribute(
+    "aria-label",
+    state.heat.on ? tr("Sembunyikan heatmap paparan", "Hide exposure heatmap") : tr("Tampilkan heatmap paparan", "Show exposure heatmap"),
+  );
+  updatePriority();
+  refreshForm();
+  statusRender && setStatus(statusRender);
+  legend.relabel();
+  legendState();
+  mapView.closePopup();
+  for (const w of ["origin", "destination"] as const) searches[w].stop();
+  if (!resultView.hidden && state.result) showResultView(state.resultNotice);
+  if (nav.session && state.result) {
+    if (nav.message) nav.message.view = nav.message.make();
+    nav.view = new NavView(navViewEl, { onEnd: () => endNavigation(), onRecenter: recenter });
+    renderNav();
+  }
+});
+
+sheetLabel();
 refreshForm();
 legendState();

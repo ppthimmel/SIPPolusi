@@ -1,11 +1,20 @@
 import { clear, h } from "./dom";
 import type { PlaceSearchView } from "./place-search";
 import type { Place } from "./types";
+import { tr } from "./i18n";
 
-const STATUS: Partial<Record<PlaceSearchView["kind"], string>> = {
-  loading: "Mencari tempat…",
-  empty: "Tempat tidak ditemukan. Coba nama lain, pilih titik di peta, atau ketik koordinat lat, lon.",
-  outside: "Tempat itu berada di luar wilayah studi (Jakarta). Cari tempat di dalam Jakarta.",
+const STATUS: Partial<Record<PlaceSearchView["kind"], () => string>> = {
+  loading: () => tr("Mencari tempat…", "Searching for places…"),
+  empty: () =>
+    tr(
+      "Tempat tidak ditemukan. Coba nama lain atau pilih titik di peta.",
+      "No place found. Try another name or pick a point on the map.",
+    ),
+  outside: () =>
+    tr(
+      "Tempat itu berada di luar wilayah studi (Jakarta). Cari tempat di dalam Jakarta.",
+      "That place is outside the study area (Jakarta). Search for a place inside Jakarta.",
+    ),
 };
 
 /** The suggestion list of one field, as an ARIA combobox: the input keeps focus, arrows move
@@ -30,7 +39,7 @@ export class PlaceCombobox {
   render(view: PlaceSearchView): void {
     this.places = view.kind === "results" ? view.places : [];
     this.active = -1;
-    this.status.textContent = view.kind === "error" ? view.message : (STATUS[view.kind] ?? "");
+    this.status.textContent = view.kind === "error" ? view.message : (STATUS[view.kind]?.() ?? "");
     this.status.hidden = !this.status.textContent;
     clear(this.list);
     this.list.hidden = !this.places.length;

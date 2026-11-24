@@ -28,11 +28,6 @@ export function timeoutMs(value: string | undefined, fallback: number): number {
 export const GEOCODE_TIMEOUT_MS = 7_000;
 export const GEOCODE_DEBOUNCE_MS = 300;
 export const GEOCODE_MIN_CHARS = 3;
-/** Always on the form, because a map click or "Lokasi saya" sends the point without ever opening
- *  the suggestion list (PNF-06): what is sent and where, and the source of the places (ODbL). */
-export const GEOCODE_NOTE =
-  "Nama yang diketik dan titik yang dipilih (klik peta atau lokasi Anda) dikirim ke layanan pencarian lokasi " +
-  "untuk mencari nama tempat, dan tidak disimpan SIPPolusi. Data tempat © OpenStreetMap.";
 
 /** Debounce for pan/zoom before GET /v1/exposure-surface (Tabel 3.4). */
 export const SURFACE_DEBOUNCE_MS = 500;
@@ -60,13 +55,3 @@ export const BASEMAP_TILES: string =
   import.meta.env?.VITE_BASEMAP_TILES || "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
 export const BASEMAP_ATTRIBUTION = "© OpenStreetMap contributors";
 
-/** Always-visible disclaimer (PNF-07). The Backend sends its own text in
- *  metadata.disclaimer; this one is shown regardless of the response. */
-export const DISCLAIMER =
-  // Holds whichever source produced the estimate: ground sensors always, satellite and
-  // meteorological data only when the downscaling model took part (TI-SE-10, D-07).
-  "Nilai paparan adalah estimasi dari sensor darat, ditambah data satelit dan meteorologi bila model " +
-  "downscaling tersedia; bukan pengukuran langsung. Sumber estimasi tiap rute ada di rincian hasil. " +
-  "Indeks paparan menggabungkan PM2.5 dan NO2 terhadap pedoman WHO. " +
-  "Hasil ini alat bantu keputusan perjalanan, bukan rekomendasi medis atau diagnosis kesehatan; " +
-  "tetap perhatikan kondisi jalan.";
