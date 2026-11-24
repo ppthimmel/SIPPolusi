@@ -1,6 +1,6 @@
 """Ground-truth CSV exports (Railway + GCP) -> Parquet export in the old `sippolusi_ground_truth_*` format.
 
-Usage: python convert_gt.py OUT_DIR CSV_DIR [CSV_DIR ...]   (later dirs win on duplicate keys)
+Usage: python convert_ground_truth_csv.py OUT_DIR CSV_DIR [CSV_DIR ...]   (later dirs win on duplicate keys)
 Writes station.parquet, observation.parquet, manifest.json (what feature_matrix.labels / the snapshot builder read).
 """
 import hashlib

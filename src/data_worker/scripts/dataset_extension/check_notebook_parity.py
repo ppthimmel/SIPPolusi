@@ -1,6 +1,6 @@
 """Check the notebook's ported code against the repository on ds-v0.4.0.
 
-Usage: python parity_check.py NOTEBOOK SNAPSHOT_DIR REPO_DATA_WORKER
+Usage: python check_notebook_parity.py NOTEBOOK SNAPSHOT_DIR REPO_DATA_WORKER
 Compares: tabular spatial features + design table; ST-GNN inputs, labels, IDW baseline, fit nodes, scaled inputs;
 an ST-GNN forward pass with identical weights.
 """

@@ -1143,6 +1143,10 @@ md("""
 Train on the training block and score the validation and test blocks, with **all NO₂ stations in every block**.
 Each station's inputs still come only from other station groups. This measures how well a model carries over to a
 later period (November, rainy season), not to a new place; LOSO (6.2) measures that.
+
+**Not comparable with IDW, and not valid for places without a sensor.** The tree models train on the same stations'
+history and can recognise a station (from `easting`/`northing` and the geometry features), so they learn each
+station's bias; IDW uses no history. The summary therefore gives this protocol no "vs IDW" verdict.
 """)
 protocol_cells("6.1", "RUN_NO2_FIXED", "no2", "temporal_split", None, None, stgnn_ok=False)
 
@@ -1184,8 +1188,10 @@ for (target, protocol), g in results.groupby(["target", "protocol"]):
         val = m[m.split == "val"]                                # held-out validation only
         v = val.iloc[0] if len(val) else None
         t = test.loc[model] if model in test.index else None
-        if model.startswith("IDW") or t is None:
-            reference = np.nan                                   # baselines get no verdict
+        if model.startswith("IDW") or t is None or protocol == "temporal_split":
+            # Baselines get no verdict. Temporal split: the models train on the same stations' history and can
+            # learn per-station bias, which IDW cannot, so "vs IDW" there is not a like-for-like comparison.
+            reference = np.nan
         else:
             reference = best_idw                                 # same IDW for every model
         rows.append(dict(
@@ -1212,7 +1218,7 @@ for (target, protocol), g in summary.groupby(["target", "protocol"]):
     report.append(dict(target=target, protocol=protocol, selected_model=c.model, val_rmse=c.val_rmse,
                        test_rmse=c.test_rmse, test_mae=c.test_mae, test_r2=c.test_r2,
                        best_idw_on_val=idw.model, idw_test_rmse=idw.test_rmse,
-                       test_vs_idw=c.test_rmse - idw.test_rmse))
+                       test_vs_idw=np.nan if protocol == "temporal_split" else c.test_rmse - idw.test_rmse))
 report = pd.DataFrame(report)
 report.to_csv(RUN_ROOT / "report.csv", index=False)
 print("Saved", RUN_ROOT / "results.csv", RUN_ROOT / "summary.csv", "and", RUN_ROOT / "report.csv")

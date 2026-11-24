@@ -42,7 +42,7 @@ def test_bundle_records_family_and_rejects_wrong_production_pairing(target, fami
     (output / filename).write_bytes(b"model")
     (output / "metadata.json").write_text("{}")
     monkeypatch.setattr(bundles, "verify_snapshot", lambda *a: {})
-    bundle = bundles.export_bundle(output, target, snapshot, {"model_family": family})
+    bundle = bundles.export_bundle(output, target, snapshot, {"model_family": family, "dataset": "ds-v0.4.0"})
     manifest = bundles.validate_bundle(bundle, target)
     assert manifest["model_family"] == family
     assert filename in manifest["hashes"]

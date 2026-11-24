@@ -1,0 +1,405 @@
+{
+  "version": "ds-v0.4.0",
+  "description": "Snapshot dataset awal Spatial Downscaling Model (PM2.5 dan NO2), immutable setelah freeze.",
+  "time_range": {
+    "first_window": "2026-09-13T00:00:00Z",
+    "end_window_exclusive": "2026-11-19T10:00:00Z",
+    "window": "1 jam, UTC, label awal jam (time_window_start); time_utc = akhir jam = waktu inferensi",
+    "readings_until": "2026-11-19T11:00:00Z"
+  },
+  "spatial": {
+    "grid_crs": "EPSG:32748",
+    "cell_m": 100,
+    "grid": "445 x 445, kiri atas (676900, 9336600), ID rRRRR_cCCCC baris 0 di utara",
+    "study_area": "station.in_jakarta_bbox (106,68–106,98 BT; 6,38–6,08 LS)",
+    "nodes": 990,
+    "edges": 4414,
+    "label_cells": 110
+  },
+  "targets": {
+    "pm25": {
+      "column": "pm25_ugm3",
+      "unit": "µg/m³ (portal tidak menyatakan satuan; terverifikasi terhadap ISPU portal, scripts/check_ispu_units.py)",
+      "evaluation": [
+        "fixed_split",
+        "loso"
+      ]
+    },
+    "no2": {
+      "column": "no2_ugm3",
+      "unit": "µg/m³ (portal tidak menyatakan satuan; terverifikasi terhadap ISPU portal, scripts/check_ispu_units.py)",
+      "evaluation": [
+        "loso"
+      ]
+    }
+  },
+  "features": {
+    "spec": "stgnn/feature_spec.json",
+    "lag_windows": 24,
+    "context_hops": 1,
+    "viirs_cell_rule": "tile",
+    "weather_policy": "Open-Meteo as-of: valid time terbaru dengan floor(t, 6 jam) + 8 jam <= waktu inferensi",
+    "geoscf_forecast_policy": "GEOS-CF v2 fcst untuk jam label dari run terbaru yang lengkap terbit (Last-Modified lead terakhir) <= waktu inferensi",
+    "calendar": "hour_sin/cos, weekday_sin/cos (WIB) pada awal jam label",
+    "feature_version": "7e67baeb759eedcd",
+    "model_inputs": {
+      "temporal": [
+        "no2_mol_m2",
+        "ntl",
+        "temperature_2m",
+        "relative_humidity_2m",
+        "wind_speed_10m",
+        "wind_direction_10m",
+        "boundary_layer_height",
+        "precipitation",
+        "surface_pressure",
+        "geoscf_pm25_ugm3",
+        "geoscf_no2_ugm3",
+        "geoscf_fcst_pm25_ugm3",
+        "geoscf_fcst_no2_ugm3",
+        "hour_sin",
+        "hour_cos",
+        "weekday_sin",
+        "weekday_cos",
+        "no2_mol_m2_age_hours",
+        "ntl_age_hours",
+        "geoscf_pm25_age_hours",
+        "geoscf_no2_age_hours",
+        "weather_age_hours",
+        "geoscf_fcst_pm25_lead_hours",
+        "geoscf_fcst_no2_lead_hours"
+      ],
+      "land_static": [
+        "ndvi",
+        "ndbi",
+        "ndvi_age_hours",
+        "ndbi_age_hours"
+      ],
+      "sensor_static": [
+        "dist_nearest_sensor_m"
+      ]
+    },
+    "sensor_set": "stasiun split train; per fold LOSO di splits/loso_sensor_distance.parquet",
+    "static_policy": "Landsat dan VIIRS as-of: pengamatan valid terakhir dengan produced_at <= waktu inferensi; tidak ada komposit statis yang di-fit"
+  },
+  "counts": {
+    "stations": 111,
+    "groups": 109,
+    "station_split": {
+      "train": {
+        "groups": 77,
+        "stations": 79
+      },
+      "val": {
+        "groups": 16,
+        "stations": 16
+      },
+      "test": {
+        "groups": 16,
+        "stations": 16
+      }
+    },
+    "label_rows": 146097,
+    "valid": {
+      "pm25": 138157,
+      "no2": 18207
+    },
+    "splits": {
+      "train": {
+        "pm25": 69938,
+        "no2": 13232
+      },
+      "val": {
+        "pm25": 2428,
+        "no2": 2005
+      },
+      "test": {
+        "pm25": 2517,
+        "no2": 2354
+      }
+    },
+    "loso_folds": {
+      "pm25": 109,
+      "no2": 15
+    }
+  },
+  "seed": 42,
+  "split_rules": [
+    "Grup stasiun: sel 100 m sama, jarak < 300 m (transitif), atau duplikat penyedia.",
+    "Split stasiun per grup: urut strata (tipe stasiun, kota), acak dalam strata dengan seed, label posisi sistematis (systematic_labels).",
+    "PM2.5: split s = stasiun split s × blok s (blind ganda); baris lain tidak masuk split.",
+    "NO2: blok temporal untuk seluruh stasiun NO2; evaluasi spasial memakai fold LOSO per grup.",
+    "Fitur berbasis sensor (dist_nearest_sensor_m) dari stasiun train; per fold LOSO tanpa grup yang ditahan."
+  ],
+  "blocks": {
+    "train": {
+      "first_window": "2026-09-13T00:00:00Z",
+      "end_window_exclusive": "2026-10-28T00:00:00Z"
+    },
+    "val": {
+      "first_window": "2026-10-29T00:00:00Z",
+      "end_window_exclusive": "2026-11-05T00:00:00Z"
+    },
+    "test": {
+      "first_window": "2026-11-06T00:00:00Z",
+      "end_window_exclusive": "2026-11-19T10:00:00Z"
+    }
+  },
+  "gaps_hours": {
+    "train->val": 25.0,
+    "val->test": 25.0
+  },
+  "exclusion_rules": {
+    "config": {
+      "sentinel": 999.99,
+      "excluded_stations": [
+        "DKI_PM25_40"
+      ],
+      "stuck_run_min": 12,
+      "require_complete_hour": true,
+      "shared_signal": {
+        "min_corr": 0.98,
+        "max_ratio_deviation": 0.02,
+        "min_shared_hours": 100
+      },
+      "excluded_from": [
+        {
+          "kode": "DKI_PM25_33",
+          "metric": "PM25",
+          "since": "2026-09-19T10:00:00Z"
+        }
+      ],
+      "low_bias_suspect": {
+        "kode_prefix": "DKI_PM25_",
+        "station_type": "Sensor",
+        "max_mean_ugm3": 10.0
+      }
+    },
+    "counts": {
+      "pm25": {
+        "readings": 307056,
+        "valid": 245374,
+        "excluded": {
+          "outside_study_area": 4026,
+          "excluded_station": 3001,
+          "qc_flag": 11200,
+          "zero_value": 1722,
+          "sentinel": 3,
+          "excluded_since": 512,
+          "stuck_run": 1118,
+          "shared_signal": 39044,
+          "incomplete_hour": 1056
+        }
+      },
+      "no2": {
+        "readings": 35242,
+        "valid": 34516,
+        "excluded": {
+          "outside_study_area": 0,
+          "excluded_station": 0,
+          "qc_flag": 133,
+          "zero_value": 240,
+          "sentinel": 0,
+          "excluded_since": 0,
+          "stuck_run": 0,
+          "shared_signal": 0,
+          "incomplete_hour": 353
+        }
+      }
+    }
+  },
+  "sources": {
+    "ground_truth": {
+      "export": "gt_combined_parquet",
+      "snapshot_utc": "2026-11-19 11:17:35+00:00",
+      "files": {
+        "station.parquet": "e856e12e98710c8abd9def7c62fa96b418560480c5c186ca653d820d9bcbf035",
+        "observation.parquet": "9d8dfc36785f9bfecf658b03f750bab6ada637d73b72f3946d9bde910295180f",
+        "manifest.json": "1cdec0cd0c29c9637acb42b059250482c0c7b7081bcbc8fe6db27d035c87f549"
+      },
+      "copy": "source/"
+    },
+    "dataset_processed": {
+      "dataset_processed/landsat/scenes/LC08_L2SP_122064_20260101_02_T1.parquet": "c705868fffd7c45053dca45b114739c2764a95017f0ca020d987a8132ec61e5f",
+      "dataset_processed/landsat/scenes/LC08_L2SP_122064_20260610_02_T1.parquet": "ef800b141d8302b5944a5ac2dba214ca142f720bebd854c1fcc400a826fd6a60",
+      "dataset_processed/landsat/scenes/LC08_L2SP_122064_20260626_02_T1.parquet": "726aec6835cdbe2e0f837cb655222c01afadffe49d5c983d795e8fa77a205ca7",
+      "dataset_processed/landsat/scenes/LC08_L2SP_122064_20260712_02_T1.parquet": "0af29e3fa581b5ff2f66ea8077a9d81bb2e7c9e99b4659fdf7f4fd84b01a9e1a",
+      "dataset_processed/landsat/scenes/LC08_L2SP_122064_20260728_02_T1.parquet": "89e54d893e4e020934494abd573ae809bb4628a127ca40f2e60c32b38d29373d",
+      "dataset_processed/landsat/scenes/LC08_L2SP_122064_20260813_02_T1.parquet": "7d3bee9b120c568a6ae9cfae23805cfeab0de16757f1881441e77cf42c463a11",
+      "dataset_processed/landsat/scenes/LC08_L2SP_122064_20260829_02_T1.parquet": "267a4f6b413360680607c762cce5e499e4c5d1ede6897b45c018c4f16b863dad",
+      "dataset_processed/landsat/scenes/LC08_L2SP_122064_20260914_02_T1.parquet": "b0520ac8a0b7103d1f175ec0efa93f3dbf356fcc2fa05dda79d559f13d5a2b70",
+      "dataset_processed/landsat/scenes/LC08_L2SP_122064_20260930_02_T1.parquet": "a66c99f306a968ec25cfb9b7cb350c50b48589d92d9791830494fac948ae3d2a",
+      "dataset_processed/landsat/scenes/LC08_L2SP_122064_20261016_02_T1.parquet": "e7328aad66d24bc4541c7df8eafa21dea0a671c5772fe77b39717b2f49657484",
+      "dataset_processed/landsat/scenes/LC08_L2SP_122064_20261101_02_T1.parquet": "24a743b3a06361f66649b2e71355af351d2919e646ce52b30c45bd044b4880fa",
+      "dataset_processed/landsat/scenes/LC08_L2SP_122065_20260322_02_T1.parquet": "6194341b052ff9c8e913f26f66006a44b721e1c615fb3086b539a3e096f3c47d",
+      "dataset_processed/landsat/scenes/LC08_L2SP_122065_20260423_02_T1.parquet": "13aac8ac217de8767919fb8bf3522a4ed134b522b0add3e7c88ba03bd763ee27",
+      "dataset_processed/landsat/scenes/LC08_L2SP_122065_20260509_02_T1.parquet": "af6a55f023f9c0436fbbe38f23861e195cf722ab673c23d2184b1fd34839a10c",
+      "dataset_processed/landsat/scenes/LC08_L2SP_122065_20260610_02_T1.parquet": "3f8279065c66c352e50a3de6d26cc4ad83ddcd299e682f0ec18085b15661b4cb",
+      "dataset_processed/landsat/scenes/LC08_L2SP_122065_20260626_02_T1.parquet": "c7f7cfca2df145d24538bd5ba97e2859b0365c7f66149a5acda432604533100c",
+      "dataset_processed/landsat/scenes/LC08_L2SP_122065_20260712_02_T1.parquet": "a368a954350bdde9ed7ebc017d0842d3f483ce2fa8a9e688970fff8563fd0c76",
+      "dataset_processed/landsat/scenes/LC08_L2SP_122065_20260728_02_T1.parquet": "20263ddef5afca14e10311a9f63b2a3fc1d748c0da682cf387a13427192ac809",
+      "dataset_processed/landsat/scenes/LC08_L2SP_122065_20260813_02_T1.parquet": "f00cafa94cedca2acdf243fae4247358f1cbced650ae644b7f3837b6e883e73f",
+      "dataset_processed/landsat/scenes/LC08_L2SP_122065_20260829_02_T1.parquet": "50ecbdc8f7a0a37664abf4643602fc2b5e2a38b37a10edaabd5c593bbe614b58",
+      "dataset_processed/landsat/scenes/LC08_L2SP_122065_20260914_02_T1.parquet": "c9cbe11b07e81705f136ea5458678e406343eff16bbf99b8f98cc1c46e65a15f",
+      "dataset_processed/landsat/scenes/LC08_L2SP_122065_20260930_02_T1.parquet": "dcd5a518e29de91cb34034ee10de7aa9a54660581c0c9df86164c6b82db39005",
+      "dataset_processed/landsat/scenes/LC08_L2SP_122065_20261016_02_T1.parquet": "676ecce9c18c98419d3e507ea5c2858d77a5ba2579746d00edbc1c6c4e749589",
+      "dataset_processed/landsat/scenes/LC09_L2SP_122064_20260314_02_T1.parquet": "c2548b23b11f1f7cf82b5abb47ac6e59282e05dba84a56c98ca96c6571838a0b",
+      "dataset_processed/landsat/scenes/LC09_L2SP_122064_20260330_02_T1.parquet": "2055c61df5ba0601775b480a0e631432fc6a61c30b3b9cca0b52486ea24ecbc8",
+      "dataset_processed/landsat/scenes/LC09_L2SP_122064_20260415_02_T1.parquet": "cff5077dfe204da2eed8331bb94dacbbb26b3ecd01cec0a4b54a6b66b0af1aa0",
+      "dataset_processed/landsat/scenes/LC09_L2SP_122064_20260602_02_T1.parquet": "98549250cf77801a7678797acd525e4ced87526be09ca5b5aa777b369bc99916",
+      "dataset_processed/landsat/scenes/LC09_L2SP_122064_20260618_02_T1.parquet": "4c47c41e7151673095d699b29e0ee7fd3d1c2c4aacb73a62244db8b44922f5ac",
+      "dataset_processed/landsat/scenes/LC09_L2SP_122064_20260704_02_T1.parquet": "db2f5af694f40683ea065dd25b02bc288e5273f68c0e0876e9c35985203b6e03",
+      "dataset_processed/landsat/scenes/LC09_L2SP_122064_20260720_02_T1.parquet": "77528a73720fb06ab863bc4d0eddca2b13304b8faaefb951f95e4915a41bd456",
+      "dataset_processed/landsat/scenes/LC09_L2SP_122064_20260805_02_T1.parquet": "80f872a7af622ebd3422f7ffd1d52b8cb6a6b4a0cd591729a64125cc046ba6bf",
+      "dataset_processed/landsat/scenes/LC09_L2SP_122064_20260821_02_T1.parquet": "1b8844a3a4afab51c66996b2917be6ab018cc92854cb5b44702d0d3f28fb1b49",
+      "dataset_processed/landsat/scenes/LC09_L2SP_122064_20260906_02_T1.parquet": "91fba3c17d38024f5fa57c800b772c7c6b8af12e04ec735e6adf1675bee9207d",
+      "dataset_processed/landsat/scenes/LC09_L2SP_122064_20260922_02_T1.parquet": "3ad43bd459f5204020862c96da93026789635ab2027e13b6ee966761113b16c1",
+      "dataset_processed/landsat/scenes/LC09_L2SP_122064_20261008_02_T1.parquet": "6433eb873a459bc4559e83ac6540fc946177ec0fb4b683f96daa79960e30e5c9",
+      "dataset_processed/landsat/scenes/LC09_L2SP_122064_20261024_02_T1.parquet": "c401447f9b68b4237e49189333ff6f1f0e25961bf2717d84e3221d5218da6704",
+      "dataset_processed/landsat/scenes/LC09_L2SP_122064_20261109_02_T1.parquet": "3507bd6aa6a1464360ef19da1abe55fefec64fc664236f17b5c48d7e9d662f82",
+      "dataset_processed/landsat/scenes/LC09_L2SP_122065_20260314_02_T1.parquet": "ad00b7ecb8bbc98bb558c31c0d548185c61bbd60d640eca9f60da1b7f28d3d2b",
+      "dataset_processed/landsat/scenes/LC09_L2SP_122065_20260330_02_T1.parquet": "ab4e23c9e43f7dadb5876ca43724f23ac0ec3c6e1690035859fd9d4634f38f8e",
+      "dataset_processed/landsat/scenes/LC09_L2SP_122065_20260415_02_T1.parquet": "6efc84dbc6d46f0ec40df7559beb073a330c344331a360b4d4792724c768c239",
+      "dataset_processed/landsat/scenes/LC09_L2SP_122065_20260602_02_T1.parquet": "9bdee3b794419f57bc9fa53d13f7957ad0a0feaadf39e559c65c889692e56377",
+      "dataset_processed/landsat/scenes/LC09_L2SP_122065_20260618_02_T1.parquet": "298b2807fdea531bcb919fcb4b86ef2644651b8c2d992ef1b4b824adefc77bc4",
+      "dataset_processed/landsat/scenes/LC09_L2SP_122065_20260704_02_T1.parquet": "bea09f4e22d705761322bf15c6db2dd97f2f8cb169416aa3bae5cdeba2381815",
+      "dataset_processed/landsat/scenes/LC09_L2SP_122065_20260720_02_T1.parquet": "a8e7a8fe17f3da94b3ff42ea772fa4b170accbffc6c3a36020515dee1b9871d0",
+      "dataset_processed/landsat/scenes/LC09_L2SP_122065_20260805_02_T1.parquet": "700f4fd0347d5832ea8618a570ae04450f3d60763c7cfa3a9161b0db00ee0b35",
+      "dataset_processed/landsat/scenes/LC09_L2SP_122065_20260821_02_T1.parquet": "2567880c135780d7b82719586e4fb981fcc85bf4c0c16849cf483091296158a8",
+      "dataset_processed/landsat/scenes/LC09_L2SP_122065_20260906_02_T1.parquet": "c31db5972ce1df7406819d4cda721440c302ff2778c55d76e4786579ace02a80",
+      "dataset_processed/landsat/scenes/LC09_L2SP_122065_20260922_02_T1.parquet": "24d094536b8a1de9d2be018a7bac3198fff5845220547d8dda93be9a9acdf748",
+      "dataset_processed/landsat/manifest.json": "06103e7b555e7d4119fee4e9319c8f865ad8e2747b6089120fa1dbcbb2709fbb",
+      "dataset_processed/sentinel5p/observations.parquet": "0c9959d1a12153022452c4b92064c07d4582c4ee390fb49fd13166d5a7d1c72e",
+      "dataset_processed/sentinel5p/manifest.json": "2e042aa2b8c6ebd7a1cab6a9444f41407c0adb8b73b422c6c0529515905f3da1",
+      "dataset_processed/viirs/daily.parquet": "e5d4bff92e623313524d5dca88ad0d90f9e7c57a964f0d4483ed25050d1940a4",
+      "dataset_processed/viirs/manifest.json": "a3324db1201396528117cf7bbc176cd7a041e86477f3111c2dc9be6233f99e54",
+      "dataset_processed/open_meteo/hourly.parquet": "0b065c81c92e51ddbe14c28305fe301c73eea5784e4108539aaf305808da6f00",
+      "dataset_processed/open_meteo/manifest.json": "bfc4d8bff13714927755e694c7145fc8703627e83d8d21f3922f97c9d63b3ed3",
+      "dataset_processed/geos-cf/geoscf_cell_hourly.parquet": "db2e120fd77394d258dee1b3bbb9b69e951d5c134ff6cfa4b495dc59146031c4",
+      "dataset_processed/geos-cf/grid100m_geoscf_lookup.parquet": "5dc957edba267355390aa8f6a4104dcc2fdc0358ffc6e856791ead2c1732a80b",
+      "dataset_processed/geos-cf/manifest.json": "b11c9ab10db7205e558b1c5116e3ebe0ee4533859095a85f884796a86e301c20",
+      "dataset_processed/geos-cf/geoscf_fcst_cell_hourly.parquet": "4dc03c35f5d8bead31713c0b5115a9b145bbaab72cf0ffe37c74705d6f89a729",
+      "dataset_processed/geos-cf/fcst_manifest.json": "9ed9bda1637d900ee507184d6db9fdd4eb9d8e21d6b26ada6cae5fc850d81624"
+    }
+  },
+  "leakage": {
+    "passed": true,
+    "checks": {
+      "unique_keys": "lolos",
+      "groups_disjoint": "lolos",
+      "temporal_gap": "lolos",
+      "identical_observations": "lolos",
+      "sensor_features": "lolos",
+      "train_only_fit": "lolos",
+      "geoscf_available": "lolos",
+      "lag_window": "lolos"
+    }
+  },
+  "code": {
+    "commit": "caaa113453ee9e159ebeb58916139fc7f9f8f2c3",
+    "dirty": false
+  },
+  "libraries": {
+    "python": "3.11.14",
+    "pandas": "2.3.3",
+    "numpy": "2.4.6",
+    "pyarrow": "17.0.0",
+    "pyproj": "3.7.2",
+    "shapely": "2.2.0"
+  },
+  "config": {
+    "path": "config.toml",
+    "sha256": "b1c2eed70e8bb611292a05300da2dbdc430bb27aaeaad3eeb710a1e46f054ea3"
+  },
+  "separation": "Snapshot eksperimen immutable dan terversi; bukan cache operasional (pollution.* / ground_truth.* di PostgreSQL yang terus berubah).",
+  "files": {
+    "config.toml": {
+      "sha256": "b1c2eed70e8bb611292a05300da2dbdc430bb27aaeaad3eeb710a1e46f054ea3",
+      "bytes": 2057
+    },
+    "exclusion_rules.md": {
+      "sha256": "137c250dcf42e954923f6c1f194c26f6d1182889573c34f096296cb38735f782",
+      "bytes": 3488
+    },
+    "labels.parquet": {
+      "sha256": "86ac91d825992827e7a897adab066e5bd90e63b96c0f679959a5bfdd5ace7708",
+      "bytes": 719091
+    },
+    "leakage_report.json": {
+      "sha256": "46b027f8919bcdbf297c70d2e9a5785926159a1fc19cceace45f915df5665fd1",
+      "bytes": 2971
+    },
+    "leakage_report.md": {
+      "sha256": "3e0264ced3918fcdfb1e6a7f031770ba6d98cb8be5529772950e5cba01c7d5aa",
+      "bytes": 2165
+    },
+    "normalization.json": {
+      "sha256": "6a7d8764fef059015d1cb7a02de7dc30e1855f5b70f9e607e894ac9b40ec2227",
+      "bytes": 10043
+    },
+    "source/observation.parquet": {
+      "sha256": "9d8dfc36785f9bfecf658b03f750bab6ada637d73b72f3946d9bde910295180f",
+      "bytes": 3494973
+    },
+    "source/station.parquet": {
+      "sha256": "e856e12e98710c8abd9def7c62fa96b418560480c5c186ca653d820d9bcbf035",
+      "bytes": 27114
+    },
+    "split_spec.json": {
+      "sha256": "326b739857002fbddac12a1415ad001dd62210658d1f5ec25e8a2957814e9239",
+      "bytes": 24376
+    },
+    "split_stats.md": {
+      "sha256": "1d1c701c85fe58297dcb2f7a69355a0182d09d3475563c0bd241d1a3c033fe87",
+      "bytes": 2184
+    },
+    "splits/loso_folds.parquet": {
+      "sha256": "d2ac1f73c5c0909f36d8f81087cf72412f433038a0f62b39e34c82a0627fb3d4",
+      "bytes": 11332
+    },
+    "splits/loso_sensor_distance.parquet": {
+      "sha256": "12a61068634b4ba463c1306fdba383c0fa0d0a0156850a020784278a59a8f519",
+      "bytes": 79373
+    },
+    "splits/test.parquet": {
+      "sha256": "91a40804b2a7a77eeae329db5339058e58877456ad82d801811daaeac9c0a161",
+      "bytes": 47411
+    },
+    "splits/train.parquet": {
+      "sha256": "588b1f62570fa8b2099b3b70ff2d51f474fb3e4bb303c618c48df940ca21a81e",
+      "bytes": 387589
+    },
+    "splits/val.parquet": {
+      "sha256": "71d28bfb5f5d704c923f1e2a18e88d6d3c68a9ccdfd91a8d13235464f7c1707c",
+      "bytes": 42862
+    },
+    "stations.parquet": {
+      "sha256": "6039581c0a0574e94f9d326b553213685eed3a4c8deeb9f6dae43f45f1ee6ea6",
+      "bytes": 23123
+    },
+    "stgnn/edges.parquet": {
+      "sha256": "c28d24c6a0c798205cd13b8e16f607b7afce9bc757508eecc78aa94d63cea171",
+      "bytes": 15538
+    },
+    "stgnn/features.parquet": {
+      "sha256": "7e67baeb759eedcdcb08f36d3528e77d5cef382c84ca67d72b52452d1965b78d",
+      "bytes": 10061617
+    },
+    "stgnn/labels.parquet": {
+      "sha256": "34bcad86454ddd937ffd836a9268fc5bf7712c4be1b055de66bde11c72e874e7",
+      "bytes": 656467
+    },
+    "stgnn/nodes.parquet": {
+      "sha256": "6a60361c561e6ca0a6751fc5c596f51e657bcd5c6ab5df5f8d5d210f2e1b44a4",
+      "bytes": 28724
+    },
+    "stgnn/quality_report.json": {
+      "sha256": "c3a45f8be3a6bfc89a9f652b8d6b7bb258d7efee342e0d184d7b499f7da5757f",
+      "bytes": 5880
+    },
+    "stgnn/quality_report.md": {
+      "sha256": "a82d8a729120429091ceb54514e0cb3b01073b69521100ec25702805d4e4635b",
+      "bytes": 2921
+    }
+  }
+}

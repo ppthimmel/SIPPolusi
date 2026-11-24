@@ -22,11 +22,15 @@ data bundle `sippolusi_ds-v0.4.0_bundle.zip`. All LOSO folds: 109 for PM2.5, 15 
 | Target | Protocol | Selected model | Test RMSE | Test MAE | Test R² | IDW p=1 all test RMSE | vs IDW |
 |---|---|---|---|---|---|---|---|
 | **NO₂** | **LOSO** | **XGBoost + IDW corr** | **37.65** | 26.16 | **0.43** | 47.28 | **−9.63 (−20%)** |
-| NO₂ | Temporal split | XGBoost + IDW corr | 21.28 | 13.57 | 0.82 | 47.28 | −26.01 |
+| NO₂ | Temporal split ¹ | XGBoost + IDW corr | 21.28 | 13.57 | 0.82 | 47.28 | not comparable ¹ |
 | **PM2.5** | **LOSO** | **IDW p=1 all** | **23.01** | 17.63 | 0.24 | 23.01 | 0 |
 | PM2.5 | Fixed split | IDW p=1 all | 26.54 | 18.82 | 0.11 | 26.54 | 0 |
 
 ★ = selected on validation. **vs IDW** = test RMSE − test RMSE of IDW p=1 all; negative = better than IDW.
+
+¹ The temporal split is **not valid for places without a sensor** and has no "vs IDW" verdict: the models train on
+the same stations' history and can recognise a station (from `easting`/`northing` and the geometry features), so
+they learn each station's bias, which IDW cannot use. LOSO is the result for unsensed locations.
 
 ## NO₂, LOSO (main) — val n = 2,005, test n = 2,354
 
@@ -43,17 +47,20 @@ data bundle `sippolusi_ds-v0.4.0_bundle.zip`. All LOSO folds: 109 for PM2.5, 15 
 
 ## NO₂, temporal split — val n = 2,005, test n = 2,354
 
-Tests a later period at stations the model trained on, not a new location; read LOSO for unsensed areas.
-ST-GNN does not support this protocol (it needs held-out stations).
+Tests a later period at stations the model trained on, not a new location. **These scores do not apply to places
+without a sensor**, and they are not compared with IDW: the tree models learn each station's bias from its own
+history (a station is recognisable from `easting`/`northing` and the geometry features), while IDW uses no history.
+The sensor features still exclude the station's own group, which is why the IDW rows equal the LOSO ones. ST-GNN does
+not support this protocol (it needs held-out stations).
 
-| Model | Val RMSE | Val MAE | Val R² | Test RMSE | Test MAE | Test R² | vs IDW | Beats IDW |
-|---|---|---|---|---|---|---|---|---|
-| ★ XGBoost + IDW corr | 17.65 | 12.08 | 0.88 | 21.28 | 13.57 | 0.82 | −26.01 | ✅ |
-| XGBoost | 17.74 | 12.06 | 0.88 | 21.59 | 13.43 | 0.81 | −25.69 | ✅ |
-| LightGBM | 20.12 | 13.81 | 0.84 | 24.17 | 15.20 | 0.77 | −23.11 | ✅ |
-| LightGBM + IDW corr | 20.32 | 14.08 | 0.84 | 23.65 | 15.10 | 0.78 | −23.64 | ✅ |
-| IDW p=1 all | 47.60 | 39.59 | 0.11 | 47.28 | 36.11 | 0.10 | reference | |
-| IDW p=2 k=8 | 50.84 | 42.44 | −0.02 | 47.91 | 36.56 | 0.08 | | |
+| Model | Val RMSE | Val MAE | Val R² | Test RMSE | Test MAE | Test R² |
+|---|---|---|---|---|---|---|
+| ★ XGBoost + IDW corr | 17.65 | 12.08 | 0.88 | 21.28 | 13.57 | 0.82 |
+| XGBoost | 17.74 | 12.06 | 0.88 | 21.59 | 13.43 | 0.81 |
+| LightGBM | 20.12 | 13.81 | 0.84 | 24.17 | 15.20 | 0.77 |
+| LightGBM + IDW corr | 20.32 | 14.08 | 0.84 | 23.65 | 15.10 | 0.78 |
+| IDW p=1 all | 47.60 | 39.59 | 0.11 | 47.28 | 36.11 | 0.10 |
+| IDW p=2 k=8 | 50.84 | 42.44 | −0.02 | 47.91 | 36.56 | 0.08 |
 
 ## PM2.5, LOSO (main) — val n = 15,871, test n = 18,264
 
@@ -84,14 +91,41 @@ ST-GNN does not support this protocol (it needs held-out stations).
 ## Conclusion
 
 - **NO₂:** every learned model beats IDW in LOSO. The tree models are best (about −20% RMSE, R² 0.43–0.46 against
-  0.10). XGBoost + IDW corr is selected on validation; LightGBM direct, the current production model, is within
-  noise of it (val 36.21 against 35.95; test 36.71 against 37.65).
+  0.10). XGBoost + IDW corr is selected on validation; LightGBM direct, the current production model, is close to it
+  (val 36.21 against 35.95; test 36.71 against 37.65). No confidence interval was computed for that difference, so
+  this run does not show which of the two is better. XGBoost was not tuned, while LightGBM's hyperparameters were
+  tuned on ds-v0.3.0.
 - **PM2.5:** nothing beats **IDW p=1 all**, which is also better than the IDW p=2 k=8 production fallback (test
   23.01 against 24.19). The learned models are 1.3–3.5 µg/m³ worse in LOSO. 3.6× more data than ds-v0.3.0 did not
   change this.
 - Same conclusions as ds-v0.3.0 ([report](../model-comparison-ds-v0.3.0/README.md)): PM2.5 selected IDW p=1 all
   (LOSO test 22.18), NO₂ selected LightGBM direct. The numbers are not directly comparable: test periods (late
   September against November) and station split differ.
+
+## Reproducibility
+
+The tables above can be checked from this folder:
+
+| Path | Content |
+|---|---|
+| [`results/results.csv`](results/results.csv) | Every metric (n, MAE, RMSE, R², bias) per target, protocol, model and split, written by the notebook run |
+| [`results/summary.csv`](results/summary.csv), [`results/report.csv`](results/report.csv) | Derived from `results.csv` with the notebook's summary cell (section 7) at this commit |
+| [`snapshot/manifest.json`](snapshot/manifest.json) | Snapshot manifest: input and output hashes, counts, code commit `caaa113` |
+| [`snapshot/CHECKSUMS.sha256`](snapshot/CHECKSUMS.sha256) | SHA-256 of every snapshot file (the notebook checks these before training) |
+| [`snapshot/config.toml`](snapshot/config.toml), [`snapshot/split_spec.json`](snapshot/split_spec.json), [`snapshot/split_stats.md`](snapshot/split_stats.md), [`snapshot/exclusion_rules.md`](snapshot/exclusion_rules.md) | Blocks, groups, station split, label rules and exclusion counts |
+| [`snapshot/leakage_report.json`](snapshot/leakage_report.json), [`.md`](snapshot/leakage_report.md) | The 8 leakage checks, all passed |
+| [`snapshot/sippolusi_ds-v0.4.0_bundle.zip.sha256`](snapshot/sippolusi_ds-v0.4.0_bundle.zip.sha256) | SHA-256 of the data bundle used for this run (`8a84e66b…`, LZMA zip of the snapshot above) |
+| [`backfill/BACKFILL_MANIFEST.json`](backfill/BACKFILL_MANIFEST.json) | Oct–Nov feature backfill: per-source reports and the overlap comparison with the original `dataset_processed` |
+
+The snapshot itself (16 MB) is not committed. It is rebuilt with
+[`src/data_worker/scripts/dataset_extension`](../../../src/data_worker/scripts/dataset_extension/README.md) and checked
+against `snapshot/CHECKSUMS.sha256`.
+
+**Backfill provenance.** The GEOS-CF, Open-Meteo, Sentinel-5P and Landsat backfill ran as a Cloud Run Job from a code
+copy in `gs://sippolusi-seed-87531247158/backfill/code/`, not from the container image. That copy was compared file by
+file (MD5) with git: `connectors/`, `feature_matrix/`, `feature_store/`, `scripts/` and `spatial_model/` are identical
+to commit `9c8f507` (96 files plus two empty `__init__.py`), and `backfill_features.py` is identical to
+`src/data_worker/scripts/dataset_extension/backfill_features.py` as committed in `caaa113`.
 
 ## Notes
 

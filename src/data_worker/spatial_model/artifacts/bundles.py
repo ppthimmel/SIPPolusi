@@ -25,6 +25,10 @@ def export_bundle(output, target, snapshot, metadata):
     family = metadata.get("model_family", "stgnn" if target == "pm25" else "lightgbm")
     if family not in ("stgnn", "lightgbm"):
         raise ValueError("Unsupported model family")
+    # Every training path records the snapshot's version; a missing or unknown one is an error, not a default.
+    dataset = metadata.get("dataset")
+    if dataset not in SUPPORTED_DATASETS:
+        raise ValueError(f"Bundle metadata needs a supported dataset version, got {dataset!r}")
     files = ["best.pt"] if family == "stgnn" else ["model.txt", "metadata.json"]
     files += [name for name in ("metrics.json", "evaluation_metrics.csv", "idw_comparison.csv", "history.csv", "evaluation.json") if (output / name).is_file()]
     for name in files:
@@ -35,7 +39,7 @@ def export_bundle(output, target, snapshot, metadata):
         revision = subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True, text=True).stdout.strip()
     except FileNotFoundError:
         revision = os.environ.get("GIT_COMMIT", "unavailable; see source_hashes")
-    manifest = dict(format_version=1, model_family=family, target=target, dataset=metadata.get("dataset", "ds-v0.3.0"), unit="ug/m3",
+    manifest = dict(format_version=1, model_family=family, target=target, dataset=dataset, unit="ug/m3",
                     metadata=metadata, snapshot_hashes=verify_snapshot(snapshot),
                     code_revision=revision, python=platform.python_version(),
                     config_hashes={p.name: digest(p) for p in sorted(

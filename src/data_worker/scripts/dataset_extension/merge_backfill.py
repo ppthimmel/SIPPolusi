@@ -1,6 +1,6 @@
 """Merge backfilled feature files into a copy of dataset_processed.
 
-Usage: python merge_features.py ORIGINAL_DATASET_PROCESSED BACKFILL_DIR OUT_DIR
+Usage: python merge_backfill.py ORIGINAL_DATASET_PROCESSED BACKFILL_DIR OUT_DIR
 Original rows win wherever both have the same key; the overlap is compared and reported.
 """
 import json

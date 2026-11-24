@@ -21,6 +21,10 @@ tasks on the data-worker image. The code is read from `gs://sippolusi-seed-87531
 goes to `gs://sippolusi-seed-87531247158/backfill/out/<stamp>/`. The 19 Nov run took about 20 minutes. Delete
 the job afterwards.
 
+Because the job runs the uploaded copy rather than the image's code, record which commit that copy is: upload from
+a clean checkout of a commit and note its hash next to the results (as in
+`docs/experiments/model-comparison-ds-v0.4.0/README.md`, "Backfill provenance").
+
 ## Checks used for ds-v0.4.0
 
 - Rebuilding ds-v0.3.0 with its own config from the converted Railway data reproduces the committed snapshot:
