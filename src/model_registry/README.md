@@ -7,7 +7,7 @@ MLflow 2.17.2 menyimpan run, parameter, metrik, versi dan alias. PostgreSQL meny
 | Nama model | Peran |
 |---|---|
 | `spatial-downscaling-pm25` | IDW + koreksi ST-GNN PM2.5 |
-| `spatial-downscaling-no2` | Full-feature LightGBM NO₂ |
+| `spatial-downscaling-no2` | XGBoost + koreksi IDW NO₂ (ds-v0.4.0); bundle LightGBM juga diterima |
 | `morl-route-policy` | Policy rute |
 
 Training membuat versi dan alias `candidate`. Promotion memverifikasi model sebelum menetapkan

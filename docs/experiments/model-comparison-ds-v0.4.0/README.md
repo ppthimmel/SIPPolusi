@@ -102,6 +102,27 @@ not support this protocol (it needs held-out stations).
   (LOSO test 22.18), NO₂ selected LightGBM direct. The numbers are not directly comparable: test periods (late
   September against November) and station split differ.
 
+## Production NO₂ model
+
+XGBoost + IDW corr, the model selected above, is the NO₂ serving model (`python -m spatial_model.training train no2
+--family xgboost`, commit `c8590c7`). It is trained like the LightGBM serving fit: all 111 NO₂ stations as sensors,
+labels of the training block only (13,232 station-hours), notebook hyperparameters (`configs/xgboost.json`), seed 42,
+CPU `xgboost-cpu` 3.2.0.
+
+| Item | Value |
+|---|---|
+| Model version | `ds-v0.4.0-9734d6e298ef` |
+| `bundle_sha256` / `package_sha256` | `9734d6e2…` / `939f2ddf…` |
+| Package check | `verify_model_packages.py spatial --target no2`: pass, compatible, 5 files |
+| Staged on GCP | `gs://sippolusi-mlflow-87531247158/artifacts/incoming/spatial/no2/ds-v0.4.0-9734d6e298ef/` |
+| Files here | [`production_no2/`](production_no2): `bundle.json`, `package.json`, `metadata.json` (the 1 MB `model.json` is only in the bucket) |
+
+**Check of the repository code.** The same code run as LOSO on all NO₂ folds (CPU) scores the same station-hours as
+the notebook (val n = 2,005, test n = 2,354), with val RMSE 33.99 / test 35.23 (R² 0.54 / 0.50) against the notebook's
+35.95 / 37.65 ([`production_no2/loso_check.json`](production_no2/loso_check.json)). The cause of the difference was
+not isolated; the notebook ran XGBoost on the GPU (`device="cuda"`), whose row and column sampling differs from the
+CPU's, with the Colab XGBoost version. The selection above uses the notebook numbers and is unchanged.
+
 ## Reproducibility
 
 The tables above can be checked from this folder:
