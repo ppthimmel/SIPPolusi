@@ -12,13 +12,17 @@ from spatial_model.artifacts.bundles import export_bundle
 from spatial_model.data.validation import verify_snapshot
 from spatial_model.configs import load_model_config, DEFAULT_SEED, snapshot_version
 from .data import CORE, feature_groups, design, TARGETS
-from .model import make_model
+from spatial_model.models.tabular import TABULAR_FAMILIES, model_file
 
 
-def train(snapshot, output, *, seed=DEFAULT_SEED, fold=None, evaluate_test=True, target="no2", protocol=None):
+def train(snapshot, output, *, seed=DEFAULT_SEED, fold=None, evaluate_test=True, target="no2", protocol=None,
+          family="lightgbm"):
+    """Fit one tabular model (``family`` lightgbm or xgboost) on the snapshot's training block and export a bundle."""
     protocol = protocol or ("loso" if fold is not None else "serving")
     if target not in ("pm25", "no2"):
         raise ValueError("Choose pm25 or no2")
+    if family not in TABULAR_FAMILIES:
+        raise ValueError("Choose lightgbm or xgboost")
     if protocol not in ("fixed_split", "loso", "serving"):
         raise ValueError("Choose fixed_split, loso, or serving")
     if protocol == "fixed_split" and (target != "pm25" or fold is not None):
@@ -29,8 +33,10 @@ def train(snapshot, output, *, seed=DEFAULT_SEED, fold=None, evaluate_test=True,
         raise FileExistsError("Use a new output directory")
     if seed != DEFAULT_SEED:
         raise ValueError("The validation-selected configuration uses seed 42")
+    if family == "xgboost" and target != "no2":
+        raise ValueError("XGBoost is configured and selected for NO2 only")
+    config = load_model_config(family)
     p = Panel(target, snapshot)
-    config = load_model_config("lightgbm")
     # Per-target overrides: NO2 uses the hyperparameters of the model selected for it.
     settings = config | config.get("targets", {}).get(target, {})
     columns = CORE + [c for group in feature_groups(target).values() for c in group]
@@ -54,6 +60,10 @@ def train(snapshot, output, *, seed=DEFAULT_SEED, fold=None, evaluate_test=True,
     valid = np.isfinite(encoded)
     if not valid.any():
         raise ValueError("No eligible training labels")
+    if family == "lightgbm":
+        from .model import make_model
+    else:
+        from spatial_model.models.xgboost.model import make_model
     model = make_model(settings["hp"], seed=seed)
     # Own contiguous arrays avoid views into nullable/read-only Parquet buffers.
     training = d.loc[valid, columns].astype("float64").copy()
@@ -61,8 +71,11 @@ def train(snapshot, output, *, seed=DEFAULT_SEED, fold=None, evaluate_test=True,
     model.fit(training, target_values)
     output = Path(output)
     output.mkdir(parents=True, exist_ok=False)
-    model.booster_.save_model(str(output / "model.txt"))
-    metadata = dict(model_family="lightgbm", protocol=protocol, configuration=config, training_config=dict(settings["hp"], threads=model.n_jobs), target=target, dataset=snapshot_version(snapshot), unit="ug/m3", seed=seed,
+    if family == "lightgbm":
+        model.booster_.save_model(str(output / model_file(family)))
+    else:
+        model.save_model(str(output / model_file(family)))
+    metadata = dict(model_family=family, protocol=protocol, configuration=config, training_config=dict(settings["hp"], threads=model.n_jobs), target=target, dataset=snapshot_version(snapshot), unit="ug/m3", seed=seed,
                     columns=columns, target_transform=config["target"], hyperparameters=settings["hp"],
                     snapshot_hashes=verify_snapshot(Path(snapshot)),
                     sensor_stations=p.stations.loc[allowed, "uuid"].tolist(), fold=fold,

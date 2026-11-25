@@ -48,8 +48,8 @@ def infer_registered(time_window, ground_truth, spec, settings, inputs=None, res
             if not valid.any():
                 raise ValueError("Model produced no supported grid predictions")
             grid.loc[valid, f"{target}_ugm3"] = predicted[valid]
-            item.update(source="idw_stgnn_residual" if target == "pm25" else "lightgbm",
-                        model_version=identity, fallback_cells=int((~valid).sum()))
+            item.update(source=model_source(target, loaded.metadata), model_version=identity,
+                        fallback_cells=int((~valid).sum()))
             if target == "pm25" and loaded.metadata.get("estimation_source") == "idw":
                 item["source"] = "idw"
                 item["note"] = "Validation selected epoch-zero IDW"
@@ -75,6 +75,16 @@ def infer_registered(time_window, ground_truth, spec, settings, inputs=None, res
     identity = hashlib.sha256(json.dumps(dict(models=provenance, input=fingerprint.hexdigest(),
                                               grid=spec.as_dict(), settings=settings), sort_keys=True, default=str).encode()).hexdigest()
     return grid, provenance, f"spatial-{identity}", fingerprint.hexdigest()
+
+
+def model_source(target, metadata):
+    """Estimation source recorded per pollutant (API metadata and grid cells)."""
+    if target == "pm25":
+        return "idw_stgnn_residual"
+    family = metadata.get("model_family", "lightgbm")
+    if family == "xgboost":
+        return "idw_xgboost_residual" if metadata.get("target_transform") == "resid_idw" else "xgboost"
+    return "lightgbm"
 
 
 @contextlib.contextmanager

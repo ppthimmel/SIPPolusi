@@ -1,9 +1,8 @@
-"""Evaluate a native NO2 model on its held-out sensor group without fitting."""
+"""Evaluate a native tabular (LightGBM or XGBoost) model on its held-out sensor group without fitting."""
 import hashlib
 import json
 from pathlib import Path
 
-import lightgbm as lgb
 import numpy as np
 import pandas as pd
 
@@ -12,6 +11,7 @@ from spatial_model.data.validation import verify_snapshot
 from spatial_model.configs import SUPPORTED_DATASETS
 from spatial_model.models.lightgbm.data import design
 from spatial_model.models.lightgbm.model import predict
+from spatial_model.models.tabular import LABELS, load_native
 from spatial_model.evaluation.metrics import compute_metrics
 
 
@@ -53,10 +53,8 @@ def evaluate(snapshot, checkpoint, output, *, splits=("val", "test"), _panel=Non
         allowed = p.station_split == "train"
     if metadata["sensor_stations"] != p.stations.loc[allowed, "uuid"].tolist():
         raise ValueError("Checkpoint sensor policy differs from evaluation protocol")
-    model_path = checkpoint / "model.txt"
-    model = lgb.Booster(model_file=str(model_path))
-    if model.feature_name() != metadata["columns"]:
-        raise ValueError("Checkpoint feature order mismatch")
+    family = metadata.get("model_family", "lightgbm")
+    model, model_path = load_native(checkpoint, metadata)
     features = spatial_features(p, allowed)
     output.mkdir(parents=True, exist_ok=True)
     results, reports = {}, []
@@ -75,14 +73,14 @@ def evaluate(snapshot, checkpoint, output, *, splits=("val", "test"), _panel=Non
         table["y"] = table.observed
         table.to_parquet(output / f"{split}_predictions.parquet", index=False)
         results[split] = compute_metrics(table.observed, prediction)
-        reports.append(dict(split=split, method="LightGBM", station_uuid="pooled", **results[split]))
+        reports.append(dict(split=split, method=LABELS[family], station_uuid="pooled", **results[split]))
         for station, part in table.groupby("station"):
             station_uuid = p.stations.loc[p.stations.kode == station, "uuid"].iloc[0]
-            reports.append(dict(split=split, method="LightGBM", station_uuid=station_uuid,
+            reports.append(dict(split=split, method=LABELS[family], station_uuid=station_uuid,
                                 **compute_metrics(part.observed, part.predicted)))
     (output / "metrics.json").write_text(json.dumps(results, indent=2), encoding="utf-8")
     pd.DataFrame(reports).to_csv(output / "evaluation_metrics.csv", index=False)
-    provenance = dict(model="lightgbm", checkpoint_sha256=hashlib.sha256(model_path.read_bytes()).hexdigest(),
+    provenance = dict(model=family, checkpoint_sha256=hashlib.sha256(model_path.read_bytes()).hexdigest(),
                       metadata_sha256=hashlib.sha256((checkpoint / "metadata.json").read_bytes()).hexdigest(),
                       snapshot_hashes=hashes, target=target, protocol=protocol, fold=fold, held_out_group=str(held) if held is not None else None,
                       splits=list(splits), unit="ug/m3")

@@ -1,0 +1,16 @@
+{
+  "hp": {
+    "n_estimators": 600,
+    "learning_rate": 0.03,
+    "max_depth": 4,
+    "min_child_weight": 20,
+    "subsample": 0.8,
+    "colsample_bytree": 0.5,
+    "reg_lambda": 5.0,
+    "tree_method": "hist"
+  },
+  "target": "resid_idw",
+  "hyperparameter_origin": "Colab notebook defaults (XGB_PARAMS in notebooks/spatial_model/train_all_models_colab.ipynb); not tuned on any dataset",
+  "selection": "XGBoost + IDW correction (label minus IDW p=2 k=8) selected on NO2 LOSO validation of ds-v0.4.0: val RMSE 35.95, test RMSE 37.65 (docs/experiments/model-comparison-ds-v0.4.0)",
+  "threads": 8
+}

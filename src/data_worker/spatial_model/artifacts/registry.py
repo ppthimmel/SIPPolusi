@@ -8,7 +8,8 @@ import tempfile
 import re
 from pathlib import Path
 
-from spatial_model.artifacts.bundles import validate_bundle, digest
+from spatial_model.artifacts.bundles import serving_family, validate_bundle, digest
+from spatial_model.configs import SERVING_FAMILIES
 from spatial_model.artifacts.model_package import PACKAGE_FILE, package_digest, validate_package
 
 NAMES = {"pm25": "spatial-downscaling-pm25", "no2": "spatial-downscaling-no2"}
@@ -28,8 +29,7 @@ def register(bundle, *, set_candidate=True):
     packaged = (Path(bundle) / PACKAGE_FILE).is_file()
     if packaged:
         validate_package(bundle, "spatial_downscaling")
-    expected_family = "stgnn" if manifest["target"] == "pm25" else "lightgbm"
-    if manifest.get("model_family", expected_family) != expected_family:
+    if serving_family(manifest) not in SERVING_FAMILIES[manifest["target"]]:
         raise ValueError("Research model family is incompatible with the production target pairing")
     if manifest["metadata"].get("fold") is not None:
         raise ValueError("Cannot register a LOSO fold checkpoint as a serving fit")

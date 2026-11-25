@@ -1,4 +1,4 @@
-"""Train, register, and promote the ds-v0.3.0 pollutant models."""
+"""Train, register, and promote the pollutant models."""
 from __future__ import annotations
 
 import argparse
@@ -23,6 +23,8 @@ def main(argv=None):
     t.add_argument("--device", default="cpu")
     t.add_argument("--resume", action="store_true")
     t.add_argument("--register", action="store_true")
+    t.add_argument("--family", choices=("lightgbm", "xgboost"), default="lightgbm",
+                   help="NO2 model family (xgboost: XGBoost + IDW correction, selected on ds-v0.4.0)")
     r = commands.add_parser("register")
     r.add_argument("bundle", type=Path)
     p = commands.add_parser("promote", help="set the alias production (a deliberate team decision)")
@@ -87,15 +89,17 @@ def main(argv=None):
         from spatial_model.artifacts.registry import register
         print(json.dumps(register(args.bundle)))
     else:
+        if args.target == "pm25" and args.family != "lightgbm":
+            parser.error("--family applies to NO2; PM2.5 trains the ST-GNN")
         if args.target == "pm25":
             from spatial_model.models.stgnn.train import train
             bundle = train(args.snapshot, args.out, protocol="fixed_split" if args.fold is None else "loso",
                            fold=args.fold, seed=args.seed, epochs=args.epochs, device=args.device, resume=args.resume)
         else:
             if args.resume:
-                parser.error("LightGBM training is deterministic and does not use checkpoint resume")
+                parser.error("Tabular training does not use checkpoint resume")
             from spatial_model.models.lightgbm.train import train
-            bundle = train(args.snapshot, args.out, seed=args.seed, fold=args.fold)
+            bundle = train(args.snapshot, args.out, seed=args.seed, fold=args.fold, family=args.family)
         print(bundle)
         if args.register:
             from spatial_model.artifacts.registry import register

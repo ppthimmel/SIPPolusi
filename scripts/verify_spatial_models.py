@@ -97,7 +97,7 @@ def main():
         first = run_downscale_inference(window,force=True,**kwargs)
         assert first.rows_written == 1
         assert first.model_metadata['pm25']['source'] == 'idw_stgnn_residual', first.model_metadata
-        assert first.model_metadata['no2']['source'] == 'lightgbm', first.model_metadata
+        assert first.model_metadata['no2']['source'] in ('lightgbm', 'idw_xgboost_residual'), first.model_metadata
         second = run_downscale_inference(window,**kwargs)
         assert second.status == 'skipped' and second.run_id == first.run_id
         assert first.artifacts == {}
@@ -125,7 +125,7 @@ def main():
                 BackendWindow(window.start),graph_version=graph_version)
             assert len(result.weights)==1
             weight=result.weights[0]
-            assert weight.model_metadata['no2']['source']=='lightgbm'
+            assert weight.model_metadata['no2']['source'] in ('lightgbm', 'idw_xgboost_residual')
             assert weight.trace_run_id == first.run_id
             backend_trace = await PollutionRepository(db,None).read_edge_trace(edge_id, BackendWindow(window.start))
             assert backend_trace['run_id'] == first.run_id and len(backend_trace['cells']) == width

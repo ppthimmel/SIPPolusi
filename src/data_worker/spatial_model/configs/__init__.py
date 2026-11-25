@@ -13,6 +13,8 @@ IDW_CONFIG = ROOT / "idw_baseline.toml"
 SNAPSHOT_CONFIG = ROOT / "ds-v0.3.0.toml"
 #: Snapshot versions the training, evaluation and bundle code accept (same layout and label rules).
 SUPPORTED_DATASETS = ("ds-v0.3.0", "ds-v0.4.0")
+#: Model families the serving path accepts per pollutant (bundles, registration and the Worker check this).
+SERVING_FAMILIES = {"pm25": ("stgnn",), "no2": ("lightgbm", "xgboost")}
 
 
 def snapshot_version(snapshot) -> str:
@@ -24,7 +26,7 @@ def snapshot_version(snapshot) -> str:
 
 
 def load_model_config(model):
-    if model not in ("stgnn", "lightgbm"):
+    if model not in ("stgnn", "lightgbm", "xgboost"):
         raise ValueError("Unknown model configuration")
     return json.loads((ROOT / f"{model}.json").read_text(encoding="utf-8"))
 

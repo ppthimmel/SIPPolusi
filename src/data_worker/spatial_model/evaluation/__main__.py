@@ -6,7 +6,7 @@ from pathlib import Path
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__, add_help=False)
-    parser.add_argument("model", choices=("idw", "stgnn", "lightgbm"))
+    parser.add_argument("model", choices=("idw", "stgnn", "lightgbm", "xgboost"))
     argv = list(sys.argv[1:] if argv is None else argv)
     if not argv or argv[0] in ("-h", "--help"):
         parser.print_help()
@@ -18,7 +18,7 @@ def main(argv=None):
     model_parser = argparse.ArgumentParser(prog=f"python -m spatial_model.evaluation {args.model}")
     model_parser.add_argument("--snapshot", type=Path, required=True)
     model_parser.add_argument("--checkpoint", type=Path, required=True,
-                              help="ST-GNN best.pt file or LightGBM checkpoint/bundle directory")
+                              help="ST-GNN best.pt file or LightGBM/XGBoost checkpoint/bundle directory")
     model_parser.add_argument("--out", type=Path, required=True)
     model_parser.add_argument("--split", choices=("val", "test", "both"), default="both")
     if args.model == "stgnn":
