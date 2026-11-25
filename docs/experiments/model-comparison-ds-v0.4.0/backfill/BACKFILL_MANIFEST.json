@@ -1,0 +1,253 @@
+{
+  "original": "dataset_processed",
+  "backfill": "D:\\Github\\SIPPolusi\\exports\\feature_backfill\\20261119",
+  "files": {
+    "geos-cf/geoscf_cell_hourly.parquet": {
+      "overlap_rows": 864,
+      "pm25_ugm3": {
+        "max_abs_diff": 0.0,
+        "mismatched_nan": 0
+      },
+      "no2_ugm3": {
+        "max_abs_diff": 1.52587890625e-05,
+        "mismatched_nan": 0
+      },
+      "available_at_utc": {
+        "unequal": 0
+      },
+      "rows_original": 58968,
+      "rows_added": 10449,
+      "rows_total": 69417
+    },
+    "geos-cf/geoscf_fcst_cell_hourly.parquet": {
+      "overlap_rows": 4320,
+      "pm25_ugm3": {
+        "max_abs_diff": 0.0,
+        "mismatched_nan": 0
+      },
+      "no2_ugm3": {
+        "max_abs_diff": 0.0,
+        "mismatched_nan": 0
+      },
+      "available_at_utc": {
+        "unequal": 0
+      },
+      "rows_original": 45360,
+      "rows_added": 52920,
+      "rows_total": 98280
+    },
+    "open_meteo/hourly.parquet": {
+      "overlap_rows": 96,
+      "temperature_2m": {
+        "max_abs_diff": 0.0,
+        "mismatched_nan": 0
+      },
+      "precipitation": {
+        "max_abs_diff": 0.0,
+        "mismatched_nan": 0
+      },
+      "boundary_layer_height": {
+        "max_abs_diff": 0.0,
+        "mismatched_nan": 0
+      },
+      "rows_original": 6552,
+      "rows_added": 1200,
+      "rows_total": 7752
+    },
+    "sentinel5p/observations.parquet": {
+      "overlap_rows": 242,
+      "no2_mol_m2": {
+        "max_abs_diff": 0.0,
+        "mismatched_nan": 0
+      },
+      "available": {
+        "unequal": 0
+      },
+      "produced_at": {
+        "unequal": 0
+      },
+      "rows_original": 14440,
+      "rows_added": 2270,
+      "rows_total": 16710
+    },
+    "landsat/scenes": {
+      "scenes_original": 40,
+      "scenes_added": [
+        "LC08_L2SP_122064_20260930_02_T1",
+        "LC08_L2SP_122064_20261016_02_T1",
+        "LC08_L2SP_122064_20261101_02_T1",
+        "LC08_L2SP_122065_20260930_02_T1",
+        "LC08_L2SP_122065_20261016_02_T1",
+        "LC09_L2SP_122064_20261008_02_T1",
+        "LC09_L2SP_122064_20261024_02_T1",
+        "LC09_L2SP_122064_20261109_02_T1"
+      ]
+    }
+  },
+  "backfill_reports": {
+    "geoscf_ana": {
+      "status": "ok",
+      "hours_requested": 1284,
+      "published": 1257,
+      "not_published": 27,
+      "beyond_opendap_axis": 0,
+      "rows": 11313,
+      "latency_hours": {
+        "count": 11313.0,
+        "mean": 17.13,
+        "std": 6.34,
+        "min": 6.32,
+        "25%": 11.73,
+        "50%": 17.16,
+        "75%": 22.72,
+        "max": 28.86
+      },
+      "source": "geoscf_ana",
+      "start": "2026-09-27 00:00:00+00:00",
+      "end": "2026-11-19 12:00:00+00:00",
+      "seconds": 818.5
+    },
+    "geoscf_fcst": {
+      "status": "ok",
+      "runs_requested": 54,
+      "runs_saved": 53,
+      "skipped": {
+        "2026-11-19 09:00:00+00:00": "incomplete"
+      },
+      "rows": 57240,
+      "source": "geoscf_fcst",
+      "start": "2026-09-27 00:00:00+00:00",
+      "end": "2026-11-19 12:00:00+00:00",
+      "seconds": 1170.2
+    },
+    "landsat": {
+      "status": "ok",
+      "items": 8,
+      "saved": [
+        {
+          "scene_id": "LC08_L2SP_122064_20260930_02_T1",
+          "cloud_cover": 12.21,
+          "valid_cells": {
+            "ndvi": 4651,
+            "ndbi": 4649,
+            "lst_c": 0
+          }
+        },
+        {
+          "scene_id": "LC08_L2SP_122065_20260930_02_T1",
+          "cloud_cover": 39.6,
+          "valid_cells": {
+            "ndvi": 9,
+            "ndbi": 9,
+            "lst_c": 0
+          }
+        },
+        {
+          "scene_id": "LC09_L2SP_122064_20261008_02_T1",
+          "cloud_cover": 18.83,
+          "valid_cells": {
+            "ndvi": 6969,
+            "ndbi": 6968,
+            "lst_c": 78
+          }
+        },
+        {
+          "scene_id": "LC08_L2SP_122064_20261016_02_T1",
+          "cloud_cover": 7.0,
+          "valid_cells": {
+            "ndvi": 305,
+            "ndbi": 305,
+            "lst_c": 207
+          }
+        },
+        {
+          "scene_id": "LC08_L2SP_122065_20261016_02_T1",
+          "cloud_cover": 5.37,
+          "valid_cells": {
+            "ndvi": 20,
+            "ndbi": 20,
+            "lst_c": 129
+          }
+        },
+        {
+          "scene_id": "LC09_L2SP_122064_20261024_02_T1",
+          "cloud_cover": 38.75,
+          "valid_cells": {
+            "ndvi": 423,
+            "ndbi": 423,
+            "lst_c": 20
+          }
+        },
+        {
+          "scene_id": "LC08_L2SP_122064_20261101_02_T1",
+          "cloud_cover": 27.26,
+          "valid_cells": {
+            "ndvi": 7339,
+            "ndbi": 7339,
+            "lst_c": 0
+          }
+        },
+        {
+          "scene_id": "LC09_L2SP_122064_20261109_02_T1",
+          "cloud_cover": 20.31,
+          "valid_cells": {
+            "ndvi": 6318,
+            "ndbi": 6318,
+            "lst_c": 0
+          }
+        }
+      ],
+      "failed": {},
+      "source": "landsat",
+      "start": "2026-09-27 00:00:00+00:00",
+      "end": "2026-11-19 12:00:00+00:00",
+      "seconds": 220.3
+    },
+    "open_meteo": {
+      "status": "ok",
+      "rows": 1296,
+      "qc_dropped": {
+        "hours": 1296,
+        "duplicate_hours": 0,
+        "out_of_range": {},
+        "missing": {
+          "temperature_2m": 0,
+          "relative_humidity_2m": 0,
+          "wind_speed_10m": 0,
+          "wind_direction_10m": 0,
+          "boundary_layer_height": 0,
+          "precipitation": 0,
+          "surface_pressure": 0
+        }
+      },
+      "null_counts": {
+        "temperature_2m": 0,
+        "relative_humidity_2m": 0,
+        "wind_speed_10m": 0,
+        "wind_direction_10m": 0,
+        "boundary_layer_height": 0,
+        "precipitation": 0,
+        "surface_pressure": 0
+      },
+      "source": "open_meteo",
+      "start": "2026-09-27 00:00:00+00:00",
+      "end": "2026-11-19 12:00:00+00:00",
+      "seconds": 2.1
+    },
+    "sentinel5p": {
+      "status": "ok",
+      "items": 53,
+      "scenes_with_rows": 52,
+      "rows": 2512,
+      "available_rows": 1277,
+      "failed": {},
+      "source": "sentinel5p",
+      "start": "2026-09-27 00:00:00+00:00",
+      "end": "2026-11-19 12:00:00+00:00",
+      "seconds": 402.6
+    }
+  },
+  "not_backfilled": {
+    "viirs": "VNP46A2 needs EARTHDATA_TOKEN; the as-of reader carries the last September product forward with its age in ntl_age_hours"
+  }
+}

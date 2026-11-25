@@ -10,7 +10,7 @@ import pandas as pd
 from spatial_model.data.features import Panel, spatial_features
 from spatial_model.artifacts.bundles import export_bundle
 from spatial_model.data.validation import verify_snapshot
-from spatial_model.configs import load_model_config, DEFAULT_SEED
+from spatial_model.configs import load_model_config, DEFAULT_SEED, snapshot_version
 from .data import CORE, feature_groups, design, TARGETS
 from .model import make_model
 
@@ -62,7 +62,7 @@ def train(snapshot, output, *, seed=DEFAULT_SEED, fold=None, evaluate_test=True,
     output = Path(output)
     output.mkdir(parents=True, exist_ok=False)
     model.booster_.save_model(str(output / "model.txt"))
-    metadata = dict(model_family="lightgbm", protocol=protocol, configuration=config, training_config=dict(settings["hp"], threads=model.n_jobs), target=target, dataset="ds-v0.3.0", unit="ug/m3", seed=seed,
+    metadata = dict(model_family="lightgbm", protocol=protocol, configuration=config, training_config=dict(settings["hp"], threads=model.n_jobs), target=target, dataset=snapshot_version(snapshot), unit="ug/m3", seed=seed,
                     columns=columns, target_transform=config["target"], hyperparameters=settings["hp"],
                     snapshot_hashes=verify_snapshot(Path(snapshot)),
                     sensor_stations=p.stations.loc[allowed, "uuid"].tolist(), fold=fold,
