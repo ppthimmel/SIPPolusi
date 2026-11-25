@@ -7,7 +7,7 @@ data bundle `sippolusi_ds-v0.4.0_bundle.zip`. All LOSO folds: 109 for PM2.5, 15 
 
 | Item | Value |
 |---|---|
-| Dataset | ds-v0.4.0: ground truth 13 Sep – 19 Nov 2026 (Railway + GCP), labels 11–16 Nov excluded (collection gap) |
+| Dataset | ds-v0.4.0: ground truth 13 Sep – 19 Nov 2026 (Railway + GCP); 11 Nov 04:00 – 16 Nov 07:00 excluded (collection gap; see Notes) |
 | Blocks | train 13 Sep – 28 Oct, validation 29 Oct – 5 Nov, test 6 – 19 Nov 2026 |
 | Protocols | **LOSO** (one station group hidden per fold; main), **fixed split** (PM2.5: station split × block), **temporal split** (NO₂: all stations, later block) |
 | Selection | The model with the lowest **validation** RMSE is selected; its **test** score is the reported result |
@@ -22,7 +22,7 @@ data bundle `sippolusi_ds-v0.4.0_bundle.zip`. All LOSO folds: 109 for PM2.5, 15 
 | Target | Protocol | Selected model | Test RMSE | Test MAE | Test R² | IDW p=1 all test RMSE | vs IDW |
 |---|---|---|---|---|---|---|---|
 | **NO₂** | **LOSO** | **XGBoost + IDW corr** | **37.65** | 26.16 | **0.43** | 47.28 | **−9.63 (−20%)** |
-| NO₂ | Temporal split ¹ | XGBoost + IDW corr | 21.28 | 13.57 | 0.82 | 47.28 | not comparable ¹ |
+| NO₂ | Temporal split ¹ | XGBoost + IDW corr | 21.28 | 13.57 | 0.82 | — | not comparable ¹ |
 | **PM2.5** | **LOSO** | **IDW p=1 all** | **23.01** | 17.63 | 0.24 | 23.01 | 0 |
 | PM2.5 | Fixed split | IDW p=1 all | 26.54 | 18.82 | 0.11 | 26.54 | 0 |
 
@@ -134,6 +134,18 @@ to commit `9c8f507` (96 files plus two empty `__init__.py`), and `backfill_featu
   validation (IDW p=1 all). The only verdict that changed: PM2.5 fixed split, ST-GNN, from beats IDW to does not
   (29.28 is better than IDW p=2 k=8 at 29.45, but worse than IDW p=1 all at 26.54). The tables above use the
   corrected reference.
+- **Collection gap 11 – 16 Nov (correction).** No readings exist from 11 Nov 04:00 (Railway's last cycle) to
+  15 Nov 06:30 (GCP's first). `exclude_windows` in `configs/ds-v0.4.0.toml` drops 11 Nov 04:00 – 16 Nov 07:00, and its
+  comment says this keeps every label's 24-hour sensor history clear of the gap. That is not what happens:
+  `station_hour_labels` drops the **readings** in that range, not only the labels, and ST-GNN builds its sensor
+  history from those labels on a continuous hour index. So the GCP readings of 15 Nov 06:30 – 16 Nov 07:00 are lost
+  as well, and ST-GNN's history is partly empty for the first ~23 kept test hours (16 Nov 08:00 – 17 Nov 07:00, about
+  12% of the test block). The tabular lag features (`_lag1`, `_lag2`, `_d1`, `_roll3`) step over the gap for the
+  first two kept hours and use 11 Nov values: stale but causal, not leakage. Effect on the conclusions: ST-GNN is not
+  selected anywhere and the tabular models are affected for two hours only, so the selections above are not expected
+  to change; ST-GNN's test scores may be slightly pessimistic. The config comment is left as it is because the
+  config is frozen into the snapshot (`snapshot/config.toml`, covered by `CHECKSUMS.sha256`); a later dataset version
+  should keep these readings as sensor input and exclude them only from the labels.
 - **LOSO numbers depend on the fold set.** A run with only folds 0–4 tests 5 station groups and gives different
   numbers and a different selection; compare models only within one fold set. These are all folds.
 - **LOSO validation and test** are at the same hidden station in different periods (≥ 24 h apart); no model trains on

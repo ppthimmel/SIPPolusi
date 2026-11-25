@@ -158,8 +158,11 @@ md("""
 One label is the mean of the valid readings of one station in one hour (µg/m³). `period` is the time block.
 PM2.5 also has a fixed split (station split × time block); NO₂ uses the time block only.
 
-No readings exist from 11 Nov 04:00 to 15 Nov 06:30 (between the Railway and GCP collectors); labels up to
-16 Nov 07:00 are left out so every kept label has a full 24-hour history.
+No readings exist from 11 Nov 04:00 to 15 Nov 06:30 (between the Railway and GCP collectors). ds-v0.4.0 drops the
+hours from 11 Nov 04:00 to 16 Nov 07:00 — readings as well as labels, so the GCP readings of 15 Nov 06:30 – 16 Nov
+07:00 are not used either. As a result ST-GNN's 24-hour sensor history is partly empty for the first ~23 kept test
+hours (16 Nov 08:00 – 17 Nov 07:00, about 12% of the test block), and the tabular 1–2 hour lags of the first two
+kept hours come from 11 Nov (stale but causal, no leakage).
 """)
 code('''
 labels = pd.read_parquet(SNAPSHOT / "labels.parquet")
@@ -1217,7 +1220,8 @@ for (target, protocol), g in summary.groupby(["target", "protocol"]):
     c = chosen.iloc[0]
     report.append(dict(target=target, protocol=protocol, selected_model=c.model, val_rmse=c.val_rmse,
                        test_rmse=c.test_rmse, test_mae=c.test_mae, test_r2=c.test_r2,
-                       best_idw_on_val=idw.model, idw_test_rmse=idw.test_rmse,
+                       best_idw_on_val=None if protocol == "temporal_split" else idw.model,
+                       idw_test_rmse=np.nan if protocol == "temporal_split" else idw.test_rmse,
                        test_vs_idw=np.nan if protocol == "temporal_split" else c.test_rmse - idw.test_rmse))
 report = pd.DataFrame(report)
 report.to_csv(RUN_ROOT / "report.csv", index=False)
