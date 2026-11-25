@@ -1,5 +1,4 @@
 """XGBoost construction, native save/load and library version."""
-import importlib.metadata
 import os
 
 from spatial_model.configs import DEFAULT_SEED, load_model_config
@@ -25,10 +24,7 @@ def load(path, columns):
 
 
 def library_version():
-    """Installed version; the CPU-only wheel is distributed as ``xgboost-cpu``."""
-    for name in ("xgboost", "xgboost-cpu"):
-        try:
-            return importlib.metadata.version(name)
-        except importlib.metadata.PackageNotFoundError:
-            continue
-    raise importlib.metadata.PackageNotFoundError("xgboost")
+    """Version of the imported module (the CPU-only wheel is ``xgboost-cpu``, so distribution metadata can
+    belong to another installation)."""
+    import xgboost
+    return xgboost.__version__

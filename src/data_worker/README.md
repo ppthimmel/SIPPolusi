@@ -14,7 +14,7 @@ Yang sudah berjalan:
 - **Konektor sumber sekunder dan FeatureMatrix (TI-SE-02):** Open-Meteo, GEOS-CF `ana`/`fcst`,
   Landsat 8/9, VIIRS VNP46A2, dan Sentinel-5P NO2, lalu kendali mutu, penyelarasan ke grid 100 m, dan
   `write_features`. Data disimpan ke skema `features`; lihat [`feature_store/README.md`](feature_store/README.md).
-- **`trigger_downscale_inference`:** model terdaftar di MLflow (koreksi PM2.5, LightGBM NO2) dengan fallback IDW
+- **`trigger_downscale_inference`:** model terdaftar di MLflow (koreksi PM2.5, XGBoost + koreksi IDW atau LightGBM NO2) dengan fallback IDW
   per pencemar, sampai EdgeWeight di cache. Fitur lingkungan dibaca dari feature store (skema `features`) lewat
   `feature_reader()`. Tersedia tetapi nonaktif kecuali `DOWNSCALE_WRITE_CACHE=1`.
 

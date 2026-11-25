@@ -32,7 +32,8 @@ def test_training_records_family_transform_and_held_out_sensors(fold_bundle):
     manifest = validate_bundle(fold_bundle, "no2")
     assert manifest["model_family"] == "xgboost"
     assert {"model.json", "metadata.json", "stations.parquet"} <= manifest["hashes"].keys()
-    assert "xgboost" in manifest["libraries"] and "lightgbm" not in manifest["libraries"]
+    import xgboost
+    assert manifest["libraries"]["xgboost"] == xgboost.__version__ and "lightgbm" not in manifest["libraries"]
     folds = pd.read_parquet(SNAPSHOT / "splits/loso_folds.parquet")
     held = folds[(folds.target == "no2") & (folds.fold == 0)].group_id.iloc[0]
     stations = pd.read_parquet(SNAPSHOT / "stations.parquet")
