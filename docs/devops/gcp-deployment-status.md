@@ -70,7 +70,7 @@ simpler IDW estimate. Railway is unchanged and still stopped by its usage limit.
 | PM2.5 and NO₂ models | Their bundles exist only in the Railway bucket, which is locked by the Railway usage limit | Raise the Railway limit (or wait for 27 Nov), download the bundles, then register and promote them on GCP |
 | Old Railway data | Same lock. GCP started with an empty database | Optional: `pg_dump` of the `pollution`, `ground_truth` and `mlflow` schemas, restore into Cloud SQL |
 | CI/CD to GCP | Built, but not active until its PR is merged into `dev`; the deployer account's permissions are untested until that first run | Merge the PR, then check the first `deploy / gcp` run |
-| Alert notifications | Observability runs (issue #112, [observability-gcp.md](observability-gcp.md)), but no receiver is set, so alerts only show in Grafana | Store a receiver config in the secret `alertmanager-config` (scripts/gcp/README.md) |
+| Budget alert for observability | `observability` is always on (1.125 vCPU, since 26 Nov 2026) | Billing account owner sets a budget alert |
 | Budget alert | GCP has no hard spending cap like Railway | Account owner sets a budget alert in Billing (for example $20/month) |
 | Custom domain | Using the default `*.run.app` URLs | Optional: domain mapping or a load balancer |
 | Old backend API (`src/backend/Dockerfile`) | Not deployed; Railway doesn't run it either | Nothing, unless the team needs it |
@@ -120,7 +120,7 @@ simpler IDW estimate. Railway is unchanged and still stopped by its usage limit.
 ### Priority 3: optional
 
 - [ ] Move historical data from Railway (`pg_dump` / `pg_restore`).
-- [x] Monitoring dashboard and alerts: Prometheus, Alertmanager and Grafana on Cloud Run (issue #112). A notification receiver is still to be set.
+- [x] Monitoring dashboard and alerts: Prometheus, Alertmanager and Grafana on Cloud Run, email notifications tested (issue #112).
 - [ ] Custom domain.
 - [ ] `--min-instances=1` on `cache-api` and `gateway` for demos, if the startup delay matters.
 

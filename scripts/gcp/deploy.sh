@@ -5,6 +5,10 @@
 # Needs: gcloud signed in, images built with scripts/gcp/cloudbuild.yaml, secrets database-url,
 # mlflow-backend-store-uri and earthdata-token in Secret Manager. No secret value is written here.
 set -euo pipefail
+# Git Bash on Windows rewrites arguments that look like Unix paths (/etc/alertmanager/... becomes
+# C:/Program Files/Git/etc/...); container paths passed to Cloud Run must stay as written. Only these flags are
+# exempt: gcloud's own Windows wrapper needs the conversion for its paths. No effect outside Git Bash.
+export MSYS2_ARG_CONV_EXCL="--set-env-vars=;--set-secrets="
 
 GCLOUD="${GCLOUD:-gcloud}"
 PROJECT="${PROJECT:-sippolusi}"
@@ -125,7 +129,7 @@ observability() {
     require_obs_tag
     pushgateway
     # One always-on instance (CPU always allocated: Prometheus scrapes and Alertmanager notifies between requests).
-    # 1.125 vCPU / 1.4 GiB in total; 26 Nov 2026 at 1.75 vCPU / 1.6 GiB used 5.7 % CPU and 41 % memory (p95).
+    # 1.125 vCPU / 1.5 GiB in total; 26 Nov 2026 at 1.75 vCPU / 1.6 GiB used 5.7 % CPU and 41 % memory (p95).
     # Grafana is the public ingress container (login required); Prometheus, Alertmanager and the exporters are
     # sidecars on localhost and cannot be reached from outside. CACHE_API_SCRAPE=1 also scrapes the Cache API's
     # /metrics; that keeps the Cache API warm (cost), so use it only during load tests (issue #111).
@@ -162,7 +166,7 @@ observability() {
         "${alertmanager_secret[@]}" \
         --container=stackdriver --image=docker.io/prometheuscommunity/stackdriver-exporter:v0.19.0 \
         --cpu=0.125 --memory=128Mi --args="$args" \
-        --container=blackbox --image=docker.io/prom/blackbox-exporter:v0.29.0 --cpu=0.125 --memory=64Mi
+        --container=blackbox --image=docker.io/prom/blackbox-exporter:v0.29.0 --cpu=0.125 --memory=128Mi
 }
 
 case "${1:-}" in

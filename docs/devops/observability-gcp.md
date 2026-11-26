@@ -102,6 +102,12 @@ latensi selama probe layanan yang sama gagal. Penerima notifikasi diambil dari s
 `src/observability/alertmanager/alertmanager.example.yml`); tanpa secret itu alert tetap tercatat dan tampil di Grafana
 (penerima `dashboard-only`).
 
+Di GCP penerimanya **email lewat Gmail SMTP** (`smtp.gmail.com:587`, TLS), termasuk email saat alert selesai
+(`send_resolved`). Konfigurasinya (alamat pengirim dan penerima saja) ada di secret `alertmanager-config`; *app password*
+Gmail ada di secret terpisah `alertmanager-smtp-password` dan dibaca lewat `smtp_auth_password_file`, sehingga tidak
+pernah muncul di teks konfigurasi, repositori, maupun log. Untuk menambah penerima: `gcloud secrets versions add
+alertmanager-config --data-file=<berkas>` lalu `deploy.sh observability` (langkah di `scripts/gcp/README.md`).
+
 ## 6. Laporan pengujian
 
 ### 6.1 Uji otomatis
@@ -170,6 +176,24 @@ semuanya HTTP 200 dalam 0,5 sampai 2,1 detik.
   alert selain `Watchdog`).
 - CPU p95 instance `observability` 5,7 % dari alokasi, memori p95 41 %.
 
+**Notifikasi email (tanggapan review PR #116, 26 November 2026).** Penerima `team` (Gmail SMTP) dipasang lewat secret
+`alertmanager-config` dan `alertmanager-smtp-password`; layanan di-*deploy* ulang dengan image bertag commit
+`45e7592bf2ed` dan ukuran baru (1,125 vCPU / 1,5 GiB). Alert nyata dipicu dengan probe `faultinjection` yang sama
+seperti di atas (revisi 13:30 UTC).
+
+| Waktu (UTC) | Kejadian |
+|---|---|
+| 13:34:46 | `EndpointProbeFailed` (*critical*) diterima Alertmanager; pengiriman email pertama |
+| 13:34:46 sampai 15:53:17 | setiap percobaan gagal: Gmail menolak login (`535 5.7.8 Username and Password not accepted`); Alertmanager mengulang sesuai *backoff* dan alert tetap aktif |
+| 15:53:33 | *app password* yang benar disimpan sebagai versi 2 `alertmanager-smtp-password` (versi 1 tersimpan dengan spasi) |
+| 15:54:10, 15:54:17 | `Notify success` (receiver `team`, integrasi `email`), tanpa *redeploy*: secret yang dipasang sebagai volume dengan versi `latest` terbaca ulang |
+| 15:54 | email `[FIRING:1] EndpointProbeFailed probe faultinjection (https://gateway-.../does-not-exist-112 critical)` masuk ke kotak masuk penerima |
+
+Setelah itu konfigurasi normal di-*deploy* ulang (tanpa probe `faultinjection`). Email *resolved* tidak teruji pada uji
+ini: revisi baru me-*restart* Prometheus dan Alertmanager bersama-sama, sehingga status alert lama hilang. Kegagalan
+login yang pertama sekaligus menunjukkan bahwa pengiriman yang gagal tercatat (`Notify attempt failed` dengan alasan dari
+SMTP) dan diulang, bukan hilang diam-diam.
+
 ### 6.4 Temuan dan perbaikan selama pengujian
 
 | Temuan | Perbaikan |
@@ -183,13 +207,15 @@ semuanya HTTP 200 dalam 0,5 sampai 2,1 detik.
 
 | Hal | Status / tindakan |
 |---|---|
-| Penerima notifikasi (email, Discord, dll.) | Belum diisi; alert hanya tampil di Grafana. Isi secret `alertmanager-config` (scripts/gcp/README.md), lalu uji dengan alert nyata |
+| Penerima notifikasi | Email Gmail terpasang dan teruji (bagian 6.3). Saat ini pengirim dan penerima adalah satu akun anggota tim; tambahkan alamat tim dengan versi baru `alertmanager-config`. *App password* terikat pada akun itu: bila akun atau *app password*-nya dicabut, notifikasi berhenti (terlihat sebagai `Notify attempt failed` di log Alertmanager) |
+| Email *resolved* | Belum teruji di GCP (lihat 6.3); konfigurasinya `send_resolved: true` |
 | Data Worker mem-*push* metrik | Aktif setelah PR #112 masuk `dev` dan CI men-*deploy* `data-worker` (image baru dan `PUSHGATEWAY_URL`). Sampai itu `DataWorkerMetricsMissing` menyala; sesudahnya periksa panel Data Worker pada siklus menit ke-15 berikutnya |
 | Data Prometheus di memori | Hilang saat revisi baru atau restart instance (retensi 15 hari / 256 MB). Karena itu `observability` tidak di-*deploy* oleh CI. Untuk bukti uji beban (#111), ekspor hasil kueri atau tangkapan dashboard selama uji |
 | Basis data Grafana di memori | Dashboard dan datasource kembali dari *provisioning*, tetapi sesi login, pengguna tambahan, dan perubahan lewat UI hilang saat restart; semua orang perlu login ulang. Ubah dashboard lewat `src/observability/grafana/dashboards/` |
 | Cache API tidak di-*scrape* bawaan | Pakai `CACHE_API_SCRAPE=1` hanya selama uji beban; dengan beberapa instance, satu *scrape* hanya mengenai satu instance |
 | Metrik Cloud Monitoring terlambat 1 sampai 4 menit | Jendela alert 10 sampai 30 menit sudah memperhitungkannya |
-| Biaya | `observability` 1,75 vCPU dan 1,6 GiB selalu dialokasikan, ditambah satu instance `pushgateway`; perkiraan kasar puluhan sampai sekitar seratus USD per bulan. Periksa Billing setelah beberapa hari dan atur *budget alert* (akun pemilik billing) |
+| Biaya | Berjalan sejak 26 November 2026, bukan setelah merge. `observability` diperkecil dari 1,75 vCPU / 1,6 GiB ke 1,125 vCPU / 1,5 GiB (CPU selalu dialokasikan), ditambah satu instance `pushgateway` (128 MiB). Perkiraan reviewer untuk ukuran lama 90 sampai 110 USD per bulan; ukuran baru kira-kira dua pertiganya. *Budget alert* perlu dipasang oleh pemilik akun billing (akun deploy tidak punya izin billing) |
+| Image | Dibangun manual dengan tag commit (`OBS_IMAGE_TAG`, saat ini `45e7592bf2ed`); `deploy.sh observability` menolak berjalan tanpa tag |
 
 ## Lihat juga
 

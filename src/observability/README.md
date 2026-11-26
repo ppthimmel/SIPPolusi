@@ -85,7 +85,8 @@ complete ones.
 
 Alertmanager groups by alert and service, waits 30 s, repeats every 12 h, and suppresses 5xx/latency alerts while the
 probe of the same service fails. The baked-in config notifies nobody; a config with a receiver is mounted from the
-secret `alertmanager-config` on Google Cloud (`alertmanager.example.yml`).
+secret `alertmanager-config` on Google Cloud (`alertmanager.example.yml`); there it sends email through Gmail SMTP,
+with the app password read from a second secret (`alertmanager-smtp-password`, `smtp_auth_password_file`).
 
 ## Testing
 
