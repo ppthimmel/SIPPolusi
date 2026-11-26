@@ -16,7 +16,8 @@ BUCKET="${BUCKET:-sippolusi-mlflow-$NUMBER}"
 APP_SA="sippolusi-app@$PROJECT.iam.gserviceaccount.com"
 REGISTRY_SA="sippolusi-registry@$PROJECT.iam.gserviceaccount.com"
 OBS_SA="sippolusi-observability@$PROJECT.iam.gserviceaccount.com"
-OBS_TAG="${OBS_IMAGE_TAG:-latest}"   # observability images are built by hand (scripts/gcp/README.md)
+# Observability images are built by hand, tagged with the commit they come from (scripts/gcp/README.md).
+OBS_TAG="${OBS_IMAGE_TAG:-}"
 # Deterministic Cloud Run URL: https://<service>-<project number>.<region>.run.app
 url() { echo "https://$1-$NUMBER.$REGION.run.app"; }
 # Direct VPC egress: private ranges (Cloud SQL private IP) and, through the private run.app DNS zone and
@@ -89,7 +90,7 @@ observability_setup() {
                 --data-file=-
     fi
     local secret
-    for secret in grafana-admin-password alertmanager-config; do
+    for secret in grafana-admin-password alertmanager-config alertmanager-smtp-password; do
         "$GCLOUD" secrets describe "$secret" --project="$PROJECT" >/dev/null 2>&1 || continue
         "$GCLOUD" secrets add-iam-policy-binding "$secret" --project="$PROJECT" \
             --member="serviceAccount:$OBS_SA" --role=roles/secretmanager.secretAccessor --quiet >/dev/null
@@ -105,24 +106,40 @@ observability_setup() {
     done
 }
 
+require_obs_tag() {
+    if [ -z "$OBS_TAG" ]; then
+        echo "set OBS_IMAGE_TAG to the commit the observability images were built from (scripts/gcp/README.md)" >&2
+        exit 2
+    fi
+}
+
 pushgateway() {
+    require_obs_tag
     # One always-present instance holds the last push of each Data Worker cycle in memory. Internal only.
     "$GCLOUD" run deploy pushgateway "${COMMON[@]}" --image="$IMAGES/pushgateway:$OBS_TAG" \
         --service-account="$OBS_SA" --ingress=internal --allow-unauthenticated \
-        --port=9091 --cpu=1 --memory=256Mi --min-instances=1 --max-instances=1 --timeout=60
+        --port=9091 --cpu=1 --memory=128Mi --min-instances=1 --max-instances=1 --timeout=60
 }
 
 observability() {
+    require_obs_tag
     pushgateway
     # One always-on instance (CPU always allocated: Prometheus scrapes and Alertmanager notifies between requests).
+    # 1.125 vCPU / 1.4 GiB in total; 26 Nov 2026 at 1.75 vCPU / 1.6 GiB used 5.7 % CPU and 41 % memory (p95).
     # Grafana is the public ingress container (login required); Prometheus, Alertmanager and the exporters are
     # sidecars on localhost and cannot be reached from outside. CACHE_API_SCRAPE=1 also scrapes the Cache API's
     # /metrics; that keeps the Cache API warm (cost), so use it only during load tests (issue #111).
     local cache_api="" probes
-    local alertmanager_secret=()
+    local alertmanager_secret=() mounts=""
     if [ "${CACHE_API_SCRAPE:-0}" = 1 ]; then cache_api="$(url cache-api)"; fi
+    # Notification receiver (alertmanager.example.yml): the config, and the SMTP password it reads from a file, so
+    # the password is never part of the config text. Without alertmanager-config, alerts are only shown in Grafana.
     if "$GCLOUD" secrets describe alertmanager-config --project="$PROJECT" >/dev/null 2>&1; then
-        alertmanager_secret=(--set-secrets=/etc/alertmanager/secret/alertmanager.yml=alertmanager-config:latest
+        mounts="/etc/alertmanager/secret/alertmanager.yml=alertmanager-config:latest"
+        if "$GCLOUD" secrets describe alertmanager-smtp-password --project="$PROJECT" >/dev/null 2>&1; then
+            mounts="$mounts,/etc/alertmanager/smtp/password=alertmanager-smtp-password:latest"
+        fi
+        alertmanager_secret=(--set-secrets="$mounts"
                              --set-env-vars=ALERTMANAGER_CONFIG=/etc/alertmanager/secret/alertmanager.yml)
     fi
     probes="gateway=$(url gateway)/gateway-health,frontend=$(url frontend)/"
@@ -136,16 +153,16 @@ observability() {
     "$GCLOUD" run deploy observability "${COMMON[@]}" \
         --service-account="$OBS_SA" --ingress=all --allow-unauthenticated "${VPC[@]}" \
         --min-instances=1 --max-instances=1 --no-cpu-throttling --timeout=300 \
-        --container=grafana --image="$IMAGES/grafana:$OBS_TAG" --port=3000 --cpu=0.5 --memory=512Mi \
+        --container=grafana --image="$IMAGES/grafana:$OBS_TAG" --port=3000 --cpu=0.25 --memory=384Mi \
         --set-secrets=GF_SECURITY_ADMIN_PASSWORD=grafana-admin-password:latest \
         --set-env-vars="GF_SECURITY_ADMIN_USER=admin,GF_SERVER_ROOT_URL=$(url observability),PROMETHEUS_URL=http://localhost:9090,ALERTMANAGER_URL=http://localhost:9093" \
         --container=prometheus --image="$IMAGES/prometheus:$OBS_TAG" --cpu=0.5 --memory=768Mi \
         --set-env-vars="^@^BACKEND_URL=@CACHE_API_URL=$cache_api@PUSHGATEWAY_URL=$(url pushgateway)@ALERTMANAGER_URL=http://localhost:9093@STACKDRIVER_URL=http://localhost:9255@BLACKBOX_URL=http://localhost:9115@PROBE_URLS=$probes@RETENTION_SIZE=256MB@EXTERNAL_URL=$(url observability)" \
-        --container=alertmanager --image="$IMAGES/alertmanager:$OBS_TAG" --cpu=0.25 --memory=128Mi \
+        --container=alertmanager --image="$IMAGES/alertmanager:$OBS_TAG" --cpu=0.125 --memory=128Mi \
         "${alertmanager_secret[@]}" \
         --container=stackdriver --image=docker.io/prometheuscommunity/stackdriver-exporter:v0.19.0 \
-        --cpu=0.25 --memory=128Mi --args="$args" \
-        --container=blackbox --image=docker.io/prom/blackbox-exporter:v0.29.0 --cpu=0.25 --memory=128Mi
+        --cpu=0.125 --memory=128Mi --args="$args" \
+        --container=blackbox --image=docker.io/prom/blackbox-exporter:v0.29.0 --cpu=0.125 --memory=64Mi
 }
 
 case "${1:-}" in

@@ -117,17 +117,24 @@ jobs:
     name: test / observability rules
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    env:
+      # Pinned by digest like the actions; same versions as src/observability/*/Dockerfile.
+      PROMETHEUS_IMAGE: prom/prometheus:v3.15.1@sha256:fa3302279710be2f21a8301ec17a8b4f2301fd829bd113839b3b6b02b6f191a2
+      ALERTMANAGER_IMAGE: prom/alertmanager:v0.34.2@sha256:39d8bb3966c694a124428a3a88fbcffd40bd069129ecd47c059f8a3f17c55f3b
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: promtool check and test rules
         working-directory: src/observability/prometheus
         run: |
-          docker run --rm -v "$PWD:/w" -w /w/tests --entrypoint promtool prom/prometheus:v3.15.1             check rules /w/rules/sippolusi.rules.yml
-          docker run --rm -v "$PWD:/w" -w /w/tests --entrypoint promtool prom/prometheus:v3.15.1             test rules sippolusi.rules.test.yml
+          docker run --rm -v "$PWD:/w" -w /w/tests --entrypoint promtool "$PROMETHEUS_IMAGE" \
+            check rules /w/rules/sippolusi.rules.yml
+          docker run --rm -v "$PWD:/w" -w /w/tests --entrypoint promtool "$PROMETHEUS_IMAGE" \
+            test rules sippolusi.rules.test.yml
       - name: amtool check-config
         working-directory: src/observability/alertmanager
         run: |
-          docker run --rm -v "$PWD:/w" --entrypoint amtool prom/alertmanager:v0.34.2             check-config /w/alertmanager.yml /w/alertmanager.example.yml
+          docker run --rm -v "$PWD:/w" --entrypoint amtool "$ALERTMANAGER_IMAGE" \
+            check-config /w/alertmanager.yml /w/alertmanager.example.yml
 
   test-backend:
     name: test / backend

@@ -1,11 +1,12 @@
-# Example Alertmanager config with an email receiver. Copy it, fill in the SMTP account, and store it as the
-# Secret Manager secret alertmanager-config (scripts/gcp/README.md); never commit the filled-in file.
+# Example Alertmanager config with an email receiver (Gmail SMTP). Copy it, fill in the addresses, and store it as
+# the Secret Manager secret alertmanager-config (scripts/gcp/README.md); never commit the filled-in file.
+# The SMTP password is not in this file: it is the secret alertmanager-smtp-password, mounted at the path below.
 # Any Alertmanager receiver works the same way (discord_configs, telegram_configs, webhook_configs, ...).
 global:
   smtp_smarthost: smtp.gmail.com:587
-  smtp_from: sippolusi-alerts@example.com
-  smtp_auth_username: sippolusi-alerts@example.com
-  smtp_auth_password: <app password>
+  smtp_from: SIPPolusi alerts <sender@example.com>
+  smtp_auth_username: sender@example.com
+  smtp_auth_password_file: /etc/alertmanager/smtp/password
   smtp_require_tls: true
 
 route:

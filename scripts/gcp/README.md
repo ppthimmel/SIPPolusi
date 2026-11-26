@@ -74,7 +74,8 @@ GitHub.
 - `sippolusi-tools`: *job* seed dan pengemasan, serta pemicu Cloud Scheduler.
 - `sippolusi-observability`: layanan `observability` dan `pushgateway`; `roles/monitoring.viewer` untuk membaca metrik
   Cloud Monitoring, akses ke secret `grafana-admin-password` (dibuat acak oleh `deploy.sh observability-setup`; baca
-  dengan `gcloud secrets versions access latest --secret=grafana-admin-password`) dan, bila ada, `alertmanager-config`.
+  dengan `gcloud secrets versions access latest --secret=grafana-admin-password`) dan, bila ada, `alertmanager-config`
+  dan `alertmanager-smtp-password`.
 
 ## Perintah
 
@@ -94,19 +95,31 @@ gcloud run jobs execute seed-graph --region asia-southeast2 --wait
 Tidak termasuk `all` dan tidak dijalankan CI: revisi baru me-*restart* Prometheus, yang datanya ada di memori instance.
 Rinciannya di [`docs/devops/observability-gcp.md`](../../docs/devops/observability-gcp.md).
 
+Image diberi tag commit asalnya, sehingga revisi yang berjalan dapat ditelusuri ke kode; `deploy.sh observability`
+menolak berjalan tanpa `OBS_IMAGE_TAG`. Jalankan dari *working tree* yang bersih pada commit yang sudah di-*push*.
+
 ```bash
+TAG=$(git rev-parse --short=12 HEAD)
 for img in prometheus alertmanager pushgateway grafana; do
   gcloud builds submit src/observability/$img --config scripts/gcp/cloudbuild.yaml --region asia-southeast2 \
-    --substitutions _IMAGE=$img
+    --substitutions _IMAGE=$img,_TAG=$TAG
 done
-scripts/gcp/deploy.sh observability-setup   # sekali, oleh admin: akun layanan, secret Grafana, metrik berbasis log
-scripts/gcp/deploy.sh observability         # pushgateway + observability
-CACHE_API_SCRAPE=1 scripts/gcp/deploy.sh observability   # hanya selama uji beban: scrape /metrics Cache API
+scripts/gcp/deploy.sh observability-setup                      # sekali, oleh admin: akun layanan, secret, metrik log
+OBS_IMAGE_TAG=$TAG scripts/gcp/deploy.sh observability          # pushgateway + observability
+CACHE_API_SCRAPE=1 OBS_IMAGE_TAG=$TAG scripts/gcp/deploy.sh observability   # hanya selama uji beban (#111)
 ```
 
-Notifikasi alert: salin `src/observability/alertmanager/alertmanager.example.yml`, isi penerimanya, lalu
-`gcloud secrets create alertmanager-config --data-file=<berkas>` (atau `versions add`), jalankan lagi
-`observability-setup` dan `observability`. Tanpa secret itu alert hanya tampil di Grafana.
+**Notifikasi email (Gmail).** Kata sandi SMTP tidak pernah masuk ke berkas konfigurasi atau repositori:
+
+1. Buat *app password* untuk akun Gmail pengirim (Google Account > Security > 2-Step Verification > App passwords).
+2. Simpan sebagai secret tanpa menampilkan atau menulisnya ke berkas (Git Bash; tempel 16 hurufnya tanpa spasi, lalu
+   Enter): `read -rs P && printf '%s' "$P" | gcloud secrets create alertmanager-smtp-password --data-file=- && unset P`
+   (mengganti: `gcloud secrets versions add alertmanager-smtp-password --data-file=-`).
+3. Salin `src/observability/alertmanager/alertmanager.example.yml`, isi alamat pengirim dan penerima, lalu
+   `gcloud secrets create alertmanager-config --data-file=<berkas>` dan hapus salinannya.
+4. `scripts/gcp/deploy.sh observability-setup` (akses secret) lalu `OBS_IMAGE_TAG=<tag> scripts/gcp/deploy.sh observability`.
+
+Tanpa `alertmanager-config` alert hanya tampil di Grafana.
 
 ### Mendaftarkan model (TI-DO-10b)
 
