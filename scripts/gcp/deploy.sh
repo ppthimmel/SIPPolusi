@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Deploy the SIPPolusi services to Cloud Run (project sippolusi, asia-southeast2). See scripts/gcp/README.md.
 # Usage: scripts/gcp/deploy.sh <registry|cache-api|gateway|frontend|data-worker|model-register|all>
+#        scripts/gcp/deploy.sh <observability-setup|observability>   (by hand; not part of `all`, see below)
 # Needs: gcloud signed in, images built with scripts/gcp/cloudbuild.yaml, secrets database-url,
 # mlflow-backend-store-uri and earthdata-token in Secret Manager. No secret value is written here.
 set -euo pipefail
@@ -14,6 +15,8 @@ IMAGES="$REGION-docker.pkg.dev/$PROJECT/sippolusi"
 BUCKET="${BUCKET:-sippolusi-mlflow-$NUMBER}"
 APP_SA="sippolusi-app@$PROJECT.iam.gserviceaccount.com"
 REGISTRY_SA="sippolusi-registry@$PROJECT.iam.gserviceaccount.com"
+OBS_SA="sippolusi-observability@$PROJECT.iam.gserviceaccount.com"
+OBS_TAG="${OBS_IMAGE_TAG:-latest}"   # observability images are built by hand (scripts/gcp/README.md)
 # Deterministic Cloud Run URL: https://<service>-<project number>.<region>.run.app
 url() { echo "https://$1-$NUMBER.$REGION.run.app"; }
 # Direct VPC egress: private ranges (Cloud SQL private IP) and, through the private run.app DNS zone and
@@ -57,7 +60,7 @@ data_worker() {
     "$GCLOUD" run jobs deploy data-worker "${COMMON[@]}" --image="$IMAGES/data-worker:$TAG" \
         --service-account="$APP_SA" "${VPC[@]}" --cpu=2 --memory=4Gi --max-retries=0 --task-timeout=3000 \
         --set-secrets=DATABASE_URL=database-url:latest,EARTHDATA_TOKEN=earthdata-token:latest \
-        --set-env-vars="MLFLOW_TRACKING_URI=$(url model-registry),SPATIAL_PM25_MODEL=spatial-downscaling-pm25,SPATIAL_NO2_MODEL=spatial-downscaling-no2,SPATIAL_PM25_VERSION=production,SPATIAL_NO2_VERSION=production,SPATIAL_MODEL_CACHE=/tmp/model-cache,DOWNSCALE_WRITE_CACHE=1,DOWNSCALE_KEEP_WINDOWS=2,THREADS=2,OMP_NUM_THREADS=2,MKL_NUM_THREADS=2,ENVIRONMENT=DEV,SPKU_DB_SCHEMA=ground_truth,LOG_FORMAT=json"
+        --set-env-vars="MLFLOW_TRACKING_URI=$(url model-registry),SPATIAL_PM25_MODEL=spatial-downscaling-pm25,SPATIAL_NO2_MODEL=spatial-downscaling-no2,SPATIAL_PM25_VERSION=production,SPATIAL_NO2_VERSION=production,SPATIAL_MODEL_CACHE=/tmp/model-cache,DOWNSCALE_WRITE_CACHE=1,DOWNSCALE_KEEP_WINDOWS=2,THREADS=2,OMP_NUM_THREADS=2,MKL_NUM_THREADS=2,ENVIRONMENT=DEV,SPKU_DB_SCHEMA=ground_truth,LOG_FORMAT=json,PUSHGATEWAY_URL=$(url pushgateway)"
 }
 
 model_register() {
@@ -69,6 +72,82 @@ model_register() {
         --set-env-vars="MLFLOW_TRACKING_URI=$(url model-registry)"
 }
 
+# --- Observability (issue #112): Prometheus, Alertmanager, Pushgateway, Grafana. See src/observability/README.md.
+# Deployed by hand, never from `all`: a new revision restarts Prometheus, whose data lives in the instance's memory.
+
+observability_setup() {
+    # Idempotent; needs a project admin. Service account that reads Cloud Monitoring, Grafana admin password
+    # (random, never printed), and the log-based metrics in scripts/gcp/monitoring/.
+    "$GCLOUD" iam service-accounts describe "$OBS_SA" --project="$PROJECT" >/dev/null 2>&1 ||
+        "$GCLOUD" iam service-accounts create sippolusi-observability --project="$PROJECT" \
+            --display-name="SIPPolusi observability (Prometheus, Grafana)"
+    "$GCLOUD" projects add-iam-policy-binding "$PROJECT" --member="serviceAccount:$OBS_SA" \
+        --role=roles/monitoring.viewer --condition=None --quiet >/dev/null
+    if ! "$GCLOUD" secrets describe grafana-admin-password --project="$PROJECT" >/dev/null 2>&1; then
+        head -c 64 /dev/urandom | base64 | tr -dc 'A-Za-z0-9' | head -c 32 |
+            "$GCLOUD" secrets create grafana-admin-password --project="$PROJECT" --replication-policy=automatic \
+                --data-file=-
+    fi
+    local secret
+    for secret in grafana-admin-password alertmanager-config; do
+        "$GCLOUD" secrets describe "$secret" --project="$PROJECT" >/dev/null 2>&1 || continue
+        "$GCLOUD" secrets add-iam-policy-binding "$secret" --project="$PROJECT" \
+            --member="serviceAccount:$OBS_SA" --role=roles/secretmanager.secretAccessor --quiet >/dev/null
+    done
+    local file metric
+    for file in "$(dirname "$0")"/monitoring/*.yaml; do
+        metric="$(basename "$file" .yaml)"
+        if "$GCLOUD" logging metrics describe "$metric" --project="$PROJECT" >/dev/null 2>&1; then
+            "$GCLOUD" logging metrics update "$metric" --project="$PROJECT" --config-from-file="$file" --quiet
+        else
+            "$GCLOUD" logging metrics create "$metric" --project="$PROJECT" --config-from-file="$file" --quiet
+        fi
+    done
+}
+
+pushgateway() {
+    # One always-present instance holds the last push of each Data Worker cycle in memory. Internal only.
+    "$GCLOUD" run deploy pushgateway "${COMMON[@]}" --image="$IMAGES/pushgateway:$OBS_TAG" \
+        --service-account="$OBS_SA" --ingress=internal --allow-unauthenticated \
+        --port=9091 --cpu=1 --memory=256Mi --min-instances=1 --max-instances=1 --timeout=60
+}
+
+observability() {
+    pushgateway
+    # One always-on instance (CPU always allocated: Prometheus scrapes and Alertmanager notifies between requests).
+    # Grafana is the public ingress container (login required); Prometheus, Alertmanager and the exporters are
+    # sidecars on localhost and cannot be reached from outside. CACHE_API_SCRAPE=1 also scrapes the Cache API's
+    # /metrics; that keeps the Cache API warm (cost), so use it only during load tests (issue #111).
+    local cache_api="" probes
+    local alertmanager_secret=()
+    if [ "${CACHE_API_SCRAPE:-0}" = 1 ]; then cache_api="$(url cache-api)"; fi
+    if "$GCLOUD" secrets describe alertmanager-config --project="$PROJECT" >/dev/null 2>&1; then
+        alertmanager_secret=(--set-secrets=/etc/alertmanager/secret/alertmanager.yml=alertmanager-config:latest
+                             --set-env-vars=ALERTMANAGER_CONFIG=/etc/alertmanager/secret/alertmanager.yml)
+    fi
+    probes="gateway=$(url gateway)/gateway-health,frontend=$(url frontend)/"
+    local prefixes=(run.googleapis.com/request_count run.googleapis.com/request_latencies
+                    run.googleapis.com/container/instance_count run.googleapis.com/container/cpu/utilizations
+                    run.googleapis.com/container/memory/utilizations run.googleapis.com/job/completed_execution_count
+                    cloudsql.googleapis.com/database/up cloudsql.googleapis.com/database/cpu/utilization
+                    cloudsql.googleapis.com/database/postgresql/num_backends logging.googleapis.com/user/sippolusi_)
+    local args="--google.project-ids=$PROJECT,--monitoring.aggregate-deltas,--monitoring.metrics-interval=5m" prefix
+    for prefix in "${prefixes[@]}"; do args="$args,--monitoring.metrics-prefixes=$prefix"; done
+    "$GCLOUD" run deploy observability "${COMMON[@]}" \
+        --service-account="$OBS_SA" --ingress=all --allow-unauthenticated "${VPC[@]}" \
+        --min-instances=1 --max-instances=1 --no-cpu-throttling --timeout=300 \
+        --container=grafana --image="$IMAGES/grafana:$OBS_TAG" --port=3000 --cpu=0.5 --memory=512Mi \
+        --set-secrets=GF_SECURITY_ADMIN_PASSWORD=grafana-admin-password:latest \
+        --set-env-vars="GF_SECURITY_ADMIN_USER=admin,GF_SERVER_ROOT_URL=$(url observability),PROMETHEUS_URL=http://localhost:9090,ALERTMANAGER_URL=http://localhost:9093" \
+        --container=prometheus --image="$IMAGES/prometheus:$OBS_TAG" --cpu=0.5 --memory=768Mi \
+        --set-env-vars="^@^BACKEND_URL=@CACHE_API_URL=$cache_api@PUSHGATEWAY_URL=$(url pushgateway)@ALERTMANAGER_URL=http://localhost:9093@STACKDRIVER_URL=http://localhost:9255@BLACKBOX_URL=http://localhost:9115@PROBE_URLS=$probes@RETENTION_SIZE=256MB@EXTERNAL_URL=$(url observability)" \
+        --container=alertmanager --image="$IMAGES/alertmanager:$OBS_TAG" --cpu=0.25 --memory=128Mi \
+        "${alertmanager_secret[@]}" \
+        --container=stackdriver --image=docker.io/prometheuscommunity/stackdriver-exporter:v0.19.0 \
+        --cpu=0.25 --memory=128Mi --args="$args" \
+        --container=blackbox --image=docker.io/prom/blackbox-exporter:v0.29.0 --cpu=0.25 --memory=128Mi
+}
+
 case "${1:-}" in
     registry) registry ;;
     cache-api) cache_api ;;
@@ -76,6 +155,9 @@ case "${1:-}" in
     frontend) frontend ;;
     data-worker) data_worker ;;
     model-register) model_register ;;
+    observability-setup) observability_setup ;;
+    observability) observability ;;
     all) registry; cache_api; gateway; frontend; data_worker; model_register ;;
-    *) echo "usage: $0 <registry|cache-api|gateway|frontend|data-worker|model-register|all>" >&2; exit 2 ;;
+    *) echo "usage: $0 <registry|cache-api|gateway|frontend|data-worker|model-register|all|observability-setup|observability>" >&2
+       exit 2 ;;
 esac

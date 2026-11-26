@@ -1,17 +1,62 @@
+# Prometheus for SIPPolusi (IMetricsSink). Targets come from file_sd files that entrypoint.sh writes from env at
+# start, so the same image runs in Docker Compose and on Cloud Run; a job with an empty URL has no targets.
+# Each target file can carry __scheme__ (https for Cloud Run URLs). See src/observability/README.md.
 global:
   scrape_interval: 15s
+  scrape_timeout: 10s       # IMetricsSink: 15 s scrape, 10 s timeout
+  evaluation_interval: 30s
+
+rule_files:
+  - /etc/prometheus/rules/*.yml
+
+alerting:
+  alertmanagers:
+    - file_sd_configs:
+        - files: [/tmp/sd/alertmanager.json]
 
 scrape_configs:
-  # Targets are placeholders filled from env (BACKEND_TARGET, PUSHGATEWAY_TARGET) by the Dockerfile entrypoint.
+  - job_name: prometheus
+    static_configs:
+      - targets: [localhost:9090]
+
+  # Backend (src/backend/main.py) and Cache API (routes, heatmap, Multi-Objective Route Model in process): GET /metrics.
   - job_name: backend
-    static_configs:
-      - targets: ["__BACKEND_TARGET__"]
+    file_sd_configs:
+      - files: [/tmp/sd/backend.json]
+  - job_name: cache_api
+    file_sd_configs:
+      - files: [/tmp/sd/cache_api.json]
 
-  - job_name: data_worker
-    honor_labels: true
-    static_configs:
-      - targets: ["__PUSHGATEWAY_TARGET__"]
-
+  # Data Worker and Spatial Downscaling Model push once per cycle (src/data_worker/metrics_push.py).
   - job_name: pushgateway
-    static_configs:
-      - targets: ["__PUSHGATEWAY_TARGET__"]
+    honor_labels: true
+    file_sd_configs:
+      - files: [/tmp/sd/pushgateway.json]
+
+  - job_name: alertmanager
+    file_sd_configs:
+      - files: [/tmp/sd/alertmanager.json]
+
+  # Cloud Run, Cloud Run Job, Cloud SQL and log-based metrics read from Cloud Monitoring (stackdriver_exporter).
+  # Gateway (NGINX) latency and status codes come from here, since NGINX has no /metrics.
+  - job_name: stackdriver
+    scrape_interval: 60s
+    scrape_timeout: 55s
+    file_sd_configs:
+      - files: [/tmp/sd/stackdriver.json]
+
+  # Synthetic probes from inside the platform (blackbox_exporter, module http_2xx), EDO-03.
+  - job_name: probe
+    scrape_interval: 60s
+    metrics_path: /probe
+    params:
+      module: [http_2xx]
+    file_sd_configs:
+      - files: [/tmp/sd/probes.json]
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - source_labels: [__blackbox_address__]
+        target_label: __address__

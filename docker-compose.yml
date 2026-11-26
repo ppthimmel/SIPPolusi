@@ -130,6 +130,9 @@ services:
     # so run the in-process scheduler instead: one cycle now, then every hour at minute 15. Same
     # schedule, different trigger.
     command: ["python", "main.py", "serve", "--now"]
+    environment:
+      # Each finished cycle is pushed here for Prometheus (src/data_worker/metrics_push.py).
+      PUSHGATEWAY_URL: http://pushgateway:9091
 
   frontend:
     build:
@@ -157,6 +160,16 @@ services:
     ports:
       - "9091:9091"
 
+  alertmanager:
+    build: ./src/observability/alertmanager
+    restart: unless-stopped
+    ports:
+      - "9093:9093"
+
+  blackbox:
+    image: prom/blackbox-exporter:v0.29.0
+    restart: unless-stopped
+
   grafana:
     build: ./src/observability/grafana
     restart: unless-stopped
@@ -165,6 +178,7 @@ services:
       - "3000:3000"
     depends_on:
       - prometheus
+      - alertmanager
 
   # --- One-shot seed tools (profile "tools"); see docs/devops/local-railway-parity.md ---------------
   # Schemas and the road graph Railway development uses (jakarta-20261005, with its edge ids).

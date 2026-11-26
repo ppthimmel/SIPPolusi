@@ -1,0 +1,229 @@
+# Recording and alerting rules for SIPPolusi (issue #112). Thresholds follow the design document:
+#   EDO-02 p95 route latency < 60 s; integration-test budget 8 s per route
+#   EDO-03 uptime >= 99.9 % and request error rate (5xx) < 1 %
+#   EDO-04 >= 98 % of scheduled Data Worker executions succeed; results older than 2 h mean a missed cycle
+#   IMetricsSink: a missing scrape raises an alert
+# Unit tests: tests/sippolusi.rules.test.yml (promtool test rules). Metric sources: src/observability/README.md.
+groups:
+  - name: sippolusi-recording
+    rules:
+      # Cloud Run request metrics (all services, gateway included) from Cloud Monitoring via stackdriver_exporter.
+      - record: sippolusi:cloudrun_requests:rate5m
+        expr: >
+          sum by (service_name, response_code_class) (
+            rate(stackdriver_cloud_run_revision_run_googleapis_com_request_count[5m]))
+      # "or ... * 0": a service without any 5xx has no 5xx series; it records 0 instead of nothing.
+      - record: sippolusi:cloudrun_5xx_ratio:rate10m
+        expr: >
+          (
+            sum by (service_name) (
+              rate(stackdriver_cloud_run_revision_run_googleapis_com_request_count{response_code_class="5xx"}[10m]))
+            or
+            sum by (service_name) (rate(stackdriver_cloud_run_revision_run_googleapis_com_request_count[10m])) * 0
+          )
+          /
+          sum by (service_name) (rate(stackdriver_cloud_run_revision_run_googleapis_com_request_count[10m]))
+      - record: sippolusi:cloudrun_requests:increase10m
+        expr: >
+          sum by (service_name) (increase(stackdriver_cloud_run_revision_run_googleapis_com_request_count[10m]))
+      # request_latencies is in milliseconds; recorded in seconds.
+      - record: sippolusi:cloudrun_latency_seconds:p50_10m
+        expr: >
+          histogram_quantile(0.50, sum by (service_name, le) (
+            rate(stackdriver_cloud_run_revision_run_googleapis_com_request_latencies_bucket[10m]))) / 1000
+      - record: sippolusi:cloudrun_latency_seconds:p95_10m
+        expr: >
+          histogram_quantile(0.95, sum by (service_name, le) (
+            rate(stackdriver_cloud_run_revision_run_googleapis_com_request_latencies_bucket[10m]))) / 1000
+      - record: sippolusi:cloudrun_latency_seconds:p99_10m
+        expr: >
+          histogram_quantile(0.99, sum by (service_name, le) (
+            rate(stackdriver_cloud_run_revision_run_googleapis_com_request_latencies_bucket[10m]))) / 1000
+      # Route solver outcomes (Multi-Objective Route Model) from the log-based metric on the Cache API.
+      - record: sippolusi:route_requests:increase30m
+        expr: >
+          sum by (outcome, mode) (increase(stackdriver_cloud_run_revision_logging_googleapis_com_user_sippolusi_route_inference[30m]))
+      - record: sippolusi:route_fallback_ratio:rate30m
+        expr: >
+          (
+            sum by (mode) (rate(stackdriver_cloud_run_revision_logging_googleapis_com_user_sippolusi_route_inference{outcome="fallback"}[30m]))
+            or
+            sum by (mode) (rate(stackdriver_cloud_run_revision_logging_googleapis_com_user_sippolusi_route_inference[30m])) * 0
+          )
+          /
+          sum by (mode) (rate(stackdriver_cloud_run_revision_logging_googleapis_com_user_sippolusi_route_inference[30m]))
+      # POST /v1/routes as the API Gateway logged it (log-based distribution, seconds): the EDO-02 latency. Cloud
+      # Run's request_latencies for the gateway also count the synthetic probes, which hide slow routes.
+      - record: sippolusi:route_latency_seconds:p50_10m
+        expr: histogram_quantile(0.50, sum by (le) (rate(stackdriver_cloud_run_revision_logging_googleapis_com_user_sippolusi_gateway_route_latency_bucket[10m])))
+      - record: sippolusi:route_latency_seconds:p95_10m
+        expr: histogram_quantile(0.95, sum by (le) (rate(stackdriver_cloud_run_revision_logging_googleapis_com_user_sippolusi_gateway_route_latency_bucket[10m])))
+      - record: sippolusi:route_latency_seconds:p99_10m
+        expr: histogram_quantile(0.99, sum by (le) (rate(stackdriver_cloud_run_revision_logging_googleapis_com_user_sippolusi_gateway_route_latency_bucket[10m])))
+      - record: sippolusi:route_latency_requests:increase10m
+        expr: sum by (status_class) (increase(stackdriver_cloud_run_revision_logging_googleapis_com_user_sippolusi_gateway_route_latency_count[10m]))
+
+  - name: sippolusi-availability
+    rules:
+      - alert: ScrapeTargetDown
+        expr: up == 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Prometheus cannot scrape {{ $labels.job }} ({{ $labels.instance }})"
+          description: "No metrics from {{ $labels.job }} for 5 minutes (IMetricsSink: a missing scrape raises an alert)."
+
+      - alert: EndpointProbeFailed
+        expr: probe_success == 0
+        for: 3m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Synthetic probe of {{ $labels.probe }} fails"
+          description: "{{ $labels.instance }} has not answered 2xx for 3 minutes (EDO-03 availability)."
+
+      - alert: CloudMonitoringReadFailing
+        expr: stackdriver_monitoring_last_scrape_error == 1
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "stackdriver_exporter cannot read Cloud Monitoring"
+          description: "Cloud Run, Cloud SQL and log-based metrics are stale; check the exporter logs and roles/monitoring.viewer."
+
+      - alert: CloudSqlDown
+        expr: stackdriver_cloudsql_database_cloudsql_googleapis_com_database_up == 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Cloud SQL {{ $labels.database_id }} is down"
+          description: "Cache API readiness and the Data Worker depend on it."
+
+  - name: sippolusi-errors-latency
+    rules:
+      - alert: HighErrorRate
+        expr: sippolusi:cloudrun_5xx_ratio:rate10m > 0.05 and sippolusi:cloudrun_requests:increase10m >= 20
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "{{ $labels.service_name }}: {{ $value | humanizePercentage }} of requests are 5xx"
+          description: "More than 5 % 5xx over 10 minutes (EDO-03 target < 1 %)."
+
+      - alert: ErrorRateAboveTarget
+        expr: >
+          sippolusi:cloudrun_5xx_ratio:rate10m > 0.01 and sippolusi:cloudrun_5xx_ratio:rate10m <= 0.05
+          and sippolusi:cloudrun_requests:increase10m >= 20
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.service_name }}: {{ $value | humanizePercentage }} of requests are 5xx"
+          description: "Above the EDO-03 target of 1 % 5xx for 10 minutes."
+
+      - alert: RouteLatencyP95AboveTarget
+        expr: sippolusi:route_latency_seconds:p95_10m > 60
+        for: 10m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Route p95 latency at the gateway {{ $value | humanizeDuration }}"
+          description: "p95 of POST /v1/routes over 10 minutes is above the EDO-02 target of 1 minute."
+
+      - alert: RouteLatencyP95High
+        expr: >
+          sippolusi:route_latency_seconds:p95_10m > 8 and sippolusi:route_latency_seconds:p95_10m <= 60
+          and on() sum(sippolusi:route_latency_requests:increase10m) >= 5
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Route p95 latency at the gateway {{ $value | humanizeDuration }}"
+          description: "p95 of POST /v1/routes over 10 minutes is above the 8 s route budget used in integration testing."
+
+      # Only modes the deployed policy was trained for: morl-route-policy:1 is bike-only, so every walk route uses
+      # the baseline by design ("MORL policy was trained for mode bike, not walk"). Extend the regex with new modes.
+      - alert: RouteFallbackRateHigh
+        expr: >
+          sippolusi:route_fallback_ratio:rate30m{mode=~"bike"} > 0.2
+          and on(mode) sum by (mode) (sippolusi:route_requests:increase30m) >= 10
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $value | humanizePercentage }} of {{ $labels.mode }} routes use the baseline fallback"
+          description: "The MORL policy is failing or timing out; check route_model_load and route_inference logs on cache-api."
+
+  - name: sippolusi-data-worker
+    rules:
+      - alert: DataWorkerCycleFailed
+        expr: sippolusi_job_status{job="data_worker", status=~"failed|skipped"} == 1
+        labels:
+          severity: warning
+        annotations:
+          summary: "Data Worker cycle ended {{ $labels.status }}"
+          description: "Search Cloud Logging for event job_finished; the cycle run_id is the correlation_id (EDO-04)."
+
+      - alert: DataWorkerResultsStale
+        expr: time() - sippolusi_job_last_success_timestamp_seconds{job="data_worker"} > 7200
+        labels:
+          severity: critical
+        annotations:
+          summary: "No successful Data Worker cycle for {{ $value | humanizeDuration }}"
+          description: "Pollution estimates are older than 2 hours: at least one hourly cycle was missed or failed."
+
+      - alert: DataWorkerMetricsMissing
+        expr: absent(sippolusi_job_last_success_timestamp_seconds{job="data_worker"})
+        for: 2h
+        labels:
+          severity: critical
+        annotations:
+          summary: "No successful Data Worker cycle has been pushed for 2 hours"
+          description: "Either no cycle succeeded, PUSHGATEWAY_URL is unset, or the Pushgateway restarted and nothing succeeded since."
+
+      # Not increase(): stackdriver_exporter creates the result="failed" series at the first failure, already at 1,
+      # so increase() would miss it. A series that did not exist an hour ago counts from 0.
+      - alert: DataWorkerExecutionFailed
+        expr: >
+          sum by (job_name) (
+            stackdriver_cloud_run_job_run_googleapis_com_job_completed_execution_count{job_name="data-worker", result="failed"}
+            - (
+              stackdriver_cloud_run_job_run_googleapis_com_job_completed_execution_count{job_name="data-worker", result="failed"} offset 1h
+              or
+              stackdriver_cloud_run_job_run_googleapis_com_job_completed_execution_count{job_name="data-worker", result="failed"} * 0
+            )
+          ) > 0
+        labels:
+          severity: warning
+        annotations:
+          summary: "Cloud Run Job data-worker had a failed execution in the last hour"
+          description: "Covers crashes and timeouts that end before the cycle can push its own status."
+
+      - alert: DownscaleFallbackActive
+        expr: sippolusi_downscale_fallback{job="data_worker"} == 1
+        for: 2h
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.pollutant }} estimates use the IDW fallback"
+          description: "The Spatial Downscaling Model for {{ $labels.pollutant }} is not loaded (not registered or failed to load)."
+
+      - alert: DownscaleCoverageLow
+        expr: sippolusi_downscale_coverage_ratio{job="data_worker"} < 0.9
+        labels:
+          severity: warning
+        annotations:
+          summary: "Only {{ $value | humanizePercentage }} of road edges received an estimate"
+          description: "Inference coverage of the last cycle is below 90 %."
+
+  - name: sippolusi-meta
+    rules:
+      # Always firing: proves the Prometheus -> Alertmanager path works. Routed to a receiver that drops it.
+      - alert: Watchdog
+        expr: vector(1)
+        labels:
+          severity: none
+        annotations:
+          summary: "Alerting pipeline is alive"

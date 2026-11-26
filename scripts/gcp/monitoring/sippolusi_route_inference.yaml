@@ -1,0 +1,26 @@
+# Log-based counter: one per route request solved by the Cache API (logger "solver", line route_inference,
+# src/backend/solver/orchestrator.py). Read by stackdriver_exporter as
+# stackdriver_cloud_run_revision_logging_googleapis_com_user_sippolusi_route_inference (fallback frequency, issue #112),
+# so the Cache API does not have to stay warm for Prometheus to scrape it. Applied by scripts/gcp/deploy.sh observability-setup.
+description: Cache API route requests by solver outcome (ok, fallback, failed) and fallback reason.
+filter: >-
+  resource.type="cloud_run_revision" AND resource.labels.service_name="cache-api"
+  AND textPayload:"route_inference request_id="
+metricDescriptor:
+  metricKind: DELTA
+  valueType: INT64
+  unit: "1"
+  labels:
+    - key: outcome
+      description: ok, fallback or failed
+    - key: solver
+      description: configured route solver (morl, mock, ...)
+    - key: fallback_reason
+      description: reason the baseline answered (empty when outcome is ok)
+    - key: mode
+      description: travel mode (walk, bike); the deployed policy may support only some modes
+labelExtractors:
+  outcome: REGEXP_EXTRACT(textPayload, " outcome=([a-z_]+)")
+  solver: REGEXP_EXTRACT(textPayload, " solver=([a-z0-9_]+)")
+  fallback_reason: REGEXP_EXTRACT(textPayload, " fallback_reason=([a-z_]+)")
+  mode: REGEXP_EXTRACT(textPayload, " mode=([a-z_]+)")

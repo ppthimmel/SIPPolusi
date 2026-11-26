@@ -94,6 +94,10 @@ jobs:
             context: src/observability/pushgateway
             file: src/observability/pushgateway/Dockerfile
             target: ""
+          - name: alertmanager
+            context: src/observability/alertmanager
+            file: src/observability/alertmanager/Dockerfile
+            target: ""
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
@@ -107,6 +111,23 @@ jobs:
           tags: sippolusi-${{ matrix.name }}:ci
           cache-from: type=gha,scope=${{ matrix.name }}
           cache-to: type=gha,scope=${{ matrix.name }}
+
+  # Alert and recording rules (issue #112): syntax, Alertmanager config, and promtool unit tests.
+  test-observability:
+    name: test / observability rules
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: promtool check and test rules
+        working-directory: src/observability/prometheus
+        run: |
+          docker run --rm -v "$PWD:/w" -w /w/tests --entrypoint promtool prom/prometheus:v3.15.1             check rules /w/rules/sippolusi.rules.yml
+          docker run --rm -v "$PWD:/w" -w /w/tests --entrypoint promtool prom/prometheus:v3.15.1             test rules sippolusi.rules.test.yml
+      - name: amtool check-config
+        working-directory: src/observability/alertmanager
+        run: |
+          docker run --rm -v "$PWD:/w" --entrypoint amtool prom/alertmanager:v0.34.2             check-config /w/alertmanager.yml /w/alertmanager.example.yml
 
   test-backend:
     name: test / backend
@@ -316,7 +337,7 @@ jobs:
   ci-passed:
     name: ci-passed
     if: always()
-    needs: [build, test-backend, test-data-worker, regression]
+    needs: [build, test-observability, test-backend, test-data-worker, regression]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:

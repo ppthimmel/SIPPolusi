@@ -1,11 +1,13 @@
-version: "3.8"
-
-# Local/CI observability stack (Prometheus, Pushgateway, Grafana). All three
-# are stock images configured, not custom source code (mirrors how API
-# Gateway is an NGINX configuration (src/gateway) rather than a bespoke service).
+# Standalone observability stack (Prometheus, Pushgateway, Alertmanager, blackbox_exporter, Grafana): stock images
+# with SIPPolusi configuration, no custom source code. The application targets are not in this file, so their
+# scrape URLs are left empty; the root docker-compose.yml runs the same images next to the application.
 services:
   prometheus:
     build: ./prometheus
+    environment:
+      BACKEND_URL: ""
+      CACHE_API_URL: ""
+      PROBE_URLS: ""
     ports:
       - "9090:9090"
 
@@ -14,9 +16,19 @@ services:
     ports:
       - "9091:9091"
 
+  alertmanager:
+    build: ./alertmanager
+    ports:
+      - "9093:9093"
+
+  blackbox:
+    image: prom/blackbox-exporter:v0.29.0
+
   grafana:
     build: ./grafana
+    env_file: .env
     ports:
       - "3000:3000"
     depends_on:
       - prometheus
+      - alertmanager

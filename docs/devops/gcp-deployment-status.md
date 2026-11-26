@@ -22,6 +22,7 @@ simpler IDW estimate. Railway is unchanged and still stopped by its usage limit.
 | Cache API (routes, heatmap, geocoding) | Cloud Run `cache-api` | internal only | ✅ loads `morl-route-policy:1` from the registry |
 | Model registry (MLflow) | Cloud Run `model-registry` | internal only | ✅ model files stored in Cloud Storage through the registry's proxy |
 | Data Worker (hourly cycle) | Cloud Run Job `data-worker` + Cloud Scheduler `data-worker-hourly` (`15 * * * *` UTC) | — | ✅ first cycle `complete` |
+| Observability (Grafana, Prometheus, Alertmanager) | Cloud Run `observability` (always on) + `pushgateway` | Grafana public with login; rest internal | ✅ deployed 26 Nov 2026 (issue #112, [observability-gcp.md](observability-gcp.md)) |
 | Model registration (TI-DO-10b) | Cloud Run Job `model-register` | run by hand | ✅ registered, promoted, and skipped a repeat correctly |
 | Road graph seed | Cloud Run Job `seed-graph` | run once | ✅ 299,067 nodes, 373,352 edges |
 | Route model packaging | Cloud Run Job `package-route` | run once | ✅ 23 files + `package.json` |
@@ -69,7 +70,7 @@ simpler IDW estimate. Railway is unchanged and still stopped by its usage limit.
 | PM2.5 and NO₂ models | Their bundles exist only in the Railway bucket, which is locked by the Railway usage limit | Raise the Railway limit (or wait for 27 Nov), download the bundles, then register and promote them on GCP |
 | Old Railway data | Same lock. GCP started with an empty database | Optional: `pg_dump` of the `pollution`, `ground_truth` and `mlflow` schemas, restore into Cloud SQL |
 | CI/CD to GCP | Built, but not active until its PR is merged into `dev`; the deployer account's permissions are untested until that first run | Merge the PR, then check the first `deploy / gcp` run |
-| Observability (Grafana / Prometheus) | Not set up; logs are in Cloud Logging | Use Cloud Monitoring dashboards, or run Grafana on Cloud Run |
+| Alert notifications | Observability runs (issue #112, [observability-gcp.md](observability-gcp.md)), but no receiver is set, so alerts only show in Grafana | Store a receiver config in the secret `alertmanager-config` (scripts/gcp/README.md) |
 | Budget alert | GCP has no hard spending cap like Railway | Account owner sets a budget alert in Billing (for example $20/month) |
 | Custom domain | Using the default `*.run.app` URLs | Optional: domain mapping or a load balancer |
 | Old backend API (`src/backend/Dockerfile`) | Not deployed; Railway doesn't run it either | Nothing, unless the team needs it |
@@ -119,7 +120,7 @@ simpler IDW estimate. Railway is unchanged and still stopped by its usage limit.
 ### Priority 3: optional
 
 - [ ] Move historical data from Railway (`pg_dump` / `pg_restore`).
-- [ ] Monitoring dashboard and alerts (Cloud Monitoring, or Grafana on Cloud Run).
+- [x] Monitoring dashboard and alerts: Prometheus, Alertmanager and Grafana on Cloud Run (issue #112). A notification receiver is still to be set.
 - [ ] Custom domain.
 - [ ] `--min-instances=1` on `cache-api` and `gateway` for demos, if the startup delay matters.
 
