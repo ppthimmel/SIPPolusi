@@ -45,6 +45,7 @@ from planner.assembler import build_solver_input
 from planner.models import IMPUTED_MEDIAN, PlannedEdge, SolverInput
 from pollution.repository import PollutionRepository
 from route_model.costs import edge_exposure
+from telemetry import METRICS
 
 from .config import SolverSettings
 from .cancel import run_cancellable
@@ -263,6 +264,12 @@ def _log(outcome: str, *, si: SolverInput | None, solver: str, deadline_ms: int 
         "primary_ms": round(fallback.primary_elapsed_ms, 1) if fallback else None,
         "reason": reason or (fallback.failure_reason if fallback else None),
     }
+    # Same request, same labels as the log line: fallback frequency and solver time on /metrics (IMetricsSink).
+    METRICS.inc("sippolusi_route_solver_requests_total", solver=solver, outcome=outcome,
+                route_source=fields["route_source"] or "none", fallback_reason=fields["fallback_reason"] or "none")
+    if attempt is not None:
+        METRICS.observe("sippolusi_route_solver_duration_seconds", attempt.elapsed_ms / 1000, solver=solver,
+                        outcome=outcome)
     line = "route_inference " + " ".join(f"{k}={v}" for k, v in fields.items() if v is not None)
     if detail:
         line += f" detail={detail!r}"

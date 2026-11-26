@@ -34,33 +34,61 @@ logger = logging.getLogger("request")
 
 _HELP = {
     "sippolusi_http_requests_total": ("counter", "HTTP requests by route template and status."),
-    "sippolusi_http_request_duration_seconds": ("summary", "HTTP request latency by route template."),
+    "sippolusi_http_request_duration_seconds": ("histogram", "HTTP request latency by route template."),
     "sippolusi_route_requests_total": ("counter", "Route requests by outcome (ok, fallback, failed)."),
     "sippolusi_route_fallback_total": ("counter", "Routes answered by the baseline fallback, by reason."),
     "sippolusi_route_inference_failures_total": ("counter", "Route policy inference failures, by reason."),
+    "sippolusi_route_solver_requests_total": (
+        "counter", "Cache API route solves by solver, outcome (ok, fallback, failed) and route source."),
+    "sippolusi_route_solver_duration_seconds": ("histogram", "Cache API route solver time per attempt."),
 }
+
+# Upper bounds (seconds) for latency histograms, so Prometheus can compute p95 (histogram_quantile). They bracket
+# the targets that matter: the 8 s integration-test budget and the 60 s p95 target (EDO-02).
+LATENCY_BUCKETS = (0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 8.0, 10.0, 15.0, 20.0, 30.0, 45.0, 60.0)
+
+
+def _labels_key(labels: dict[str, object]) -> tuple[tuple[str, str], ...]:
+    return tuple(sorted((k, str(v)) for k, v in labels.items()))
+
+
+def _sort_key(item: tuple[tuple[str, tuple[tuple[str, str], ...]], float]):
+    """Group series by name and labels, with histogram buckets in increasing ``le`` order."""
+    (name, labels), _ = item
+    le = dict(labels).get("le")
+    return name, tuple(pair for pair in labels if pair[0] != "le"), float(le) if le is not None else 0.0
 
 
 class Metrics:
-    """Thread-safe counters and latency sums in the Prometheus text format (no client library)."""
+    """Thread-safe counters and histograms in the Prometheus text format (no client library)."""
 
     def __init__(self) -> None:
         self._lock = threading.Lock()
         self._values: dict[tuple[str, tuple[tuple[str, str], ...]], float] = defaultdict(float)
 
     def inc(self, name: str, amount: float = 1.0, **labels: object) -> None:
-        key = (name, tuple(sorted((k, str(v)) for k, v in labels.items())))
+        key = (name, _labels_key(labels))
         with self._lock:
             self._values[key] += amount
 
+    def observe(self, name: str, seconds: float, buckets: tuple[float, ...] = LATENCY_BUCKETS,
+                **labels: object) -> None:
+        """Add one observation to histogram ``name`` (cumulative ``_bucket``, ``_sum`` and ``_count``)."""
+        with self._lock:
+            for bound in buckets:
+                if seconds <= bound:
+                    self._values[(f"{name}_bucket", _labels_key({**labels, "le": f"{bound:g}"}))] += 1
+            self._values[(f"{name}_bucket", _labels_key({**labels, "le": "+Inf"}))] += 1
+            self._values[(f"{name}_sum", _labels_key(labels))] += seconds
+            self._values[(f"{name}_count", _labels_key(labels))] += 1
+
     def observe_request(self, service: str, method: str, route: str, status: int, seconds: float) -> None:
         self.inc("sippolusi_http_requests_total", service=service, method=method, route=route, status=status)
-        self.inc("sippolusi_http_request_duration_seconds_sum", seconds, service=service, method=method, route=route)
-        self.inc("sippolusi_http_request_duration_seconds_count", service=service, method=method, route=route)
+        self.observe("sippolusi_http_request_duration_seconds", seconds, service=service, method=method, route=route)
 
     def value(self, name: str, **labels: object) -> float:
         with self._lock:
-            return self._values.get((name, tuple(sorted((k, str(v)) for k, v in labels.items()))), 0.0)
+            return self._values.get((name, _labels_key(labels)), 0.0)
 
     def reset(self) -> None:
         with self._lock:
@@ -68,11 +96,11 @@ class Metrics:
 
     def render(self) -> str:
         with self._lock:
-            items = sorted(self._values.items())
+            items = sorted(self._values.items(), key=_sort_key)
         lines: list[str] = []
         described: set[str] = set()
         for (name, labels), value in items:
-            family = name.removesuffix("_sum").removesuffix("_count") if name not in _HELP else name
+            family = name if name in _HELP else name.removesuffix("_bucket").removesuffix("_sum").removesuffix("_count")
             if family in _HELP and family not in described:
                 kind, text = _HELP[family]
                 lines += [f"# HELP {family} {text}", f"# TYPE {family} {kind}"]

@@ -89,3 +89,20 @@ async def test_log_line_traces_the_request_without_coordinates(osm_repo, polluti
     for part in ("outcome=ok", "route_source=policy", "model_version=mock-1", "inference_ms="):
         assert part in ok_line, part
     assert all("106." not in line and "-6." not in line for line in lines)  # no coordinates (PNF-06)
+
+
+async def test_fallback_and_solver_time_are_counted_on_metrics(osm_repo, pollution_repo, settings):
+    """The same request that logs route_inference is counted on /metrics (IMetricsSink, issue #112)."""
+    from telemetry import METRICS
+
+    METRICS.reset()
+    await solve(MockSolver("timeout"), osm_repo, pollution_repo, settings)
+    await solve(MockSolver(), osm_repo, pollution_repo, settings)
+    assert METRICS.value("sippolusi_route_solver_requests_total", solver="mock", outcome="fallback",
+                         route_source="baseline", fallback_reason="model_timeout") == 1
+    assert METRICS.value("sippolusi_route_solver_requests_total", solver="mock", outcome="ok",
+                         route_source="policy", fallback_reason="none") == 1
+    assert METRICS.value("sippolusi_route_solver_duration_seconds_count", solver="mock", outcome="ok") == 1
+    text = METRICS.render()
+    assert "# TYPE sippolusi_route_solver_duration_seconds histogram" in text
+    assert 'sippolusi_route_solver_duration_seconds_bucket{le="+Inf",outcome="ok",solver="mock"} 1' in text

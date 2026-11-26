@@ -19,6 +19,8 @@ memakai *fallback* IDW sampai keduanya diunggah dan didaftarkan.
 | `sippolusi-db` | Cloud SQL PostgreSQL 18 + PostGIS, `db-f1-micro`, IP privat saja | | |
 | `sippolusi-mlflow-87531247158` | Cloud Storage | privat | artefak MLflow (`artifacts/`) |
 | `sippolusi-seed-87531247158` | Cloud Storage | privat | graf jalan, set rute, skrip seed |
+| `observability` | Cloud Run, 1 instance selalu menyala | publik (Grafana, login `admin`) | https://observability-87531247158.asia-southeast2.run.app |
+| `pushgateway` | Cloud Run, 1 instance | **internal** | https://pushgateway-87531247158.asia-southeast2.run.app |
 
 `/healthz` gateway tidak dapat dipanggil di Cloud Run (jalur berakhiran `z` dicadangkan Google). Gunakan
 `/gateway-health`, misalnya `python scripts/smoke_test.py --gateway <url> --health-path /gateway-health`.
@@ -70,6 +72,10 @@ GitHub.
 - `sippolusi-registry`: menulis/membaca *bucket* MLflow (satu-satunya yang memegang akses ke artefak, seperti di Railway).
 - `sippolusi-app`: Cache API, gateway, frontend, Data Worker, `model-register`. Tanpa akses ke *bucket*.
 - `sippolusi-tools`: *job* seed dan pengemasan, serta pemicu Cloud Scheduler.
+- `sippolusi-observability`: layanan `observability` dan `pushgateway`; `roles/monitoring.viewer` untuk membaca metrik
+  Cloud Monitoring, akses ke secret `grafana-admin-password` (dibuat acak oleh `deploy.sh observability-setup`; baca
+  dengan `gcloud secrets versions access latest --secret=grafana-admin-password`) dan, bila ada, `alertmanager-config`
+  dan `alertmanager-smtp-password`.
 
 ## Perintah
 
@@ -83,6 +89,37 @@ scripts/gcp/deploy.sh <registry|cache-api|gateway|frontend|data-worker|model-reg
 gcloud run jobs replace scripts/gcp/jobs/seed-graph.yaml --region asia-southeast2
 gcloud run jobs execute seed-graph --region asia-southeast2 --wait
 ```
+
+### Observability (issue #112)
+
+Tidak termasuk `all` dan tidak dijalankan CI: revisi baru me-*restart* Prometheus, yang datanya ada di memori instance.
+Rinciannya di [`docs/devops/observability-gcp.md`](../../docs/devops/observability-gcp.md).
+
+Image diberi tag commit asalnya, sehingga revisi yang berjalan dapat ditelusuri ke kode; `deploy.sh observability`
+menolak berjalan tanpa `OBS_IMAGE_TAG`. Jalankan dari *working tree* yang bersih pada commit yang sudah di-*push*.
+
+```bash
+TAG=$(git rev-parse --short=12 HEAD)
+for img in prometheus alertmanager pushgateway grafana; do
+  gcloud builds submit src/observability/$img --config scripts/gcp/cloudbuild.yaml --region asia-southeast2 \
+    --substitutions _IMAGE=$img,_TAG=$TAG
+done
+scripts/gcp/deploy.sh observability-setup                      # sekali, oleh admin: akun layanan, secret, metrik log
+OBS_IMAGE_TAG=$TAG scripts/gcp/deploy.sh observability          # pushgateway + observability
+CACHE_API_SCRAPE=1 OBS_IMAGE_TAG=$TAG scripts/gcp/deploy.sh observability   # hanya selama uji beban (#111)
+```
+
+**Notifikasi email (Gmail).** Kata sandi SMTP tidak pernah masuk ke berkas konfigurasi atau repositori:
+
+1. Buat *app password* untuk akun Gmail pengirim (Google Account > Security > 2-Step Verification > App passwords).
+2. Simpan sebagai secret tanpa menampilkan atau menulisnya ke berkas (Git Bash; tempel 16 hurufnya tanpa spasi, lalu
+   Enter): `read -rs P && printf '%s' "$P" | gcloud secrets create alertmanager-smtp-password --data-file=- && unset P`
+   (mengganti: `gcloud secrets versions add alertmanager-smtp-password --data-file=-`).
+3. Salin `src/observability/alertmanager/alertmanager.example.yml`, isi alamat pengirim dan penerima, lalu
+   `gcloud secrets create alertmanager-config --data-file=<berkas>` dan hapus salinannya.
+4. `scripts/gcp/deploy.sh observability-setup` (akses secret) lalu `OBS_IMAGE_TAG=<tag> scripts/gcp/deploy.sh observability`.
+
+Tanpa `alertmanager-config` alert hanya tampil di Grafana.
 
 ### Mendaftarkan model (TI-DO-10b)
 
@@ -113,15 +150,18 @@ Variabel `--update-env-vars` hanya berlaku untuk eksekusi itu, jadi tidak ada ni
 - Model PM2.5 dan NO₂: unggah bundelnya (dari *bucket* Railway, setelah batas Railway dinaikkan) ke
   `artifacts/incoming/spatial/<pm25|no2>/<versi>/`, daftarkan dengan `model-register`, lalu promosikan.
 - Data lama Railway (riwayat *cache* polusi, `ground_truth`, metadata MLflow) tidak dipindahkan.
-- Observability (Grafana/Prometheus) belum dipasang; log tersedia di Cloud Logging.
+- Observability terpasang (issue #112), tetapi penerima notifikasi alert belum diisi (secret `alertmanager-config`), dan
+  Data Worker baru mengirim metrik ke Pushgateway setelah kode #112 di-*deploy* dari `dev`.
 - *Deploy* otomatis belum pernah berjalan: ia aktif setelah PR-nya masuk ke `dev`, dan izin `sippolusi-deployer` baru
   teruji pada *run* pertama itu.
 - `backend` (API lama, `src/backend/Dockerfile`) tidak di-*deploy*; Railway juga tidak menjalankannya.
 
 ## Biaya
 
-GCP **tidak** punya batas keras seperti Railway: atur *budget alert* di Billing. Yang berjalan terus hanya Cloud SQL
-`db-f1-micro`; layanan Cloud Run berskala ke nol saat tidak dipakai, dan Data Worker dibayar per eksekusi.
+GCP **tidak** punya batas keras seperti Railway: atur *budget alert* di Billing. Yang berjalan terus adalah Cloud SQL
+`db-f1-micro`, layanan `observability` (instance-based billing, CPU selalu dialokasikan) dan satu instance `pushgateway`;
+layanan Cloud Run lain berskala ke nol saat tidak dipakai, dan Data Worker dibayar per eksekusi. Probe sintetis setiap
+60 detik membuat `gateway` dan `frontend` tetap punya instance aktif, tetapi keduanya ditagih per request.
 
 ## Windows
 

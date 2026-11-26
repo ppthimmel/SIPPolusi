@@ -105,6 +105,19 @@ class ObservabilityTests(unittest.IsolatedAsyncioTestCase):
         health = [e for e in self.log.events("http_request") if e["route"] == "/health"]
         self.assertEqual([e["level"] for e in health], ["debug"])
 
+    async def test_latency_is_a_histogram_for_p95(self):
+        await self.client.get("/health")
+        text = (await self.client.get("/metrics")).text
+        self.assertIn("# TYPE sippolusi_http_request_duration_seconds histogram", text)
+        buckets = [line for line in text.splitlines()
+                   if line.startswith("sippolusi_http_request_duration_seconds_bucket") and 'route="/health"' in line]
+        bounds = [line.split('le="')[1].split('"')[0] for line in buckets]
+        self.assertEqual(bounds[-1], "+Inf")
+        self.assertEqual([float(b) for b in bounds[:-1]], sorted(float(b) for b in bounds[:-1]))
+        self.assertTrue(all(line.endswith(" 1") for line in buckets))  # one fast request lands in every bucket
+        self.assertIn('sippolusi_http_request_duration_seconds_count{method="GET",route="/health",service="backend"} 1',
+                      text)
+
 
 if __name__ == "__main__":
     unittest.main()

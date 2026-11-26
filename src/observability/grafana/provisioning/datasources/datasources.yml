@@ -1,8 +1,21 @@
 apiVersion: 1
 
+# Grafana expands ${VAR} from its environment (grafana/Dockerfile defaults; Cloud Run: scripts/gcp/deploy.sh).
 datasources:
   - name: Prometheus
+    uid: prometheus
     type: prometheus
     access: proxy
     url: ${PROMETHEUS_URL}
     isDefault: true
+    jsonData:
+      timeInterval: 15s
+
+  - name: Alertmanager
+    uid: alertmanager
+    type: alertmanager
+    access: proxy
+    url: ${ALERTMANAGER_URL}
+    jsonData:
+      implementation: prometheus
+      handleGrafanaManagedAlerts: false

@@ -1,0 +1,308 @@
+# promtool test rules src/observability/prometheus/tests/sippolusi.rules.test.yml   (run from the prometheus/ folder;
+# see src/observability/README.md). Each case feeds synthetic series and checks which alerts fire, and when.
+rule_files:
+  - ../rules/sippolusi.rules.yml
+
+evaluation_interval: 1m
+
+tests:
+  # A target that stops answering scrapes alerts after 5 minutes; a healthy one does not.
+  - interval: 1m
+    input_series:
+      - series: 'up{job="cache_api", instance="cache-api:443"}'
+        values: '1 1 0 0 0 0 0 0 0 0'
+      - series: 'up{job="pushgateway", instance="pushgateway:443"}'
+        values: '1x10'
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: ScrapeTargetDown
+        exp_alerts: []
+      - eval_time: 8m
+        alertname: ScrapeTargetDown
+        exp_alerts:
+          - exp_labels: {severity: critical, job: cache_api, instance: "cache-api:443"}
+            exp_annotations:
+              summary: "Prometheus cannot scrape cache_api (cache-api:443)"
+              description: "No metrics from cache_api for 5 minutes (IMetricsSink: a missing scrape raises an alert)."
+
+  - interval: 1m
+    input_series:
+      - series: 'probe_success{job="probe", probe="gateway", instance="https://gw/gateway-health"}'
+        values: '1 1 0 0 0 0 0'
+    alert_rule_test:
+      - eval_time: 4m
+        alertname: EndpointProbeFailed
+        exp_alerts: []
+      - eval_time: 6m
+        alertname: EndpointProbeFailed
+        exp_alerts:
+          - exp_labels: {severity: critical, job: probe, probe: gateway, instance: "https://gw/gateway-health"}
+            exp_annotations:
+              summary: "Synthetic probe of gateway fails"
+              description: "https://gw/gateway-health has not answered 2xx for 3 minutes (EDO-03 availability)."
+
+  # 16.7 % 5xx on the gateway -> critical; 3 % on cache-api -> warning only; frontend without errors -> nothing.
+  - interval: 1m
+    input_series:
+      - series: 'stackdriver_cloud_run_revision_run_googleapis_com_request_count{service_name="gateway", response_code_class="2xx"}'
+        values: '0+10x40'
+      - series: 'stackdriver_cloud_run_revision_run_googleapis_com_request_count{service_name="gateway", response_code_class="5xx"}'
+        values: '0+2x40'
+      - series: 'stackdriver_cloud_run_revision_run_googleapis_com_request_count{service_name="cache-api", response_code_class="2xx"}'
+        values: '0+97x40'
+      - series: 'stackdriver_cloud_run_revision_run_googleapis_com_request_count{service_name="cache-api", response_code_class="5xx"}'
+        values: '0+3x40'
+      - series: 'stackdriver_cloud_run_revision_run_googleapis_com_request_count{service_name="frontend", response_code_class="2xx"}'
+        values: '0+50x40'
+    promql_expr_test:
+      - expr: sippolusi:cloudrun_5xx_ratio:rate10m{service_name="frontend"}
+        eval_time: 30m
+        exp_samples:
+          - labels: 'sippolusi:cloudrun_5xx_ratio:rate10m{service_name="frontend"}'
+            value: 0
+    alert_rule_test:
+      - eval_time: 30m
+        alertname: HighErrorRate
+        exp_alerts:
+          - exp_labels: {severity: critical, service_name: gateway}
+            exp_annotations:
+              summary: "gateway: 16.67% of requests are 5xx"
+              description: "More than 5 % 5xx over 10 minutes (EDO-03 target < 1 %)."
+      - eval_time: 30m
+        alertname: ErrorRateAboveTarget
+        exp_alerts:
+          - exp_labels: {severity: warning, service_name: cache-api}
+            exp_annotations:
+              summary: "cache-api: 3% of requests are 5xx"
+              description: "Above the EDO-03 target of 1 % 5xx for 10 minutes."
+
+  # Too few requests to judge: one 5xx out of 3 requests does not alert.
+  - interval: 1m
+    input_series:
+      - series: 'stackdriver_cloud_run_revision_run_googleapis_com_request_count{service_name="gateway", response_code_class="5xx"}'
+        values: '0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1'
+      - series: 'stackdriver_cloud_run_revision_run_googleapis_com_request_count{service_name="gateway", response_code_class="2xx"}'
+        values: '0 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2'
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: HighErrorRate
+        exp_alerts: []
+
+  # Cloud Run latency buckets are in ms and only feed the per-service panels.
+  - interval: 1m
+    input_series:
+      - series: 'stackdriver_cloud_run_revision_run_googleapis_com_request_latencies_bucket{service_name="cache-api", le="8000"}'
+        values: '0x40'
+      - series: 'stackdriver_cloud_run_revision_run_googleapis_com_request_latencies_bucket{service_name="cache-api", le="10000"}'
+        values: '0+10x40'
+      - series: 'stackdriver_cloud_run_revision_run_googleapis_com_request_latencies_bucket{service_name="cache-api", le="+Inf"}'
+        values: '0+10x40'
+    promql_expr_test:
+      - expr: sippolusi:cloudrun_latency_seconds:p95_10m{service_name="cache-api"}
+        eval_time: 20m
+        exp_samples:
+          - labels: 'sippolusi:cloudrun_latency_seconds:p95_10m{service_name="cache-api"}'
+            value: 9.9
+
+  # Route latency from the gateway access log (seconds). All routes take 60-90 s -> p95 above 60 s (critical).
+  - interval: 1m
+    input_series:
+      - series: 'stackdriver_cloud_run_revision_logging_googleapis_com_user_sippolusi_gateway_route_latency_bucket{status="200", status_class="2", le="60"}'
+        values: '0x40'
+      - series: 'stackdriver_cloud_run_revision_logging_googleapis_com_user_sippolusi_gateway_route_latency_bucket{status="200", status_class="2", le="90"}'
+        values: '0+10x40'
+      - series: 'stackdriver_cloud_run_revision_logging_googleapis_com_user_sippolusi_gateway_route_latency_bucket{status="200", status_class="2", le="+Inf"}'
+        values: '0+10x40'
+    alert_rule_test:
+      - eval_time: 30m
+        alertname: RouteLatencyP95AboveTarget
+        exp_alerts:
+          - exp_labels: {severity: critical}
+            exp_annotations:
+              summary: "Route p95 latency at the gateway 1m 28s"
+              description: "p95 of POST /v1/routes over 10 minutes is above the EDO-02 target of 1 minute."
+      - eval_time: 30m
+        alertname: RouteLatencyP95High
+        exp_alerts: []
+
+  # Routes take 8-10 s -> above the 8 s budget (warning) when there are enough of them; 1 per 10 min is not enough.
+  - interval: 1m
+    input_series:
+      - series: 'stackdriver_cloud_run_revision_logging_googleapis_com_user_sippolusi_gateway_route_latency_bucket{status="200", status_class="2", le="8"}'
+        values: '0x40'
+      - series: 'stackdriver_cloud_run_revision_logging_googleapis_com_user_sippolusi_gateway_route_latency_bucket{status="200", status_class="2", le="10"}'
+        values: '0+1x40'
+      - series: 'stackdriver_cloud_run_revision_logging_googleapis_com_user_sippolusi_gateway_route_latency_bucket{status="200", status_class="2", le="+Inf"}'
+        values: '0+1x40'
+      - series: 'stackdriver_cloud_run_revision_logging_googleapis_com_user_sippolusi_gateway_route_latency_count{status="200", status_class="2"}'
+        values: '0+1x40'
+    alert_rule_test:
+      - eval_time: 35m
+        alertname: RouteLatencyP95High
+        exp_alerts:
+          - exp_labels: {severity: warning}
+            exp_annotations:
+              summary: "Route p95 latency at the gateway 9.9s"
+              description: "p95 of POST /v1/routes over 10 minutes is above the 8 s route budget used in integration testing."
+  - interval: 1m
+    input_series:
+      - series: 'stackdriver_cloud_run_revision_logging_googleapis_com_user_sippolusi_gateway_route_latency_bucket{status="200", status_class="2", le="8"}'
+        values: '0x40'
+      - series: 'stackdriver_cloud_run_revision_logging_googleapis_com_user_sippolusi_gateway_route_latency_bucket{status="200", status_class="2", le="10"}'
+        values: '0 0 0 0 0 0 0 0 0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1'
+      - series: 'stackdriver_cloud_run_revision_logging_googleapis_com_user_sippolusi_gateway_route_latency_bucket{status="200", status_class="2", le="+Inf"}'
+        values: '0 0 0 0 0 0 0 0 0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1'
+      - series: 'stackdriver_cloud_run_revision_logging_googleapis_com_user_sippolusi_gateway_route_latency_count{status="200", status_class="2"}'
+        values: '0 0 0 0 0 0 0 0 0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1'
+    alert_rule_test:
+      - eval_time: 35m
+        alertname: RouteLatencyP95High
+        exp_alerts: []
+
+  # 30 % of bike routes fall back -> warning. Walk routes always fall back (bike-only policy) -> no alert for walk.
+  - interval: 1m
+    input_series:
+      - series: 'stackdriver_cloud_run_revision_logging_googleapis_com_user_sippolusi_route_inference{outcome="ok", solver="morl", mode="bike"}'
+        values: '0+7x60'
+      - series: 'stackdriver_cloud_run_revision_logging_googleapis_com_user_sippolusi_route_inference{outcome="fallback", solver="morl", mode="bike", fallback_reason="model_timeout"}'
+        values: '0+3x60'
+      - series: 'stackdriver_cloud_run_revision_logging_googleapis_com_user_sippolusi_route_inference{outcome="fallback", solver="morl", mode="walk", fallback_reason="model_unavailable"}'
+        values: '0+5x60'
+    alert_rule_test:
+      - eval_time: 50m
+        alertname: RouteFallbackRateHigh
+        exp_alerts:
+          - exp_labels: {severity: warning, mode: bike}
+            exp_annotations:
+              summary: "30% of bike routes use the baseline fallback"
+              description: "The MORL policy is failing or timing out; check route_model_load and route_inference logs on cache-api."
+
+  # Data Worker: a failed cycle alerts at once; the last success going older than 2 h is critical.
+  - interval: 10m
+    input_series:
+      - series: 'sippolusi_job_status{job="data_worker", status="failed"}'
+        values: '0 0 0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1'
+      - series: 'sippolusi_job_status{job="data_worker", status="ok"}'
+        values: '1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0'
+      - series: 'sippolusi_job_last_success_timestamp_seconds{job="data_worker"}'
+        values: '0x20'
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: DataWorkerCycleFailed
+        exp_alerts: []
+      - eval_time: 30m
+        alertname: DataWorkerCycleFailed
+        exp_alerts:
+          - exp_labels: {severity: warning, job: data_worker, status: failed}
+            exp_annotations:
+              summary: "Data Worker cycle ended failed"
+              description: "Search Cloud Logging for event job_finished; the cycle run_id is the correlation_id (EDO-04)."
+      - eval_time: 110m
+        alertname: DataWorkerResultsStale
+        exp_alerts: []
+      - eval_time: 130m
+        alertname: DataWorkerResultsStale
+        exp_alerts:
+          - exp_labels: {severity: critical, job: data_worker}
+            exp_annotations:
+              summary: "No successful Data Worker cycle for 2h 10m 0s"
+              description: "Pollution estimates are older than 2 hours: at least one hourly cycle was missed or failed."
+
+  # Nothing ever pushed: alert after 2 hours.
+  - interval: 10m
+    input_series:
+      - series: 'up{job="pushgateway", instance="pushgateway:443"}'
+        values: '1x20'
+    alert_rule_test:
+      - eval_time: 110m
+        alertname: DataWorkerMetricsMissing
+        exp_alerts: []
+      - eval_time: 130m
+        alertname: DataWorkerMetricsMissing
+        exp_alerts:
+          - exp_labels: {severity: critical, job: data_worker}
+            exp_annotations:
+              summary: "No successful Data Worker cycle has been pushed for 2 hours"
+              description: "Either no cycle succeeded, PUSHGATEWAY_URL is unset, or the Pushgateway restarted and nothing succeeded since."
+
+  - interval: 10m
+    input_series:
+      - series: 'stackdriver_cloud_run_job_run_googleapis_com_job_completed_execution_count{job_name="data-worker", result="failed"}'
+        values: '0 0 1 1 1 1 1 1'
+      - series: 'sippolusi_downscale_coverage_ratio{job="data_worker"}'
+        values: '0.99 0.99 0.5'
+    alert_rule_test:
+      - eval_time: 30m
+        alertname: DataWorkerExecutionFailed
+        exp_alerts:
+          - exp_labels: {severity: warning, job_name: data-worker}
+            exp_annotations:
+              summary: "Cloud Run Job data-worker had a failed execution in the last hour"
+              description: "Covers crashes and timeouts that end before the cycle can push its own status."
+      - eval_time: 20m
+        alertname: DownscaleCoverageLow
+        exp_alerts:
+          - exp_labels: {severity: warning, job: data_worker}
+            exp_annotations:
+              summary: "Only 50% of road edges received an estimate"
+              description: "Inference coverage of the last cycle is below 90 %."
+
+  # stackdriver_exporter creates the failed series at the first failure, already at 1: alert for the next hour.
+  - interval: 1m
+    input_series:
+      - series: 'stackdriver_cloud_run_job_run_googleapis_com_job_completed_execution_count{job_name="data-worker", result="failed"}'
+        values: '_x20 1x150'
+      - series: 'stackdriver_cloud_run_job_run_googleapis_com_job_completed_execution_count{job_name="data-worker", result="succeeded"}'
+        values: '0+1x170'
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: DataWorkerExecutionFailed
+        exp_alerts: []
+      - eval_time: 30m
+        alertname: DataWorkerExecutionFailed
+        exp_alerts:
+          - exp_labels: {severity: warning, job_name: data-worker}
+            exp_annotations:
+              summary: "Cloud Run Job data-worker had a failed execution in the last hour"
+              description: "Covers crashes and timeouts that end before the cycle can push its own status."
+      - eval_time: 2h
+        alertname: DataWorkerExecutionFailed
+        exp_alerts: []
+
+  # PM2.5 on the IDW fallback for more than 2 hours -> warning; NO2 on its model -> nothing.
+  - interval: 1m
+    input_series:
+      - series: 'sippolusi_downscale_fallback{job="data_worker", pollutant="pm25"}'
+        values: '1x180'
+      - series: 'sippolusi_downscale_fallback{job="data_worker", pollutant="no2"}'
+        values: '0x180'
+    alert_rule_test:
+      - eval_time: 1h
+        alertname: DownscaleFallbackActive
+        exp_alerts: []
+      - eval_time: 3h
+        alertname: DownscaleFallbackActive
+        exp_alerts:
+          - exp_labels: {severity: warning, job: data_worker, pollutant: pm25}
+            exp_annotations:
+              summary: "pm25 estimates use the IDW fallback"
+              description: "The Spatial Downscaling Model for pm25 is not loaded (not registered or failed to load)."
+
+  - interval: 1m
+    input_series:
+      - series: 'stackdriver_cloudsql_database_cloudsql_googleapis_com_database_up{database_id="sippolusi:sippolusi-db"}'
+        values: '1 1 0 0 0 0 0 0 0'
+    alert_rule_test:
+      - eval_time: 8m
+        alertname: CloudSqlDown
+        exp_alerts:
+          - exp_labels: {severity: critical, database_id: "sippolusi:sippolusi-db"}
+            exp_annotations:
+              summary: "Cloud SQL sippolusi:sippolusi-db is down"
+              description: "Cache API readiness and the Data Worker depend on it."
+      - eval_time: 1m
+        alertname: Watchdog
+        exp_alerts:
+          - exp_labels: {severity: none}
+            exp_annotations:
+              summary: "Alerting pipeline is alive"

@@ -52,6 +52,7 @@ from acquisition import schedule_acquisition
 from contracts import TimeWindow
 from db_session import apply_session_defaults
 from log_config import configure_logging, correlation, log_event
+import metrics_push
 from preflight import config_problems, database_problems, import_problems
 import worker_runs
 
@@ -213,10 +214,13 @@ def _job_finished(window: TimeWindow, trigger: str, status: str, started: float,
     degraded = [s["step"] for s in steps if s.get("status") in worker_runs.DEGRADED_STEP_STATUSES]
     fallbacks = [s["step"] for s in steps if s.get("fallback_reason")]
     level = logging.INFO if status == "ok" else logging.WARNING if status == "degraded" else logging.ERROR
+    duration_s = round(time.monotonic() - started, 2)
     log_event(log, "job_finished", level, job="acquisition_cycle", time_window=str(window), trigger=trigger,
-              status=status, duration_s=round(time.monotonic() - started, 2),
+              status=status, duration_s=duration_s,
               failed_steps=",".join(failed) or None, degraded_steps=",".join(degraded) or None,
               fallback_steps=",".join(fallbacks) or None, interrupted=interrupted or None, note=note)
+    # Same moment and status as job_finished, for Prometheus (PUSHGATEWAY_URL; never fails the cycle).
+    metrics_push.push_cycle(status, duration_s, window.end.timestamp(), steps)
 
 def status(hours: int, as_json: bool, grace_minutes: float, stuck_minutes: float) -> int:
     """Bandingkan eksekusi tercatat dengan jadwal; tidak menulis apa pun."""

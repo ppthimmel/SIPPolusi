@@ -1,0 +1,26 @@
+# Log-based distribution: latency of POST /v1/routes as the API Gateway (NGINX) logged it, from receiving the
+# request to sending the response (EDO-02 definition). Cloud Run's own request_latencies for the gateway also count
+# the synthetic health probes, which hide slow routes at low traffic; /gateway-health is not access-logged, and this
+# metric keeps only route requests. Read by stackdriver_exporter as
+# stackdriver_cloud_run_revision_logging_googleapis_com_user_sippolusi_gateway_route_latency_bucket (seconds).
+# Applied by scripts/gcp/deploy.sh observability-setup.
+description: API Gateway latency of POST /v1/routes in seconds, by HTTP status.
+filter: >-
+  resource.type="cloud_run_revision" AND resource.labels.service_name="gateway"
+  AND jsonPayload.path="/v1/routes" AND jsonPayload.method="POST"
+valueExtractor: EXTRACT(jsonPayload.duration_s)
+metricDescriptor:
+  metricKind: DELTA
+  valueType: DISTRIBUTION
+  unit: s
+  labels:
+    - key: status
+      description: HTTP status returned by the gateway
+    - key: status_class
+      description: 2xx, 4xx or 5xx
+labelExtractors:
+  status: EXTRACT(jsonPayload.status)
+  status_class: REGEXP_EXTRACT(jsonPayload.status, "^([0-9])")
+bucketOptions:
+  explicitBuckets:
+    bounds: [0.25, 0.5, 1, 2.5, 5, 8, 10, 15, 20, 30, 45, 60, 90]

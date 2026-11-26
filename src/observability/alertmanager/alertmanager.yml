@@ -1,0 +1,20 @@
+# Default Alertmanager config (no notification). Firing alerts are kept and shown in the Alertmanager UI and the
+# Grafana "SIPPolusi overview" dashboard. Replace it with a config that has a real receiver: alertmanager.example.yml.
+route:
+  receiver: dashboard-only
+  group_by: [alertname, service_name, job, probe, pollutant]
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 12h
+  routes:
+    - matchers: ['alertname="Watchdog"']
+      receiver: blackhole
+
+receivers:
+  - name: dashboard-only
+  - name: blackhole
+
+inhibit_rules:
+  # A failed probe already explains the 5xx and latency alerts of the same service.
+  - source_matchers: ['alertname="EndpointProbeFailed"']
+    target_matchers: ['alertname=~"HighErrorRate|ErrorRateAboveTarget|RouteLatencyP95.*"']
