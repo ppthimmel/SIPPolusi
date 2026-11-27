@@ -52,7 +52,10 @@ def _escape(value: object) -> str:
 
 def _number(value: float) -> str:
     """Exact text for a sample value. ``:g`` keeps only 6 significant digits, which moved Unix timestamps by
-    up to ~5,000 s (1795858295.6 became 1.79586e+09); the shortest round-trip repr keeps every digit."""
+    up to ~5,000 s (1795858295.6 became 1.79586e+09); the shortest round-trip repr keeps every digit.
+    Python ints are written as they are, since converting one above 2**53 to float would round it."""
+    if isinstance(value, int):
+        return str(int(value))
     value = float(value)
     if math.isnan(value):
         return "NaN"
