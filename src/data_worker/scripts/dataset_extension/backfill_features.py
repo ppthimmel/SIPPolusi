@@ -64,9 +64,9 @@ def do_ana(start, end, out: Path) -> dict:
     frames = []
     for k in range(0, len(inside), ANA_CHUNK_HOURS):
         chunk = inside[k:k + ANA_CHUNK_HOURS]
-        url, _, _ = geoscf.ana_query(first, chunk)
+        url, i0, _ = geoscf.ana_query(first, chunk)
         text = client.get(url, timeout=geoscf.OPENDAP_TIMEOUT_S).text
-        frame, _ = geoscf.parse_ana(text, {h: published[h] for h in chunk}, chunk[0])
+        frame, _ = geoscf.parse_ana(text, {h: published[h] for h in chunk}, geoscf.ana_start(first, i0))
         frames.append(frame)
         log(f"ana OPeNDAP {k + len(chunk)}/{len(inside)}")
     frame = pd.concat(frames, ignore_index=True)

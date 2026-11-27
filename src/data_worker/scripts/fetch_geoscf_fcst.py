@@ -12,7 +12,8 @@ sudah terbit sebelum t, sehingga dapat dipakai pada waktu inferensi.
   Larik `time` pada respons subset hanya diagnostik: pada beberapa posisinya server menjawab waktu
   dengan medan yang salah, umumnya tahunnya (bulan dan jam benar), kadang menit atau jamnya.
   Posisinya berubah antarpermintaan, juga pada format biner `.dods`, sedangkan nilai polutannya
-  identik antarpermintaan.
+  identik antarpermintaan. Larik yang sebagian besar bergeser dengan selisih jam yang sama tetap
+  ditolak (`axis_shift`): itu tanda sumbu DAS dan subset tidak sepadan.
 - Penyelarasan dan QC sama dengan `ana`: cap tavg menit ke-30 − 30 menit = awal jam;
   PM2.5 `pm25_rh35` µg/m³; NO2 mol/mol × 1e9 = ppb × 1,8804 = µg/m³; rentang 0–2000 µg/m³
   dan 0–10000 ppb.
@@ -53,6 +54,10 @@ NO2_PPB_RANGE = (0.0, 10000.0)
 VERSION = "geoscf-fcst-preprocessed-v1"
 GRADS_UNIX_EPOCH = dt.date(1970, 1, 1).toordinal() + 1     # waktu GrADS 1970-01-01T00:00Z
 GRADS_STEP_UNITS = {"mn": "min", "hr": "h", "dy": "D"}
+#: Selisih larik ``time`` terhadap sumbu DAS yang dapat berarti sumbu bergeser: kelipatan jam, kurang
+#: dari setahun. Kesalahan tahun di sisi server (8 tahun, tahun 1 atau 30) jauh di atas batas ini, dan
+#: kesalahan menit bukan kelipatan jam.
+AXIS_SHIFT_LIMIT = pd.Timedelta(days=366)
 
 
 class ForecastTimeMismatch(ValueError):
@@ -78,6 +83,27 @@ def parse_das_time(das: str) -> tuple[pd.Timestamp, pd.Timedelta, int]:
         raise ValueError(f"atribut sumbu waktu DAS tidak lengkap ({attrs})")
     start = pd.to_datetime(attrs["grads_min"], format="%H:%Mz%d%b%Y", utc=True)
     return start, pd.Timedelta(int(step.group(1)), GRADS_STEP_UNITS[step.group(2)]), int(attrs["grads_size"])
+
+
+def axis_shift(decoded: pd.DatetimeIndex, expected: pd.DatetimeIndex) -> pd.Timedelta | None:
+    """Pergeseran seragam larik ``time`` subset terhadap sumbu DAS; ``None`` bila larik selaras.
+
+    Kesalahan di sisi server tersebar: tahun atau menit salah, atau tidak terbaca, dengan selisih
+    yang berbeda-beda. Bila DAS dan subset tidak sepadan (mis. awal agregasi dipangkas di antara
+    kedua permintaan), banyak posisi bergeser dengan selisih yang sama, berupa kelipatan jam.
+    Pergeseran dilaporkan bila selisih kelipatan jam (di bawah ``AXIS_SHIFT_LIMIT``) yang paling
+    sering muncul lebih banyak daripada posisi yang selaras, dan muncul sedikitnya dua kali, atau
+    sekali bila larik hanya satu posisi.
+    """
+    offsets = pd.Series(decoded - expected).dropna()
+    agree = int((offsets == pd.Timedelta(0)).sum())
+    seconds = offsets.dt.total_seconds()
+    hourly = offsets[(seconds != 0) & (offsets.abs() < AXIS_SHIFT_LIMIT) & (seconds % 3600 == 0)]
+    if hourly.empty:
+        return None
+    counts = hourly.value_counts()
+    shift, count = counts.index[0], int(counts.iloc[0])
+    return shift if count > agree and count >= min(2, len(expected)) else None
 
 
 def _get(url: str, method: str = "GET", tries: int = 4) -> tuple[bytes, dict]:
@@ -135,7 +161,8 @@ def fetch_run(init: pd.Timestamp, get=None) -> dict:
     Jam setiap lead mengikuti sumbu DAS run itu (``parse_das_time``); run ditolak
     (``ForecastTimeMismatch``) bila sumbu itu bukan awal run + 30 menit + k jam, k = 0…119.
     Lead yang angka ``time``-nya pada subset tidak sesuai sumbu itu dicatat pada
-    ``time_mismatch_leads`` sebagai diagnostik.
+    ``time_mismatch_leads`` sebagai diagnostik, kecuali bila larik itu bergeser seragam
+    (``axis_shift``): run ditolak dengan ``ForecastTimeMismatch``.
     """
     get = get or _get
     (a, b), (c, d) = LAT_INDEX, LON_INDEX
@@ -155,6 +182,9 @@ def fetch_run(init: pd.Timestamp, get=None) -> dict:
     decoded = _grads_time(_parse_ascii(text, "time"))
     if len(decoded) != LEADS:
         raise ValueError(f"{init}: larik time berisi {len(decoded)} lead, bukan {LEADS}")
+    shift = axis_shift(decoded, times)
+    if shift is not None:
+        raise ForecastTimeMismatch(f"{init}: larik time bergeser {shift / pd.Timedelta(hours=1):+g} jam dari sumbu DAS")
     mismatched = np.flatnonzero(decoded != times).tolist()
     first = get(_lead_url(init, times[0]), "HEAD")[1].get("Last-Modified")
     last = get(_lead_url(init, times[-1]), "HEAD")[1].get("Last-Modified")

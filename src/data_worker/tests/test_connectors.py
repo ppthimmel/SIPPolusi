@@ -13,6 +13,7 @@ import io
 import json
 import logging
 import pathlib
+import re
 
 import numpy as np
 import pandas as pd
@@ -186,6 +187,29 @@ def test_open_meteo_timeout_dicoba_tiga_kali():
 
 # GEOS-CF ----------------------------------------------------------------------
 ANA_HOURS = list(pd.date_range("2026-09-30 20:00", periods=3, freq="h", tz="UTC"))
+ANA_FIRST_INDEX = 10139     # indeks ANA_HOURS[0] pada kueri rekaman (geoscf_ana_meta.json)
+
+
+def _ana_subset_text(i0, i1):
+    """Rekaman subset ana yang dipotong ke indeks [i0, i1], seperti jawaban server untuk kueri itu."""
+    lo, hi = i0 - ANA_FIRST_INDEX, i1 - ANA_FIRST_INDEX + 1
+    assert 0 <= lo < hi <= len(ANA_HOURS), (i0, i1)
+    lines, out = fixture_text("geoscf_ana_subset.ascii").split("\n"), []
+    for k, line in enumerate(lines):
+        if line.startswith("["):
+            hour, rest = line[1:].split("]", 1)
+            if lo <= int(hour) < hi:
+                out.append(f"[{int(hour) - lo}]{rest}")
+            continue
+        if k and lines[k - 1].startswith("time, ["):
+            line = ", ".join(line.split(", ")[lo:hi])
+        out.append(line.replace("[3][1][3][3]", f"[{hi - lo}][1][3][3]").replace("time, [3]", f"time, [{hi - lo}]"))
+    return "\n".join(out)
+
+
+def _ana_subset(url, kwargs):
+    i0, i1 = map(int, re.search(r"time\[(\d+):(\d+)\]", url).groups())
+    return FakeResponse(200, _ana_subset_text(i0, i1))
 
 
 def _ana_published():
@@ -212,6 +236,47 @@ def test_geoscf_ana_waktu_ascii_rusak_mengikuti_sumbu_das():
     frame, quality = geoscf.parse_ana(text, _ana_published(), ANA_HOURS[0])
     pd.testing.assert_frame_equal(frame, expected)
     assert quality["time_mismatch_hours"] == 1
+
+
+def _ana_time_changed(*numbers):
+    return fixture_text("geoscf_ana_subset.ascii").replace(
+        "739890.8541666666, 739890.8958333334, 739890.9375", ", ".join(numbers))
+
+
+def test_geoscf_ana_waktu_rusak_pada_jam_yang_tidak_disimpan_tidak_dihitung():
+    published = _ana_published()
+    published.pop(ANA_HOURS[1])
+    _, quality = geoscf.parse_ana(_ana_time_changed("739890.8541666666", "10807.395833333334", "739890.9375"),
+                                  published, ANA_HOURS[0])
+    assert quality["time_mismatch_hours"] == 0
+
+
+@pytest.mark.parametrize("offset_h", [1, -1, 24])
+def test_geoscf_ana_larik_time_bergeser_seragam_ditolak(offset_h):
+    """Seluruh angka time selisih N jam dari sumbu DAS: DAS dan subset tidak sepadan, jadi nilai
+    akan tersimpan pada jam yang salah."""
+    numbers = [repr(days + offset_h / 24) for days in (739890.8541666666, 739890.8958333334, 739890.9375)]
+    with pytest.raises(FormatError, match="larik time bergeser"):
+        geoscf.parse_ana(_ana_time_changed(*numbers), _ana_published(), ANA_HOURS[0])
+
+
+def test_geoscf_fetch_ana_das_bergeser_dari_subset_ditolak():
+    """DAS yang dibaca menyatakan awal agregasi satu jam lebih lambat daripada sumbu yang dipakai
+    server untuk subset (mis. DAS lama dari cache): indeks yang diminta jatuh satu jam lebih awal,
+    dan server menjawab angka time jam-jam itu."""
+    routes = _ana_routes()
+    das = fixture_text("geoscf_ana.das").replace('"09:30z04aug2025"', '"10:30z04aug2025"')
+    earlier = [repr(days - 1 / 24) for days in (739890.8541666666, 739890.8958333334, 739890.9375)]
+    routes[1:] = [("GET", ".das", FakeResponse(200, das)),
+                  ("GET", "pm25_rh35", FakeResponse(200, _ana_time_changed(*earlier)))]
+    with pytest.raises(FormatError, match="larik time bergeser"):
+        geoscf.fetch_ana(client(routes), dt.datetime(2026, 10, 1, 5, 15, tzinfo=UTC), stored=set())
+
+
+def test_geoscf_ana_start_kebalikan_ana_index():
+    first = pd.Timestamp("2025-08-04 09:30", tz="UTC")
+    assert geoscf.ana_start(first, ANA_FIRST_INDEX) == ANA_HOURS[0]
+    assert geoscf.ana_start(first, geoscf.ana_index(first, ANA_HOURS[2])) == ANA_HOURS[2]
 
 
 def test_geoscf_ana_hanya_jam_yang_sudah_terbit():
@@ -250,7 +315,7 @@ def _ana_routes(head_status=200, opendap_hours=None):
         return FakeResponse(404)
     return [("HEAD", "datashare", head),
             ("GET", ".das", FakeResponse(200, das)),
-            ("GET", "pm25_rh35", FakeResponse(200, fixture_text("geoscf_ana_subset.ascii")))]
+            ("GET", "pm25_rh35", _ana_subset)]
 
 
 def test_geoscf_fetch_ana_dari_rekaman():
@@ -270,7 +335,15 @@ def test_geoscf_fetch_ana_tanpa_jam_baru_tidak_meminta_subset():
 def test_geoscf_ana_sumbu_dari_das():
     first, length = geoscf.ana_axis(client(_ana_routes()))
     assert (first, length) == (pd.Timestamp("2025-08-04 09:30", tz="UTC"), 11496)
-    assert geoscf.ana_index(first, ANA_HOURS[0]) == 10139   # indeks pada kueri rekaman (geoscf_ana_meta.json)
+    assert geoscf.ana_index(first, ANA_HOURS[0]) == ANA_FIRST_INDEX
+
+
+def test_geoscf_rekaman_subset_ana_dipotong_sesuai_kueri():
+    frame, quality = geoscf.parse_ana(_ana_subset_text(ANA_FIRST_INDEX + 1, ANA_FIRST_INDEX + 2), _ana_published(),
+                                      ANA_HOURS[1])
+    full, _ = geoscf.parse_ana(fixture_text("geoscf_ana_subset.ascii"), _ana_published(), ANA_HOURS[0])
+    pd.testing.assert_frame_equal(frame, full[full.time_window_start >= ANA_HOURS[1]].reset_index(drop=True))
+    assert quality["time_mismatch_hours"] == 0
 
 
 @pytest.mark.parametrize("change", [('"09:30z04aug2025"', '"09:00z04aug2025"'),
@@ -374,13 +447,15 @@ RUSAK_20261101 = {67: "2133.1875", 86: lambda days: days - 20 / 1440, 109: lambd
 #: Run 2026-11-26 09z (permintaan 27 November 2026): tujuh angka time salah, termasuk lead 1.
 RUSAK_20261126 = {1: "737025.4375", 7: lambda days: days + 0.0083, 13: "3616.9375", 18: lambda days: days + 84.4,
                   23: "10922.3542", 24: "330.3958", 32: "7400552998.7292"}
-#: Agregasi ana 27 November 2026: indeks pertama kadang terbaca 10807.3958 (tahun 30).
+#: Lead pertama dan terakhir salah (kode lama menolak run seperti ini): lead 0 tidak terbaca (tahun 6,
+#: NaT) dan lead 119 selisih satu jam.
 RUSAK_LEAD_PERTAMA = {0: "2133.1875", 119: lambda days: days + 1 / 24}
+#: Dua lead dengan selisih satu jam yang sama, tersebar di antara 118 lead yang selaras.
+RUSAK_SATU_JAM_TERSEBAR = {5: lambda days: days + 1 / 24, 50: lambda days: days + 1 / 24}
 
 
-@pytest.mark.parametrize("changes", [RUSAK_20261101, RUSAK_20261126, RUSAK_LEAD_PERTAMA,
-                                     {lead: lambda days: days + 1 / 24 for lead in range(geoscf.fcst_script.LEADS)}],
-                         ids=["20261101", "20261126", "lead_pertama_dan_terakhir", "seluruh_lead"])
+@pytest.mark.parametrize("changes", [RUSAK_20261101, RUSAK_20261126, RUSAK_LEAD_PERTAMA, RUSAK_SATU_JAM_TERSEBAR],
+                         ids=["20261101", "20261126", "lead_pertama_dan_terakhir", "satu_jam_tersebar"])
 def test_geoscf_fcst_waktu_ascii_rusak_mengikuti_sumbu_das(changes):
     """Angka time pada subset salah di sisi server (nilai polutannya identik antarpermintaan); jam
     setiap lead mengikuti sumbu DAS, run tersimpan dari satu permintaan, dan lead yang salah dicatat."""
@@ -391,6 +466,30 @@ def test_geoscf_fcst_waktu_ascii_rusak_mengikuti_sumbu_das(changes):
     pd.testing.assert_frame_equal(frame, expected)
     assert quality["time_mismatch_leads"] == sorted(changes)
     assert sum("ascii?pm25_rh35" in url for _, url, _ in c.session.calls) == 1
+
+
+@pytest.mark.parametrize("changes", [{lead: lambda days: days + 1 / 24 for lead in range(geoscf.fcst_script.LEADS)},
+                                     {lead: lambda days: days - 3 / 24 for lead in range(80)}],
+                         ids=["seluruh_lead", "sebagian_besar_lead"])
+def test_geoscf_fcst_larik_time_bergeser_seragam_ditolak(changes):
+    init = pd.Timestamp("2026-09-30 09:00", tz="UTC")
+    with pytest.raises(FormatError, match="larik time bergeser"):
+        geoscf.fetch_fcst(_fcst_client(_fcst_time_changed(changes), init), init)
+
+
+@pytest.mark.parametrize(("decoded", "shift_h"), [
+    (["2026-11-26 10:30"], 1),                                          # satu posisi, selisih satu jam
+    (["2018-11-26 09:30"], None),                                       # satu posisi, tahun salah
+    (["2026-11-26 09:42"], None),                                       # satu posisi, menit salah
+    ([None], None),                                                     # satu posisi, tidak terbaca
+    (["2026-11-26 10:30", "2026-11-26 11:30"], 1),                      # seluruhnya bergeser
+    (["2026-11-26 09:30", "2026-11-26 11:30"], None),                   # satu selaras, satu salah
+    (["2018-11-26 09:30", "2018-11-26 10:30"], None),                   # tahun salah pada seluruhnya
+])
+def test_geoscf_axis_shift(decoded, shift_h):
+    expected = pd.date_range("2026-11-26 09:30", periods=len(decoded), freq="h", tz="UTC")
+    shift = geoscf.fcst_script.axis_shift(pd.DatetimeIndex(decoded, tz="UTC"), expected)
+    assert shift == (None if shift_h is None else pd.Timedelta(hours=shift_h))
 
 
 @pytest.mark.parametrize("change", [('"09:30z30sep2026"', '"10:30z30sep2026"'),   # sumbu bergeser satu jam
