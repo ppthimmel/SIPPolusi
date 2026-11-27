@@ -3,9 +3,12 @@ WORKDIR /app
 COPY package.json ./
 RUN npm install
 COPY . .
-# Optional basemap tile URL baked into the bundle (empty = OpenStreetMap default).
+# Optional basemap baked into the bundle: a MapLibre style URL (empty = OpenFreeMap "liberty"),
+# or raster tiles instead when VITE_BASEMAP_TILES is set.
+ARG VITE_BASEMAP_STYLE=""
 ARG VITE_BASEMAP_TILES=""
-ENV VITE_BASEMAP_TILES=$VITE_BASEMAP_TILES
+ENV VITE_BASEMAP_STYLE=$VITE_BASEMAP_STYLE \
+    VITE_BASEMAP_TILES=$VITE_BASEMAP_TILES
 # Optional request timeouts in ms baked into the bundle (empty = 12000 route, 5000 heatmap).
 ARG VITE_ROUTE_TIMEOUT_MS=""
 ARG VITE_SURFACE_TIMEOUT_MS=""

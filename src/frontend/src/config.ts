@@ -50,8 +50,11 @@ export const CONFIDENCE_HIGH = 0.7;
 /** Two points closer than this are treated as the same place. */
 export const MIN_TRIP_DISTANCE_M = 30;
 
-/** Basemap raster tiles. Override with VITE_BASEMAP_TILES for production tiles. */
-export const BASEMAP_TILES: string =
-  import.meta.env?.VITE_BASEMAP_TILES || "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
+/** Basemap: a vector style from OpenFreeMap (OpenStreetMap data, free, no key) with place
+ *  icons and landmark names. VITE_BASEMAP_STYLE points to another MapLibre style JSON. */
+export const BASEMAP_STYLE: string = import.meta.env?.VITE_BASEMAP_STYLE || "https://tiles.openfreemap.org/styles/liberty";
+
+/** Raster tiles instead of the vector style, when set (e.g. https://tiles.example/{z}/{x}/{y}.png). */
+export const BASEMAP_TILES: string | null = import.meta.env?.VITE_BASEMAP_TILES || null;
 export const BASEMAP_ATTRIBUTION = "© OpenStreetMap contributors";
 

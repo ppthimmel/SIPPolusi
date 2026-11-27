@@ -1,6 +1,7 @@
 import maplibregl from "maplibre-gl";
 import {
   BASEMAP_ATTRIBUTION,
+  BASEMAP_STYLE,
   BASEMAP_TILES,
   CONFIDENCE_LOW,
   MAP_CENTER,
@@ -9,12 +10,14 @@ import {
 } from "./config";
 import { EXPOSURE_STOPS, NO_DATA_COLOR, allLowConfidence, layerRatio } from "./exposure";
 import { circle } from "./nav-geometry";
+import landmarks from "./landmarks.json";
 import type { BBox, ExposureSurface, HeatLayer, Point, RouteResponse, SurfaceFeature } from "./types";
 import { tr } from "./i18n";
 
 const ROUTE_SOURCE = "routes";
 const HEAT_SOURCE = "heat";
 const ACCURACY_SOURCE = "position-accuracy";
+const LANDMARK_SOURCE = "landmarks";
 const HATCH_IMAGE = "hatch";
 
 const ROUTE_GREEN = "#0b6b50";
@@ -50,6 +53,26 @@ function hatchImage(): ImageData {
 // Set per feature in renderHeat: low confidence, unless every feature drawn is low.
 const hatched: maplibregl.ExpressionSpecification = ["get", "hatch"] as unknown as maplibregl.ExpressionSpecification;
 
+/** The vector basemap, or raster tiles when VITE_BASEMAP_TILES is set. */
+function basemapStyle(): string | maplibregl.StyleSpecification {
+  if (!BASEMAP_TILES) return BASEMAP_STYLE;
+  return {
+    version: 8,
+    sources: {
+      basemap: { type: "raster", tiles: [BASEMAP_TILES], tileSize: 256, maxzoom: 19, attribution: BASEMAP_ATTRIBUTION },
+    },
+    layers: [
+      {
+        id: "basemap",
+        type: "raster",
+        source: "basemap",
+        // Muted basemap so the route and heatmap colours carry the meaning.
+        paint: { "raster-saturation": -0.75, "raster-brightness-max": 0.95, "raster-contrast": -0.1 },
+      },
+    ],
+  };
+}
+
 export interface SegmentClick {
   point: Point;
   feature: SurfaceFeature | null;
@@ -75,27 +98,7 @@ export class MapView {
   constructor(container: HTMLElement) {
     this.map = new maplibregl.Map({
       container,
-      style: {
-        version: 8,
-        sources: {
-          basemap: {
-            type: "raster",
-            tiles: [BASEMAP_TILES],
-            tileSize: 256,
-            maxzoom: 19,
-            attribution: BASEMAP_ATTRIBUTION,
-          },
-        },
-        layers: [
-          {
-            id: "basemap",
-            type: "raster",
-            source: "basemap",
-            // Muted basemap so the route and heatmap colours carry the meaning.
-            paint: { "raster-saturation": -0.75, "raster-brightness-max": 0.95, "raster-contrast": -0.1 },
-          },
-        ],
-      },
+      style: basemapStyle(),
       center: MAP_CENTER,
       zoom: MAP_ZOOM,
       maxBounds: [
@@ -126,6 +129,10 @@ export class MapView {
   private initLayers(): void {
     const m = this.map;
     m.addImage(HATCH_IMAGE, hatchImage(), { pixelRatio: 2 });
+    // The heatmap, routes and position sit on the roads but under the basemap's labels and place
+    // icons (street names, landmarks), as in a directions app. A raster basemap has none: on top.
+    const labels = m.getStyle().layers.find((l) => l.type === "symbol")?.id;
+    const addLayer = (layer: maplibregl.AddLayerObject) => m.addLayer(layer, labels);
 
     m.addSource(HEAT_SOURCE, { type: "geojson", data: emptyCollection() });
     m.addSource(ROUTE_SOURCE, { type: "geojson", data: emptyCollection() });
@@ -135,21 +142,21 @@ export class MapView {
     const isArea: maplibregl.ExpressionSpecification = ["in", ["geometry-type"], ["literal", ["Polygon", "MultiPolygon"]]] as unknown as maplibregl.ExpressionSpecification;
     const lineWidth = ["interpolate", ["linear"], ["zoom"], 11, 2, 15, 5, 18, 10] as unknown as maplibregl.ExpressionSpecification;
 
-    m.addLayer({
+    addLayer({
       id: "heat-fill",
       type: "fill",
       source: HEAT_SOURCE,
       filter: isArea,
       paint: { "fill-color": colorExpression("ratio"), "fill-opacity": 0.6 },
     });
-    m.addLayer({
+    addLayer({
       id: "heat-fill-hatch",
       type: "fill",
       source: HEAT_SOURCE,
       filter: ["all", isArea, hatched] as unknown as maplibregl.FilterSpecification,
       paint: { "fill-pattern": HATCH_IMAGE, "fill-opacity": 0.8 },
     });
-    m.addLayer({
+    addLayer({
       id: "heat-line",
       type: "line",
       source: HEAT_SOURCE,
@@ -157,7 +164,7 @@ export class MapView {
       layout: { "line-cap": "butt" },
       paint: { "line-color": colorExpression("ratio"), "line-width": lineWidth, "line-opacity": 0.92 },
     });
-    m.addLayer({
+    addLayer({
       id: "heat-line-hatch",
       type: "line",
       source: HEAT_SOURCE,
@@ -170,14 +177,14 @@ export class MapView {
     });
 
     // Routes: casing first so the lines stay legible over the heatmap.
-    m.addLayer({
+    addLayer({
       id: "route-casing",
       type: "line",
       source: ROUTE_SOURCE,
       layout: { "line-join": "round", "line-cap": "round" },
       paint: { "line-color": "#ffffff", "line-width": ["case", ["==", ["get", "role"], "recommended"], 10, 8] },
     });
-    m.addLayer({
+    addLayer({
       id: "route-comparison",
       type: "line",
       source: ROUTE_SOURCE,
@@ -186,7 +193,7 @@ export class MapView {
       // Shape (dashed vs solid) separates the routes, not colour alone (PF-09, PNF-08).
       paint: { "line-color": ROUTE_GRAY, "line-width": 4, "line-dasharray": [1.2, 1.4] },
     });
-    m.addLayer({
+    addLayer({
       id: "route-recommended",
       type: "line",
       source: ROUTE_SOURCE,
@@ -196,11 +203,52 @@ export class MapView {
     });
 
     // How far off the shown position may be (TI-SE-13), above the routes.
-    m.addLayer({
+    addLayer({
       id: "position-accuracy",
       type: "fill",
       source: ACCURACY_SOURCE,
       paint: { "fill-color": "#1a73e8", "fill-opacity": 0.12, "fill-outline-color": "#1a73e8" },
+    });
+
+    this.addLandmarks();
+  }
+
+  /** Landmarks at city zoom, as in a directions app. The vector style shows place icons only from
+   *  zoom 15 and its tiles carry places only from zoom 14, so: a bundled list of well-known places
+   *  (landmarks.json) for zoom 11–14, then the tiles' notable places for zoom 14–15. Styled like
+   *  the basemap's own place labels; nothing is added on a raster basemap. */
+  private addLandmarks(): void {
+    const m = this.map;
+    const base = m.getStyle().layers.find((l) => l.id === "poi_r1") as maplibregl.SymbolLayerSpecification | undefined;
+    if (!base) return;
+    const like = (id: string, extra: Partial<maplibregl.SymbolLayerSpecification>) => {
+      const layer = { ...base, id, layout: { ...base.layout, "icon-image": ["get", "icon"] }, ...extra } as maplibregl.SymbolLayerSpecification;
+      if (layer.source === LANDMARK_SOURCE) {
+        delete layer["source-layer"]; // GeoJSON has no source layers
+        layer.layout = { ...layer.layout, "symbol-sort-key": ["get", "rank"] }; // most famous wins a collision
+      }
+      m.addLayer(layer);
+    };
+
+    m.addSource(LANDMARK_SOURCE, { type: "geojson", data: landmarks as GeoJSON.FeatureCollection });
+    const fromBundle = { source: LANDMARK_SOURCE, maxzoom: 14 };
+    like("landmark-major", { ...fromBundle, minzoom: 11, filter: ["==", ["get", "major"], true] });
+    like("landmark-minor", { ...fromBundle, minzoom: 13, filter: ["!=", ["get", "major"], true] });
+
+    // Zoom 14–15: notable places from the tiles (not clinics, offices, shops in general).
+    like("landmark-tiles", {
+      minzoom: 14,
+      maxzoom: 15,
+      layout: { ...base.layout },
+      filter: [
+        "all",
+        ["match", ["geometry-type"], ["Point", "MultiPoint"], true, false],
+        [
+          "any",
+          ["match", ["get", "class"], ["attraction", "monument", "museum", "stadium", "castle", "zoo", "college", "theatre"], true, false],
+          ["match", ["get", "subclass"], ["hospital", "mall", "department_store", "university"], true, false],
+        ],
+      ] as maplibregl.FilterSpecification,
     });
   }
 

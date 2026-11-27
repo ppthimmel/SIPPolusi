@@ -42,8 +42,9 @@ const ICONS = {
   swap: '<path d="M8 4v16M4 8l4-4 4 4M16 20V4M12 16l4 4 4-4"/>',
   layers: '<path d="M12 3l9 5-9 5-9-5z"/><path d="M3 13l9 5 9-5"/>',
   locate: '<circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>',
-  walk: '<circle cx="13" cy="4" r="1.5"/><path d="M9 21l2-6-2-3 1-5 3 2 2 3M13 8l-3 1-2 4M11 15l3 2 1 4"/>',
-  bike: '<circle cx="6" cy="16" r="3.5"/><circle cx="18" cy="16" r="3.5"/><path d="M6 16l4-8h5l3 8M10 8l4 8M9 5h3"/>',
+  // Walk and bike are bold (solid head, heavy strokes) so they read at a glance in the mode switch.
+  walk: '<circle cx="14" cy="3.6" r="2.2" fill="currentColor" stroke="none"/><path stroke-width="2.6" stroke-linecap="butt" stroke-linejoin="miter" d="M13 7.4l-1.5 6.2M11.5 13.6l3.4 2.6.6 5.6M11.5 13.6L8.6 21.8M13 7.4L9 9.2l-.3 3.6M13 7.4l1.9 3.1 3 1.1"/>',
+  bike: '<circle cx="15.8" cy="4" r="2.2" fill="currentColor" stroke="none"/><circle cx="5.5" cy="17.5" r="3.6" stroke-width="2.4"/><circle cx="18.5" cy="17.5" r="3.6" stroke-width="2.4"/><path stroke-width="2.6" stroke-linecap="butt" stroke-linejoin="miter" d="M11.5 18.5v-4.6L8.4 11.4l4.2-3.6 2.6 2.7h3.3"/>',
   route: '<circle cx="6" cy="19" r="2"/><path d="M8 19h8a4 4 0 000-8H8a4 4 0 010-8h8"/>',
   pin: '<path d="M12 21s7-6.2 7-11a7 7 0 10-14 0c0 4.8 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/>',
   navigate: '<path d="M12 2l7 19-7-4-7 4z"/>',

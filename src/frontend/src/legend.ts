@@ -1,5 +1,5 @@
 import { WHO_GUIDELINE } from "./config";
-import { append, clear, h } from "./dom";
+import { clear, h } from "./dom";
 import { EXPOSURE_CLASSES, EXPOSURE_STOPS, HEAT_LAYER_LABELS } from "./exposure";
 import { fmtNumber } from "./format";
 import { tr } from "./i18n";
@@ -39,7 +39,6 @@ const SCALE_NOTE: Record<HeatLayer, () => string> = {
  *  layer, anything wrong, the scale, the map key, and the explanation folded away last.
  *  Built once; the parts update in place so keyboard focus survives a layer switch. */
 export class Legend {
-  private routes = h("div", { class: "legend-section", hidden: true });
   private heat = h("div", { class: "legend-section", hidden: true });
   private layerButtons = new Map<HeatLayer, HTMLButtonElement>();
   private heatTitle = h("h2", { class: "legend-title" });
@@ -53,7 +52,6 @@ export class Legend {
   private indexNote = h("p", { class: "legend-note" });
 
   private toggle: HTMLButtonElement;
-  private lastRoutes: { fallback: boolean; hasComparison: boolean } | null = null;
   private lastHeat: HeatLegendState | null = null;
 
   onLayer: (layer: HeatLayer) => void = () => {};
@@ -77,7 +75,7 @@ export class Legend {
     );
     // Narrow screens: the legend folds into one button so it does not cover the route.
     this.toggle = h("button", { type: "button", class: "legend-toggle", "aria-expanded": "false", onclick: () => this.expand(this.root.classList.contains("is-collapsed")) });
-    root.append(this.toggle, this.routes, this.heat);
+    root.append(this.toggle, this.heat);
     this.expand(false);
     this.relabel();
   }
@@ -94,28 +92,7 @@ export class Legend {
       `Indeks = rata-rata PM2.5 dan NO2 setelah masing-masing dibagi pedoman WHO (${WHO_GUIDELINE.pm25} dan ${WHO_GUIDELINE.no2} µg/m³). Nilai ${fmtNumber(1, 1)} berarti tepat pada pedoman.`,
       `Index = mean of PM2.5 and NO2, each divided by its WHO guideline (${WHO_GUIDELINE.pm25} and ${WHO_GUIDELINE.no2} µg/m³). A value of ${fmtNumber(1, 1)} means exactly at the guideline.`,
     );
-    this.setRoutes(this.lastRoutes);
     if (this.lastHeat) this.setHeat(this.lastHeat);
-  }
-
-  /** `fallback` relabels the solid line, since a fallback route is the fastest one. */
-  setRoutes(info: { fallback: boolean; hasComparison: boolean } | null): void {
-    this.lastRoutes = info;
-    clear(this.routes);
-    this.routes.hidden = !info;
-    if (info) {
-      append(this.routes, [
-        h("h2", { class: "legend-title" }, tr("Rute", "Routes")),
-        h(
-          "div",
-          { class: "legend-row" },
-          h("span", { class: "swatch swatch-solid", "aria-hidden": "true" }),
-          info.fallback ? tr("Rute rekomendasi (cadangan)", "Recommended route (fallback)") : tr("Rute rendah paparan", "Low-exposure route"),
-        ),
-        info.hasComparison && h("div", { class: "legend-row" }, h("span", { class: "swatch swatch-dashed", "aria-hidden": "true" }), tr("Rute tercepat", "Fastest route")),
-      ]);
-    }
-    this.refreshVisibility();
   }
 
   setHeat(s: HeatLegendState): void {
@@ -197,6 +174,6 @@ export class Legend {
   }
 
   private refreshVisibility(): void {
-    this.root.hidden = this.routes.hidden && this.heat.hidden;
+    this.root.hidden = this.heat.hidden;
   }
 }

@@ -208,9 +208,17 @@ server proxies `/__mock`, so `http://localhost:5173/__mock/scenario?name=fallbac
 works too. See [docs/ti-se-09/README.md](docs/ti-se-09/README.md)
 for the states that were exercised.
 
-The map background is OpenStreetMap raster tiles by default (development use
-only); set `VITE_BASEMAP_TILES` in `src/frontend/.env` (or as a Docker build
-arg) to use another tile service.
+The map background is the OpenFreeMap "liberty" vector style by default
+(OpenStreetMap data, free, no API key), which shows place icons and landmarks.
+Set `VITE_BASEMAP_STYLE` in `src/frontend/.env` (or as a Docker build arg) to use
+another MapLibre style, or `VITE_BASEMAP_TILES` to use raster tiles instead.
+
+Well-known places (Monas, Istiqlal, GBK, malls, museums, …) appear on the map from
+zoom 11, before the basemap tiles carry any places (zoom 14). They come from
+`src/frontend/src/landmarks.json`, a snapshot of OpenStreetMap places in the study
+area that have a Wikidata link. To refresh it, or after changing the list of
+headline landmarks in the script, run `python scripts/build_frontend_landmarks.py`
+(needs access to the public Overpass API).
 
 ## See also
 

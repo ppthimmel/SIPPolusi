@@ -1,10 +1,6 @@
 import { compareRoutes, type Comparison } from "./compare";
 import { clear, h, icon } from "./dom";
 import {
-  type ConfidenceCategory,
-  confidenceCategory,
-  exposureUnitLabel,
-  fmtCoord,
   fmtDistance,
   fmtExposure,
   fmtMinutes,
@@ -15,30 +11,11 @@ import {
   fmtGraphVersionDate,
 } from "./format";
 import { tr } from "./i18n";
-import type { Mode, RouteRequest, RouteResponse, RouteResult } from "./types";
-
-const MODE_LABEL: Record<Mode, () => string> = {
-  walk: () => tr("Jalan kaki", "Walking"),
-  bike: () => tr("Sepeda", "Cycling"),
-};
-
-const CONFIDENCE_LABEL: Record<ConfidenceCategory, () => string> = {
-  rendah: () => tr("Rendah", "Low"),
-  sedang: () => tr("Sedang", "Medium"),
-  tinggi: () => tr("Tinggi", "High"),
-};
-
-export function priorityLabel(beta: number): string {
-  if (Math.abs(beta - 0.5) < 0.005) return tr("prioritas seimbang", "balanced priority");
-  return beta < 0.5 ? tr("condong ke lebih cepat", "leaning faster") : tr("condong ke lebih bersih", "leaning cleaner");
-}
+import type { RouteRequest, RouteResponse, RouteResult } from "./types";
 
 export interface ResultViewOptions {
   response: RouteResponse;
   request: RouteRequest;
-  /** Names of the points, when known; otherwise the header shows their coordinates. */
-  places: { origin: string | null; destination: string | null };
-  onBack: () => void;
   /** Starts navigation along one of the routes (TI-SE-13). */
   onNavigate: (role: RouteResult["role"]) => void;
   /** Shown above the routes, e.g. why navigation could not start. */
@@ -51,8 +28,8 @@ export interface ResultViewOptions {
   onSelect?: (role: RouteResult["role"]) => void;
 }
 
-/** Rebuilds the result panel (Gambar 3.1b, 3.4). Returns the heading so the
- *  caller can move focus to it. */
+/** Rebuilds the result panel (Gambar 3.1b, 3.4), shown below the trip form. Returns its
+ *  heading, whose text says how many routes were found. */
 export function renderResult(container: HTMLElement, opts: ResultViewOptions): HTMLElement {
   const { response, request } = opts;
   const { recommended, comparison, metadata } = response;
@@ -69,35 +46,18 @@ export function renderResult(container: HTMLElement, opts: ResultViewOptions): H
     routeCount === 2 ? tr("2 rute ditemukan", "2 routes found") : tr("Rute ditemukan", "Route found"),
   );
 
-  container.append(
-    h(
-      "div",
-      { class: "result-head" },
-      h("button", { type: "button", class: "icon-btn", "aria-label": tr("Kembali ke isian perjalanan", "Back to trip details"), onclick: opts.onBack }, icon("back", 20)),
-      h(
-        "div",
-        { class: "trip-summary" },
-        h("div", { class: "trip-line" }, opts.places.origin ?? fmtCoord(request.origin), " → ", opts.places.destination ?? fmtCoord(request.destination)),
-        h(
-          "div",
-          { class: "trip-sub" },
-          `${MODE_LABEL[request.mode]()} · ${priorityLabel(request.preference.beta)} (α ${fmtNumber(request.preference.alpha, 2)} · β ${fmtNumber(request.preference.beta, 2)})`,
-        ),
-      ),
-    ),
-    heading,
-  );
+  container.append(heading);
 
   if (opts.notice) container.append(notice("warn", opts.notice.title, opts.notice.text, "alert"));
 
   if (metadata.dataStale) {
     container.append(
-      notice(
-        "warn",
-        tr("Data kualitas udara belum diperbarui", "Air-quality data has not been updated"),
+      h(
+        "p",
+        { class: "stale-note", role: "status" },
         wib
-          ? tr(`Estimasi terakhir pukul ${wib}, lebih dari 3 jam lalu. Kondisi sekarang bisa berbeda.`, `Last estimate at ${wib}, more than 3 hours ago. Conditions now may differ.`)
-          : tr("Estimasi terakhir lebih dari 3 jam lalu. Kondisi sekarang bisa berbeda.", "The last estimate is more than 3 hours old. Conditions now may differ."),
+          ? tr(`Estimasi terakhir pukul ${wib}. Kondisi sekarang bisa berbeda.`, `Last estimate at ${wib}. Conditions now may differ.`)
+          : tr("Kondisi sekarang bisa berbeda dari estimasi terakhir.", "Conditions now may differ from the last estimate."),
       ),
     );
   }
@@ -172,18 +132,17 @@ function banner(big: string, text: string, tone: "good" | "neutral"): HTMLElemen
 type Role = RouteResult["role"];
 
 /** Routes as a list, one row each, like a directions panel: mode icon, "via" line, time and
- *  distance on the right. The selected row is marked and holds its details and the navigation
- *  button; choosing another row only moves the selection (and the map emphasis). */
+ *  distance on the right. Every row has its own navigation button; the selected row is marked,
+ *  and choosing another row (or navigating it) moves the selection and the map emphasis. */
 function routeList(resp: RouteResponse, request: RouteRequest, isFallback: boolean, opts: ResultViewOptions): HTMLElement {
   const identical = compareRoutes(resp).kind === "identical";
-  const routes: { r: RouteResult; title: string; swatch: "solid" | "dashed" }[] = [
+  const routes: { r: RouteResult; title: string }[] = [
     {
       r: resp.recommended,
       title: isFallback ? tr("Rute rekomendasi", "Recommended route") : tr("Rute rendah paparan", "Low-exposure route"),
-      swatch: "solid",
     },
   ];
-  if (resp.comparison && !identical) routes.push({ r: resp.comparison, title: tr("Rute tercepat", "Fastest route"), swatch: "dashed" });
+  if (resp.comparison && !identical) routes.push({ r: resp.comparison, title: tr("Rute tercepat", "Fastest route") });
 
   const list = h("ul", { class: "route-list", "aria-label": tr("Pilihan rute", "Route options") });
   const rows = new Map<Role, { li: HTMLLIElement; pick: HTMLButtonElement }>();
@@ -195,9 +154,10 @@ function routeList(resp: RouteResponse, request: RouteRequest, isFallback: boole
     if (notify) opts.onSelect?.(role);
   };
 
-  const unit = exposureUnitLabel(resp.exposureUnit);
   const exposureLabel = resp.exposureUnit === "index_min" ? tr("Paparan", "Exposure") : tr("Paparan PM2.5", "PM2.5 exposure");
-  for (const { r, title, swatch } of routes) {
+  // A route's name ("Rute tercepat", …) is only worth a line when there are two to tell apart.
+  const labelled = routes.length > 1;
+  for (const { r, title } of routes) {
     const via = opts.names?.[r.role];
     const pick = h(
       "button",
@@ -209,10 +169,9 @@ function routeList(resp: RouteResponse, request: RouteRequest, isFallback: boole
         h("span", { class: "route-via", id: `route-via-${r.role}` }, via ? tr(`via ${via}`, `via ${via}`) : title),
         h(
           "span",
-          { class: "route-meta" },
-          h("span", { class: `swatch swatch-${swatch}`, "aria-hidden": "true" }),
-          via ? `${title} · ` : "",
-          `${exposureLabel} ${fmtExposure(r.exposure)} ${unit}`,
+          { class: "route-meta", "data-label": labelled ? title : "" },
+          via && labelled ? `${title} · ` : "",
+          `${exposureLabel} ${fmtExposure(r.exposure)}`,
         ),
       ),
       h("span", { class: "route-time" }, h("strong", { class: "mono" }, fmtMinutes(r.travelTimeMin)), h("span", { class: "mono" }, fmtDistance(r.distanceM))),
@@ -226,7 +185,10 @@ function routeList(resp: RouteResponse, request: RouteRequest, isFallback: boole
           type: "button",
           class: "primary nav-start",
           "aria-label": tr(`Mulai navigasi: ${title}`, `Start navigation: ${title}`),
-          onclick: () => opts.onNavigate(r.role),
+          onclick: () => {
+            select(r.role, true);
+            opts.onNavigate(r.role);
+          },
         },
         icon("navigate", 18),
         ` ${tr("Mulai navigasi", "Start navigation")}`,
@@ -244,22 +206,12 @@ function routeList(resp: RouteResponse, request: RouteRequest, isFallback: boole
 export function setRouteVia(container: HTMLElement, role: Role, street: string): void {
   const el = container.querySelector<HTMLElement>(`#route-via-${role}`);
   if (!el) return;
-  const title = el.textContent ?? "";
+  const wasTitle = !(el.textContent ?? "").startsWith("via ");
   el.textContent = tr(`via ${street}`, `via ${street}`);
-  const meta = el.nextElementSibling;
-  if (meta && !title.startsWith("via ")) meta.insertBefore(document.createTextNode(`${title} · `), meta.childNodes[1] ?? null);
-}
-
-export function confidenceBadge(score: number | null): HTMLElement {
-  const cat = confidenceCategory(score);
-  if (!cat) return h("span", { class: "chip chip-none" }, icon("shield", 13), tr("Keyakinan tidak tersedia", "Confidence unavailable"));
-  return h(
-    "span",
-    { class: `chip chip-${cat}`, title: tr("Tingkat keyakinan estimasi model", "Confidence level of the model estimate") },
-    icon("shield", 13),
-    tr(`Keyakinan ${CONFIDENCE_LABEL[cat]()} · `, `${CONFIDENCE_LABEL[cat]()} confidence · `),
-    h("span", { class: "mono" }, fmtNumber(score!, 2)),
-  );
+  // The title moves from the first line to the second, when the row shows one (see routeList).
+  const meta = el.nextElementSibling as HTMLElement | null;
+  const label = meta?.dataset.label;
+  if (meta && label && wasTitle) meta.prepend(`${label} · `);
 }
 
 function detailSection(resp: RouteResponse): HTMLElement {

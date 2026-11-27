@@ -12,8 +12,8 @@ import {
 import { clear, h, icon } from "./dom";
 import { describeRouteError, type ErrorField, type ErrorView } from "./errors";
 import { getLang, onLangChange, setLang, tr, translateDom, type Lang } from "./i18n";
-import { HEAT_LAYER_LABELS, allLowConfidence, exposureClass, layerRatio } from "./exposure";
-import { confidenceBadge, renderResult, setRouteVia } from "./results-view";
+import { allLowConfidence } from "./exposure";
+import { renderResult, setRouteVia } from "./results-view";
 import { routeMidpoint, streetFromPlace } from "./route-names";
 import { fmtCoord, fmtNumber, fmtWib } from "./format";
 import { Legend } from "./legend";
@@ -271,18 +271,29 @@ for (const w of ["origin", "destination"] as const) {
 for (const w of ["origin", "destination"] as const) {
   const f = fields[w];
   f.input.addEventListener("input", () => onTyped(w));
+  // While a field has the cursor, a click on the map sets its point (no need for the pin button).
+  f.input.addEventListener("focus", () => {
+    if (state.pick === w) return;
+    state.pick = w;
+    refreshForm();
+  });
   f.input.addEventListener("blur", (e) => {
     searches[w].stop();
     // Focus moving to the map (a click there sets this point) or to this field's own buttons
     // (clear, pick on map) means the user is still choosing: judging the field now would flash
-    // an error for a moment before the point arrives. Any other move counts as leaving it.
+    // an error for a moment before the point arrives. Any other move counts as leaving it, and
+    // ends picking on the map for this field.
     const to = e.relatedTarget as Node | null;
     const stillChoosing = !!to && (f.wrap.contains(to) || $("map").contains(to));
-    if (!stillChoosing) state.touched[w] = true;
+    if (!stillChoosing) {
+      state.touched[w] = true;
+      if (state.pick === w) state.pick = null;
+    }
     refreshForm();
   });
   // Empties the field and its point, and leaves the cursor there for a new place.
   const clearField = () => {
+    dropResult();
     setPoint(w, null);
     state.touched[w] = false;
     refreshForm();
@@ -292,13 +303,20 @@ for (const w of ["origin", "destination"] as const) {
   // Escape clears the field, but only when no suggestion list is open: then Escape closes the
   // list instead (the combobox handles it first and marks the event, WAI-ARIA combobox pattern).
   f.input.addEventListener("keydown", (e) => {
-    if (e.key === "Escape" && !e.defaultPrevented && f.input.value !== "") {
+    if (e.key !== "Escape" || e.defaultPrevented) return;
+    if (f.input.value !== "") {
       e.preventDefault();
       clearField();
+    } else if (state.pick === w) {
+      // An empty field: Escape stops picking on the map.
+      e.preventDefault();
+      state.pick = null;
+      refreshForm();
     }
   });
+  // Arms picking on the map for this field (focusing the field does the same).
   f.pick.addEventListener("click", () => {
-    state.pick = state.pick === w ? null : w;
+    state.pick = w;
     refreshForm();
   });
 }
@@ -334,7 +352,6 @@ tripForm.addEventListener("change", refreshForm);
 function updatePriority(): void {
   // The slider runs from "Lebih cepat" (left) to "Lebih bersih" (right).
   const { alpha, beta } = preferenceFromSlider(Number(slider.value));
-  $("priority-values").textContent = `α ${fmtNumber(alpha, 2)} · β ${fmtNumber(beta, 2)}`;
   $("priority-text").textContent = tr(
     `Bobot waktu tempuh ${fmtNumber(alpha, 2)}, bobot paparan ${fmtNumber(beta, 2)}.`,
     `Travel-time weight ${fmtNumber(alpha, 2)}, exposure weight ${fmtNumber(beta, 2)}.`,
@@ -351,63 +368,18 @@ mapView.onPointMoved = (which, p) => {
   if (!nav.session) setPoint(which, p);
 };
 
-mapView.onClick = ({ point, feature }: SegmentClick) => {
-  // With the heatmap on, a click on a segment inspects it (its card offers to use
-  // it as origin or destination); a click elsewhere falls through to point picking.
-  if (state.heat.on && feature) {
-    mapView.showPopup(point, segmentCard(feature, point));
-    return;
-  }
-  mapView.closePopup();
+// A click on the map picks a point when the form asks for one; the heatmap itself is not clickable.
+mapView.onClick = ({ point }: SegmentClick) => {
   if (!state.pick) return;
   const which = state.pick;
   state.pick = which === "origin" && !state.points.destination ? "destination" : null;
   setPoint(which, point);
 };
 
-function segmentCard(f: NonNullable<SegmentClick["feature"]>, at: Point): HTMLElement {
-  const layer = state.heat.layer;
-  const ratio = layerRatio(layer, f);
-  const isCell = f.geometry.type === "Polygon" || f.geometry.type === "MultiPolygon";
-  const shown =
-    layer === "combined" ? f.exposureIndex : layer === "pm25" ? f.pm25 : f.no2;
-  const unit = layer === "combined" ? tr("indeks paparan", "exposure index") : "µg/m³";
-  const conc = (v: number | null) => (v == null ? tr("tidak tersedia", "unavailable") : `${fmtNumber(v, 0)} µg/m³`);
-  return h(
-    "div",
-    { class: "segment-card" },
-    h("div", { class: "segment-name" }, f.name ?? (isCell ? tr("Rata-rata area sekitar", "Average of the surrounding area") : tr("Ruas jalan", "Road segment"))),
-    h(
-      "div",
-      { class: "segment-value" },
-      h("span", { class: "mono big" }, shown == null ? "—" : fmtNumber(shown, layer === "combined" ? 2 : 0)),
-      ` ${unit}`,
-      layer !== "combined" && h("span", { class: "segment-layer" }, ` (${HEAT_LAYER_LABELS[layer]})`),
-    ),
-    h("div", { class: "segment-conc mono" }, `PM2.5 ${conc(f.pm25)} · NO2 ${conc(f.no2)}`),
-    h("div", { class: "segment-class" }, ratio == null ? tr("Tanpa estimasi", "No estimate") : exposureClass(ratio)),
-    confidenceBadge(f.confidence),
-    h(
-      "div",
-      { class: "segment-actions" },
-      h("button", { type: "button", class: "secondary dark", onclick: () => useSegment("origin", at) }, tr("Cari rute dari sini", "Find routes from here")),
-      h("button", { type: "button", class: "secondary", onclick: () => useSegment("destination", at) }, tr("Jadikan tujuan", "Set as destination")),
-    ),
-  );
-}
-
-function useSegment(which: Which, at: Point): void {
-  mapView.closePopup();
-  if (nav.session) endNavigation();
-  showFormView();
-  state.pick = null;
-  setPoint(which, at);
-}
-
 // ---------------------------------------------------------------- route flow
 function showFormView(): void {
   formView.hidden = false;
-  resultView.hidden = true;
+  resultView.hidden = !state.result;
   navViewEl.hidden = true;
 }
 
@@ -419,17 +391,16 @@ function panelInset(): { bottom: number } {
 /** A notice shown above the routes, built when shown so it follows the interface language. */
 type Notice = (() => { title: string; text: string }) | null;
 
-/** Renders state.result into the result panel and returns its heading. */
+/** Renders state.result below the trip form and returns its heading. */
 function showResultView(notice: Notice = null): HTMLElement | null {
   const r = state.result;
   state.resultNotice = notice;
   if (!r) return null;
-  formView.hidden = true;
+  formView.hidden = false;
   navViewEl.hidden = true;
   resultView.hidden = false;
   return renderResult(resultView, {
     ...r,
-    onBack: backToForm,
     onNavigate: (role) => void startNavigation(role),
     onSelect: (role) => {
       r.selected = role;
@@ -508,7 +479,6 @@ function applyServerField(field: ErrorField, message: string): void {
  *  behind the map's load; nothing here waits for the basemap. */
 function dropResult(): void {
   state.result = null;
-  legend.setRoutes(null);
   resultView.hidden = true;
   clear(resultView);
   void mapView.clearRoutes();
@@ -529,25 +499,24 @@ async function submit(): Promise<void> {
   showStatusLoading();
   refreshForm();
 
-  // A new request starts from a clean slate: nothing from an earlier search may
-  // stay on the map or in the panel while this one is pending or if it fails.
-  dropResult();
+  // Routes already shown stay, dimmed and marked busy, until the new ones replace them; they
+  // are removed if this search fails, so nothing from an earlier trip outlives an error.
+  const hadResult = !!state.result;
+  if (hadResult) resultView.setAttribute("aria-busy", "true");
 
   try {
     const response = await submitRouteRequest(request, controller.signal);
     if (state.controller !== controller) return;
     state.busy = false;
-    clearStatus();
+    resultView.removeAttribute("aria-busy");
+    if (hadResult) void mapView.clearRoutes();
     state.result = { response, request, places: { ...state.labels }, names: {}, selected: "recommended" };
-    const title = showResultView()!;
-    legend.setRoutes({
-      fallback: response.recommended.routeSource === "baseline",
-      hasComparison: compareRoutes(response).kind !== "none" && compareRoutes(response).kind !== "identical",
-    });
+    const found = showResultView()!.textContent ?? "";
+    // Focus stays on the form; screen readers hear how many routes came.
+    setStatus(() => formStatus.append(h("p", { class: "visually-hidden" }, found)));
     void mapView.showRoutes(response, panelInset());
     void mapView.selectRoute("recommended");
     nameRoutes(state.result);
-    title.focus({ preventScroll: true });
     refreshForm();
     // Exposure surface is requested once the route is displayed (Tabel 3.4).
     // Debounced, so it fires once after the map has finished fitting to the route.
@@ -556,6 +525,8 @@ async function submit(): Promise<void> {
   } catch (err) {
     if (state.controller !== controller) return;
     state.busy = false;
+    resultView.removeAttribute("aria-busy");
+    if (hadResult) dropResult(); // they belong to the previous trip; the form shows the error
     if (err instanceof ApiError && err.kind === "aborted") {
       statusNote(() => tr("Pencarian dibatalkan.", "Search cancelled."));
     } else {
@@ -584,13 +555,6 @@ function startWait(seconds: number): void {
     }
     refreshForm();
   }, 1000);
-}
-
-function backToForm(): void {
-  dropResult();
-  showFormView();
-  refreshForm();
-  fields.destination.input.focus();
 }
 
 tripForm.addEventListener("submit", (e) => {
@@ -685,7 +649,35 @@ function routeArea(line: RouteLine): BBox {
 const insideStudyArea = (p: Point) =>
   p.lat >= STUDY_AREA.minLat && p.lat <= STUDY_AREA.maxLat && p.lon >= STUDY_AREA.minLon && p.lon <= STUDY_AREA.maxLon;
 
-/** "Lokasi saya" on the map and "Gunakan lokasi saya sebagai asal" on the form. */
+/** "Lokasi saya" on the map: moves the camera to the user's position, leaving the form as it is. */
+function showMyLocation(): void {
+  clearStatus();
+  if (here.last) {
+    mapView.flyTo(here.last);
+    return;
+  }
+  const say = (text: () => string) => {
+    showFormView();
+    statusNote(text);
+  };
+  const problem = positionProblem();
+  if (problem) return say(() => describePositionProblem(problem));
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+      if (nav.session) return;
+      const p = { lat: pos.coords.latitude, lon: pos.coords.longitude };
+      void mapView.setUser(p, null, pos.coords.accuracy);
+      mapView.flyTo(p);
+      startShowingLocation(); // permission was just granted: keep the marker up to date from now on
+    },
+    (err) => {
+      if (!nav.session) say(() => describePositionProblem(problemFromCode(err.code)));
+    },
+    { enableHighAccuracy: true, timeout: 10_000, maximumAge: 60_000 },
+  );
+}
+
+/** "Gunakan lokasi saya sebagai asal" on the form: fills in the starting point. */
 function useMyLocation(): void {
   clearStatus();
   const say = (text: () => string) => {
@@ -722,7 +714,7 @@ function useMyLocation(): void {
 $("locate-btn").addEventListener("click", () => {
   // While navigating, the same button brings the camera back to the user.
   if (nav.session) return recenter();
-  useMyLocation();
+  showMyLocation();
 });
 $("use-location").addEventListener("click", useMyLocation);
 
@@ -735,13 +727,14 @@ $("use-location").addEventListener("click", useMyLocation);
 const SIMULATION = import.meta.env.DEV ? new URLSearchParams(location.search) : null;
 
 /** Development only: `?lokasi=monas|bundaran-hi|sudirman|blok-m|kota|<lat,lon>` reports that place as the device's position. */
-if (import.meta.env.DEV && SIMULATION?.get("lokasi")) {
-  void import("./dev-location").then((dev) => {
-    const p = dev.parseDevLocation(SIMULATION.get("lokasi"));
-    if (p) dev.useFakeLocation(p);
-    else console.warn(`[dev] ?lokasi tidak dikenal; pakai salah satu dari ${Object.keys(dev.DEV_PLACES).join(", ")} atau "lat,lon"`);
-  });
-}
+const devLocationReady: Promise<void> =
+  import.meta.env.DEV && SIMULATION?.get("lokasi")
+    ? import("./dev-location").then((dev) => {
+        const p = dev.parseDevLocation(SIMULATION.get("lokasi"));
+        if (p) dev.useFakeLocation(p);
+        else console.warn(`[dev] ?lokasi tidak dikenal; pakai salah satu dari ${Object.keys(dev.DEV_PLACES).join(", ")} atau "lat,lon"`);
+      })
+    : Promise.resolve();
 
 const nav = {
   session: null as NavigationSession | null,
@@ -755,6 +748,33 @@ const nav = {
   message: null as { make: () => NavMessage; view: NavMessage; clearOn: "fix" | "on_route" | number } | null,
   wakeLock: null as WakeLockSentinel | null,
 };
+
+/** The user's position, shown on the map whenever the browser allows it. Navigation draws its own
+ *  marker, so this watch pauses while navigating. Kept in memory only, never sent anywhere. */
+const here = { source: null as DevicePosition | null, last: null as Point | null };
+
+function startShowingLocation(): void {
+  if (here.source || nav.session || positionProblem()) return;
+  const source = new DevicePosition();
+  here.source = source;
+  source.start(
+    (fix) => {
+      here.last = { lat: fix.lat, lon: fix.lon };
+      if (!nav.session) void mapView.setUser(here.last, null, fix.accuracyM);
+    },
+    // Denied or unsupported: nothing more will come. The locate button can ask again.
+    (problem) => {
+      if (isFatal(problem)) stopShowingLocation();
+    },
+  );
+}
+
+function stopShowingLocation(): void {
+  here.source?.stop();
+  here.source = null;
+}
+
+void devLocationReady.then(startShowingLocation);
 
 async function positionSource(): Promise<PositionSource> {
   const scenario = SIMULATION?.get("simulasi") ?? null;
@@ -783,6 +803,7 @@ async function startNavigation(role: RouteResult["role"]): Promise<void> {
     }))?.focus();
     return;
   }
+  stopShowingLocation(); // navigation's own watch takes over the marker
   nav.role = role;
   const route = navRoute(r.response);
   const session = new NavigationSession(route, r.request.destination, r.request.mode);
@@ -818,7 +839,9 @@ function endNavigation(notice: Notice = null): void {
   nav.view = null;
   nav.message = null;
   void keepScreenOn(false);
-  void mapView.setUser(null);
+  // Back to the plain position marker (the last navigation position may be simulated or snapped).
+  void mapView.setUser(here.last);
+  startShowingLocation();
   mapView.resetPadding();
   mapView.setPointsDraggable(true);
   setLocateLabel(false);
@@ -977,7 +1000,7 @@ function setNavMessage(make: () => NavMessage, clearOn: "fix" | "on_route" | num
 }
 
 function setLocateLabel(navigating: boolean): void {
-  const label = navigating ? tr("Ikuti posisi saya", "Follow my position") : tr("Pakai lokasi saya sebagai titik asal", "Use my location as the starting point");
+  const label = navigating ? tr("Ikuti posisi saya", "Follow my position") : tr("Tampilkan lokasi saya", "Show my location");
   $("locate-btn").setAttribute("aria-label", label);
   $("locate-btn").title = navigating ? tr("Ikuti posisi", "Follow position") : tr("Lokasi saya", "My location");
 }
