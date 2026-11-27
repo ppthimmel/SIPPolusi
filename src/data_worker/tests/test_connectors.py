@@ -194,25 +194,36 @@ def _ana_published():
 
 
 def test_geoscf_ana_subset_valid():
-    frame, quality = geoscf.parse_ana(fixture_text("geoscf_ana_subset.ascii"), _ana_published())
+    frame, quality = geoscf.parse_ana(fixture_text("geoscf_ana_subset.ascii"), _ana_published(), ANA_HOURS[0])
     assert len(frame) == 27 and set(frame.cell_id) == set(range(9))
     assert list(frame.time_window_start.unique()) == ANA_HOURS
     assert frame.available_at_utc.notna().all() and (frame.latency_hours > 6).all()
     np.testing.assert_allclose(frame.no2_ugm3, frame.no2_ppb * np.float32(geoscf.UGM3_PER_PPB), rtol=1e-6)
-    assert quality["duplicate_rows"] == 0
+    assert quality["duplicate_rows"] == 0 and quality["time_mismatch_hours"] == 0
+
+
+def test_geoscf_ana_waktu_ascii_rusak_mengikuti_sumbu_das():
+    """26 November 2026: server menjawab angka time acak (mis. 10807.3958 = tahun 30); jam setiap
+    nilai tetap mengikuti sumbu DAS, dan ketidaksesuaiannya hanya dihitung."""
+    text = fixture_text("geoscf_ana_subset.ascii").replace("739890.8541666666, 739890.8958333334",
+                                                           "10807.395833333334, 739890.8958333334")
+    expected, _ = geoscf.parse_ana(fixture_text("geoscf_ana_subset.ascii"), _ana_published(), ANA_HOURS[0])
+    frame, quality = geoscf.parse_ana(text, _ana_published(), ANA_HOURS[0])
+    pd.testing.assert_frame_equal(frame, expected)
+    assert quality["time_mismatch_hours"] == 1
 
 
 def test_geoscf_ana_hanya_jam_yang_sudah_terbit():
     published = _ana_published()
     published.pop(ANA_HOURS[-1])
-    frame, _ = geoscf.parse_ana(fixture_text("geoscf_ana_subset.ascii"), published)
+    frame, _ = geoscf.parse_ana(fixture_text("geoscf_ana_subset.ascii"), published, ANA_HOURS[0])
     assert ANA_HOURS[-1] not in set(frame.time_window_start) and len(frame) == 18
 
 
 def test_geoscf_ana_format_berubah():
     text = fixture_text("geoscf_ana_subset.ascii").replace("lat, [3]", "latitude, [3]")
     with pytest.raises(FormatError):
-        geoscf.parse_ana(text, _ana_published())
+        geoscf.parse_ana(text, _ana_published(), ANA_HOURS[0])
 
 
 def test_geoscf_ana_kandidat_melewati_jam_tersimpan():
@@ -226,9 +237,9 @@ def test_geoscf_ana_kandidat_melewati_jam_tersimpan():
 def _ana_routes(head_status=200, opendap_hours=None):
     """Rekaman ana; ``opendap_hours`` memendekkan sumbu agregasi OPeNDAP (agregasi tertinggal)."""
     meta = fixture_json("geoscf_ana_meta.json")
-    dds = fixture_text("geoscf_ana.dds")
+    das = fixture_text("geoscf_ana.das")
     if opendap_hours is not None:
-        dds = dds.replace("time = 10752", f"time = {opendap_hours}")
+        das = das.replace('grads_size "11496"', f'grads_size "{opendap_hours}"')
     by_name = {geoscf.ana_file_url(pd.Timestamp(k)).rsplit("/", 1)[1]: v for k, v in meta["last_modified"].items()}
 
     def head(url, kwargs):
@@ -237,8 +248,7 @@ def _ana_routes(head_status=200, opendap_hours=None):
             return FakeResponse(head_status, headers={"Last-Modified": by_name[name]})
         return FakeResponse(404)
     return [("HEAD", "datashare", head),
-            ("GET", ".dds", FakeResponse(200, dds)),
-            ("GET", "time[0:0]", FakeResponse(200, fixture_text("geoscf_ana_time0.ascii"))),
+            ("GET", ".das", FakeResponse(200, das)),
             ("GET", "pm25_rh35", FakeResponse(200, fixture_text("geoscf_ana_subset.ascii")))]
 
 
@@ -254,6 +264,24 @@ def test_geoscf_fetch_ana_tanpa_jam_baru_tidak_meminta_subset():
     frame, info = geoscf.fetch_ana(c, now, stored=set(ANA_HOURS))
     assert frame.empty and info["published_hours"] == 0
     assert not any("pm25_rh35" in url for _, url, _ in c.session.calls)
+
+
+def test_geoscf_ana_sumbu_dari_das():
+    first, length = geoscf.ana_axis(client(_ana_routes()))
+    assert (first, length) == (pd.Timestamp("2025-08-04 09:30", tz="UTC"), 11496)
+    assert geoscf.ana_index(first, ANA_HOURS[0]) == 10139   # indeks pada kueri rekaman (geoscf_ana_meta.json)
+
+
+@pytest.mark.parametrize("change", [('"09:30z04aug2025"', '"09:00z04aug2025"'),
+                                    ('grads_step "60mn"', 'grads_step "180mn"'),
+                                    ('String grads_mapping "linear";\n        String grads_size "11496"',
+                                     'String grads_mapping "levels";\n        String grads_size "11496"')],
+                         ids=["bukan_menit_30", "bukan_per_jam", "tidak_linear"])
+def test_geoscf_ana_sumbu_das_berubah_ditolak(change):
+    das = fixture_text("geoscf_ana.das")
+    assert change[0] in das
+    with pytest.raises(FormatError, match="geoscf_ana: sumbu waktu DAS"):
+        geoscf.ana_axis(client([("GET", ".das", FakeResponse(200, das.replace(*change)))]))
 
 
 def _ana_axis_index(hour):
@@ -303,11 +331,9 @@ def test_geoscf_fcst_run_dari_rekaman():
     init = pd.Timestamp("2026-09-30 09:00", tz="UTC")
     times = geoscf.fcst_script.run_times(init)
     first, last = (geoscf.fcst_script._lead_url(init, t).rsplit("/", 1)[1] for t in (times[0], times[-1]))
-    c = client([("GET", "ascii?pm25_rh35", FakeResponse(200, fixture_text("geoscf_fcst_20260930_09z.ascii"))),
-                ("HEAD", first, FakeResponse(200, headers={"Last-Modified": heads["first"]})),
-                ("HEAD", last, FakeResponse(200, headers={"Last-Modified": heads["last"]}))])
+    c = _fcst_client(fixture_text("geoscf_fcst_20260930_09z.ascii"), init)
     frame, quality = geoscf.fetch_fcst(c, init)
-    assert len(frame) == 1080 and quality["pm25_missing"] == 0
+    assert len(frame) == 1080 and quality["pm25_missing"] == 0 and quality["time_mismatch_leads"] == []
     assert frame.lead_hours.min() == 0 and frame.lead_hours.max() == 119
     assert (frame.available_at_utc == geoscf._http_time(heads["last"])).all()
     reference = pd.read_parquet(pathlib.Path(__file__).resolve().parents[1]
@@ -316,13 +342,15 @@ def test_geoscf_fcst_run_dari_rekaman():
     np.testing.assert_array_equal(frame.pm25_ugm3.to_numpy(), reference.pm25_ugm3.to_numpy())
 
 
-def _fcst_client(texts, init):
+def _fcst_client(texts, init, das=None):
     """Rekaman run fcst; ``texts`` satu respons ASCII atau daftar respons untuk permintaan berturut-turut."""
     heads = fixture_json("geoscf_fcst_meta.json")
     times = geoscf.fcst_script.run_times(init)
     first, last = (geoscf.fcst_script._lead_url(init, t).rsplit("/", 1)[1] for t in (times[0], times[-1]))
     texts = [texts] if isinstance(texts, str) else texts
-    return client([("GET", "ascii?pm25_rh35", [FakeResponse(200, t) for t in texts]),
+    das = fixture_text("geoscf_fcst_20260930_09z.das") if das is None else das
+    return client([("GET", ".das", FakeResponse(200, das)),
+                   ("GET", "ascii?pm25_rh35", [FakeResponse(200, t) for t in texts]),
                    ("HEAD", first, FakeResponse(200, headers={"Last-Modified": heads["first"]})),
                    ("HEAD", last, FakeResponse(200, headers={"Last-Modified": heads["last"]}))])
 
@@ -342,46 +370,47 @@ def _fcst_time_changed(changes):
 
 
 RUSAK_20261101 = {67: "2133.1875", 86: lambda days: days - 20 / 1440, 109: lambda days: days - 29 / 1440}
+#: Run 2026-11-26 09z (permintaan 27 November 2026): tujuh angka time salah, termasuk lead 1.
+RUSAK_20261126 = {1: "737025.4375", 7: lambda days: days + 0.0083, 13: "3616.9375", 18: lambda days: days + 84.4,
+                  23: "10922.3542", 24: "330.3958", 32: "7400552998.7292"}
+#: Agregasi ana 27 November 2026: indeks pertama kadang terbaca 10807.3958 (tahun 30).
+RUSAK_LEAD_PERTAMA = {0: "2133.1875", 119: lambda days: days + 1 / 24}
 
 
-def test_geoscf_fcst_waktu_ascii_rusak_diminta_ulang():
-    """Run 2026-11-01 09z: lead 67 terbaca 2133.1875 (tahun 6), lead 86 dan 109 maju 20 dan 29 menit;
-    kueri yang sama kadang menjawab waktu yang benar, jadi run diminta ulang."""
+@pytest.mark.parametrize("changes", [RUSAK_20261101, RUSAK_20261126, RUSAK_LEAD_PERTAMA,
+                                     {lead: lambda days: days + 1 / 24 for lead in range(geoscf.fcst_script.LEADS)}],
+                         ids=["20261101", "20261126", "lead_pertama_dan_terakhir", "seluruh_lead"])
+def test_geoscf_fcst_waktu_ascii_rusak_mengikuti_sumbu_das(changes):
+    """Angka time pada subset salah di sisi server (nilai polutannya identik antarpermintaan); jam
+    setiap lead mengikuti sumbu DAS, run tersimpan dari satu permintaan, dan lead yang salah dicatat."""
     init = pd.Timestamp("2026-09-30 09:00", tz="UTC")
-    clean = fixture_text("geoscf_fcst_20260930_09z.ascii")
-    frame, quality = geoscf.fetch_fcst(_fcst_client([_fcst_time_changed(RUSAK_20261101), clean], init), init)
-    expected, _ = geoscf.fetch_fcst(_fcst_client(clean, init), init)
+    c = _fcst_client(_fcst_time_changed(changes), init)
+    frame, quality = geoscf.fetch_fcst(c, init)
+    expected, _ = geoscf.fetch_fcst(_fcst_client(fixture_text("geoscf_fcst_20260930_09z.ascii"), init), init)
     pd.testing.assert_frame_equal(frame, expected)
-    assert (quality["deferred"], quality["attempts"]) == (False, 2)
+    assert quality["time_mismatch_leads"] == sorted(changes)
+    assert sum("ascii?pm25_rh35" in url for _, url, _ in c.session.calls) == 1
 
 
-def test_geoscf_fcst_waktu_ascii_tetap_rusak_run_ditunda():
-    """Keselarasan lead yang salah tidak dapat dipastikan, jadi run tidak dikembalikan untuk disimpan."""
+@pytest.mark.parametrize("change", [('"09:30z30sep2026"', '"10:30z30sep2026"'),   # sumbu bergeser satu jam
+                                    ('grads_size "120"', 'grads_size "96"'),        # run tidak lengkap
+                                    ('grads_step "60mn"', 'grads_step "3hr"')],
+                         ids=["bergeser", "panjang", "langkah"])
+def test_geoscf_fcst_sumbu_das_tidak_sesuai_ditolak(change):
     init = pd.Timestamp("2026-09-30 09:00", tz="UTC")
-    c = _fcst_client(_fcst_time_changed(RUSAK_20261101), init)
-    frame, quality = geoscf.fetch_fcst(c, init)
-    assert frame.empty and quality["deferred"] and quality["time_mismatch_leads"] == [67, 86, 109]
-    assert sum("ascii?pm25_rh35" in url for _, url, _ in c.session.calls) == geoscf.FCST_ATTEMPTS
+    das = fixture_text("geoscf_fcst_20260930_09z.das")
+    assert change[0] in das
+    c = _fcst_client(fixture_text("geoscf_fcst_20260930_09z.ascii"), init, das=das.replace(*change))
+    with pytest.raises(FormatError, match="waktu run tidak sesuai DAS"):
+        geoscf.fetch_fcst(c, init)
+    assert not any("ascii?pm25_rh35" in url for _, url, _ in c.session.calls)
 
 
-def test_geoscf_fcst_lead_pertama_rusak_diminta_ulang():
+def test_geoscf_fcst_das_tanpa_sumbu_waktu_ditolak():
     init = pd.Timestamp("2026-09-30 09:00", tz="UTC")
-    clean = fixture_text("geoscf_fcst_20260930_09z.ascii")
-    c = _fcst_client([_fcst_time_changed({0: lambda days: days + 5 / 24}), clean], init)
-    frame, quality = geoscf.fetch_fcst(c, init)
-    assert len(frame) == 1080 and quality["attempts"] == 2
-    assert sum("ascii?pm25_rh35" in url for _, url, _ in c.session.calls) == 2
-
-
-@pytest.mark.parametrize("changes", [
-    {0: "2133.1875"},                                            # lead pertama: sumbu tidak dapat dipastikan
-    {119: lambda days: days + 1 / 24},                           # lead terakhir bergeser satu jam
-    {lead: lambda days: days + 1 / 24 for lead in range(10, 17)},  # 7 lead > MAX_TIME_MISMATCHES
-], ids=["lead_pertama", "lead_terakhir", "terlalu_banyak"])
-def test_geoscf_fcst_sumbu_waktu_bergeser_ditolak(changes):
-    init = pd.Timestamp("2026-09-30 09:00", tz="UTC")
-    with pytest.raises(FormatError, match="waktu run tidak sesuai"):
-        geoscf.fetch_fcst(_fcst_client(_fcst_time_changed(changes), init), init)
+    das = fixture_text("geoscf_fcst_20260930_09z.das").replace("    time {", "    waktu {")
+    with pytest.raises(FormatError, match="blok time tidak ada"):
+        geoscf.fetch_fcst(_fcst_client(fixture_text("geoscf_fcst_20260930_09z.ascii"), init, das=das), init)
 
 
 def test_geoscf_waktu_grads_di_luar_rentang_menjadi_nat():

@@ -150,27 +150,21 @@ def test_galat_tak_terduga_tidak_menghentikan_dan_format_berubah_dicatat(fs):
     assert result["status"] == "failed" and result["note"].startswith("format respons berubah")
 
 
-def test_prakiraan_dengan_waktu_ascii_rusak_ditunda_lalu_tersimpan(fs, monkeypatch):
-    """Seperti run 2026-11-01 09z: run dengan waktu ASCII salah tidak disimpan dan tidak menggagalkan
-    siklus; siklus berikutnya memintanya lagi."""
+def test_prakiraan_dengan_waktu_ascii_rusak_tersimpan_dengan_diagnostik(fs, monkeypatch):
+    """Seperti run 2026-11-26 09z: angka time pada subset salah di sisi server. Run tersimpan
+    mengikuti sumbu DAS, siklus tidak gagal, dan lead yang salah dicatat pada detail."""
     from connectors import geoscf
 
     init = pd.Timestamp("2026-09-30 09:00", tz="UTC")
-    responses = [_fcst_time_changed({67: "2133.1875", 86: lambda days: days - 20 / 1440}),
-                 fixture_text("geoscf_fcst_20260930_09z.ascii")]
+    text = _fcst_time_changed({0: "10807.395833333334", 67: "2133.1875", 86: lambda days: days - 20 / 1440})
     fetch = geoscf.fetch_fcst
     monkeypatch.setattr(geoscf, "fcst_inits", lambda now: [init])
     monkeypatch.setattr(geoscf, "fcst_complete", lambda client, i: True)
-    monkeypatch.setattr(geoscf, "fetch_fcst", lambda client, i: fetch(_fcst_client(responses.pop(0), i), i))
-    first = steps.run_source(fs, "geoscf_fcst", WINDOW, Policy(1), steps._geoscf_fcst(fs, T0), now=T0, environ={})
-    assert first["status"] == "unavailable" and first["rows_written"] == 0
-    assert "run 2026-09-30T09z ditunda: waktu ASCII lead [67, 86]" in first["note"]
+    monkeypatch.setattr(geoscf, "fetch_fcst", lambda client, i: fetch(_fcst_client(text, i), i))
+    result = steps.run_source(fs, "geoscf_fcst", WINDOW, Policy(1), steps._geoscf_fcst(fs, T0), now=T0, environ={})
+    assert result["status"] == "ok" and result["rows_written"] == 1080 and result.get("note") is None
     log = fs.fetch_log(T0 - dt.timedelta(days=1)).set_index("source")
-    assert log.loc["geoscf_fcst", "detail"]["deferred_time_mismatch_leads"] == {"2026-09-30T09z": [67, 86]}
-    later = T0 + dt.timedelta(hours=1)
-    second = steps.run_source(fs, "geoscf_fcst", WINDOW, Policy(1), steps._geoscf_fcst(fs, later), now=later,
-                              environ={})
-    assert second["status"] == "ok" and second["rows_written"] == 1080 and second.get("note") is None
+    assert log.loc["geoscf_fcst", "detail"]["ascii_time_mismatch_leads"] == {"2026-09-30T09z": [0, 67, 86]}
 
 
 def test_jam_ana_dekat_batas_jendela_membuat_sumber_degraded(fs, monkeypatch):

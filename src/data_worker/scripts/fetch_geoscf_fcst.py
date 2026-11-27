@@ -8,6 +8,10 @@ sudah terbit sebelum t, sehingga dapat dipakai pada waktu inferensi.
 - Nilai: subset OPeNDAP 3 × 3 sel 0,25° (lat −6,5…−6,0; lon 106,5…107,0), sama dengan `ana`.
 - Waktu tersedia: header `Last-Modified` berkas jam terakhir run di portal datashare
   (run dianggap tersedia setelah lengkap; konservatif untuk seluruh lead).
+- Sumbu waktu: atribut DAS GrADS (`grads_mapping "linear"`, `grads_min`, `grads_step`, `grads_size`).
+  Larik `time` pada respons subset hanya diagnostik: sejak November 2026 server menjawab angka
+  acak pada beberapa posisinya (berbeda antarpermintaan, juga pada format biner `.dods`), sedangkan
+  nilai polutannya identik antarpermintaan.
 - Penyelarasan dan QC sama dengan `ana`: cap tavg menit ke-30 − 30 menit = awal jam;
   PM2.5 `pm25_rh35` µg/m³; NO2 mol/mol × 1e9 = ppb × 1,8804 = µg/m³; rentang 0–2000 µg/m³
   dan 0–10000 ppb.
@@ -47,14 +51,32 @@ PM25_RANGE = (0.0, 2000.0)
 NO2_PPB_RANGE = (0.0, 10000.0)
 VERSION = "geoscf-fcst-preprocessed-v1"
 GRADS_UNIX_EPOCH = dt.date(1970, 1, 1).toordinal() + 1     # waktu GrADS 1970-01-01T00:00Z
-#: Lead yang waktu ASCII-nya boleh tidak sesuai sumbu linear (5% dari 120). Teramati 1 (2026-08-27)
-#: dan 3 (2026-11-01: satu nilai tahun 6, dua bergeser 20 dan 29 menit, nilai polutannya wajar). Pada
-#: 2026-11-01 kueri yang sama kadang menjawab waktu yang benar, jadi kesalahannya ada di sisi server.
-MAX_TIME_MISMATCHES = 6
+GRADS_STEP_UNITS = {"mn": "min", "hr": "h", "dy": "D"}
 
 
 class ForecastTimeMismatch(ValueError):
-    """The forecast time axis cannot be trusted for this response."""
+    """The DAS time axis of a forecast run is not the axis of that run."""
+
+
+def parse_das_time(das: str) -> tuple[pd.Timestamp, pd.Timedelta, int]:
+    """Awal, langkah, dan panjang sumbu waktu dari DAS GrADS; hanya sumbu linear yang diterima.
+
+    GrADS memetakan indeks ke waktu dengan atribut ini (``grads_min`` + k × ``grads_step``), jadi
+    sumbu ini yang menentukan jam setiap nilai. Larik ``time`` pada respons subset tidak dipakai:
+    beberapa angkanya dapat salah (run 2026-08-27, 2026-11-01, dan sejak 2026-11-26 pada hampir
+    setiap permintaan, termasuk indeks pertama agregasi ``ana``).
+    """
+    block = re.search(r"\n\s*time \{(.*?)\n\s*\}", das, re.S)
+    if not block:
+        raise ValueError("blok time tidak ada pada DAS")
+    attrs = dict(re.findall(r'String (grads_\w+) "([^"]*)"', block.group(1)))
+    if attrs.get("grads_mapping") != "linear":
+        raise ValueError(f"sumbu waktu DAS tidak linear ({attrs.get('grads_mapping')})")
+    step = re.fullmatch(r"(\d+)(mn|hr|dy)", attrs.get("grads_step", ""))
+    if not step or "grads_min" not in attrs or not attrs.get("grads_size", "").isdigit():
+        raise ValueError(f"atribut sumbu waktu DAS tidak lengkap ({attrs})")
+    start = pd.to_datetime(attrs["grads_min"], format="%H:%Mz%d%b%Y", utc=True)
+    return start, pd.Timedelta(int(step.group(1)), GRADS_STEP_UNITS[step.group(2)]), int(attrs["grads_size"])
 
 
 def _get(url: str, method: str = "GET", tries: int = 4) -> tuple[bytes, dict]:
@@ -107,28 +129,32 @@ def _lead_url(init: pd.Timestamp, valid: pd.Timestamp) -> str:
 
 
 def fetch_run(init: pd.Timestamp, get=None) -> dict:
-    """Subset satu run; ``get(url, method)`` → (isi, header) dapat diganti (bawaan ``_get``)."""
+    """Subset satu run; ``get(url, method)`` → (isi, header) dapat diganti (bawaan ``_get``).
+
+    Jam setiap lead mengikuti sumbu DAS run itu (``parse_das_time``); run ditolak
+    (``ForecastTimeMismatch``) bila sumbu itu bukan awal run + 30 menit + k jam, k = 0…119.
+    Lead yang angka ``time``-nya pada subset tidak sesuai sumbu itu dicatat pada
+    ``time_mismatch_leads`` sebagai diagnostik.
+    """
     get = get or _get
     (a, b), (c, d) = LAT_INDEX, LON_INDEX
+    base = f"{OPENDAP}/{COLLECTION}.{init:%Y%m%d_%H}z"
+    times = run_times(init)
+    das_start, das_step, das_size = parse_das_time(get(f"{base}.das")[0].decode())
+    if (das_start, das_step, das_size) != (times[0], pd.Timedelta(hours=1), LEADS):
+        raise ForecastTimeMismatch(f"{init}: waktu run tidak sesuai DAS ({das_start}, {das_step}, {das_size})")
     sub = f"[0:{LEADS - 1}][0][{a}:{b}][{c}:{d}]".replace("[", "%5B").replace("]", "%5D")
-    url = (f"{OPENDAP}/{COLLECTION}.{init:%Y%m%d_%H}z.ascii?pm25_rh35{sub},no2{sub},"
+    url = (f"{base}.ascii?pm25_rh35{sub},no2{sub},"
            f"time%5B0:{LEADS - 1}%5D,lat%5B{a}:{b}%5D,lon%5B{c}:{d}%5D")
     body, _ = get(url)
     text = body.decode()
     lat, lon = _parse_ascii(text, "lat"), _parse_ascii(text, "lon")
     if not (np.allclose(lat, LAT_CENTERS) and np.allclose(lon, LON_CENTERS)):
         raise ValueError(f"{init}: grid subset tidak sesuai ({lat}, {lon})")
-    times = run_times(init)
-    # Sumbu waktu GrADS linear (awal run + 30 menit + k jam). Larik ``time`` ASCII hanya pemeriksaan:
-    # beberapa angkanya dapat salah (teramati pada run 2026-08-27 dan 2026-11-01). Run ditolak bila
-    # sumbunya tampak bergeser atau milik run lain: lead pertama atau terakhir salah, atau lebih dari
-    # MAX_TIME_MISMATCHES lead salah. Lead lain yang salah dicatat pada ``time_mismatch_leads``;
-    # Data Worker meminta ulang run seperti itu dan tidak menyimpannya bila masih salah
-    # (``connectors.geoscf.fetch_fcst``).
     decoded = _grads_time(_parse_ascii(text, "time"))
+    if len(decoded) != LEADS:
+        raise ValueError(f"{init}: larik time berisi {len(decoded)} lead, bukan {LEADS}")
     mismatched = np.flatnonzero(decoded != times).tolist()
-    if decoded[0] != times[0] or decoded[-1] != times[-1] or len(mismatched) > MAX_TIME_MISMATCHES:
-        raise ForecastTimeMismatch(f"{init}: waktu run tidak sesuai ({decoded[0]}, {decoded[-1]}, {len(mismatched)} beda)")
     first = get(_lead_url(init, times[0]), "HEAD")[1].get("Last-Modified")
     last = get(_lead_url(init, times[-1]), "HEAD")[1].get("Last-Modified")
     if not first or not last:
@@ -230,8 +256,8 @@ def main() -> None:
         publication_hours_after_init=dict(min=float(publish.min()), median=float(publish.median()),
                                           max=float(publish.max())),
         no2_conversion=dict(ugm3_per_ppb=UGM3_PER_PPB, T_ref_K=298.15, P_ref_Pa=101325.0),
-        # Lead yang waktu ASCII-nya tidak sesuai; nilainya tetap mengikuti sumbu linear. Run yang diunduh
-        # sebelum time_mismatch_leads dicatat tidak muncul di sini.
+        # Lead yang angka time-nya pada subset tidak sesuai sumbu DAS (diagnostik); nilainya mengikuti
+        # sumbu DAS. Run yang diunduh sebelum time_mismatch_leads dicatat tidak muncul di sini.
         decoded_time_mismatches={r["init_utc"]: r["time_mismatch_leads"] for r in raw["runs"]
                                  if r.get("time_mismatch_leads")},
         qc=dict(pm25_range=PM25_RANGE, no2_ppb_range=NO2_PPB_RANGE,
