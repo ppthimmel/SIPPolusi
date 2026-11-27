@@ -44,8 +44,26 @@ const ICONS = {
   layers: '<path d="M12 3l9 5-9 5-9-5z"/><path d="M3 13l9 5 9-5"/>',
   locate: '<circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>',
   // Walk and bike are bold (solid head, heavy strokes) so they read at a glance in the mode switch.
-  walk: '<circle cx="14" cy="3.6" r="2.2" fill="currentColor" stroke="none"/><path stroke-width="2.6" stroke-linecap="butt" stroke-linejoin="miter" d="M13 7.4l-1.5 6.2M11.5 13.6l3.4 2.6.6 5.6M11.5 13.6L8.6 21.8M13 7.4L9 9.2l-.3 3.6M13 7.4l1.9 3.1 3 1.1"/>',
-  bike: '<circle cx="15.8" cy="4" r="2.2" fill="currentColor" stroke="none"/><circle cx="5.5" cy="17.5" r="3.6" stroke-width="2.4"/><circle cx="18.5" cy="17.5" r="3.6" stroke-width="2.4"/><path stroke-width="2.6" stroke-linecap="butt" stroke-linejoin="miter" d="M11.5 18.5v-4.6L8.4 11.4l4.2-3.6 2.6 2.7h3.3"/>',
+  // Walker in parts: head, torso, two legs from the hip (11.5, 13.6) and two arms from the
+  // shoulder (13, 7.4), so hovering can swing them (style.css "mode icons").
+  walk:
+    '<g class="i-walk" stroke-width="2.6" stroke-linecap="butt" stroke-linejoin="miter">' +
+    '<circle class="i-head" cx="14" cy="3.6" r="2.2" fill="currentColor" stroke="none"/>' +
+    '<path class="i-torso" d="M13 7.4l-1.5 6.2"/>' +
+    '<path class="i-leg-a" d="M11.5 13.6l3.4 2.6.6 5.6"/>' +
+    '<path class="i-leg-b" d="M11.5 13.6L8.6 21.8"/>' +
+    '<path class="i-arm-a" d="M13 7.4L9 9.2l-.3 3.6"/>' +
+    '<path class="i-arm-b" d="M13 7.4l1.9 3.1 3 1.1"/>' +
+    "</g>",
+  // Cyclist in parts: wheels (with spokes that only show while turning) and rider, so hovering
+  // can spin the wheels and bob the rider (style.css "mode icons").
+  bike:
+    '<g class="i-bike">' +
+    '<g class="i-rider"><circle cx="15.8" cy="4" r="2.2" fill="currentColor" stroke="none"/>' +
+    '<path stroke-width="2.6" stroke-linecap="butt" stroke-linejoin="miter" d="M11.5 18.5v-4.6L8.4 11.4l4.2-3.6 2.6 2.7h3.3"/></g>' +
+    '<g class="i-wheel"><circle cx="5.5" cy="17.5" r="3.6" stroke-width="2.4"/><path class="i-spokes" stroke-width="1.2" d="M5.5 14.4v6.2M2.4 17.5h6.2"/></g>' +
+    '<g class="i-wheel"><circle cx="18.5" cy="17.5" r="3.6" stroke-width="2.4"/><path class="i-spokes" stroke-width="1.2" d="M18.5 14.4v6.2M15.4 17.5h6.2"/></g>' +
+    "</g>",
   route: '<circle cx="6" cy="19" r="2"/><path d="M8 19h8a4 4 0 000-8H8a4 4 0 010-8h8"/>',
   pin: '<path d="M12 21s7-6.2 7-11a7 7 0 10-14 0c0 4.8 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/>',
   navigate: '<path d="M12 2l7 19-7-4-7 4z"/>',

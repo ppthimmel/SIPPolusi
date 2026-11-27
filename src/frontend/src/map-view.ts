@@ -12,8 +12,9 @@ import { EXPOSURE_STOPS, NO_DATA_COLOR, layerRatio } from "./exposure";
 import { circle, splitAt, type RouteLine } from "./nav-geometry";
 import landmarks from "./landmarks.json";
 import jakartaBoundary from "./jakarta-boundary.json";
-import type { BBox, ExposureSurface, HeatLayer, Point, RouteResponse, SurfaceFeature } from "./types";
+import type { BBox, ExposureSurface, HeatLayer, Mode, Point, RouteResponse, SurfaceFeature } from "./types";
 import { tr } from "./i18n";
+import { icon } from "./dom";
 
 const ROUTE_SOURCE = "routes";
 const HEAT_SOURCE = "heat";
@@ -450,7 +451,20 @@ export class MapView {
     });
   }
 
-  /** The user's position, its heading (null: no arrow) and accuracy; null removes them. */
+  private userMode: Mode = "walk";
+  private userHeading: number | null = null;
+
+  /** The travel mode drawn inside the position marker: a walker or a cyclist. */
+  setUserMode(mode: Mode): void {
+    if (mode === this.userMode && this.user) return;
+    this.userMode = mode;
+    const glyph = this.user?.getElement().querySelector(".marker-user-glyph");
+    if (glyph) glyph.replaceChildren(icon(mode, 16));
+  }
+
+  /** The user's position, its heading (null: no arrow) and accuracy; null removes them. The
+   *  marker is a blue disc with the travel mode's figure (setUserMode); only the direction wedge
+   *  turns, so the figure stays upright. */
   async setUser(p: Point | null, headingDeg: number | null = null, accuracyM: number | null = null): Promise<void> {
     if (!p) {
       this.user?.remove();
@@ -460,16 +474,21 @@ export class MapView {
         const el = document.createElement("div");
         el.className = "marker-user";
         el.setAttribute("role", "img");
-        el.setAttribute("aria-label", "Posisi Anda");
-        el.append(Object.assign(document.createElement("div"), { className: "marker-user-heading" }));
-        // rotationAlignment "map": the arrow keeps pointing the same way if the map is rotated;
+        el.setAttribute("aria-label", tr("Posisi Anda", "Your position"));
+        const dir = Object.assign(document.createElement("div"), { className: "marker-user-dir" });
+        dir.append(Object.assign(document.createElement("div"), { className: "marker-user-heading" }));
+        const glyph = Object.assign(document.createElement("div"), { className: "marker-user-glyph" });
+        glyph.append(icon(this.userMode, 16));
+        el.append(dir, glyph);
         // pitchAlignment "viewport": it stays upright instead of lying flat when the map is tilted.
-        this.user = new maplibregl.Marker({ element: el, rotationAlignment: "map", pitchAlignment: "viewport" })
-          .setLngLat([p.lon, p.lat])
-          .addTo(this.map);
+        this.user = new maplibregl.Marker({ element: el, pitchAlignment: "viewport" }).setLngLat([p.lon, p.lat]).addTo(this.map);
+        // The wedge points along the heading on the map, so it turns back as the map turns.
+        this.map.on("rotate", () => this.turnUserWedge());
       }
-      this.user.setLngLat([p.lon, p.lat]).setRotation(headingDeg ?? 0);
+      this.user.setLngLat([p.lon, p.lat]);
+      this.userHeading = headingDeg;
       this.user.getElement().classList.toggle("has-heading", headingDeg !== null);
+      this.turnUserWedge();
     }
     await this.ready;
     const ring = p && accuracyM && Number.isFinite(accuracyM) && accuracyM > 10 ? circle(p, accuracyM) : null;
@@ -478,6 +497,13 @@ export class MapView {
         ? { type: "FeatureCollection", features: [{ type: "Feature", geometry: { type: "Polygon", coordinates: [ring] }, properties: {} }] }
         : emptyCollection(),
     );
+  }
+
+  /** Turns the direction wedge to the heading as seen on screen (heading minus the map's bearing). */
+  private turnUserWedge(): void {
+    if (!this.user || this.userHeading === null) return;
+    const dir = this.user.getElement().querySelector<HTMLElement>(".marker-user-dir");
+    dir?.style.setProperty("--heading", `${this.userHeading - this.map.getBearing()}deg`);
   }
 
   /** Keeps `p` in the visible part of the map (above the bottom sheet on phones). */

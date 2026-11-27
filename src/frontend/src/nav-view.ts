@@ -71,7 +71,8 @@ export class NavView {
   private readonly when = h("span", { class: "nav-when" });
   private readonly thenIcon = h("span", { class: "nav-then-icon", "aria-hidden": "true" });
   private readonly thenBox = h("div", { class: "nav-then", hidden: true }, h("span", {}, tr("Lalu", "Then")), this.thenIcon);
-  private readonly banner = h("div", { class: "nav-banner" }, h("div", { class: "nav-instruction" }, this.turnIcon, h("div", {}, this.action, this.when)), this.thenBox);
+  private readonly instructionBox = h("div", { class: "nav-instruction" }, this.turnIcon, h("div", {}, this.action, this.when));
+  private readonly banner = h("div", { class: "nav-banner" }, this.instructionBox, this.thenBox);
   private readonly time = h("strong", { class: "nav-time" });
   private readonly summary = h("span", { class: "nav-summary" });
   private readonly status = h("div", { class: "nav-status" });
@@ -126,14 +127,22 @@ export class NavView {
   render(state: NavViewState): void {
     const { snapshot: s } = state;
     const arrived = s.status === "arrived";
-    const step = arrived ? { action: tr("Anda telah tiba", "You have arrived"), when: "", icon: "flag" as IconName } : instruction(s.next);
+    // Off the route, the next turn of the route left behind would mislead: the banner says to
+    // return to it (and how far away it is) until the user is back or a new route arrives.
+    const offRoute = s.status === "off_route";
+    const step = arrived
+      ? { action: tr("Anda telah tiba", "You have arrived"), when: "", icon: "flag" as IconName }
+      : offRoute
+        ? offRouteStep(s.offRouteM)
+        : instruction(s.next);
+    this.instructionBox.classList.toggle("is-off-route", offRoute);
     clear(this.turnIcon);
     this.turnIcon.append(icon(step.icon, 36));
     this.action.textContent = step.action;
     this.when.textContent = step.when;
 
     // "Then …" only when the turn after this one comes soon after it.
-    const then = !arrived && s.next && s.then && s.then.gapM <= THEN_WITHIN_M ? s.then.maneuver : null;
+    const then = !arrived && !offRoute && s.next && s.then && s.then.gapM <= THEN_WITHIN_M ? s.then.maneuver : null;
     this.thenBox.hidden = !then;
     clear(this.thenIcon);
     if (then) this.thenIcon.append(icon(then.kind === "arrive" ? "flag" : TURN[then.kind].icon, 20));
@@ -203,6 +212,17 @@ function coneIcon(): HTMLElement {
 
 /** "Then …" is shown when the turn after the next one is at most this far after it. */
 const THEN_WITHIN_M = 250;
+
+/** Banner while off the route: "Kembali ke rute" with the distance to it, in 10 m steps so the
+ *  text does not change with every fix. */
+export function offRouteStep(offRouteM: number | null): { action: string; when: string; icon: IconName } {
+  const away = offRouteM == null ? "" : fmtNumber(Math.max(10, Math.round(offRouteM / 10) * 10), 0);
+  return {
+    action: tr("Kembali ke rute", "Return to the route"),
+    when: away ? tr(`±${away} m dari rute`, `±${away} m from the route`) : "",
+    icon: "uturn",
+  };
+}
 
 function statusMessage(s: NavSnapshot): NavMessage | null {
   switch (s.status) {

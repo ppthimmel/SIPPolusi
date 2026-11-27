@@ -8,7 +8,11 @@
       content="Cari rute jalan kaki atau sepeda dengan estimasi paparan polusi udara lebih rendah. Estimasi model, bukan rekomendasi medis."
       data-en-content="Find walking or cycling routes with lower estimated air-pollution exposure. Model estimates, not medical advice."
     />
-    <title data-en="Low-Exposure Routes · SIPPolusi">Rute Rendah Paparan · SIPPolusi</title>
+    <title>SIPPolusi</title>
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="apple-touch-icon" href="/logo-192.png" />
+    <!-- The splash screen's logo is needed before anything else is painted. -->
+    <link rel="preload" as="image" href="/logo.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -17,6 +21,15 @@
     />
   </head>
   <body>
+    <!-- Splash screen while the app and map load; main.ts fades it out (style.css "splash"). -->
+    <div class="splash" id="splash" role="status" aria-label="Memuat SIPPolusi" data-en-aria-label="Loading SIPPolusi">
+      <div class="splash-inner">
+        <img class="splash-logo" src="/logo.png" alt="" width="132" height="132" />
+        <p class="splash-name">SIPPolusi</p>
+        <p class="splash-tagline" data-en="Low-exposure routes in Jakarta">Rute rendah paparan di Jakarta</p>
+        <span class="splash-bar" aria-hidden="true"></span>
+      </div>
+    </div>
     <div class="app" id="app">
       <aside class="panel" id="panel" aria-label="Panel rute" data-en-aria-label="Route panel">
         <button
@@ -29,9 +42,7 @@
         ></button>
 
         <header class="brand">
-          <span class="brand-mark" aria-hidden="true">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="19" r="2"/><path d="M8 19h8a4 4 0 000-8H8a4 4 0 010-8h8"/></svg>
-          </span>
+          <img class="brand-mark" src="/logo.png" alt="" width="34" height="34" />
           <span class="brand-text">
             <span class="brand-name">SIPPolusi</span>
             <span class="brand-sub">Jakarta</span>

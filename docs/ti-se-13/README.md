@@ -124,6 +124,16 @@ Tempat yang dikenal: `monas`, `bundaran-hi`, `sudirman`, `blok-m`, `kota`, atau 
 `?simulasi=` (mis. `?lokasi=monas&simulasi=normal`), yang mengambil alih posisi selama navigasi. Modulnya
 (`src/dev-location.ts`) dimuat dinamis di bawah `import.meta.env.DEV`, jadi tidak ikut build produksi.
 
+### Panel uji keluar rute
+
+Juga hanya pada `npm run dev`: selama navigasi, kartu **Uji navigasi** di kanan peta (kiri atas di ponsel)
+punya tombol **Keluar dari rute** / **Kembali ke rute**. "Keluar" membuat posisi tersimulasi berjalan tegak
+lurus menjauhi rute sampai ±80 m lalu menunggu di sana; setelah 10 detik di luar rute spanduk berubah kuning
+"Kembali ke rute · ±80 m dari rute" dan rute baru diminta dari posisi itu. "Kembali" membuatnya berjalan
+kembali ke rute sebelum itu terjadi. Bila navigasi memakai GPS perangkat, tombol pertama kali ditekan
+mengganti sumber posisi ke simulator di titik rute saat ini. Kodenya `simPanel` dan `setDetour` di
+[`position-sim.ts`](../../src/frontend/src/position-sim.ts), tidak ikut build produksi.
+
 ## Batasan
 
 - **Belum diuji di lapangan.** Bukti di atas berasal dari simulasi. Uji jalan kaki atau sepeda dengan ponsel di

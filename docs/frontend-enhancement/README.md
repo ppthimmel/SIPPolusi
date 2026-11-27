@@ -258,6 +258,20 @@ Berdasarkan tinjauan berikutnya pada aplikasi yang berjalan.
 [`style.css`](../../src/frontend/src/style.css), [`index.html`](../../src/frontend/index.html).
 Tes baru: [`place-combobox.test.ts`](../../src/frontend/src/place-combobox.test.ts).
 
+## 12. Logo, animasi, dan keluar rute
+
+| Perubahan | Alasan |
+|---|---|
+| Logo baru di [`public/`](../../src/frontend/public/) (PNG transparen 512/192 px, favicon 64 px, karya asli `logo-source.jpg`; dibuat ulang dengan [`scripts/build_frontend_logo.py`](../../scripts/build_frontend_logo.py)); dipakai di kepala panel, ikon tab, dan ikon layar utama ponsel | Identitas aplikasi yang konsisten |
+| Layar pembuka: logo tumbuh masuk lalu melayang pelan, nama dan tagline naik, bilah tipis berjalan; hilang setelah peta siap (paling cepat 1,4 s, paling lama 6 s) | Halaman tidak tampak kosong saat peta dan gaya vektornya dimuat |
+| Arahkan kursor ke pil moda: pejalan mengayun lengan dan kaki, roda sepeda berputar; ke tombol pilih di peta: pin melompat dan mendarat | Umpan balik kecil yang membuat kontrol terasa hidup |
+| Slider prioritas: lingkar halo pada pegangan saat diarahkan atau ditahan, label zona yang aktif menebal, pegangan "meletup" saat berpindah zona | Posisi slider lebih mudah dibaca tanpa angka α/β |
+| Setelah rute tampil, memindahkan titik asal atau tujuan (seret pin, klik peta, pilih tempat, lokasi saya) menghapus rute lama | Rute yang digambar di antara titik yang sudah berubah menyesatkan |
+| Saat keluar rute, spanduk navigasi berubah kuning: "Kembali ke rute · ±80 m dari rute" sampai pengguna kembali atau rute baru tiba | Belokan berikutnya dari rute yang sudah ditinggalkan menyesatkan |
+| Panel uji keluar rute (hanya pengembangan), lihat [TI-SE-13](../ti-se-13/README.md#panel-uji-keluar-rute) | Kasus keluar rute bisa diuji kapan saja tanpa berjalan sungguhan |
+
+Semua animasi berhenti bagi pengguna yang memilih "kurangi gerakan".
+
 ## Yang dihapus dan menyentuh kebutuhan desain
 
 Dua teks dihapus atas permintaan, padahal kode sebelumnya menandainya sebagai pemenuhan kebutuhan pada Bab III:

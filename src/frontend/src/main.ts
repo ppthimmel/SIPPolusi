@@ -115,6 +115,25 @@ const state = {
 
 const mapView = new MapView($("map"));
 mapView.mountZoomButtons(document.querySelector<HTMLElement>(".map-buttons")!);
+
+// ------------------------------------------------------------------- splash
+// The splash (index.html) leaves once the map has loaded, but stays at least 1.4 s from page
+// start so its animation reads, and never longer than 6 s if the map is slow or fails.
+const SPLASH_MIN_MS = 1_400;
+const SPLASH_MAX_MS = 6_000;
+let splashGone = false;
+function hideSplash(): void {
+  if (splashGone) return;
+  splashGone = true;
+  const splash = document.getElementById("splash");
+  if (!splash) return;
+  window.setTimeout(() => {
+    splash.classList.add("is-leaving");
+    window.setTimeout(() => splash.remove(), 500);
+  }, Math.max(0, SPLASH_MIN_MS - performance.now()));
+}
+mapView.map.once("load", hideSplash);
+window.setTimeout(hideSplash, SPLASH_MAX_MS);
 // Handle for manual and browser-driven testing; stripped from production builds.
 if (import.meta.env.DEV) (window as unknown as { __map: unknown }).__map = mapView.map;
 const legend = new Legend($("legend"));
@@ -163,9 +182,20 @@ for (const w of ["origin", "destination"] as const) {
 }
 
 const mode = (): Mode => (tripForm.elements.namedItem("mode") as RadioNodeList).value === "bike" ? "bike" : "walk";
+// The position marker shows the chosen mode's figure; while navigating, the route's own mode.
+mapView.setUserMode(mode());
+tripForm.addEventListener("change", () => {
+  if (!nav.session) mapView.setUserMode(mode());
+});
 
 // -------------------------------------------------------------- form helpers
 function setPoint(which: Which, p: Point | null, opts: { fill?: boolean; fly?: boolean; label?: string } = {}): void {
+  // A route belongs to the points it was found for: once one moves (pin dragged, map clicked,
+  // place chosen, own location), the old route and its list are removed rather than left
+  // drawn between points that no longer match.
+  const old = state.points[which];
+  const moved = !old || !p || old.lat !== p.lat || old.lon !== p.lon;
+  if (state.result && moved && !nav.session) dropResult();
   state.points[which] = p;
   state.labels[which] = opts.label ?? null;
   state.parseError[which] = false;
@@ -417,7 +447,28 @@ function updatePriority(): void {
     `Travel-time weight ${fmtNumber(alpha, 2)}, exposure weight ${fmtNumber(beta, 2)}.`,
   );
   slider.style.setProperty("--fill", `${Number(slider.value) * 100}%`);
+  showPriorityZone();
 }
+
+/** Darkens the label of the zone the handle is in (faster < 1/3 ≤ balanced ≤ 2/3 < cleaner),
+ *  and pops the handle when the zone changes (style.css). */
+let priorityZone = -1;
+function showPriorityZone(): void {
+  const v = Number(slider.value);
+  const zone = v < 1 / 3 ? 0 : v > 2 / 3 ? 2 : 1;
+  document.querySelectorAll(".priority-scale span").forEach((s, i) => s.classList.toggle("is-current", i === zone));
+  if (priorityZone !== -1 && zone !== priorityZone) {
+    slider.classList.remove("zone-pop");
+    void slider.offsetWidth; // restart the animation when zones change quickly
+    slider.classList.add("zone-pop");
+    // A timer, not animationend: the animation runs on the handle (a pseudo-element), whose
+    // end event browsers do not reliably send.
+    window.clearTimeout(zonePopTimer);
+    zonePopTimer = window.setTimeout(() => slider.classList.remove("zone-pop"), 340);
+  }
+  priorityZone = zone;
+}
+let zonePopTimer = 0;
 slider.addEventListener("input", updatePriority);
 updatePriority();
 
@@ -881,6 +932,7 @@ async function startNavigation(role: RouteResult["role"]): Promise<void> {
   nav.role = role;
   const route = navRoute(r.response);
   const session = new NavigationSession(route, r.request.destination, r.request.mode);
+  mapView.setUserMode(r.request.mode);
   nav.session = session;
   nav.following = true;
   nav.firstFix = true;
@@ -903,6 +955,40 @@ async function startNavigation(role: RouteResult["role"]): Promise<void> {
   if (nav.session !== session) return; // ended while the simulator loaded
   nav.source = source;
   source.start(onFix, onPositionProblem);
+  mountSimPanel();
+}
+
+/** Development only: a panel over the map to leave the route and come back on demand, to test
+ *  the off-route case (banner "Kembali ke rute", then a new route from the position). */
+function mountSimPanel(): void {
+  if (import.meta.env.DEV) {
+    void import("./position-sim").then((sim) => {
+      if (!nav.session || navViewEl.querySelector(".sim-panel")) return;
+      const isAway = () => nav.source instanceof sim.SimulatedPosition && nav.source.isDetoured;
+      navViewEl.append(sim.simPanel((away) => void simDetour(away), isAway));
+    });
+  }
+}
+
+/** Development only: walks the simulated position off the route (true) or back (false). On the
+ *  device's GPS it first switches to the simulator at the current point on the route. */
+async function simDetour(away: boolean): Promise<void> {
+  if (import.meta.env.DEV) {
+    const sim = await import("./position-sim");
+    const session = nav.session;
+    if (!session) return;
+    let source = nav.source;
+    if (!(source instanceof sim.SimulatedPosition)) {
+      const line = session.routeLine;
+      const along = Math.min(line.length, Math.max(0, line.length - session.snapshot.remainingM));
+      source?.stop();
+      const speed = Number(SIMULATION?.get("kecepatan")) || undefined;
+      source = new sim.SimulatedPosition(() => nav.session!.routeLine, "normal", speed, 1_000, along);
+      nav.source = source;
+      source.start(onFix, onPositionProblem);
+    }
+    (source as InstanceType<typeof sim.SimulatedPosition>).setDetour(away);
+  }
 }
 
 /** Ends navigation and returns to the route result. `notice` says why, when it was not the user. */
@@ -916,6 +1002,7 @@ function endNavigation(notice: Notice = null): void {
   nav.message = null;
   void keepScreenOn(false);
   // Back to the plain position marker (the last navigation position may be simulated or snapped).
+  mapView.setUserMode(mode());
   void mapView.setUser(here.last);
   startShowingLocation();
   if (nav.heatWasOn && !state.heat.on) setHeat(true);
@@ -1302,6 +1389,7 @@ onLangChange(() => {
     if (nav.message) nav.message.view = nav.message.make();
     nav.view = new NavView(navViewEl, { onEnd: () => endNavigation(), onRecenter: recenter });
     renderNav();
+    mountSimPanel(); // the new view replaced the old one's contents
   }
 });
 
