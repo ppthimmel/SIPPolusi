@@ -223,6 +223,17 @@ Perubahan sesudah commit `647338e`, berdasarkan tinjauan langsung pada aplikasi.
 | Tooltip bergaya aplikasi menggantikan tooltip bawaan peramban ([`tooltip.ts`](../../src/frontend/src/tooltip.ts)); tombol peta di tepi kanan menampilkannya ke kiri | Konsisten dengan tampilan aplikasi |
 | Transisi halus: tombol (warna dan efek tekan), lembar bawah, popup, heatmap memudar, daftar saran, baris rute, spanduk dan kartu navigasi. Satu skala durasi (0,15 / 0,22 / 0,32 s); pengguna dengan "kurangi gerakan" mendapat perubahan instan | Perubahan keadaan lebih mudah diikuti |
 
+### 10.6 Tangkapan layar
+
+Stack lokal lengkap, rute sepeda Monas → Bundaran HI (titik dipilih lewat klik peta), Chrome headless.
+
+| | |
+|---|---|
+| ![Hasil rute dengan heatmap](01-hasil-rute.jpg) | ![Popup Tentang indeks](02-tentang-indeks.jpg) |
+| **01** Hasil rute di bawah isian, heatmap Gabungan, landmark, legenda | **02** Popup "Tentang indeks" |
+| ![Navigasi desktop](03-navigasi-desktop.jpg) | ![Ponsel: hasil](04-ponsel-hasil.jpg) ![Ponsel: navigasi](05-ponsel-navigasi.jpg) |
+| **03** Navigasi desktop: kamera miring, spanduk "Lalu", kartu Keluar, panel hanya baca | **04–05** Ponsel 390 px: lembar bawah, dan navigasi layar penuh |
+
 ## Yang dihapus dan menyentuh kebutuhan desain
 
 Dua teks dihapus atas permintaan, padahal kode sebelumnya menandainya sebagai pemenuhan kebutuhan pada Bab III:
