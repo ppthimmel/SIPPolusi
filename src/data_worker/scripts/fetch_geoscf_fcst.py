@@ -10,7 +10,7 @@ sudah terbit sebelum t, sehingga dapat dipakai pada waktu inferensi.
   (run dianggap tersedia setelah lengkap; konservatif untuk seluruh lead).
 - Sumbu waktu: atribut DAS GrADS (`grads_mapping "linear"`, `grads_min`, `grads_step`, `grads_size`).
   Larik `time` pada respons subset hanya diagnostik: pada beberapa posisinya server menjawab waktu
-  dengan medan yang salah, umumnya tahunnya (bulan, hari, dan jam benar), kadang menit atau jamnya.
+  dengan medan yang salah, umumnya tahunnya (bulan dan jam benar), kadang menit atau jamnya.
   Posisinya berubah antarpermintaan, juga pada format biner `.dods`, sedangkan nilai polutannya
   identik antarpermintaan.
 - Penyelarasan dan QC sama dengan `ana`: cap tavg menit ke-30 − 30 menit = awal jam;

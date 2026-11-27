@@ -12,8 +12,8 @@ sama dengan data latih TI-AI-01 (``dataset_processed/geos-cf``):
 
 Jam setiap nilai mengikuti sumbu waktu linear pada DAS GrADS (``parse_das_time``), bukan larik
 ``time`` pada respons subset. Pada beberapa posisi larik itu server menjawab waktu yang salah:
-umumnya tahunnya saja (mis. 2018 atau tahun 30 alih-alih 2026, dengan bulan, hari, dan jam
-benar), kadang menit atau jamnya, dan posisinya berubah antarpermintaan. Teramati sejak Agustus
+umumnya tahunnya (mis. 2018 atau tahun 30 alih-alih 2026, dengan bulan dan jam benar),
+kadang menit atau jamnya, dan posisinya berubah antarpermintaan. Teramati sejak Agustus
 2026 (1-3 lead per run) dan jauh lebih sering sejak 26 November 2026 (7-12 lead per run,
 termasuk indeks pertama agregasi ``ana``), sedangkan nilai polutannya identik antarpermintaan.
 Ketidaksesuaian larik itu hanya dicatat sebagai diagnostik.

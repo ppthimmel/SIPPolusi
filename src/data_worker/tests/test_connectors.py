@@ -203,8 +203,8 @@ def test_geoscf_ana_subset_valid():
 
 
 def test_geoscf_ana_waktu_ascii_rusak_mengikuti_sumbu_das():
-    """27 November 2026: indeks pertama agregasi kadang terbaca 10807.3958 (tahun 30, bulan, hari, dan
-    jam benar) alih-alih 2025; jam setiap nilai tetap mengikuti sumbu DAS, dan ketidaksesuaiannya
+    """27 November 2026: indeks pertama agregasi kadang terbaca 10807.3958 (tahun 30, bulan dan jam
+    benar) alih-alih 2025; jam setiap nilai tetap mengikuti sumbu DAS, dan ketidaksesuaiannya
     hanya dihitung."""
     text = fixture_text("geoscf_ana_subset.ascii").replace("739890.8541666666, 739890.8958333334",
                                                            "10807.395833333334, 739890.8958333334")
