@@ -15,6 +15,7 @@ status or exit code: losing a metric must not affect the functional path (IMetri
 from __future__ import annotations
 
 import logging
+import math
 import os
 import time
 from collections.abc import Iterable, Mapping, Sequence
@@ -49,11 +50,24 @@ def _escape(value: object) -> str:
     return str(value).replace("\\", "\\\\").replace("\n", "\\n").replace('"', '\\"')
 
 
+def _number(value: float) -> str:
+    """Exact text for a sample value. ``:g`` keeps only 6 significant digits, which moved Unix timestamps by
+    up to ~5,000 s (1795858295.6 became 1.79586e+09); the shortest round-trip repr keeps every digit."""
+    value = float(value)
+    if math.isnan(value):
+        return "NaN"
+    if math.isinf(value):
+        return "+Inf" if value > 0 else "-Inf"
+    if value.is_integer() and abs(value) < 2 ** 53:
+        return str(int(value))
+    return repr(value)
+
+
 def _sample(name: str, value: float, labels: Mapping[str, object] | None = None) -> str:
     if labels:
         rendered = ",".join(f'{k}="{_escape(v)}"' for k, v in sorted(labels.items()))
-        return f"{name}{{{rendered}}} {float(value):g}"
-    return f"{name} {float(value):g}"
+        return f"{name}{{{rendered}}} {_number(value)}"
+    return f"{name} {_number(value)}"
 
 
 def _render(samples: Iterable[tuple[str, float, Mapping[str, object] | None]]) -> str:
