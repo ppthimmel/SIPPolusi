@@ -222,18 +222,11 @@ function detailSection(resp: RouteResponse): HTMLElement {
   if (m.graphVersion) {
     rows.push([tr("Versi data jalan", "Road data version"), fmtGraphVersionDate(m.graphVersion) ?? m.graphVersion]);
   }
-  const year = new Date().getFullYear();
 
   return h(
     "details",
     { class: "details" },
     h("summary", {}, tr("Sumber data dan versi", "Data sources and versions")),
     h("dl", { class: "detail-list" }, ...rows.flatMap(([k, v]) => [h("dt", {}, k), h("dd", {}, v)])),
-    h(
-      "p",
-      { class: "detail-copyright" },
-      `© ${year} SIPPolusi · ${tr("Data jalan", "Road data")} © `,
-      h("a", { href: "https://www.openstreetmap.org/copyright", target: "_blank", rel: "noopener noreferrer" }, tr("kontributor OpenStreetMap", "OpenStreetMap contributors")),
-    ),
   );
 }

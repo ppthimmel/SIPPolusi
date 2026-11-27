@@ -9,7 +9,7 @@ import {
   STUDY_AREA,
 } from "./config";
 import { EXPOSURE_STOPS, NO_DATA_COLOR, allLowConfidence, layerRatio } from "./exposure";
-import { circle } from "./nav-geometry";
+import { circle, splitAt, type RouteLine } from "./nav-geometry";
 import landmarks from "./landmarks.json";
 import type { BBox, ExposureSurface, HeatLayer, Point, RouteResponse, SurfaceFeature } from "./types";
 import { tr } from "./i18n";
@@ -20,7 +20,16 @@ const ACCURACY_SOURCE = "position-accuracy";
 const LANDMARK_SOURCE = "landmarks";
 const HATCH_IMAGE = "hatch";
 
-const ROUTE_GREEN = "#0b6b50";
+const ROUTE_GREEN = "#2b6f2f"; // --green in style.css
+/** The part of the route already travelled while navigating. */
+const ROUTE_PASSED = "#a3a8a3";
+/** Route widths in px: while navigating the line is thicker, as in a directions app. */
+const NAV_WIDTH = ["interpolate", ["linear"], ["zoom"], 12, 6, 16, 10, 19, 16] as unknown as maplibregl.ExpressionSpecification;
+const NAV_CASING = ["interpolate", ["linear"], ["zoom"], 12, 9, 16, 14, 19, 22] as unknown as maplibregl.ExpressionSpecification;
+/** How long the heatmap takes to fade in or out. */
+const HEAT_FADE_MS = 250;
+/** Camera tilt while navigating, in degrees (0 = straight down). */
+const NAV_PITCH = 55;
 const ROUTE_GRAY = "#3b4658";
 
 function colorExpression(prop: string): maplibregl.ExpressionSpecification {
@@ -128,9 +137,14 @@ export class MapView {
   private initLayers(): void {
     const m = this.map;
     m.addImage(HATCH_IMAGE, hatchImage(), { pixelRatio: 2 });
-    // The heatmap, routes and position sit on the roads but under the basemap's labels and place
-    // icons (street names, landmarks), as in a directions app. A raster basemap has none: on top.
-    const labels = m.getStyle().layers.find((l) => l.type === "symbol")?.id;
+    // The heatmap, routes and position sit above every basemap road, bridge and building, but
+    // under its labels and place icons (street names, landmarks), as in a directions app. Not
+    // simply before the first symbol layer: in the vector style that is the one-way arrows, which
+    // come before the bridges and buildings, so a flyover would cut the route. A raster basemap
+    // has no labels: on top.
+    const style = m.getStyle().layers;
+    const lastShape = style.map((l) => l.type !== "symbol").lastIndexOf(true);
+    const labels = style[lastShape + 1]?.id;
     const addLayer = (layer: maplibregl.AddLayerObject) => m.addLayer(layer, labels);
 
     m.addSource(HEAT_SOURCE, { type: "geojson", data: emptyCollection() });
@@ -181,6 +195,7 @@ export class MapView {
       type: "line",
       source: ROUTE_SOURCE,
       layout: { "line-join": "round", "line-cap": "round" },
+      filter: ["in", ["get", "role"], ["literal", ["recommended", "comparison"]]],
       paint: { "line-color": "#ffffff", "line-width": ["case", ["==", ["get", "role"], "recommended"], 10, 8] },
     });
     addLayer({
@@ -199,6 +214,32 @@ export class MapView {
       filter: ["==", ["get", "role"], "recommended"],
       layout: { "line-join": "round", "line-cap": "round" },
       paint: { "line-color": ROUTE_GREEN, "line-width": 6 },
+    });
+    // While navigating: the way already travelled in grey, the way ahead in a thicker green, both
+    // on a white edge. (A zoom-based width cannot sit inside a per-role switch, so own layers.)
+    addLayer({
+      id: "route-nav-casing",
+      type: "line",
+      source: ROUTE_SOURCE,
+      filter: ["in", ["get", "role"], ["literal", ["nav", "passed"]]],
+      layout: { "line-join": "round", "line-cap": "round" },
+      paint: { "line-color": "#ffffff", "line-width": NAV_CASING },
+    });
+    addLayer({
+      id: "route-passed",
+      type: "line",
+      source: ROUTE_SOURCE,
+      filter: ["==", ["get", "role"], "passed"],
+      layout: { "line-join": "round", "line-cap": "round" },
+      paint: { "line-color": ROUTE_PASSED, "line-width": NAV_WIDTH },
+    });
+    addLayer({
+      id: "route-nav",
+      type: "line",
+      source: ROUTE_SOURCE,
+      filter: ["==", ["get", "role"], "nav"],
+      layout: { "line-join": "round", "line-cap": "round" },
+      paint: { "line-color": ROUTE_GREEN, "line-width": NAV_WIDTH },
     });
 
     // How far off the shown position may be (TI-SE-13), above the routes.
@@ -310,9 +351,13 @@ export class MapView {
 
     const bounds = new maplibregl.LngLatBounds();
     for (const f of features) for (const c of (f.geometry as GeoJSON.LineString).coordinates) bounds.extend(c as [number, number]);
+    // Always flat and north-up: after navigation (tilted, turned) this replaces the reset camera
+    // move, which a fit that kept the current tilt would interrupt.
     this.map.fitBounds(bounds, {
       padding: { top: 70, bottom: Math.max(60, inset.bottom), left: 50, right: 70 },
       maxZoom: 16,
+      bearing: 0,
+      pitch: 0,
       duration: 600,
     });
   }
@@ -333,11 +378,18 @@ export class MapView {
   // ------------------------------------------------------------ navigation
 
   /** Only the route being followed, drawn as the recommended line (TI-SE-13). */
-  async showNavRoute(coordinates: [number, number][]): Promise<void> {
+  /** The route being navigated, cut where the user is: grey behind, green ahead. */
+  async showNavRoute(line: RouteLine, alongM: number): Promise<void> {
     await this.ready;
+    const { passed, ahead } = splitAt(line, alongM);
+    const feature = (role: string, coordinates: [number, number][]): GeoJSON.Feature => ({
+      type: "Feature",
+      geometry: { type: "LineString", coordinates },
+      properties: { role },
+    });
     this.routeSource().setData({
       type: "FeatureCollection",
-      features: [{ type: "Feature", geometry: { type: "LineString", coordinates }, properties: { role: "recommended" } }],
+      features: [...(alongM > 0 ? [feature("passed", passed)] : []), feature("nav", ahead)],
     });
   }
 
@@ -353,8 +405,11 @@ export class MapView {
         el.setAttribute("role", "img");
         el.setAttribute("aria-label", "Posisi Anda");
         el.append(Object.assign(document.createElement("div"), { className: "marker-user-heading" }));
-        // rotationAlignment "map": the arrow keeps pointing the same way if the map is rotated.
-        this.user = new maplibregl.Marker({ element: el, rotationAlignment: "map" }).setLngLat([p.lon, p.lat]).addTo(this.map);
+        // rotationAlignment "map": the arrow keeps pointing the same way if the map is rotated;
+        // pitchAlignment "viewport": it stays upright instead of lying flat when the map is tilted.
+        this.user = new maplibregl.Marker({ element: el, rotationAlignment: "map", pitchAlignment: "viewport" })
+          .setLngLat([p.lon, p.lat])
+          .addTo(this.map);
       }
       this.user.setLngLat([p.lon, p.lat]).setRotation(headingDeg ?? 0);
       this.user.getElement().classList.toggle("has-heading", headingDeg !== null);
@@ -369,20 +424,31 @@ export class MapView {
   }
 
   /** Keeps `p` in the visible part of the map (above the bottom sheet on phones). */
-  follow(p: Point, inset: { bottom: number }, zoom?: number): void {
+  /** Navigation camera, as in a directions app: tilted to look ahead, turned so the way ahead
+   *  points up the screen, and the user low in the visible map (above the bottom sheet on phones)
+   *  so more of the road ahead shows. Without a heading the map keeps its current turn. */
+  follow(p: Point, headingDeg: number | null, inset: { top?: number; bottom: number }, zoom?: number): void {
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const top = inset.top ?? 0;
+    const visible = Math.max(0, this.map.getContainer().clientHeight - top - inset.bottom);
     this.map.easeTo({
       center: [p.lon, p.lat],
       zoom: zoom ?? this.map.getZoom(),
-      padding: { top: 0, left: 0, right: 0, bottom: inset.bottom },
+      bearing: headingDeg ?? this.map.getBearing(),
+      pitch: NAV_PITCH,
+      // The top padding moves the centre down: the user ends up about 70 % down the visible map.
+      padding: { top: top + Math.round(visible * 0.45), left: 0, right: 0, bottom: inset.bottom },
       duration: reduce ? 0 : 600,
     });
   }
 
-  /** Clears the padding follow() leaves on the camera. */
-  resetPadding(): void {
-    this.map.setPadding({ top: 0, left: 0, right: 0, bottom: 0 });
+  /** Back to the flat, north-up map after navigation. */
+  resetCamera(): void {
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    this.map.easeTo({ bearing: 0, pitch: 0, padding: { top: 0, left: 0, right: 0, bottom: 0 }, duration: reduce ? 0 : 600 });
   }
+
+  /** Clears the padding follow() leaves on the camera. */
 
   // --------------------------------------------------------------- heatmap
 
@@ -401,9 +467,28 @@ export class MapView {
   /** Dims the heatmap when it no longer matches the latest request. */
   async setHeatDimmed(dimmed: boolean): Promise<void> {
     await this.ready;
-    const m = this.map;
-    m.setPaintProperty("heat-fill", "fill-opacity", dimmed ? 0.25 : 0.6);
-    m.setPaintProperty("heat-line", "line-opacity", dimmed ? 0.35 : 0.92);
+    this.heatDimmed = dimmed;
+    if (this.heatShown) this.setHeatOpacity(1);
+  }
+
+  /** Each heat layer's opacity property and its full and dimmed values. */
+  private static readonly HEAT_OPACITY: ReadonlyArray<[id: string, prop: string, full: number, dimmed: number]> = [
+    ["heat-fill", "fill-opacity", 0.6, 0.25],
+    ["heat-fill-hatch", "fill-opacity", 0.8, 0.35],
+    ["heat-line", "line-opacity", 0.92, 0.35],
+    ["heat-line-hatch", "line-opacity", 1, 0.4],
+  ];
+  private heatDimmed = false;
+  private heatShown = false;
+  private heatFade = 0;
+
+  /** Sets the heat layers to `share` (0–1) of their normal opacity, easing over HEAT_FADE_MS. */
+  private setHeatOpacity(share: number, instant = false): void {
+    const duration = instant || window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : HEAT_FADE_MS;
+    for (const [id, prop, full, dimmed] of MapView.HEAT_OPACITY) {
+      this.map.setPaintProperty(id, `${prop}-transition`, { duration, delay: 0 });
+      this.map.setPaintProperty(id, prop, share * (this.heatDimmed ? dimmed : full));
+    }
   }
 
   /** Colours always come from the ratio to the WHO guideline, so switching the
@@ -424,12 +509,24 @@ export class MapView {
     (this.map.getSource(HEAT_SOURCE) as maplibregl.GeoJSONSource).setData({ type: "FeatureCollection", features });
   }
 
+  /** Fades the heatmap in or out; hidden layers are switched off once faded, so they cost nothing. */
   async showHeat(visible: boolean): Promise<void> {
     await this.ready;
-    for (const id of ["heat-fill", "heat-fill-hatch", "heat-line", "heat-line-hatch"]) {
-      this.map.setLayoutProperty(id, "visibility", visible ? "visible" : "none");
+    if (visible === this.heatShown) return;
+    this.heatShown = visible;
+    window.clearTimeout(this.heatFade);
+    const setVisibility = (v: "visible" | "none") => {
+      for (const [id] of MapView.HEAT_OPACITY) this.map.setLayoutProperty(id, "visibility", v);
+    };
+    if (visible) {
+      this.setHeatOpacity(0, true);
+      setVisibility("visible");
+      requestAnimationFrame(() => this.heatShown && this.setHeatOpacity(1));
+    } else {
+      this.closePopup();
+      this.setHeatOpacity(0);
+      this.heatFade = window.setTimeout(() => !this.heatShown && setVisibility("none"), HEAT_FADE_MS);
     }
-    if (!visible) this.closePopup();
   }
 
   // ----------------------------------------------------------------- misc

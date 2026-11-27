@@ -147,16 +147,19 @@
           <!-- Result view: comparison (Gambar 3.1b / 3.4) -->
           <section id="result-view" hidden aria-labelledby="result-title"></section>
 
-          <!-- Navigation view: GPS tracking along the chosen route (TI-SE-13) -->
-          <section id="nav-view" hidden aria-label="Navigasi" data-en-aria-label="Navigation"></section>
         </div>
 
         <!-- Credits for the map, its data and the air-quality sources (filled in by main.ts) -->
         <footer class="panel-credits" id="panel-credits"></footer>
       </aside>
+      <!-- Desktop: slides the panel out of the way and back (main.ts) -->
+      <button type="button" class="panel-toggle" id="panel-toggle" aria-controls="panel" aria-expanded="true"></button>
 
       <main class="map-wrap">
         <div id="map" aria-label="Peta rute dan heatmap paparan" data-en-aria-label="Map of routes and exposure heatmap"></div>
+
+        <!-- Navigation view over the map: GPS tracking along the chosen route (TI-SE-13) -->
+        <section id="nav-view" hidden aria-label="Navigasi" data-en-aria-label="Navigation"></section>
 
         <div class="map-buttons">
           <button type="button" class="map-btn" id="heat-toggle" aria-pressed="false" aria-label="Tampilkan heatmap paparan" title="Heatmap paparan" data-en-title="Exposure heatmap"></button>

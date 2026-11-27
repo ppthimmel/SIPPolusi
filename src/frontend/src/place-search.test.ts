@@ -155,4 +155,24 @@ describe("PointNamer", () => {
     await vi.advanceTimersByTimeAsync(0);
     expect(names).toEqual([]);
   });
+
+  it("reports a miss on no place and on a failure, but not on a cancelled lookup", async () => {
+    const { load, calls } = controllable<typeof P, Place | null>();
+    const misses: (typeof P)[] = [];
+    const namer = new PointNamer(load, () => {}, (p) => misses.push(p));
+    namer.name(P);
+    calls[0].resolve(null);
+    await vi.advanceTimersByTimeAsync(0);
+    namer.name(Q);
+    calls[1].reject(new ApiError("network", "x"));
+    await vi.advanceTimersByTimeAsync(0);
+    namer.name(P);
+    namer.cancel(); // the user typed or picked another point: no miss
+    await vi.advanceTimersByTimeAsync(0);
+    namer.name(P);
+    namer.name(Q); // a newer point replaces the lookup: no miss for the old one
+    calls[4].resolve(place("Baru"));
+    await vi.advanceTimersByTimeAsync(0);
+    expect(misses).toEqual([P, Q]);
+  });
 });

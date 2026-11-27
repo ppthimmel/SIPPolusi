@@ -13,6 +13,7 @@ import { clear, h, icon } from "./dom";
 import { describeRouteError, type ErrorField, type ErrorView } from "./errors";
 import { getLang, onLangChange, setLang, tr, translateDom, type Lang } from "./i18n";
 import { renderResult, setRouteVia } from "./results-view";
+import { initTooltips } from "./tooltip";
 import { routeMidpoint, streetFromPlace } from "./route-names";
 import { fmtCoord, fmtNumber } from "./format";
 import { Legend } from "./legend";
@@ -85,6 +86,8 @@ const state = {
   /** Text the user typed that is neither a coordinate pair nor a chosen place. */
   parseError: { origin: false, destination: false } as Record<Which, boolean>,
   touched: { origin: false, destination: false } as Record<Which, boolean>,
+  /** A map point whose name is being looked up: its field shows "Memuat lokasi…" until then. */
+  naming: { origin: null, destination: null } as Record<Which, Point | null>,
   /** Error the Backend attached to one point (e.g. point_not_on_network). */
   serverError: { origin: null, destination: null } as Record<Which, string | null>,
   pick: "origin" as Which | null,
@@ -150,6 +153,7 @@ function renderCredits(): void {
 }
 
 applyStaticText();
+initTooltips();
 $("swap-btn").append(icon("swap", 20));
 $("locate-btn").append(icon("locate", 22));
 heatToggle.append(icon("layers", 22));
@@ -169,12 +173,22 @@ function setPoint(which: Which, p: Point | null, opts: { fill?: boolean; fly?: b
   if (p) state.touched[which] = true;
   searches[which].stop();
   namers[which].cancel();
-  if (opts.fill !== false) fields[which].input.value = opts.label ?? (p ? fmtCoord(p) : "");
+  state.naming[which] = null;
+  // A map point gets its name looked up; meanwhile the field shows "Memuat lokasi…" rather than
+  // coordinates. Points outside the study area are never sent, so they keep their coordinates.
+  const named = !!p && !opts.label && opts.fill !== false && !validatePoint(p, "asal");
+  if (opts.fill !== false) fields[which].input.value = opts.label ?? (p && !named ? fmtCoord(p) : "");
   fields[which].input.title = p ? fmtCoord(p) : "";
   mapView.setPoint(which, p);
   if (p && opts.fly) mapView.flyTo(p);
-  if (p && !opts.label) nameIfUsable(which, p);
+  if (named) startNaming(which, p!);
+  else if (p && !opts.label) nameIfUsable(which, p);
   refreshForm();
+}
+
+function startNaming(which: Which, p: Point): void {
+  state.naming[which] = p;
+  namers[which].name(p);
 }
 
 /** Looks up the name of a map point. Points outside the study area are never sent. */
@@ -182,12 +196,28 @@ function nameIfUsable(which: Which, p: Point): void {
   if (!validatePoint(p, "asal")) namers[which].name(p);
 }
 
-/** A found name replaces the coordinates, unless the user has moved on in the meantime. */
+/** A found name fills the field, unless the user has moved on in the meantime. */
 function showPointName(which: Which, place: Place, p: Point): void {
   const { input } = fields[which];
+  if (state.naming[which] === p) {
+    state.naming[which] = null;
+    state.labels[which] = place.name;
+    input.value = place.name;
+    refreshForm();
+    return;
+  }
+  // A point shown with its coordinates (e.g. after a swap) also takes the name.
   if (state.points[which] !== p || input.value !== fmtCoord(p)) return;
   state.labels[which] = place.name;
   input.value = place.name;
+}
+
+/** No name found: the field shows the point's coordinates after all. */
+function pointNameMissed(which: Which, p: Point): void {
+  if (state.naming[which] !== p) return;
+  state.naming[which] = null;
+  fields[which].input.value = fmtCoord(p);
+  refreshForm();
 }
 
 function choosePlace(which: Which, place: Place): void {
@@ -221,7 +251,11 @@ function refreshForm(): void {
     f.wrap.classList.toggle("is-invalid", !!shown);
     f.input.setAttribute("aria-invalid", String(!!shown));
     f.pick.setAttribute("aria-pressed", String(state.pick === w));
-    f.clear.hidden = f.input.value === "";
+    f.clear.hidden = f.input.value === "" && !state.naming[w];
+    f.wrap.classList.toggle("is-naming", !!state.naming[w]);
+    f.input.placeholder = state.naming[w]
+      ? tr("Memuat lokasi…", "Loading location…")
+      : tr(f.input.getAttribute("data-id-placeholder") ?? "Cari tempat atau klik peta", f.input.dataset.enPlaceholder ?? "Search a place or click the map");
   }
 
   const waiting = state.waitUntil > Date.now();
@@ -263,6 +297,7 @@ function onTyped(which: Which): void {
   state.parseError[which] = isSearch;
   state.points[which] = p;
   state.labels[which] = null;
+  state.naming[which] = null;
   namers[which].cancel();
   fields[which].input.title = "";
   // Still typing a name is not a mistake: the message waits until the field is left.
@@ -288,7 +323,7 @@ for (const w of ["origin", "destination"] as const) {
     () => searches[w].stop(),
   );
   searches[w] = new PlaceSearch(searchPlaces, (view) => combobox.render(view), GEOCODE_DEBOUNCE_MS, GEOCODE_MIN_CHARS);
-  namers[w] = new PointNamer(reversePlace, (place, p) => showPointName(w, place, p));
+  namers[w] = new PointNamer(reversePlace, (place, p) => showPointName(w, place, p), (p) => pointNameMissed(w, p));
 }
 
 for (const w of ["origin", "destination"] as const) {
@@ -355,6 +390,7 @@ $("swap-btn").addEventListener("click", () => {
   state.points = { origin: destination, destination: origin };
   state.labels = { origin: state.labels.destination, destination: state.labels.origin };
   state.parseError = { origin: state.parseError.destination, destination: state.parseError.origin };
+  state.naming = { origin: state.naming.destination, destination: state.naming.origin };
   state.serverError = { origin: null, destination: null };
   fields.origin.input.value = texts[1];
   fields.destination.input.value = texts[0];
@@ -365,7 +401,8 @@ $("swap-btn").addEventListener("click", () => {
   // A lookup cancelled above goes on for the field that holds the point now.
   for (const w of ["origin", "destination"] as const) {
     const p = state.points[w];
-    if (p && !state.labels[w] && fields[w].input.value === fmtCoord(p)) nameIfUsable(w, p);
+    if (p && state.naming[w]) startNaming(w, p);
+    else if (p && !state.labels[w] && fields[w].input.value === fmtCoord(p)) nameIfUsable(w, p);
   }
   refreshForm();
 });
@@ -409,6 +446,12 @@ function showFormView(): void {
 /** Height of the bottom sheet over the map on phones; 0 beside it on wider screens. */
 function panelInset(): { bottom: number } {
   return { bottom: window.matchMedia("(max-width: 899px)").matches ? panel.offsetHeight + 16 : 0 };
+}
+
+/** Space the navigation banner and bottom card cover, so the camera keeps the user between them. */
+function navInset(): { top: number; bottom: number } {
+  const i = nav.view?.insets() ?? { top: 0, bottom: 0 };
+  return { top: i.top, bottom: i.bottom + 16 };
 }
 
 /** A notice shown above the routes, built when shown so it follows the interface language. */
@@ -478,16 +521,10 @@ function showError(err: unknown): void {
   setStatus(() => drawError(describeRouteError(err)));
 }
 
-/** The error's title and message only: the main button below already searches again. */
+/** The error's message only: the main button below already searches again. */
 function drawError(view: ErrorView): void {
-  formStatus.append(
-    h(
-      "div",
-      { class: "notice notice-error", role: "alert" },
-      icon("warn", 18),
-      h("div", {}, h("strong", {}, view.title), h("p", {}, view.message)),
-    ),
-  );
+  // Just the message, as plain text like the field errors: it says what happened on its own.
+  formStatus.append(h("p", { class: "status-error", role: "alert" }, view.message));
 }
 
 function applyServerField(field: ErrorField, message: string): void {
@@ -768,6 +805,8 @@ const nav = {
   /** Replaces the status message until `clearOn` happens. */
   message: null as { make: () => NavMessage; view: NavMessage; clearOn: "fix" | "on_route" | number } | null,
   wakeLock: null as WakeLockSentinel | null,
+  /** The heatmap was on when navigation started: it comes back when navigation ends. */
+  heatWasOn: false,
 };
 
 /** The user's position, shown on the map whenever the browser allows it. Navigation draws its own
@@ -825,6 +864,9 @@ async function startNavigation(role: RouteResult["role"]): Promise<void> {
     return;
   }
   stopShowingLocation(); // navigation's own watch takes over the marker
+  // A clear map while navigating: the heatmap goes away (the button can still bring it back).
+  nav.heatWasOn = state.heat.on;
+  if (state.heat.on) setHeat(false);
   nav.role = role;
   const route = navRoute(r.response);
   const session = new NavigationSession(route, r.request.destination, r.request.mode);
@@ -834,10 +876,12 @@ async function startNavigation(role: RouteResult["role"]): Promise<void> {
   nav.message = null;
   nav.view = new NavView(navViewEl, { onEnd: () => endNavigation(), onRecenter: recenter });
   mapView.closePopup();
-  formView.hidden = true;
-  resultView.hidden = true;
   navViewEl.hidden = false;
-  void mapView.showNavRoute(route.coordinates);
+  // The navigation view lies over the map. On a desktop the panel stays beside it, showing the
+  // trip read-only; on a phone it steps aside so the map fills the screen (style.css).
+  $("app").classList.add("is-navigating");
+  $("panel-body").inert = true;
+  void mapView.showNavRoute(session.routeLine, 0);
   mapView.setPointsDraggable(false);
   setLocateLabel(true);
   renderNav();
@@ -863,7 +907,11 @@ function endNavigation(notice: Notice = null): void {
   // Back to the plain position marker (the last navigation position may be simulated or snapped).
   void mapView.setUser(here.last);
   startShowingLocation();
-  mapView.resetPadding();
+  if (nav.heatWasOn && !state.heat.on) setHeat(true);
+  nav.heatWasOn = false;
+  $("app").classList.remove("is-navigating");
+  $("panel-body").inert = false;
+  mapView.resetCamera();
   mapView.setPointsDraggable(true);
   setLocateLabel(false);
   clear(navViewEl);
@@ -883,7 +931,8 @@ function onFix(fix: Fix): void {
   if (m && (m.clearOn === "fix" || (m.clearOn === "on_route" && snap.status === "tracking"))) nav.message = null;
 
   void mapView.setUser(snap.shown, snap.headingDeg, fix.accuracyM);
-  if (nav.following && snap.shown) mapView.follow(snap.shown, panelInset(), nav.firstFix ? 17 : undefined);
+  void mapView.showNavRoute(session.routeLine, session.progressM);
+  if (nav.following && snap.shown) mapView.follow(snap.shown, snap.headingDeg, navInset(), nav.firstFix ? 17.5 : undefined);
   nav.firstFix = false;
 
   if (snap.status === "arrived") {
@@ -944,7 +993,7 @@ async function reroute(session: NavigationSession, from: Point): Promise<void> {
     const route = navRoute(response);
     session.replaceRoute(route, Date.now());
     nav.source?.routeChanged?.();
-    void mapView.showNavRoute(route.coordinates);
+    void mapView.showNavRoute(session.routeLine, session.progressM);
     if (session.isArrived) {
       stopTracking();
     } else {
@@ -1028,8 +1077,8 @@ function setLocateLabel(navigating: boolean): void {
 
 function recenter(): void {
   nav.following = true;
-  const p = nav.session?.snapshot.shown;
-  if (p) mapView.follow(p, panelInset());
+  const snap = nav.session?.snapshot;
+  if (snap?.shown) mapView.follow(snap.shown, snap.headingDeg, navInset());
   renderNav();
 }
 
@@ -1088,11 +1137,131 @@ function sheetLabel(): void {
   const collapsed = panel.classList.contains("collapsed");
   sheetHandle.setAttribute("aria-label", collapsed ? tr("Perbesar panel", "Expand panel") : tr("Ciutkan panel", "Collapse panel"));
 }
-sheetHandle.addEventListener("click", () => {
-  const collapsed = panel.classList.toggle("collapsed");
+function setSheetCollapsed(collapsed: boolean): void {
+  panel.classList.toggle("collapsed", collapsed);
   sheetHandle.setAttribute("aria-expanded", String(!collapsed));
   sheetLabel();
+}
+sheetHandle.addEventListener("click", () => {
+  if (sheetDrag.justDragged) return; // the release of a drag, not a tap
+  const collapsed = panel.classList.contains("collapsed");
+  if (!window.matchMedia("(max-width: 899px)").matches) return setSheetCollapsed(!collapsed);
+  // A tap slides the sheet the same way a drag does: start where it is, end at the other state.
+  const range = measureSheetRange();
+  animateSheet(collapsed ? range : 0, !collapsed, range);
 });
+
+/** Dragging the sheet by its handle (or the header beside it) opens or closes it, as a phone's
+ *  bottom sheet does: the sheet follows the finger, and on release it settles open or closed by
+ *  how far it went or by a quick flick. Phones only; a tap on the handle still toggles it. */
+const sheetDrag = { startY: 0, lastY: 0, lastT: 0, speed: 0, range: 0, from: 0, active: false, moved: false, justDragged: false };
+const SHEET_DRAG_START_PX = 6;
+const SHEET_FLICK_PX_PER_MS = 0.5;
+
+/** How far the sheet travels between open and closed: its body and credits when open. Leaves the
+ *  sheet open (class removed) so they can be measured; animateSheet settles the class. */
+function measureSheetRange(): number {
+  panel.classList.remove("collapsed");
+  return $("panel-body").offsetHeight + $("panel-credits").offsetHeight;
+}
+
+/** Slides the sheet from `from` px down to open (0) or closed (`range`), then sets the state. */
+function animateSheet(from: number, close: boolean, range: number): void {
+  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  panel.style.transition = "none";
+  panel.style.transform = `translateY(${from}px)`;
+  void panel.offsetHeight; // apply the start position before the transition starts
+  panel.style.transition = reduce ? "none" : "transform var(--dur) var(--ease-out)";
+  panel.style.transform = `translateY(${close ? range : 0}px)`;
+  const settle = () => {
+    panel.style.transition = "none";
+    panel.style.transform = "";
+    setSheetCollapsed(close);
+    requestAnimationFrame(() => (panel.style.transition = ""));
+  };
+  // A timer rather than transitionend: when the sheet is already where it settles (dragged all the
+  // way), no transition runs and transitionend would never come.
+  if (reduce) settle();
+  else window.setTimeout(settle, 230);
+}
+
+function sheetOffset(): number {
+  return Number.parseFloat(panel.style.transform.replace(/[^\d.-]/g, "")) || 0;
+}
+
+function onSheetPointerDown(e: PointerEvent): void {
+  if (!window.matchMedia("(max-width: 899px)").matches || !e.isPrimary || e.button !== 0) return;
+  // The header's own buttons (language) stay buttons.
+  if (e.currentTarget !== sheetHandle && (e.target as Element).closest("button, a, input")) return;
+  const collapsed = panel.classList.contains("collapsed");
+  sheetDrag.range = measureSheetRange();
+  sheetDrag.from = collapsed ? sheetDrag.range : 0;
+  if (collapsed) panel.style.transform = `translateY(${sheetDrag.from}px)`;
+  Object.assign(sheetDrag, { startY: e.clientY, lastY: e.clientY, lastT: e.timeStamp, speed: 0, active: true, moved: false });
+  panel.style.transition = "none";
+  try {
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId); // keep the drag when the finger leaves the grip
+  } catch {
+    // the pointer is no longer active: the drag still works while it stays on the grip
+  }
+}
+
+function onSheetPointerMove(e: PointerEvent): void {
+  if (!sheetDrag.active) return;
+  const dy = e.clientY - sheetDrag.startY;
+  if (!sheetDrag.moved && Math.abs(dy) < SHEET_DRAG_START_PX) return;
+  sheetDrag.moved = true;
+  const dt = e.timeStamp - sheetDrag.lastT;
+  if (dt > 0) sheetDrag.speed = (e.clientY - sheetDrag.lastY) / dt;
+  sheetDrag.lastY = e.clientY;
+  sheetDrag.lastT = e.timeStamp;
+  const offset = Math.min(Math.max(sheetDrag.from + dy, 0), sheetDrag.range);
+  panel.style.transform = `translateY(${offset}px)`;
+}
+
+function onSheetPointerUp(): void {
+  if (!sheetDrag.active) return;
+  sheetDrag.active = false;
+  const wasCollapsed = sheetDrag.from > 0;
+  if (!sheetDrag.moved) {
+    // A tap: put things back as they were and let the click handler toggle.
+    panel.style.transition = "";
+    panel.style.transform = "";
+    if (wasCollapsed) panel.classList.add("collapsed");
+    return;
+  }
+  sheetDrag.justDragged = true;
+  window.setTimeout(() => (sheetDrag.justDragged = false), 0);
+  const offset = sheetOffset();
+  const close =
+    sheetDrag.speed > SHEET_FLICK_PX_PER_MS ? true : sheetDrag.speed < -SHEET_FLICK_PX_PER_MS ? false : offset > sheetDrag.range / 2;
+  animateSheet(offset, close, sheetDrag.range);
+}
+
+for (const grip of [sheetHandle, panel.querySelector<HTMLElement>(".brand")!]) {
+  grip.addEventListener("pointerdown", onSheetPointerDown);
+  grip.addEventListener("pointermove", onSheetPointerMove);
+  grip.addEventListener("pointerup", onSheetPointerUp);
+  grip.addEventListener("pointercancel", onSheetPointerUp);
+}
+
+// ------------------------------------------------------------- side panel
+// Desktop: a tab on the panel's edge slides it out so the map fills the window, and back.
+const panelToggle = $<HTMLButtonElement>("panel-toggle");
+panelToggle.append(icon("back", 18));
+function panelToggleLabel(): void {
+  const collapsed = $("app").classList.contains("panel-collapsed");
+  const label = collapsed ? tr("Tampilkan panel", "Show panel") : tr("Sembunyikan panel", "Hide panel");
+  panelToggle.setAttribute("aria-label", label);
+  panelToggle.title = label;
+}
+panelToggle.addEventListener("click", () => {
+  const collapsed = $("app").classList.toggle("panel-collapsed");
+  panelToggle.setAttribute("aria-expanded", String(!collapsed));
+  panel.inert = collapsed; // out of view: out of the tab order too
+  panelToggleLabel();
+});
+panelToggleLabel();
 
 // ------------------------------------------------------------------ language
 for (const b of Array.from(document.querySelectorAll<HTMLButtonElement>(".lang-btn"))) {
@@ -1103,6 +1272,7 @@ for (const b of Array.from(document.querySelectorAll<HTMLButtonElement>(".lang-b
 onLangChange(() => {
   applyStaticText();
   sheetLabel();
+  panelToggleLabel();
   setLocateLabel(!!nav.session);
   heatToggle.setAttribute(
     "aria-label",

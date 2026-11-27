@@ -61,11 +61,11 @@ Semua di [`NAV_LIMITS`](../../src/frontend/src/navigation.ts).
 
 | Hal | Perlakuan |
 |---|---|
-| Pelacakan | Seluruhnya di perangkat. Posisi tidak dikirim selama pengguna berada di rute |
+| Pelacakan | Seluruhnya di perangkat. Posisi tidak dikirim selama pengguna berada di rute. Di luar navigasi, posisi juga dipantau untuk titik "lokasi saya" di peta (sejak frontend-enhancement); posisi itu pun tidak dikirim |
 | Heatmap | Selama navigasi, `GET /v1/exposure-surface` memakai kotak rute (+±330 m), bukan tampilan kamera yang mengikuti pengguna; gerakan kamera tidak memicu permintaan. Diperbarui hanya setelah rute ulang |
 | Rute ulang | Satu-satunya saat posisi keluar perangkat: sebagai `origin` di body `POST /v1/routes`, sama seperti pencarian rute biasa. Gateway dan Cache API hanya mencatat path; pemeriksaan E2E-11 memastikan log Cache API dan gateway tanpa koordinat perjalanan |
-| Penyimpanan | Tidak ada: tanpa `localStorage`, tanpa riwayat, tanpa log konsol. Posisi terakhir hilang saat navigasi diakhiri |
-| Pemberitahuan | Panel navigasi menulis bahwa posisi diproses di perangkat dan server hanya menerimanya saat rute dihitung ulang |
+| Penyimpanan | Tidak ada: tanpa `localStorage`, tanpa riwayat, tanpa log konsol. Posisi terakhir hanya ada di memori halaman untuk titik "lokasi saya", dan hilang saat halaman ditutup |
+| Pemberitahuan | Catatan "posisi diproses di perangkat …" di panel navigasi dihapus pada [frontend-enhancement](../frontend-enhancement/README.md#yang-dihapus-dan-menyentuh-kebutuhan-desain). **Perlu keputusan tim** bila PNF-06 mewajibkan pemberitahuan ini di layar |
 | Layar | Wake Lock API menjaga layar tetap menyala selama navigasi bila peramban mendukungnya; tanpa itu navigasi tetap berjalan |
 
 ## Keadaan yang diuji
@@ -92,7 +92,7 @@ Semua di [`NAV_LIMITS`](../../src/frontend/src/navigation.ts).
 | Posisi tidak tersedia / timeout | Navigasi tetap berjalan dengan pesan; rute dan tombol akhiri tetap ada | Browser |
 | Peramban tanpa Geolocation API, atau halaman bukan HTTPS | Navigasi tidak dimulai, pesan menyebut penyebabnya | Unit |
 | Tiba di tujuan | "Anda telah tiba", pelacakan berhenti, tombol "Selesai" kembali ke hasil | Unit, Browser, [`05`](05-tiba.jpg) |
-| Akhiri navigasi | Pelacakan berhenti, penanda posisi hilang, hasil rute tampil kembali | Browser |
+| Akhiri navigasi | Pelacakan navigasi berhenti, penanda kembali menjadi titik "lokasi saya", peta kembali datar menghadap utara, hasil rute tampil kembali | Browser |
 | Peta digeser tangan | Kamera berhenti mengikuti; tombol "Ikuti posisi" (juga tombol lokasi di peta) mengembalikannya | Browser |
 | Build produksi | Simulasi tidak ada di bundle | `vite build`, dicari di `dist/` |
 
@@ -132,7 +132,10 @@ Tempat yang dikenal: `monas`, `bundaran-hi`, `sudirman`, `blok-m`, `kota`, atau 
   fix pertama memilih lintasan yang lebih awal (jalur berangkat). Karena rute dihitung dari posisi pengguna, hal
   ini jarang; perlu dilihat pada uji lapangan.
 - **Tanpa nama jalan dan suara.** Kontrak rute tidak memuat nama jalan, dan petunjuk hanya tertulis.
-- **Peta menghadap utara.** Kamera mengikuti posisi tanpa memutar peta; arah ditunjukkan oleh penanda.
+- **Kamera navigasi.** Selama navigasi kamera dimiringkan 55°, peta diputar searah perjalanan (arah GPS bila
+  bergerak, selain itu arah rute di posisi pengguna), dan pengguna ditempatkan di bagian bawah peta agar jalan di
+  depan lebih terlihat. Setelah navigasi berakhir peta kembali datar dan menghadap utara. Arah GPS yang melompat-
+  lompat di antara gedung tinggi dapat membuat peta ikut berputar; perlu dilihat pada uji lapangan.
 - **Halaman harus terbuka.** Peramban menghentikan `watchPosition` saat halaman di latar belakang atau layar mati;
   navigasi berlanjut saat halaman dibuka lagi.
 - **HTTPS.** Geolocation hanya tersedia lewat HTTPS (atau `localhost`), seperti deployment Railway.

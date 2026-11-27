@@ -3,6 +3,7 @@ import { clear, h } from "./dom";
 import { EXPOSURE_CLASSES, EXPOSURE_STOPS, HEAT_LAYER_LABELS } from "./exposure";
 import { fmtNumber } from "./format";
 import { tr } from "./i18n";
+import { openIndexInfo } from "./index-info";
 import type { HeatLayer } from "./types";
 
 export type HeatStatus = "idle" | "loading" | "ready" | "error";
@@ -44,8 +45,7 @@ export class Legend {
   private status = h("p", { class: "heat-status", role: "status" });
   private retry = h("button", { type: "button", class: "link-btn", hidden: true });
   private scale = h("div", { class: "heat-scale-wrap" });
-  private aboutSummary = h("summary", {});
-  private indexNote = h("p", { class: "legend-note" });
+  private about = h("button", { type: "button", class: "link-btn legend-about", "aria-haspopup": "dialog", onclick: openIndexInfo });
 
   private toggle: HTMLButtonElement;
   private lastHeat: HeatLegendState | null = null;
@@ -66,7 +66,7 @@ export class Legend {
       this.status,
       this.retry,
       this.scale,
-      h("details", { class: "legend-about" }, this.aboutSummary, this.indexNote),
+      this.about,
     );
     // Narrow screens: the legend folds into one button so it does not cover the route.
     this.toggle = h("button", { type: "button", class: "legend-toggle", "aria-expanded": "false", onclick: () => this.expand(this.root.classList.contains("is-collapsed")) });
@@ -77,16 +77,13 @@ export class Legend {
 
   /** Rewrites every text in the current interface language. */
   relabel(): void {
-    this.toggle.textContent = tr("Legenda peta", "Map legend");
+    // On phones the toggle is the legend's title (the inner one is hidden there, style.css).
+    this.toggle.textContent = tr("Kualitas udara", "Air quality");
     this.heatTitle.textContent = tr("Kualitas udara", "Air quality");
     this.layerGroup.setAttribute("aria-label", tr("Lapisan heatmap", "Heatmap layer"));
     for (const [layer, b] of this.layerButtons) b.textContent = HEAT_LAYER_LABELS[layer];
     this.retry.textContent = tr("Coba lagi", "Try again");
-    this.aboutSummary.textContent = tr("Tentang indeks", "About the index");
-    this.indexNote.textContent = tr(
-      `Indeks = rata-rata PM2.5 dan NO2 setelah masing-masing dibagi pedoman WHO (${WHO_GUIDELINE.pm25} dan ${WHO_GUIDELINE.no2} µg/m³). Nilai ${fmtNumber(1, 1)} berarti tepat pada pedoman.`,
-      `Index = mean of PM2.5 and NO2, each divided by its WHO guideline (${WHO_GUIDELINE.pm25} and ${WHO_GUIDELINE.no2} µg/m³). A value of ${fmtNumber(1, 1)} means exactly at the guideline.`,
-    );
+    this.about.textContent = tr("Tentang indeks", "About the index");
     if (this.lastHeat) this.setHeat(this.lastHeat);
   }
 

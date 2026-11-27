@@ -1,23 +1,26 @@
 /* Visual language modelled on today's map apps (Material 3): white surfaces over the map,
    Roboto, one blue for actions and the chosen route, tonal containers instead of heavy boxes. */
 :root {
-  /* Palette: warm paper and forest green. The --blue* names hold the action colour. */
-  --bg: #f3f0e8;
-  --surface: #fbfaf6;
-  --surface-2: #ebe7da;
-  --surface-3: #e3dfd2;
-  --ink: #17211e;
-  --muted: #3f4944;
-  --subtle: #566059;
-  --line: #d9d4c6;
-  --outline: #cbc4b2;
-  --blue: #0b6b50;
-  --blue-dark: #08523d;
-  --blue-soft: #dcebe4;
-  --blue-softer: #e9f2ed;
-  --green: #0b6b50;
-  --green-dark: #08523d;
-  --green-soft: #dcebe4;
+  /* Palette taken from the basemap (OpenFreeMap "liberty"), so panel and map read as one surface:
+     its background, building and road-edge greys for the neutrals, its label greys for text, and
+     its park green for the accent, darkened for contrast (≥ 4.5:1 on every surface, 6:1 for white
+     text on buttons). The --blue* names hold the action colour. */
+  --bg: #f8f4f0;          /* map background */
+  --surface: #fdfcfa;
+  --surface-2: #ece8e2;   /* between background and buildings */
+  --surface-3: #e2ded7;
+  --ink: #222522;
+  --muted: #4a4d4a;
+  --subtle: #666666;      /* map label grey */
+  --line: #e2ddd6;
+  --outline: #cfcdca;     /* map road edge */
+  --blue: #2b6f2f;        /* park green, darkened */
+  --blue-dark: #1f5623;
+  --blue-soft: #d8e8c8;   /* map park fill */
+  --blue-softer: #e8f1e0;
+  --green: #2b6f2f;
+  --green-dark: #1f5623;
+  --green-soft: #d8e8c8;
   --amber-bg: #fdf1c8;
   --amber-ink: #5e4200;
   --red: #8f2a22;
@@ -27,6 +30,10 @@
   --elev-1: 0 1px 2px rgba(23, 33, 30, 0.2), 0 1px 3px 1px rgba(23, 33, 30, 0.1);
   --elev-2: 0 1px 2px rgba(23, 33, 30, 0.2), 0 2px 6px 2px rgba(23, 33, 30, 0.12);
   --ease-out: cubic-bezier(0.2, 0, 0, 1);
+  /* Motion: one set of durations for the whole app. */
+  --dur-fast: 0.15s;
+  --dur: 0.22s;
+  --dur-slow: 0.32s;
   --font: "Roboto", system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
   --mono: "Roboto Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
   color-scheme: light;
@@ -57,7 +64,7 @@ button:disabled { cursor: not-allowed; }
 /* ------------------------------------------------------------------ layout */
 .app { display: flex; height: 100dvh; width: 100%; overflow: hidden; }
 .panel {
-  width: 408px; flex: none; display: flex; flex-direction: column; background: var(--bg);
+  width: 408px; flex: none; display: flex; flex-direction: column; background: var(--surface); /* same white as the cards over the map */
   border-right: 1px solid var(--line); box-shadow: 0 0 20px rgba(23, 33, 30, 0.12); z-index: 5; min-height: 0;
 }
 .map-wrap { position: relative; flex: 1; min-width: 0; }
@@ -96,6 +103,27 @@ button:disabled { cursor: not-allowed; }
   scrollbar-color: var(--outline) transparent;
 }
 
+.panel-toggle { display: none; }
+/* Desktop: the panel's right corners are rounded and the map runs a little under the panel, so
+   the map (not the page background) shows in the corners. The navigation overlay keeps its gap.
+   The tab on the panel's edge slides the panel out (.panel-collapsed) and back. */
+@media (min-width: 900px) {
+  .app { position: relative; }
+  .panel { position: relative; border-radius: 0 18px 18px 0; overflow: hidden; transition: margin-left var(--dur-slow) var(--ease-out); }
+  .app.panel-collapsed .panel { margin-left: -408px; }
+  .panel-toggle {
+    /* Level with the walk/bike pills (header + form padding + half a pill, minus half the tab). */
+    display: grid; place-items: center; position: absolute; z-index: 6; top: 69px; left: 408px; width: 26px; height: 56px;
+    padding: 0; border: 0; border-radius: 0 10px 10px 0; background: var(--surface); color: var(--muted);
+    box-shadow: 4px 0 8px rgba(23, 33, 30, 0.12); cursor: pointer; transition: left var(--dur-slow) var(--ease-out), background-color var(--dur-fast) ease;
+  }
+  .panel-toggle:hover { background: #fff; color: var(--ink); }
+  .panel-toggle .icon { transition: transform var(--dur-slow) var(--ease-out); }
+  .app.panel-collapsed .panel-toggle { left: 0; }
+  .app.panel-collapsed .panel-toggle .icon { transform: rotate(180deg); }
+  .map-wrap { margin-left: -18px; }
+  #nav-view .nav-banner, #nav-view .nav-sheet { left: 30px; }
+}
 @media (max-width: 899px) {
   .app { display: block; position: relative; }
   .map-wrap { position: absolute; inset: 0; }
@@ -108,10 +136,12 @@ button:disabled { cursor: not-allowed; }
   }
   .sheet-handle::after {
     content: ""; position: absolute; left: 50%; top: 10px; width: 32px; height: 4px; margin-left: -16px;
-    border-radius: 2px; background: #b9b3a2;
+    border-radius: 2px; background: var(--outline);
   }
   .brand { padding-top: 2px; }
-  .panel.collapsed .panel-body { display: none; }
+  .panel.collapsed .panel-body, .panel.collapsed .panel-credits { display: none; }
+  /* The sheet is dragged by its handle and header (main.ts): no page scroll while doing so. */
+  .sheet-handle, .brand { touch-action: none; cursor: grab; }
 }
 
 /* ------------------------------------------------------------------- form */
@@ -131,7 +161,7 @@ button:disabled { cursor: not-allowed; }
   background: var(--surface); border: 1px solid var(--outline); border-radius: var(--radius); padding: 0 4px 0 10px;
   transition: border-color 0.15s, box-shadow 0.15s;
 }
-.field:hover { border-color: #a79f8a; }
+.field:hover { border-color: #b5b1ab; }
 .field:focus-within { z-index: 3; border-color: var(--blue); box-shadow: inset 0 0 0 1px var(--blue); }
 .field.is-invalid { border-color: var(--red); box-shadow: inset 0 0 0 1px var(--red); }
 /* The label shows as the point's symbol; its words stay for screen readers. */
@@ -150,7 +180,7 @@ button:disabled { cursor: not-allowed; }
   flex: 1; min-width: 0; border: 0; background: transparent; padding: 0; font-size: 15px; min-height: 46px;
 }
 .field input:focus-visible { outline: none; }
-.field input::placeholder { color: #7b857e; }
+.field input::placeholder { color: #807d79; }
 .field-error { grid-column: 2; margin: -4px 0 8px; font-size: 12px; color: var(--red); }
 
 .place-menu {
@@ -166,7 +196,6 @@ button:disabled { cursor: not-allowed; }
 .place-name { font-size: 14px; }
 .place-description { font-size: 12px; color: var(--subtle); }
 .place-status { margin: 0; padding: 14px 16px; font-size: 13px; color: var(--muted); }
-.place-notice { margin: 4px 0 8px; font-size: 12px; line-height: 1.5; color: var(--subtle); }
 
 .pick-btn, .icon-btn, .map-btn {
   display: inline-grid; place-items: center; min-width: 40px; min-height: 40px; border-radius: 50%;
@@ -234,7 +263,7 @@ button:disabled { cursor: not-allowed; }
 }
 .primary { background: var(--blue); color: #fff; margin-top: 18px; }
 .primary:hover:not(:disabled) { background: var(--blue-dark); box-shadow: var(--elev-1); }
-.primary:disabled { background: #a9b9b2; color: #f3f6f4; }
+.primary:disabled { background: #b3c1ae; color: #f6f8f3; }
 /* Searching: disabled look, with a white spinner in place of the label. */
 .primary.is-busy { cursor: progress; }
 .primary .spinner { border-color: rgba(255, 255, 255, 0.45); border-top-color: #fff; }
@@ -252,6 +281,7 @@ button:disabled { cursor: not-allowed; }
 .status { margin-top: 14px; }
 .status:empty, .status:has(> .visually-hidden:only-child) { margin-top: 0; }
 .status-note { margin: 0; font-size: 13px; color: var(--muted); }
+.status-error { margin: 0; font-size: 13px; line-height: 1.45; color: var(--red); }
 .loading { display: flex; align-items: center; gap: 12px; color: var(--muted); }
 .spinner {
   width: 20px; height: 20px; border-radius: 50%; border: 2.5px solid var(--blue-soft); border-top-color: var(--blue);
@@ -321,12 +351,6 @@ button:disabled { cursor: not-allowed; }
   font-size: 12px; font-weight: 500; background: var(--surface-2); color: var(--muted);
 }
 .chip-fallback { background: #e1e6ea; color: #26343b; }
-.metrics { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 0.8fr) minmax(0, 1.3fr); gap: 8px; margin: 0; }
-.metric dt { font-size: 12px; color: var(--subtle); }
-.metric dd { margin: 0; font-size: 18px; white-space: nowrap; }
-.metric:first-child dd:not(.unit) { color: var(--green); }
-.metric dd.unit { font-size: 11px; color: var(--subtle); }
-@media (max-width: 899px) { .metric dd { font-size: 16px; } }
 
 
 .details { margin: 14px 0 4px; font-size: 13px; }
@@ -334,33 +358,82 @@ button:disabled { cursor: not-allowed; }
 .detail-list { display: grid; grid-template-columns: 40% 60%; gap: 6px 8px; margin: 6px 0; }
 .detail-list dt { color: var(--subtle); }
 .detail-list dd { margin: 0; word-break: break-word; }
-.detail-copyright { margin: 8px 0 0; color: var(--subtle); font-size: 12px; }
-.detail-copyright a { color: inherit; }
 .route-extra .nav-start { display: inline-flex; align-items: center; justify-content: center; gap: 6px; width: auto; min-height: 40px; padding: 0 18px; margin-top: 0; }
 
 /* -------------------------------------------------------------- navigation */
+/* While navigating the map fills the screen and the navigation view lies over it, as in a
+   directions app: instruction banner at the top, trip card with the exit button at the bottom. */
+.app.is-navigating .legend { display: none; }
+/* Desktop: the panel stays, showing the trip; starting another navigation is not offered there. */
+.app.is-navigating .route-extra { display: none; }
+@media (max-width: 899px) {
+  .app.is-navigating .panel { display: none; }
+  .app.is-navigating .map-buttons { top: auto; bottom: 128px; }
+}
+#nav-view { position: absolute; inset: 0; z-index: 4; pointer-events: none; }
+#nav-view[hidden] { display: none; }
+#nav-view button { pointer-events: auto; }
+
+.nav-banner { position: absolute; top: 12px; left: 12px; right: 12px; max-width: 460px; z-index: 1; display: grid; justify-items: start; }
 .nav-instruction {
-  display: flex; align-items: center; gap: 16px; color: #fff; border-radius: var(--radius-lg);
-  padding: 16px 18px; margin: 4px 0 12px; background: var(--green); box-shadow: var(--elev-1);
+  justify-self: stretch; display: flex; align-items: center; gap: 18px; padding: 18px 20px; color: #fff;
+  background: var(--green-dark); border-radius: 20px; box-shadow: var(--elev-2);
 }
 .nav-turn-icon { display: inline-flex; flex: none; }
-.nav-action { display: block; font-size: 22px; font-weight: 500; line-height: 1.2; }
-.nav-when { display: block; font-size: 15px; opacity: 0.9; }
+.nav-action { display: block; font-size: 24px; font-weight: 500; line-height: 1.2; }
+.nav-when { display: block; margin-top: 2px; font-size: 15px; opacity: 0.9; }
 .nav-when:empty { display: none; }
-.nav-metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); margin-bottom: 4px; }
-.nav-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
-.nav-actions .secondary { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
-.nav-actions .nav-end { margin-top: 0; }
+/* "Then …": a tab hanging under the banner. */
+.nav-then {
+  position: relative; z-index: -1; display: inline-flex; align-items: center; gap: 8px; margin-top: -12px;
+  padding: 18px 18px 10px; border-radius: 0 0 16px 16px; background: var(--green-dark); color: #fff;
+  font-size: 15px; font-weight: 500; box-shadow: var(--elev-1);
+}
+.nav-then[hidden] { display: none; }
+.nav-then-icon { display: inline-flex; }
+.nav-status:empty { display: none; }
+.nav-pill {
+  display: inline-flex; align-items: center; gap: 6px; margin-top: 8px; padding: 6px 12px; border-radius: 999px;
+  background: var(--surface); box-shadow: var(--elev-1); font-size: 13px; font-weight: 500; color: var(--ink);
+}
+.nav-pill-info .icon { color: var(--subtle); }
+.nav-pill-warn .icon { color: #9a6a00; }
+.nav-pill-error .icon { color: var(--red); }
+.nav-pill-done .icon { color: var(--green); }
+
+.nav-sheet { position: absolute; left: 12px; right: 12px; bottom: 12px; max-width: 460px; display: grid; gap: 10px; justify-items: start; }
+.nav-recenter {
+  display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 0 16px; border: 0; border-radius: 999px;
+  background: var(--surface); color: var(--green-dark); font: 500 14px var(--font); box-shadow: var(--elev-1); cursor: pointer;
+}
+.nav-recenter[hidden] { display: none; }
+.nav-sheet-card {
+  justify-self: stretch; display: flex; align-items: center; gap: 16px; padding: 16px 16px 16px 22px;
+  background: var(--surface); border-radius: 20px; box-shadow: var(--elev-2);
+}
+.nav-trip { display: grid; flex: 1; min-width: 0; }
+.nav-time { font-size: 28px; font-weight: 500; line-height: 1.1; color: var(--ink); }
+.nav-summary { margin-top: 2px; font-size: 15px; color: var(--subtle); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nav-end {
+  flex: none; min-height: 52px; padding: 0 26px; border: 0; border-radius: 999px; background: #c5221f; color: #fff;
+  font: 500 17px var(--font); cursor: pointer;
+}
+.nav-end:hover { background: #a51c19; }
+.nav-end.is-done { background: var(--green); }
+.nav-end.is-done:hover { background: var(--green-dark); }
+.nav-end:focus-visible, .nav-recenter:focus-visible { outline: 3px solid #0f5fd1; outline-offset: 2px; }
 
 .marker-user { position: relative; width: 22px; height: 22px; }
 .marker-user::after {
   content: ""; position: absolute; inset: 0; border-radius: 50%; background: #1a73e8; border: 3px solid #fff;
   box-shadow: 0 1px 6px rgba(0, 0, 0, 0.45);
 }
-/* A wedge pointing the way the user is heading; the marker itself is rotated. */
+/* A white wedge pointing the way the user is heading (the marker itself is rotated); the shadow
+   keeps it visible on the light map and on the route line. */
 .marker-user-heading {
   display: none; position: absolute; left: 50%; top: -13px; width: 0; height: 0; transform: translateX(-50%);
-  border-left: 8px solid transparent; border-right: 8px solid transparent; border-bottom: 14px solid #1a73e8;
+  border-left: 8px solid transparent; border-right: 8px solid transparent; border-bottom: 14px solid #fff;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.55));
 }
 .marker-user.has-heading .marker-user-heading { display: block; }
 
@@ -412,12 +485,85 @@ button:disabled { cursor: not-allowed; }
 .scale-classes span { position: absolute; top: 0; text-align: center; padding: 0 1px; }
 /* Map key: the grey and striped areas side by side. */
 /* The index explanation, one tap away. */
-.legend-about { margin-top: 8px; }
-.legend-about summary { cursor: pointer; min-height: 28px; display: flex; align-items: center; font-weight: 500; color: var(--blue); list-style: none; }
-.legend-about summary::-webkit-details-marker { display: none; }
-.legend-about summary::after { content: "▾"; margin-left: 6px; font-size: 11px; }
-.legend-about[open] summary::after { content: "▴"; }
-.legend-note { margin: 4px 0 0; color: var(--subtle); line-height: 1.45; }
+.legend-about { margin-top: 0; min-height: 28px; font-weight: 500; }
+
+/* Tooltips (tooltip.ts) in place of the browser's own: dark ink, the app font, a short fade. */
+.tooltip {
+  position: fixed; z-index: 1000; max-width: 240px; padding: 6px 10px; border-radius: 6px;
+  background: var(--ink); color: #fff; font: 500 12px/1.35 var(--font); box-shadow: var(--elev-1);
+  pointer-events: none; animation: tooltip-in 0.12s ease-out;
+}
+.tooltip[hidden] { display: none; }
+@keyframes tooltip-in { from { opacity: 0; transform: translateY(2px); } }
+@media (prefers-reduced-motion: reduce) { .tooltip { animation: none; } }
+
+/* "Tentang indeks" popup (index-info.ts): a native modal dialog. */
+.info-dialog {
+  width: min(560px, calc(100% - 32px)); max-height: min(85dvh, 760px); padding: 0; border: 0;
+  border-radius: var(--radius-lg); background: var(--surface); color: var(--ink); box-shadow: var(--elev-2);
+}
+.info-dialog[open] { display: flex; flex-direction: column; }
+.info-dialog::backdrop { background: rgba(23, 33, 30, 0.45); }
+.info-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 12px 12px 20px; border-bottom: 1px solid var(--line); }
+.info-head h2 { margin: 0; font-size: 17px; font-weight: 500; }
+.info-body { overflow-y: auto; padding: 4px 20px 20px; font-size: 14px; line-height: 1.55; color: var(--muted); scrollbar-width: thin; scrollbar-color: var(--outline) transparent; }
+.info-body h3:first-child { margin-top: 14px; }
+.info-body h3 { margin: 20px 0 8px; font-size: 15px; font-weight: 500; color: var(--ink); }
+.info-body h4 { margin: 0 0 4px; font-size: 14px; font-weight: 500; color: var(--ink); }
+.info-body p { margin: 0 0 8px; }
+.info-body a { color: var(--blue); }
+/* What the colours mean: swatch, name and range, then meaning and what to do. */
+.info-classes { list-style: none; margin: 0 0 8px; padding: 0; display: grid; gap: 8px; }
+.info-class { display: flex; align-items: flex-start; gap: 12px; }
+.info-swatch { flex: none; width: 28px; height: 28px; border-radius: 8px; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.08); }
+.info-class-text { display: grid; gap: 1px; font-size: 13px; line-height: 1.4; }
+.info-class-name { font-size: 14px; font-weight: 500; color: var(--ink); }
+.info-class-range { margin-left: 4px; font-size: 12px; font-weight: 400; color: var(--subtle); }
+/* PM2.5 and NO2 side by side; stacked on narrow screens. */
+.info-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 8px; }
+.info-card { font-size: 13px; line-height: 1.45; }
+.info-card p { margin: 0; }
+.info-card .info-card-from { margin-top: 6px; color: var(--subtle); }
+@media (max-width: 480px) { .info-cards { grid-template-columns: 1fr; } }
+/* How Combined is worked out: the example as bars against the WHO limit (index-info.ts). */
+.info-chart { margin: 4px 0 14px; }
+.info-bars { position: relative; display: grid; gap: 6px; --label: 74px; --value: 34px; }
+.info-bar { display: grid; grid-template-columns: var(--label) 1fr var(--value); align-items: center; gap: 10px; font-size: 13px; }
+.info-bar-label { color: var(--muted); font-weight: 500; }
+.info-bar-track { position: relative; height: 12px; border-radius: 6px; background: rgba(23, 33, 30, 0.07); }
+.info-bar-fill { position: absolute; inset: 0 auto 0 0; border-radius: 6px; animation: bar-grow 0.6s var(--ease-out) both; transform-origin: left; }
+.info-bar-value { text-align: right; color: var(--ink); font-size: 12px; }
+.info-bar.is-combined .info-bar-label, .info-bar.is-combined .info-bar-value { color: var(--ink); font-weight: 500; }
+.info-bar.is-combined .info-bar-track { height: 16px; border-radius: 8px; }
+.info-bar.is-combined .info-bar-fill { border-radius: 8px; animation-delay: 0.25s; }
+.info-merge { margin-left: calc(var(--label) + 10px); font-size: 11px; color: var(--subtle); }
+/* The WHO limit: a dashed line through the bars at 1×, labelled under them. */
+.info-bars::before {
+  content: ""; position: absolute; top: -4px; bottom: 19px;
+  left: calc(var(--label) + 10px + (100% - var(--label) - var(--value) - 20px) * var(--who-ratio, 0.3333));
+  border-left: 1.5px dashed var(--ink); opacity: 0.55;
+}
+.info-who {
+  justify-self: start; margin-left: calc(var(--label) + 10px + (100% - var(--label) - var(--value) - 20px) * var(--who-ratio, 0.3333));
+  transform: translateX(-50%); font-size: 11px; color: var(--muted); white-space: nowrap;
+}
+@keyframes bar-grow { from { transform: scaleX(0); } }
+
+.info-explain { font-size: 14px; line-height: 1.6; }
+/* The Combined formula, typeset with stacked fractions. */
+.info-formula {
+  display: flex; align-items: center; justify-content: center; gap: 8px; margin: 4px 0 6px; padding: 8px 0;
+  color: var(--ink); font-size: 15px; white-space: nowrap; overflow-x: auto;
+}
+.formula-name { font-weight: 500; }
+.formula-op { margin: 0 8px; }
+.frac { display: inline-flex; flex-direction: column; align-items: stretch; text-align: center; vertical-align: middle; }
+.frac-top { display: flex; align-items: center; justify-content: center; padding: 0 4px 3px; border-bottom: 1.5px solid currentColor; }
+.frac-bottom { padding: 3px 4px 0; }
+.frac .frac { font-size: 0.92em; }
+.info-formula-note { font-size: 12px; color: var(--subtle); text-align: center; }
+.info-sources { margin: 16px 0 0 !important; font-size: 11.5px; line-height: 1.5; color: var(--subtle); }
+.info-sources a { color: inherit !important; }
 
 .legend-toggle { display: none; }
 
@@ -431,15 +577,66 @@ button:disabled { cursor: not-allowed; }
   .legend-toggle[aria-expanded="true"]::after { content: "▴"; }
   .legend.is-collapsed { right: auto; padding-top: 2px; padding-bottom: 2px; border-radius: 999px; }
   .legend.is-collapsed .legend-section { display: none; }
+  .legend .legend-head { display: none; } /* the toggle above already says "Kualitas udara" */
+  .legend:not(.is-collapsed) .legend-toggle { margin-bottom: 10px; }
 }
 
 .maplibregl-popup-content { border-radius: var(--radius-lg); padding: 14px 16px; font-family: var(--font); box-shadow: var(--elev-2); }
 .maplibregl-popup-close-button { width: 32px; height: 32px; font-size: 20px; color: var(--subtle); }
 
 /* ------------------------------------------------------------------ motion */
-#form-view:not([hidden]), #result-view:not([hidden]), #nav-view:not([hidden]) { animation: rise 0.3s var(--ease-out) both; }
+#form-view:not([hidden]), #result-view:not([hidden]) { animation: rise var(--dur-slow) var(--ease-out) both; }
 @keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) {
   #form-view, #result-view, #nav-view { animation: none !important; }
   .seg > span, .primary, .field { transition: none; }
+}
+
+/* ------------------------------------------------------------------ motion */
+/* Every control eases between its states and gives a small press, so clicks feel answered. */
+button, a, .seg > span, .field, .route-row, .route-list {
+  transition:
+    background-color var(--dur-fast) ease, color var(--dur-fast) ease, border-color var(--dur-fast) ease,
+    box-shadow var(--dur-fast) ease, opacity var(--dur) ease, transform var(--dur-fast) var(--ease-out);
+}
+button:not(:disabled):not(.route-pick):not(.sheet-handle):active,
+.seg:active > span { transform: scale(0.96); }
+.route-pick:active { background: rgba(23, 33, 30, 0.07); }
+
+/* Things that appear: a short rise or drop instead of popping in. */
+@keyframes fade-in { from { opacity: 0; } }
+@keyframes drop-in { from { opacity: 0; transform: translateY(-14px); } }
+@keyframes lift-in { from { opacity: 0; transform: translateY(14px); } }
+@keyframes menu-in { from { opacity: 0; transform: translateY(-4px) scale(0.98); } }
+@keyframes pop-in { from { opacity: 0; transform: translateY(8px) scale(0.97); } }
+@keyframes pop-out { to { opacity: 0; transform: translateY(8px) scale(0.97); } }
+@keyframes fade-out { to { opacity: 0; } }
+
+.place-menu:not([hidden]) { animation: menu-in var(--dur-fast) var(--ease-out) both; transform-origin: top center; }
+.route-row { animation: rise var(--dur-slow) var(--ease-out) both; }
+.route-row:nth-child(2) { animation-delay: 60ms; }
+.legend-section:not([hidden]) { animation: fade-in var(--dur) ease both; }
+#nav-view:not([hidden]) .nav-banner { animation: drop-in var(--dur-slow) var(--ease-out) both; }
+#nav-view:not([hidden]) .nav-sheet { animation: lift-in var(--dur-slow) var(--ease-out) both; }
+.nav-pill { animation: menu-in var(--dur) var(--ease-out) both; }
+.nav-then:not([hidden]) { animation: drop-in var(--dur) var(--ease-out) both; }
+.status-error, .status-note, .field-error:not([hidden]) { animation: fade-in var(--dur) ease both; }
+
+/* The "Tentang indeks" popup grows in and shrinks away (index-info.ts adds .is-closing). */
+.info-dialog[open] { animation: pop-in var(--dur) var(--ease-out) both; }
+.info-dialog[open]::backdrop { animation: fade-in var(--dur) ease both; }
+.info-dialog.is-closing { animation: pop-out var(--dur-fast) ease-in both; }
+.info-dialog.is-closing::backdrop { animation: fade-out var(--dur-fast) ease-in both; }
+
+/* The phone sheet slides when tapped as well as when dragged (main.ts animateSheet). */
+@media (max-width: 899px) {
+  .panel { will-change: transform; }
+}
+
+/* People who ask for less motion get state changes without the movement. */
+@media (prefers-reduced-motion: reduce) {
+  *:not(.spinner), *::before, *::after, ::backdrop {
+    animation-duration: 1ms !important; animation-delay: 0ms !important; transition-duration: 1ms !important;
+  }
+  button:active, .seg:active > span { transform: none !important; }
 }

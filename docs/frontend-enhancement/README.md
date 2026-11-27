@@ -1,7 +1,9 @@
 # Frontend Enhancement (issue #113)
 
 Perbaikan UI/UX antarmuka rute ([issue #113](https://github.com/ppthimmel/SIPPolusi/issues/113)): copywriting,
-penyajian status pemrosesan, tampilan, dan responsivitas mobile. Branch `frontend-enchancement`, commit `647338e`.
+penyajian status pemrosesan, tampilan, dan responsivitas mobile. Branch `frontend-enchancement`: bagian 1–9 untuk
+commit `647338e`; bagian 10 untuk putaran berikutnya (commit `31decc3` dan sesudahnya), yang juga mengganti
+beberapa hal di bagian 1–9 (ditandai *diganti, lihat 10.x*).
 
 Dokumen ini mencatat setiap perubahan beserta alasannya. Kontrak API tidak berubah (`POST /v1/routes`,
 `GET /v1/exposure-surface`, `/v1/geocode/*`); `contract.test.ts` tetap lulus, dan Backend tidak disentuh.
@@ -39,7 +41,7 @@ yang tampil ke pengguna kini ditulis Frontend sendiri (lihat bagian 5), jadi hal
 
 | Perubahan | Alasan |
 |---|---|
-| Font Roboto untuk seluruh antarmuka; warna kertas hangat dan hijau tua dipertahankan | Satu keluarga huruf yang mudah dibaca di layar kecil. Palet lama sudah menjadi identitas aplikasi dan hijau dekat dengan makna "udara bersih" |
+| Font Roboto untuk seluruh antarmuka; warna kertas hangat dan hijau tua dipertahankan (*palet diganti, lihat 10.2*) | Satu keluarga huruf yang mudah dibaca di layar kecil. Palet lama sudah menjadi identitas aplikasi dan hijau dekat dengan makna "udara bersih" |
 | Pemilih moda (Jalan kaki / Sepeda) menjadi tombol pil di atas kolom asal-tujuan | Moda menentukan rute; meletakkannya paling atas seperti panel arah pada aplikasi peta membuat urutan isian alami: moda → dari → ke |
 | Simbol titik di dalam kolom: lingkaran gelap untuk asal, pin merah tua untuk tujuan; label "Asal/Tujuan" hanya untuk pembaca layar | Warna dan bentuknya mengikuti penanda di peta (titik gelap, pin merah tua), jadi kolom dan penanda terhubung tanpa teks tambahan |
 | Judul "Mau ke mana?" dan teks pengantar disembunyikan dari layar (tetap ada untuk pembaca layar sebagai judul utama halaman) | Panel lebih pendek; isian langsung terlihat tanpa menggulir, terutama di ponsel |
@@ -82,7 +84,7 @@ yang tampil ke pengguna kini ditulis Frontend sendiri (lihat bagian 5), jadi hal
   Terlalu banyak pencarian: "Tunggu 30 detik, lalu coba lagi."
 
 ID permintaan dan tombol **Coba lagi** dihapus dari kotak galat. Kotak galat bergaya panel abu-abu dengan ikon
-berwarna, bukan kotak merah muda.
+berwarna, bukan kotak merah muda. (*Diganti, lihat 10.1: kini hanya satu baris teks merah tanpa kotak dan judul.*)
 
 **Alasan.** Pengguna tidak bisa berbuat apa pun dengan perbedaan "502" dan "504" atau dengan ID permintaan; yang
 mereka perlu tahu hanyalah apakah harus mengubah isian atau menunggu. Pesan server (mis. "berjarak lebih dari
@@ -118,7 +120,7 @@ rute tercepat dan daftar berisi satu baris. Alternatif lebih dari dua memerlukan
 | Jam data kualitas udara dalam format lengkap: "23 November 2026, 22.00 WIB (GMT+7)" | Format tanggal yang umum; zona waktu dinyatakan dengan selisih GMT agar tidak ambigu bagi pengguna di luar WIB |
 | Versi data jalan sebagai tanggal: `jakarta-20261005` → "5 Oktober 2026" | Pengguna tidak perlu membaca kode versi |
 | Baris versi model downscaling, ID permintaan, ruas tanpa estimasi, versi model rute, sumber estimasi, sumber rute, dan paragraf penjelasan dihapus | Informasi teknis untuk tim, bukan pengguna; semuanya tetap ada di respons API dan log |
-| Baris hak cipta: "© 2026 SIPPolusi · Data jalan © kontributor OpenStreetMap", dengan tautan ke halaman hak cipta OSM | Kewajiban atribusi lisensi ODbL OpenStreetMap |
+| Baris hak cipta: "© 2026 SIPPolusi · Data jalan © kontributor OpenStreetMap", dengan tautan ke halaman hak cipta OSM (*dipindah ke kaki panel, lihat 10.2*) | Kewajiban atribusi lisensi ODbL OpenStreetMap |
 
 **Berkas.** `detailSection` di [`results-view.ts`](../../src/frontend/src/results-view.ts), `fmtDateTimeWib` dan
 `fmtGraphVersionDate` di [`format.ts`](../../src/frontend/src/format.ts).
@@ -139,6 +141,8 @@ kelas, dan "Sangat tinggi" (di atas 3,0, tanpa batas atas) mendapat blok sendiri
 sering dilihat, tenggelam. Peta mewarnai nilai secara linear (`interpolate linear` di MapLibre), jadi skala yang
 tidak linear membuat warna di legenda dan di peta berarti nilai yang berbeda.
 
+(*Isi legenda disederhanakan lagi dan "Tentang indeks" menjadi popup, lihat 10.3.*)
+
 **Berkas.** [`legend.ts`](../../src/frontend/src/legend.ts).
 
 ## 9. Mobile
@@ -147,8 +151,77 @@ tidak linear membuat warna di legenda dan di peta berarti nilai yang berbeda.
 |---|---|
 | Panel bawah (bottom sheet) bersudut 28 px dengan pegangan; isian langsung terlihat setelah judul dan petunjuk dihilangkan | Ruang vertikal di ponsel terbatas; peta tetap terlihat di atas panel |
 | Target sentuh tombol: × 44 px, tombol peta 44 px, tombol utama 44 px | WCAG 2.5.5 |
-| Legenda di ponsel tetap terlipat menjadi satu tombol "Legenda peta" | Legenda tidak menutupi rute |
+| Legenda di ponsel tetap terlipat menjadi satu tombol (kini berlabel "Kualitas udara", lihat 10.3) | Legenda tidak menutupi rute |
 | Diperiksa pada lebar 375 × 812 px | Lebar ponsel umum |
+
+## 10. Putaran kedua
+
+Perubahan sesudah commit `647338e`, berdasarkan tinjauan langsung pada aplikasi. Pola acuannya Google Maps.
+
+### 10.1 Panel dan pencarian
+
+| Perubahan | Alasan |
+|---|---|
+| Hasil rute tampil di bawah isian, panel tidak lagi berganti layar; tombol kembali, baris perjalanan, dan tab moda di hasil dihapus | Isian dan hasil terlihat bersamaan, seperti panel arah pada aplikasi peta; mengubah isian tidak perlu kembali dulu |
+| Pencarian tetap hanya saat **Cari rute** ditekan. Pencarian ulang memudarkan rute lama sampai rute baru tiba | Pengguna mengendalikan kapan permintaan dikirim; panel tidak kosong saat menunggu |
+| Setiap baris rute punya tombol **Mulai navigasi** sendiri | Rute tercepat juga bisa dinavigasikan tanpa memilihnya dulu |
+| Baris rute hanya memuat "via Jl. …", waktu, jarak, dan "Paparan …"; label rute hanya bila ada dua rute; satuan "indeks·menit" dan garis contoh warna dihapus | Baris lebih ringkas; label hanya berguna untuk membedakan dua rute |
+| Nilai α/β dan "Prioritas seimbang" dihapus dari layar | Bobot teknis; posisi slider sudah cukup |
+| Galat pencarian rute menjadi satu baris teks merah, tanpa kotak dan judul | Sama dengan galat di kolom; pesannya sudah menjelaskan diri |
+| Catatan data lama menjadi satu baris: "Estimasi terakhir pukul 21.00 WIB. Kondisi sekarang bisa berbeda." | Informasi yang sama dengan lebih sedikit ruang |
+| Titik dari peta: kolom menampilkan "Memuat lokasi…" sampai nama tempat tiba, koordinat hanya bila nama tidak ditemukan | Koordinat tidak bermakna bagi pengguna |
+| Klik di kolom (atau setelah menghapusnya) langsung mengaktifkan pilih-di-peta untuk kolom itu | Tidak perlu menekan tombol pin dulu; pindah ke kontrol lain atau Escape membatalkan |
+| Kepala panel "SipPolusi / Jakarta"; ikon jalan kaki dan sepeda lebih tegas | Nama aplikasi sebagai identitas; ikon terbaca sekilas |
+| Desktop: panel bersudut bulat di kanan dan bisa disembunyikan lewat tab di tepinya; ponsel: lembar bawah bisa ditarik buka-tutup lewat pegangan atau kepalanya, kredit ikut tersembunyi saat tertutup | Peta bisa dilihat penuh bila diperlukan |
+
+**Berkas.** [`main.ts`](../../src/frontend/src/main.ts), [`results-view.ts`](../../src/frontend/src/results-view.ts),
+[`place-search.ts`](../../src/frontend/src/place-search.ts) (`PointNamer` kini juga melaporkan bila nama tidak ditemukan).
+
+### 10.2 Peta
+
+| Perubahan | Alasan |
+|---|---|
+| Peta dasar vektor OpenFreeMap "liberty" (data OpenStreetMap, gratis, tanpa kunci API) menggantikan ubin raster `tile.openstreetmap.org`; `VITE_BASEMAP_STYLE` untuk gaya lain, `VITE_BASEMAP_TILES` tetap bisa memakai ubin raster | Ikon tempat dan label tajam di setiap zoom; kebijakan penggunaan ubin OSM tidak mengizinkan pemakaian berat oleh aplikasi |
+| Landmark terkenal tampil sejak zoom 11 dari [`landmarks.json`](../../src/frontend/src/landmarks.json): 102 tempat OSM di wilayah studi yang punya tautan Wikidata, 26 di antaranya utama (Monas, Istiqlal, GBK, …) dengan urutan prioritas. Diperbarui dengan [`scripts/build_frontend_landmarks.py`](../../scripts/build_frontend_landmarks.py) | Ubin vektor baru memuat tempat sejak zoom 14 (selain stasiun); peta kota tanpa landmark sulit dikenali |
+| Heatmap dan rute digambar di atas jalan layang dan gedung, di bawah label | Sebelumnya flyover dan gedung 3D menutupi rute sehingga rute tampak terputus |
+| Palet antarmuka diambil dari peta dasar: latar, permukaan, dan garis dari warna latar dan tepi jalan peta; aksen hijau taman yang digelapkan (kontras ≥ 4,5:1, teks putih di tombol 6,1:1); panel samping putih | Panel dan peta tampak satu permukaan |
+| Kredit peta pindah dari pojok peta ke kaki panel | Peta bersih; kredit tetap dekat peta |
+| Lokasi pengguna selalu tampil (dipantau sejak halaman dibuka); tombol lokasi hanya memusatkan peta, tidak mengisi titik asal | Seperti aplikasi peta; mengisi asal tetap lewat "Gunakan lokasi saya sebagai asal" |
+| Dihapus: kartu ruas saat heatmap diklik, kotak legenda rute | Tidak dibutuhkan untuk memilih rute |
+| Tombol peta (heatmap, lokasi, zoom) satu tumpukan, rata kanan 12 px dengan legenda | Rapi dan tidak saling menimpa di ponsel |
+
+**Berkas.** [`map-view.ts`](../../src/frontend/src/map-view.ts), [`config.ts`](../../src/frontend/src/config.ts),
+[`style.css`](../../src/frontend/src/style.css).
+
+### 10.3 Legenda dan "Tentang indeks"
+
+| Perubahan | Alasan |
+|---|---|
+| Lapisan PM2.5 dan NO2 memberi angka skala dalam µg/m³ (PM2.5: 0 · 7,5 · 15 · 30 · 45; NO2: 0 · 12,5 · 25 · 50 · 75); Gabungan tetap 0–3 | Warna tetap kelipatan pedoman WHO, tetapi angkanya kini konsentrasi yang bisa dibaca |
+| Dihapus dari legenda: catatan "1,0 = pedoman WHO", kunci "Tanpa estimasi / Keyakinan rendah", jam data | Legenda menjadi skala dan pemilih lapisan saja |
+| Di ponsel tombol lipat legenda berlabel "Kualitas udara" dan judul di dalamnya disembunyikan | Satu judul, bukan dua |
+| "Tentang indeks" menjadi popup ([`index-info.ts`](../../src/frontend/src/index-info.ts)): arti setiap warna dengan saran singkat, PM2.5 dan NO2 dalam bahasa sehari-hari, cara Gabungan dihitung (grafik contoh 2× + 1× → 1,5× dan rumus (PM2.5/15 + NO2/25)/2), serta sumber data (pedoman WHO 2021, Sentinel-5P, GEOS-CF, Landsat, VIIRS, Open-Meteo, OSM) | Penjelasan cukup panjang untuk sebuah popup; nama kelas, warna, dan angka WHO diambil dari konstanta yang sama dengan peta |
+
+### 10.4 Navigasi
+
+| Perubahan | Alasan |
+|---|---|
+| Tata letak seperti Google Maps: spanduk instruksi hijau di atas (dengan "Lalu …" bila belokan berikutnya dekat), kartu bawah berisi sisa waktu, jarak · jam tiba, dan tombol **Keluar** merah; status (sinyal lemah, keluar rute) sebagai pil kecil | Pola yang sudah dikenal pengguna navigasi |
+| Kamera dimiringkan 55°, peta diputar searah perjalanan, pengguna di bagian bawah; setelah navigasi peta kembali datar menghadap utara | Jalan di depan lebih terlihat (rincian di [TI-SE-13](../ti-se-13/README.md)) |
+| Rute yang sudah dilewati abu-abu, sisanya hijau lebih tebal; panah arah pada penanda putih | Kemajuan terlihat sekilas |
+| Heatmap disembunyikan selama navigasi dan kembali bila sebelumnya menyala | Peta lebih bersih saat bergerak |
+| Desktop: panel tetap tampil (hanya baca) di samping peta; ponsel: peta penuh | Desktop punya ruang untuk keduanya |
+| Dihapus: catatan privasi posisi, pil "Anda telah tiba" (spanduk sudah menyatakannya) | Lihat tabel di bawah untuk catatan privasi |
+
+**Berkas.** [`nav-view.ts`](../../src/frontend/src/nav-view.ts), [`navigation.ts`](../../src/frontend/src/navigation.ts),
+[`nav-geometry.ts`](../../src/frontend/src/nav-geometry.ts), [`map-view.ts`](../../src/frontend/src/map-view.ts).
+
+### 10.5 Interaksi
+
+| Perubahan | Alasan |
+|---|---|
+| Tooltip bergaya aplikasi menggantikan tooltip bawaan peramban ([`tooltip.ts`](../../src/frontend/src/tooltip.ts)); tombol peta di tepi kanan menampilkannya ke kiri | Konsisten dengan tampilan aplikasi |
+| Transisi halus: tombol (warna dan efek tekan), lembar bawah, popup, heatmap memudar, daftar saran, baris rute, spanduk dan kartu navigasi. Satu skala durasi (0,15 / 0,22 / 0,32 s); pengguna dengan "kurangi gerakan" mendapat perubahan instan | Perubahan keadaan lebih mudah diikuti |
 
 ## Yang dihapus dan menyentuh kebutuhan desain
 
@@ -158,6 +231,9 @@ Dua teks dihapus atas permintaan, padahal kode sebelumnya menandainya sebagai pe
 |---|---|---|
 | Disclaimer di kaki panel ("Nilai paparan adalah estimasi… bukan rekomendasi medis") | PNF-07: disclaimer selalu terlihat | Disclaimer dari Backend (`metadata.disclaimer`) tidak lagi ditampilkan setelah rincian diringkas (bagian 7). **Perlu keputusan tim:** bila PNF-07 masih berlaku, tambahkan satu baris pendek, mis. di bawah daftar rute |
 | Catatan privasi pencarian tempat ("Nama yang diketik … dikirim ke layanan pencarian lokasi …") | PNF-06: memberi tahu apa yang dikirim ke penyedia geocoding | Tidak ada di layar. Tes yang mewajibkannya (`config.test.ts`) ikut dihapus. **Perlu keputusan tim:** bila PNF-06 masih berlaku, kembalikan sebagai satu baris atau tautan "Privasi" |
+| Catatan privasi navigasi ("Posisi Anda diproses di perangkat ini …") | PNF-06, RI-09 | Tidak ada di layar (10.4). Perilakunya tidak berubah: posisi hanya keluar perangkat saat rute ulang. **Perlu keputusan tim** seperti baris di atas |
+| Kredit OpenStreetMap selalu terlihat | Lisensi ODbL OSM | Kredit ada di kaki panel (10.2), tetapi tidak terlihat saat panel desktop disembunyikan, lembar bawah ponsel tertutup, atau navigasi di ponsel. **Perlu keputusan tim:** bila diperlukan, tambahkan "© OpenStreetMap" kecil di pojok peta pada keadaan itu |
+| Kunci peta "Tanpa estimasi / Keyakinan rendah" | Penjelasan arsiran dan area abu-abu pada heatmap | Dihapus dari legenda (10.3); arsiran dan area abu-abu tetap ada di peta tanpa penjelasan di layar |
 
 ## Alat bantu pengembangan
 
@@ -169,7 +245,8 @@ kodenya [`dev-location.ts`](../../src/frontend/src/dev-location.ts), tidak ikut 
 
 ## Verifikasi
 
-- `npm test` di `src/frontend`: **196 tes lulus**, termasuk tes baru untuk bahasa
+- `npm test` di `src/frontend`: **197 tes lulus** (putaran kedua menambah tes `PointNamer` untuk nama yang tidak
+  ditemukan), termasuk tes untuk bahasa
   ([`i18n.test.ts`](../../src/frontend/src/i18n.test.ts)), nama jalan
   ([`route-names.test.ts`](../../src/frontend/src/route-names.test.ts)), format tanggal
   ([`format.test.ts`](../../src/frontend/src/format.test.ts)), pesan galat umum
@@ -182,5 +259,11 @@ kodenya [`dev-location.ts`](../../src/frontend/src/dev-location.ts), tidak ikut 
   pergantian bahasa saat hasil tampil, tombol × dan Escape, galat saat cache kosong, navigasi dengan
   `?lokasi=monas`. Desktop dan 375 × 812 px.
 
-**Belum diuji:** navigasi di jalan sungguhan dengan GPS ponsel, dan pembaca layar sungguhan (NVDA/VoiceOver);
-yang diperiksa hanyalah atribut ARIA dan teks yang dihasilkan.
+- Putaran kedua: dicek dengan skrip di halaman (alur pencarian, navigasi dengan `?lokasi=monas&simulasi=normal`,
+  permintaan kamera, urutan lapisan peta, lembar bawah dengan pointer tersimulasi, popup, tooltip) dan tangkapan
+  layar headless Chrome pada 1280 × 720 dan 390 px. Peta vektor tidak selalu tergambar di Chrome headless, jadi
+  tampilan peta itu sendiri (garis rute navigasi, landmark) diperiksa lewat data lapisan, bukan gambar.
+
+**Belum diuji:** navigasi di jalan sungguhan dengan GPS ponsel, gerakan tarik dan jentik pada layar sentuh
+sungguhan, dan pembaca layar sungguhan (NVDA/VoiceOver); yang diperiksa hanyalah atribut ARIA dan teks yang
+dihasilkan.

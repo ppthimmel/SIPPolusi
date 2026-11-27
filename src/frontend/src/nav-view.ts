@@ -58,20 +58,25 @@ export interface NavViewState {
   following: boolean;
 }
 
-/** The navigation panel (TI-SE-13). Built once, then only its text changes, so the buttons
- *  keep focus and screen readers hear a new instruction only when it changes. */
+/** Navigation screen over the map (TI-SE-13), laid out like a directions app: the instruction in
+ *  a banner at the top (with "Then …" when the next turn follows soon), status notes as a small
+ *  pill under it, and a card at the bottom with time left, distance and arrival time and the exit
+ *  button. Built once, then only its text changes, so the buttons keep focus and screen readers
+ *  hear a new instruction only when it changes. */
 export class NavView {
   private readonly turnIcon = h("span", { class: "nav-turn-icon", "aria-hidden": "true" });
   private readonly action = h("strong", { class: "nav-action" });
   private readonly when = h("span", { class: "nav-when" });
-  private readonly remaining = h("dd", { class: "mono" });
-  private readonly time = h("dd", { class: "mono" });
-  private readonly arrival = h("dd", { class: "mono" });
+  private readonly thenIcon = h("span", { class: "nav-then-icon", "aria-hidden": "true" });
+  private readonly thenBox = h("div", { class: "nav-then", hidden: true }, h("span", {}, tr("Lalu", "Then")), this.thenIcon);
+  private readonly banner = h("div", { class: "nav-banner" }, h("div", { class: "nav-instruction" }, this.turnIcon, h("div", {}, this.action, this.when)), this.thenBox);
+  private readonly time = h("strong", { class: "nav-time" });
+  private readonly summary = h("span", { class: "nav-summary" });
   private readonly status = h("div", { class: "nav-status" });
   private readonly live = h("p", { class: "visually-hidden", "aria-live": "polite" });
-  private readonly target = h("div", { class: "trip-line" });
+  private readonly sheet: HTMLElement;
   /** Receives focus when navigation starts. */
-  readonly title = h("h2", { class: "title result-title", tabindex: "-1" }, tr("Navigasi", "Navigation"));
+  readonly title = h("h2", { class: "visually-hidden", tabindex: "-1" }, tr("Navigasi", "Navigation"));
   private readonly recenter: HTMLButtonElement;
   private readonly finish: HTMLButtonElement;
   private announced = "";
@@ -80,47 +85,47 @@ export class NavView {
   private shownMessage = "";
 
   constructor(container: HTMLElement, handlers: { onEnd: () => void; onRecenter: () => void }) {
-    this.recenter = h("button", { type: "button", class: "secondary", onclick: handlers.onRecenter }, icon("locate", 18), ` ${tr("Ikuti posisi", "Follow position")}`);
-    this.finish = h("button", { type: "button", class: "secondary dark nav-end", onclick: handlers.onEnd }, tr("Akhiri navigasi", "End navigation"));
-    clear(container);
-    container.append(
-      h("div", { class: "result-head" }, h("div", { class: "trip-summary" }, h("div", { class: "trip-sub" }, tr("Navigasi ke", "Navigating to")), this.target)),
-      this.title,
-      // Above the instruction: on a phone the sheet shows only its top part.
-      this.status,
-      h("div", { class: "nav-instruction" }, this.turnIcon, h("div", {}, this.action, this.when)),
-      h(
-        "dl",
-        { class: "metrics nav-metrics" },
-        h("div", { class: "metric" }, h("dt", {}, tr("Sisa jarak", "Distance left")), this.remaining),
-        h("div", { class: "metric" }, h("dt", {}, tr("Sisa waktu", "Time left")), this.time),
-        h("div", { class: "metric" }, h("dt", {}, tr("Tiba sekitar", "Arrival around")), this.arrival),
-      ),
-      this.live,
-      h("div", { class: "nav-actions" }, this.recenter, this.finish),
-      h(
-        "p",
-        { class: "place-notice" },
-        tr(
-          "Posisi Anda diproses di perangkat ini. Server hanya menerimanya saat rute dihitung ulang dan tidak menyimpannya.",
-          "Your position is processed on this device. The server only receives it when the route is recalculated and does not store it.",
-        ),
-      ),
+    this.recenter = h("button", { type: "button", class: "nav-recenter", onclick: handlers.onRecenter }, icon("navigate", 18), ` ${tr("Ikuti posisi", "Re-centre")}`);
+    this.finish = h("button", { type: "button", class: "nav-end", onclick: handlers.onEnd }, tr("Keluar", "Exit"));
+    this.sheet = h(
+      "div",
+      { class: "nav-sheet" },
+      this.recenter,
+      h("div", { class: "nav-sheet-card" }, h("div", { class: "nav-trip" }, this.time, this.summary), this.finish),
     );
+    clear(container);
+    this.banner.append(this.status); // status notes stack under the instruction
+    container.append(this.title, this.banner, this.sheet, this.live);
+  }
+
+  /** Space the banner (top) and the bottom card take over the map, for the camera padding. */
+  insets(): { top: number; bottom: number } {
+    const map = this.sheet.offsetParent as HTMLElement | null;
+    if (!map) return { top: 0, bottom: 0 };
+    const card = this.sheet.querySelector<HTMLElement>(".nav-sheet-card")!;
+    return {
+      top: this.banner.offsetTop + this.banner.offsetHeight,
+      bottom: map.clientHeight - (this.sheet.offsetTop + card.offsetTop),
+    };
   }
 
   render(state: NavViewState): void {
     const { snapshot: s } = state;
-    this.target.textContent = state.destination;
     const arrived = s.status === "arrived";
     const step = arrived ? { action: tr("Anda telah tiba", "You have arrived"), when: "", icon: "flag" as IconName } : instruction(s.next);
     clear(this.turnIcon);
-    this.turnIcon.append(icon(step.icon, 34));
+    this.turnIcon.append(icon(step.icon, 36));
     this.action.textContent = step.action;
     this.when.textContent = step.when;
-    this.remaining.textContent = arrived ? fmtDistance(0) : fmtAhead(s.remainingM);
-    this.time.textContent = s.remainingMin < 1 ? tr("< 1 menit", "< 1 min") : fmtMinutes(s.remainingMin);
-    this.arrival.textContent = arrived ? "—" : fmtArrival(s.remainingMin);
+
+    // "Then …" only when the turn after this one comes soon after it.
+    const then = !arrived && s.next && s.then && s.then.gapM <= THEN_WITHIN_M ? s.then.maneuver : null;
+    this.thenBox.hidden = !then;
+    clear(this.thenIcon);
+    if (then) this.thenIcon.append(icon(then.kind === "arrive" ? "flag" : TURN[then.kind].icon, 20));
+
+    this.time.textContent = arrived ? tr("Tiba", "Arrived") : s.remainingMin < 1 ? tr("< 1 menit", "< 1 min") : fmtMinutes(s.remainingMin);
+    this.summary.textContent = arrived ? state.destination : `${fmtAhead(s.remainingM)} · ${fmtArrival(s.remainingMin)}`;
 
     const message = state.message ?? statusMessage(s);
     const key = message ? `${message.kind}\n${message.title}\n${message.text}` : "";
@@ -131,15 +136,17 @@ export class NavView {
         this.status.append(
           h(
             "div",
-            { class: `notice notice-${message.kind === "done" ? "done" : message.kind}`, role: message.kind === "error" ? "alert" : "status" },
-            icon(message.kind === "done" ? "flag" : message.kind === "info" ? "info" : "warn", 18),
-            h("div", {}, h("strong", {}, message.title), message.text && h("p", {}, message.text)),
+            { class: `nav-pill nav-pill-${message.kind}`, role: message.kind === "error" ? "alert" : "status", title: message.text },
+            icon(message.kind === "done" ? "flag" : message.kind === "info" ? "info" : "warn", 16),
+            h("span", {}, message.title),
           ),
         );
       }
     }
     this.recenter.hidden = state.following || arrived;
-    this.finish.textContent = arrived ? tr("Selesai", "Done") : tr("Akhiri navigasi", "End navigation");
+    this.finish.textContent = arrived ? tr("Selesai", "Done") : tr("Keluar", "Exit");
+    this.finish.classList.toggle("is-done", arrived);
+    this.finish.setAttribute("aria-label", arrived ? tr("Selesai", "Done") : tr("Akhiri navigasi", "End navigation"));
 
     // Announce the turn, not every metre of the countdown.
     const spoken = arrived ? tr("Anda telah tiba di tujuan.", "You have arrived at your destination.") : `${step.action}${message ? `. ${message.title}` : ""}`;
@@ -149,6 +156,9 @@ export class NavView {
     }
   }
 }
+
+/** "Then …" is shown when the turn after the next one is at most this far after it. */
+const THEN_WITHIN_M = 250;
 
 function statusMessage(s: NavSnapshot): NavMessage | null {
   switch (s.status) {
@@ -172,12 +182,7 @@ function statusMessage(s: NavSnapshot): NavMessage | null {
     }
     case "off_route":
       return { kind: "warn", title: tr("Anda keluar dari rute", "You left the route"), text: tr("Mencari rute baru dari posisi Anda…", "Finding a new route from your position…") };
-    case "arrived":
-      return {
-        kind: "done",
-        title: tr("Anda telah tiba di tujuan", "You have arrived at your destination"),
-        text: tr("Navigasi selesai dan pelacakan posisi dihentikan.", "Navigation is finished and position tracking has stopped."),
-      };
+    case "arrived": // the banner already says so
     case "tracking":
       return null;
   }
