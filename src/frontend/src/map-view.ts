@@ -107,7 +107,6 @@ export class MapView {
       ],
       attributionControl: false, // credits are in the side panel (renderCredits in main.ts)
     });
-    this.map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
     // The container can be laid out after the map is created (fonts, bottom sheet,
     // hidden tab); MapLibre would then keep its 400×300 default canvas.
     new ResizeObserver(() => this.map.resize()).observe(container);
@@ -250,6 +249,12 @@ export class MapView {
         ],
       ] as maplibregl.FilterSpecification,
     });
+  }
+
+  /** Puts the zoom buttons into `stack` (the app's own map buttons), so all of them share one
+   *  column, spacing and stacking order instead of MapLibre's separate corner. */
+  mountZoomButtons(stack: HTMLElement): void {
+    stack.append(new maplibregl.NavigationControl({ showCompass: false }).onAdd(this.map));
   }
 
   // --------------------------------------------------------------- markers

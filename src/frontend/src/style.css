@@ -369,7 +369,8 @@ button:disabled { cursor: not-allowed; }
 .map-btn { background: var(--surface); width: 44px; height: 44px; border-radius: var(--radius); box-shadow: var(--elev-1); color: var(--ink); }
 .map-btn:hover:not([aria-pressed="true"]) { background: #fff; }
 .map-btn[aria-pressed="true"] { background: var(--ink); color: #fff; }
-.maplibregl-ctrl-top-right { top: 108px; }
+/* The zoom buttons live in .map-buttons (MapView.mountZoomButtons): no corner margins of their own. */
+.map-buttons .maplibregl-ctrl { margin: 0; }
 .maplibregl-ctrl-group:not(:empty) { border-radius: var(--radius); box-shadow: var(--elev-1); overflow: hidden; }
 .maplibregl-ctrl-group button { width: 44px; height: 44px; }
 
@@ -380,7 +381,7 @@ button:disabled { cursor: not-allowed; }
 }
 
 .legend {
-  position: absolute; right: 12px; bottom: 28px; width: 320px; max-height: calc(100% - 60px); overflow-y: auto; z-index: 2;
+  position: absolute; right: 12px; bottom: 12px; width: 320px; max-height: calc(100% - 60px); overflow-y: auto; z-index: 2;
   background: var(--surface); border-radius: var(--radius-lg); padding: 14px 16px; box-shadow: var(--elev-2); font-size: 12px;
 }
 .legend-section:not([hidden]) ~ .legend-section:not([hidden]) { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); }

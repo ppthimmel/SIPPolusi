@@ -111,6 +111,7 @@ const state = {
 };
 
 const mapView = new MapView($("map"));
+mapView.mountZoomButtons(document.querySelector<HTMLElement>(".map-buttons")!);
 // Handle for manual and browser-driven testing; stripped from production builds.
 if (import.meta.env.DEV) (window as unknown as { __map: unknown }).__map = mapView.map;
 const legend = new Legend($("legend"));
