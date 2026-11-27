@@ -46,6 +46,11 @@ export class Legend {
   private retry = h("button", { type: "button", class: "link-btn", hidden: true });
   private scale = h("div", { class: "heat-scale-wrap" });
   private about = h("button", { type: "button", class: "link-btn legend-about", "aria-haspopup": "dialog", onclick: openIndexInfo });
+  /** Loading discs beside the title (and beside the phone toggle's text): they take no room of
+   *  their own, so nothing below moves while the heatmap loads. */
+  private spinner = h("span", { class: "spinner legend-spinner", "aria-hidden": "true", hidden: true });
+  private toggleSpinner = h("span", { class: "spinner legend-spinner", "aria-hidden": "true", hidden: true });
+  private toggleText = h("span", {});
 
   private toggle: HTMLButtonElement;
   private lastHeat: HeatLegendState | null = null;
@@ -61,7 +66,7 @@ export class Legend {
     }
     this.retry.addEventListener("click", () => this.onRetry());
     this.heat.append(
-      h("div", { class: "legend-head" }, this.heatTitle),
+      h("div", { class: "legend-head" }, this.heatTitle, this.spinner),
       this.layerGroup,
       this.status,
       this.retry,
@@ -69,7 +74,11 @@ export class Legend {
       this.about,
     );
     // Narrow screens: the legend folds into one button so it does not cover the route.
-    this.toggle = h("button", { type: "button", class: "legend-toggle", "aria-expanded": "false", onclick: () => this.expand(this.root.classList.contains("is-collapsed")) });
+    this.toggle = h(
+      "button",
+      { type: "button", class: "legend-toggle", "aria-expanded": "false", onclick: () => this.expand(this.root.classList.contains("is-collapsed")) },
+      h("span", { class: "legend-toggle-label" }, this.toggleText, this.toggleSpinner),
+    );
     root.append(this.toggle, this.heat);
     this.expand(false);
     this.relabel();
@@ -78,7 +87,7 @@ export class Legend {
   /** Rewrites every text in the current interface language. */
   relabel(): void {
     // On phones the toggle is the legend's title (the inner one is hidden there, style.css).
-    this.toggle.textContent = tr("Kualitas udara", "Air quality");
+    this.toggleText.textContent = tr("Kualitas udara", "Air quality");
     this.heatTitle.textContent = tr("Kualitas udara", "Air quality");
     this.layerGroup.setAttribute("aria-label", tr("Lapisan heatmap", "Heatmap layer"));
     for (const [layer, b] of this.layerButtons) b.textContent = HEAT_LAYER_LABELS[layer];
@@ -93,11 +102,16 @@ export class Legend {
     for (const [layer, b] of this.layerButtons) b.setAttribute("aria-pressed", String(layer === s.layer));
 
 
+    // Loading shows as the spinner beside the title; screen readers still hear it through the
+    // status line, which is then visually hidden so the layout stays put.
+    const loading = s.status === "loading";
+    this.spinner.hidden = !loading;
+    this.toggleSpinner.hidden = !loading;
     // The status line speaks only when something is not as expected.
     let text = "";
     let tone = "";
-    if (s.status === "loading") {
-      text = s.showingOldData ? tr("Memperbarui…", "Updating…") : tr("Memuat heatmap…", "Loading heatmap…");
+    if (loading) {
+      text = s.showingOldData ? tr("Memperbarui heatmap…", "Updating the heatmap…") : tr("Memuat heatmap…", "Loading the heatmap…");
     } else if (s.status === "error") {
       text = s.showingOldData
         ? tr("Gagal memperbarui; yang tampil data lama.", "Could not update; showing old data.")
@@ -108,7 +122,7 @@ export class Legend {
       tone = "warn";
     }
     this.status.textContent = text;
-    this.status.className = `heat-status${tone ? ` is-${tone}` : ""}`;
+    this.status.className = loading ? "heat-status visually-hidden" : `heat-status${tone ? ` is-${tone}` : ""}`;
     this.retry.hidden = s.status !== "error";
 
     clear(this.scale);

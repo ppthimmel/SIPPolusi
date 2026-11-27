@@ -1,6 +1,7 @@
 import { compareRoutes, type Comparison } from "./compare";
 import { clear, h, icon } from "./dom";
 import {
+  confidenceCategory,
   fmtDistance,
   fmtExposure,
   fmtMinutes,
@@ -172,6 +173,8 @@ function routeList(resp: RouteResponse, request: RouteRequest, isFallback: boole
           { class: "route-meta", "data-label": labelled ? title : "" },
           via && labelled ? `${title} · ` : "",
           `${exposureLabel} ${fmtExposure(r.exposure)}`,
+          // How sure the model is of that number, shown beside it (transparency).
+          confidenceText(r.confidence) && h("span", { class: "route-confidence" }, ` · ${confidenceText(r.confidence)}`),
         ),
       ),
       h("span", { class: "route-time" }, h("strong", { class: "mono" }, fmtMinutes(r.travelTimeMin)), h("span", { class: "mono" }, fmtDistance(r.distanceM))),
@@ -200,6 +203,15 @@ function routeList(resp: RouteResponse, request: RouteRequest, isFallback: boole
   }
   select(opts.selected && rows.has(opts.selected) ? opts.selected : "recommended", false);
   return list;
+}
+
+/** "Keyakinan 0,31 (rendah)": the model's confidence in a route's exposure estimate, 0–1, with
+ *  its category (rendah < 0,4 ≤ sedang < 0,7 ≤ tinggi); null when the server sent none. */
+export function confidenceText(score: number | null): string | null {
+  const cat = confidenceCategory(score);
+  if (!cat) return null;
+  const word = { rendah: tr("rendah", "low"), sedang: tr("sedang", "medium"), tinggi: tr("tinggi", "high") }[cat];
+  return tr(`Keyakinan ${fmtNumber(score!, 2)} (${word})`, `Confidence ${fmtNumber(score!, 2)} (${word})`);
 }
 
 /** Fills in the "via …" line of a route row once its street is known. */

@@ -171,7 +171,7 @@ Perubahan sesudah commit `647338e`, berdasarkan tinjauan langsung pada aplikasi.
 | Catatan data lama menjadi satu baris: "Estimasi terakhir pukul 21.00 WIB. Kondisi sekarang bisa berbeda." | Informasi yang sama dengan lebih sedikit ruang |
 | Titik dari peta: kolom menampilkan "Memuat lokasi…" sampai nama tempat tiba, koordinat hanya bila nama tidak ditemukan | Koordinat tidak bermakna bagi pengguna |
 | Klik di kolom (atau setelah menghapusnya) langsung mengaktifkan pilih-di-peta untuk kolom itu | Tidak perlu menekan tombol pin dulu; pindah ke kontrol lain atau Escape membatalkan |
-| Kepala panel "SipPolusi / Jakarta"; ikon jalan kaki dan sepeda lebih tegas | Nama aplikasi sebagai identitas; ikon terbaca sekilas |
+| Kepala panel "SIPPolusi / Jakarta"; ikon jalan kaki dan sepeda lebih tegas | Nama aplikasi sebagai identitas; ikon terbaca sekilas |
 | Desktop: panel bersudut bulat di kanan dan bisa disembunyikan lewat tab di tepinya; ponsel: lembar bawah bisa ditarik buka-tutup lewat pegangan atau kepalanya, kredit ikut tersembunyi saat tertutup | Peta bisa dilihat penuh bila diperlukan |
 
 **Berkas.** [`main.ts`](../../src/frontend/src/main.ts), [`results-view.ts`](../../src/frontend/src/results-view.ts),
@@ -233,6 +233,30 @@ Stack lokal lengkap, rute sepeda Monas → Bundaran HI (titik dipilih lewat klik
 | **01** Hasil rute di bawah isian, heatmap Gabungan, landmark, legenda | **02** Popup "Tentang indeks" |
 | ![Navigasi desktop](03-navigasi-desktop.jpg) | ![Ponsel: hasil](04-ponsel-hasil.jpg) ![Ponsel: navigasi](05-ponsel-navigasi.jpg) |
 | **03** Navigasi desktop: kamera miring, spanduk "Lalu", kartu Keluar, panel hanya baca | **04–05** Ponsel 390 px: lembar bawah, dan navigasi layar penuh |
+
+## 11. Putaran ketiga
+
+Berdasarkan tinjauan berikutnya pada aplikasi yang berjalan.
+
+| Perubahan | Alasan |
+|---|---|
+| Kotak selisih paparan berlatar putih. Angka dan teksnya hijau tombol bila rute **mengurangi** paparan (mis. −7,3%), abu-abu bila **menambah** paparan (+5,0%) atau tidak bisa dibandingkan | Warna hijau hanya untuk kabar baik, sama dengan tombol aksi; latar berwarna sebelumnya bersaing dengan daftar rute |
+| Jarak tombol **Cari rute** ke kotak di bawahnya dirapatkan (±34 px → 16 px) | Hasil terasa menyambung dengan tombol yang baru ditekan |
+| Baris rute menampilkan keyakinan di samping paparan: "Paparan 110,7 · Keyakinan 0,27 (rendah)" | Transparansi (trustworthy AI): angka paparan adalah estimasi model, dan pengguna perlu tahu seberapa yakin modelnya. Kategori mengikuti ambang yang sama dengan peta (rendah < 0,4 ≤ sedang < 0,7 ≤ tinggi) |
+| Heatmap: selama data suatu area dimuat, area itu menampilkan sel abu-abu yang berdenyut pelan (skeleton); sel yang sudah ada tetap tampil di atasnya, dan pemuatan pertama memudar masuk | Pemuatan tidak lagi tampak kaku (kotak sel yang tiba-tiba muncul); pengguna melihat bahwa data sedang datang. Tanpa denyut bila pengguna memilih "kurangi gerakan" |
+| Selama navigasi, isian pencarian rute diabu-abukan dan dikunci, dengan catatan "Akhiri navigasi untuk mencari rute lain."; klik peta tidak lagi bisa memindahkan titik | Mencari rute lain di tengah navigasi akan mengganti rute yang sedang diikuti; pengguna harus keluar dulu |
+| Tombol sembunyikan panel pindah ke dalam kepala panel (ikon sidebar), seperti sidebar pada antarmuka chat (Claude, ChatGPT); saat panel tersembunyi, tombol yang sama tampil sebagai kartu di kiri atas peta | Pola yang sudah dikenal; tab di tepi panel sebelumnya mudah terlewat dan menutupi peta |
+| Status "Memperbarui…" pada legenda diganti cakram pemuatan kecil di samping judul "Kualitas udara" (juga pada tombol legenda di ponsel); teksnya tetap dibacakan pembaca layar | Baris status yang muncul-hilang menggeser isi legenda setiap kali peta digeser |
+| Di luar wilayah studi peta diabu-abukan penuh (tanpa jalan dan label) dengan tepi putus-putus | Menunjukkan sejak awal di mana rute bisa dicari. Batasnya persegi wilayah studi yang sama dengan Backend, Data Worker, dan pemeriksaan isian (106,68–106,98 BT, 6,08–6,38 LS); repositori tidak memuat poligon batas administratif Jakarta |
+| Saran tempat di luar wilayah studi tampil abu-abu dengan keterangan "Di luar Jakarta" dan tidak bisa dipilih (klik, Enter, dan panah melewatinya). Titik di luar wilayah yang tetap masuk (mis. klik peta) langsung memunculkan galat pada kolomnya | Pengguna tahu mengapa tempat itu tidak bisa dipakai, tanpa menunggu pencarian rute gagal. Backend saat ini sudah menyaring hasil di luar wilayah, jadi saran abu-abu adalah pengaman tambahan |
+| Nama aplikasi ditulis **SIPPolusi** di semua tempat | Ejaan resmi nama proyek |
+
+**Berkas.** [`results-view.ts`](../../src/frontend/src/results-view.ts) (`confidenceText`),
+[`map-view.ts`](../../src/frontend/src/map-view.ts) (`showHeatSkeleton`, `skeletonCells`, `addOutsideMask`),
+[`place-combobox.ts`](../../src/frontend/src/place-combobox.ts) (`placeInStudyArea`),
+[`legend.ts`](../../src/frontend/src/legend.ts), [`main.ts`](../../src/frontend/src/main.ts),
+[`style.css`](../../src/frontend/src/style.css), [`index.html`](../../src/frontend/index.html).
+Tes baru: [`place-combobox.test.ts`](../../src/frontend/src/place-combobox.test.ts).
 
 ## Yang dihapus dan menyentuh kebutuhan desain
 

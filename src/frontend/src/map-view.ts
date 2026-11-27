@@ -19,6 +19,11 @@ const HEAT_SOURCE = "heat";
 const ACCURACY_SOURCE = "position-accuracy";
 const LANDMARK_SOURCE = "landmarks";
 const HATCH_IMAGE = "hatch";
+const SKELETON_SOURCE = "heat-skeleton";
+const MASK_SOURCE = "outside-study-area";
+/** Grey of the loading skeleton and of the area outside the study area (--surface-2 / --outline). */
+const SKELETON_COLOR = "#cfcac2";
+const OUTSIDE_COLOR = "#ece8e2";
 
 const ROUTE_GREEN = "#2b6f2f"; // --green in style.css
 /** The part of the route already travelled while navigating. */
@@ -148,6 +153,7 @@ export class MapView {
     const addLayer = (layer: maplibregl.AddLayerObject) => m.addLayer(layer, labels);
 
     m.addSource(HEAT_SOURCE, { type: "geojson", data: emptyCollection() });
+    m.addSource(SKELETON_SOURCE, { type: "geojson", data: emptyCollection() });
     m.addSource(ROUTE_SOURCE, { type: "geojson", data: emptyCollection() });
     m.addSource(ACCURACY_SOURCE, { type: "geojson", data: emptyCollection() });
 
@@ -155,6 +161,13 @@ export class MapView {
     const isArea: maplibregl.ExpressionSpecification = ["in", ["geometry-type"], ["literal", ["Polygon", "MultiPolygon"]]] as unknown as maplibregl.ExpressionSpecification;
     const lineWidth = ["interpolate", ["linear"], ["zoom"], 11, 2, 15, 5, 18, 10] as unknown as maplibregl.ExpressionSpecification;
 
+    // Loading skeleton: grey cells under the heatmap, pulsing while its data is on the way.
+    addLayer({
+      id: "heat-skeleton",
+      type: "fill",
+      source: SKELETON_SOURCE,
+      paint: { "fill-color": SKELETON_COLOR, "fill-opacity": 0 },
+    });
     addLayer({
       id: "heat-fill",
       type: "fill",
@@ -251,6 +264,27 @@ export class MapView {
     });
 
     this.addLandmarks();
+    this.addOutsideMask();
+  }
+
+  /** Greys out everything outside the study area (the same rectangle the Backend and the form
+   *  accept), over the basemap's roads and labels, with a dashed edge. Routes and the heatmap
+   *  never reach there, so it can sit on top of every layer. */
+  private addOutsideMask(): void {
+    const a = STUDY_AREA;
+    const world = [[-180, -85], [180, -85], [180, 85], [-180, 85], [-180, -85]];
+    const hole = [[a.minLon, a.minLat], [a.minLon, a.maxLat], [a.maxLon, a.maxLat], [a.maxLon, a.minLat], [a.minLon, a.minLat]];
+    this.map.addSource(MASK_SOURCE, {
+      type: "geojson",
+      data: { type: "Feature", properties: {}, geometry: { type: "Polygon", coordinates: [world, hole] } },
+    });
+    this.map.addLayer({ id: "outside-fill", type: "fill", source: MASK_SOURCE, paint: { "fill-color": OUTSIDE_COLOR, "fill-opacity": 1 } });
+    this.map.addLayer({
+      id: "outside-edge",
+      type: "line",
+      source: MASK_SOURCE,
+      paint: { "line-color": "#8a857e", "line-width": 1.5, "line-dasharray": [3, 2] },
+    });
   }
 
   /** Landmarks at city zoom, as in a directions app. The vector style shows place icons only from
@@ -454,8 +488,47 @@ export class MapView {
 
   async setSurface(surface: ExposureSurface | null): Promise<void> {
     await this.ready;
+    const first = this.surface.length === 0;
     this.surface = surface?.features ?? [];
+    // The first cells fade in over the skeleton instead of popping in; later updates replace
+    // cells in place, where a fade would make the whole heatmap blink.
+    if (first && this.heatShown) this.setHeatOpacity(0, true);
     this.renderHeat();
+    if (first && this.heatShown) requestAnimationFrame(() => this.heatShown && this.setHeatOpacity(1));
+  }
+
+  private skeletonFrame = 0;
+  private skeletonClear = 0;
+
+  /** Shows pulsing grey cells over `area` (clipped to the study area) where no heatmap cell is
+   *  drawn yet, while its data loads; null fades them out. */
+  async showHeatSkeleton(area: BBox | null): Promise<void> {
+    await this.ready;
+    cancelAnimationFrame(this.skeletonFrame);
+    window.clearTimeout(this.skeletonClear);
+    const source = this.map.getSource(SKELETON_SOURCE) as maplibregl.GeoJSONSource;
+    if (!area) {
+      this.map.setPaintProperty("heat-skeleton", "fill-opacity-transition", { duration: HEAT_FADE_MS, delay: 0 });
+      this.map.setPaintProperty("heat-skeleton", "fill-opacity", 0);
+      this.skeletonClear = window.setTimeout(() => source.setData(emptyCollection()), HEAT_FADE_MS);
+      return;
+    }
+    source.setData({ type: "FeatureCollection", features: skeletonCells(area, this.surface) });
+    this.map.setPaintProperty("heat-skeleton", "fill-opacity-transition", { duration: 0, delay: 0 });
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      this.map.setPaintProperty("heat-skeleton", "fill-opacity", 0.35);
+      return;
+    }
+    // A slow pulse between faint and light grey, about 30 frames a second.
+    let last = 0;
+    const pulse = (t: number) => {
+      if (t - last > 33) {
+        last = t;
+        this.map.setPaintProperty("heat-skeleton", "fill-opacity", 0.2 + 0.25 * (0.5 + 0.5 * Math.sin(t / 380)));
+      }
+      this.skeletonFrame = requestAnimationFrame(pulse);
+    };
+    this.skeletonFrame = requestAnimationFrame(pulse);
   }
 
   async setHeatLayer(layer: HeatLayer): Promise<void> {
@@ -585,4 +658,53 @@ export class MapView {
 
 function emptyCollection(): GeoJSON.FeatureCollection {
   return { type: "FeatureCollection", features: [] };
+}
+
+/** Bounding boxes of the drawn heatmap features, to leave those places out of the skeleton. */
+function featureBoxes(features: ReadonlyArray<SurfaceFeature>): BBox[] {
+  return features.map((f) => {
+    const box = { minLon: Infinity, minLat: Infinity, maxLon: -Infinity, maxLat: -Infinity };
+    const visit = (c: unknown): void => {
+      if (Array.isArray(c) && typeof c[0] === "number") {
+        box.minLon = Math.min(box.minLon, c[0] as number);
+        box.maxLon = Math.max(box.maxLon, c[0] as number);
+        box.minLat = Math.min(box.minLat, c[1] as number);
+        box.maxLat = Math.max(box.maxLat, c[1] as number);
+      } else if (Array.isArray(c)) c.forEach(visit);
+    };
+    visit((f.geometry as { coordinates?: unknown }).coordinates);
+    return box;
+  });
+}
+
+/** A grid of rounded-looking cells (small gaps between them) over `area` ∩ the study area, about
+ *  24 across the area's width, snapped to the grid so it does not shift as the map moves; cells
+ *  whose centre already has a heatmap feature are left out. */
+export function skeletonCells(area: BBox, drawn: ReadonlyArray<SurfaceFeature>): GeoJSON.Feature[] {
+  const a = STUDY_AREA;
+  const minLon = Math.max(area.minLon, a.minLon);
+  const maxLon = Math.min(area.maxLon, a.maxLon);
+  const minLat = Math.max(area.minLat, a.minLat);
+  const maxLat = Math.min(area.maxLat, a.maxLat);
+  if (minLon >= maxLon || minLat >= maxLat) return [];
+  const step = Math.max(0.003, (maxLon - minLon) / 24);
+  const gap = step * 0.1;
+  const boxes = featureBoxes(drawn);
+  const covered = (lon: number, lat: number) => boxes.some((b) => lon >= b.minLon && lon <= b.maxLon && lat >= b.minLat && lat <= b.maxLat);
+  const cells: GeoJSON.Feature[] = [];
+  for (let x = Math.floor(minLon / step) * step; x < maxLon && cells.length < 1500; x += step) {
+    for (let y = Math.floor(minLat / step) * step; y < maxLat && cells.length < 1500; y += step) {
+      const x0 = Math.max(x, a.minLon) + gap;
+      const y0 = Math.max(y, a.minLat) + gap;
+      const x1 = Math.min(x + step, a.maxLon) - gap;
+      const y1 = Math.min(y + step, a.maxLat) - gap;
+      if (x1 <= x0 || y1 <= y0 || covered((x0 + x1) / 2, (y0 + y1) / 2)) continue;
+      cells.push({
+        type: "Feature",
+        properties: {},
+        geometry: { type: "Polygon", coordinates: [[[x0, y0], [x1, y0], [x1, y1], [x0, y1], [x0, y0]]] },
+      });
+    }
+  }
+  return cells;
 }

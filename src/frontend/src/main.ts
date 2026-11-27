@@ -136,7 +136,7 @@ function renderCredits(): void {
   const link = (href: string, text: string) => h("a", { href, target: "_blank", rel: "noopener noreferrer" }, text);
   const line = (...parts: (string | HTMLElement)[]) => h("p", {}, ...parts);
   $("panel-credits").replaceChildren(
-    line(`© ${new Date().getFullYear()} SipPolusi`),
+    line(`© ${new Date().getFullYear()} SIPPolusi`),
     line(
       tr("Peta ", "Map "),
       link("https://openfreemap.org", "OpenFreeMap"),
@@ -430,7 +430,8 @@ mapView.onPointMoved = (which, p) => {
 
 // A click on the map picks a point when the form asks for one; the heatmap itself is not clickable.
 mapView.onClick = ({ point }: SegmentClick) => {
-  if (!state.pick) return;
+  // The trip is locked while navigating: a map click must not move its points.
+  if (!state.pick || nav.session) return;
   const which = state.pick;
   state.pick = which === "origin" && !state.points.destination ? "destination" : null;
   setPoint(which, point);
@@ -624,15 +625,21 @@ tripForm.addEventListener("submit", (e) => {
 cancelBtn.addEventListener("click", () => state.controller?.abort());
 
 // ------------------------------------------------------------------- heatmap
+/** The area the heatmap is asked for. While navigating, the camera follows the user, so its
+ *  bounds would give the position away: the route's area is used instead, since its ends are
+ *  what the route request sent. */
+function heatArea(): BBox {
+  return nav.session ? routeArea(nav.session.routeLine) : mapView.getView().bbox;
+}
+
 const heatSurface = new SurfaceRefresher(
   (signal) => {
-    const view = mapView.getView();
-    // While navigating, the camera follows the user, so its bounds would give the position
-    // away. The route's area is asked for instead: its ends are what the route request sent.
-    const bbox = nav.session ? routeArea(nav.session.routeLine) : view.bbox;
-    return requestExposureSurface(bbox, surfaceZoom(view.zoom, bbox), signal);
+    const bbox = heatArea();
+    return requestExposureSurface(bbox, surfaceZoom(mapView.getView().zoom, bbox), signal);
   },
   (status, surface) => {
+    // Grey skeleton cells over the area while its data loads; gone once it lands or fails.
+    void mapView.showHeatSkeleton(status === "loading" && state.heat.on ? heatArea() : null);
     if (status === "ready" && surface) {
       void mapView.setSurface(surface);
       void mapView.setHeatDimmed(false);
@@ -665,7 +672,10 @@ function setHeat(on: boolean, immediate = true): void {
   heatToggle.setAttribute("aria-label", on ? tr("Sembunyikan heatmap paparan", "Hide exposure heatmap") : tr("Tampilkan heatmap paparan", "Show exposure heatmap"));
   void mapView.showHeat(on);
   if (on) heatSurface.schedule(immediate);
-  else heatSurface.stop();
+  else {
+    heatSurface.stop();
+    void mapView.showHeatSkeleton(null);
+  }
   legendState();
 }
 
@@ -1248,7 +1258,7 @@ for (const grip of [sheetHandle, panel.querySelector<HTMLElement>(".brand")!]) {
 // ------------------------------------------------------------- side panel
 // Desktop: a tab on the panel's edge slides it out so the map fills the window, and back.
 const panelToggle = $<HTMLButtonElement>("panel-toggle");
-panelToggle.append(icon("back", 18));
+panelToggle.append(icon("sidebar", 20));
 function panelToggleLabel(): void {
   const collapsed = $("app").classList.contains("panel-collapsed");
   const label = collapsed ? tr("Tampilkan panel", "Show panel") : tr("Sembunyikan panel", "Hide panel");
