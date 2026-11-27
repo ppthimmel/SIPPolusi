@@ -9,9 +9,10 @@ sudah terbit sebelum t, sehingga dapat dipakai pada waktu inferensi.
 - Waktu tersedia: header `Last-Modified` berkas jam terakhir run di portal datashare
   (run dianggap tersedia setelah lengkap; konservatif untuk seluruh lead).
 - Sumbu waktu: atribut DAS GrADS (`grads_mapping "linear"`, `grads_min`, `grads_step`, `grads_size`).
-  Larik `time` pada respons subset hanya diagnostik: sejak November 2026 server menjawab angka
-  acak pada beberapa posisinya (berbeda antarpermintaan, juga pada format biner `.dods`), sedangkan
-  nilai polutannya identik antarpermintaan.
+  Larik `time` pada respons subset hanya diagnostik: pada beberapa posisinya server menjawab waktu
+  dengan medan yang salah, umumnya tahunnya (bulan, hari, dan jam benar), kadang menit atau jamnya.
+  Posisinya berubah antarpermintaan, juga pada format biner `.dods`, sedangkan nilai polutannya
+  identik antarpermintaan.
 - Penyelarasan dan QC sama dengan `ana`: cap tavg menit ke-30 − 30 menit = awal jam;
   PM2.5 `pm25_rh35` µg/m³; NO2 mol/mol × 1e9 = ppb × 1,8804 = µg/m³; rentang 0–2000 µg/m³
   dan 0–10000 ppb.
