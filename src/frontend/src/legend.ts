@@ -11,14 +11,10 @@ export interface HeatLegendState {
   visible: boolean;
   layer: HeatLayer;
   status: HeatStatus;
-  /** "12.00 WIB" of the data currently drawn, when known. */
-  timeLabel: string | null;
   /** The drawn data is older than 3 hours. */
   stale: boolean;
   /** True when something is drawn although the latest request failed. */
   showingOldData: boolean;
-  /** Every area drawn has low confidence, so the map carries no stripes. */
-  allLowConfidence: boolean;
 }
 
 const TICKS = [0, 0.5, 1, 2, 3];
@@ -27,12 +23,14 @@ const TICKS = [0, 0.5, 1, 2, 3];
 const SCALE_MAX = 3;
 const LINEAR_SHARE = 85; // % of the bar width for 0 … SCALE_MAX
 const scalePos = (v: number) => (Math.min(v, SCALE_MAX) / SCALE_MAX) * LINEAR_SHARE;
-/** One short line under the scale: what is coloured and what 1,0 means. */
-const SCALE_NOTE: Record<HeatLayer, () => string> = {
-  combined: () => tr(`Indeks gabungan · ${fmtNumber(1, 1)} = pedoman WHO`, `Combined index · ${fmtNumber(1, 1)} = WHO guideline`),
-  pm25: () => tr(`PM2.5 · ${fmtNumber(1, 1)} = pedoman WHO (${WHO_GUIDELINE.pm25} µg/m³)`, `PM2.5 · ${fmtNumber(1, 1)} = WHO guideline (${WHO_GUIDELINE.pm25} µg/m³)`),
-  no2: () => tr(`NO2 · ${fmtNumber(1, 1)} = pedoman WHO (${WHO_GUIDELINE.no2} µg/m³)`, `NO2 · ${fmtNumber(1, 1)} = WHO guideline (${WHO_GUIDELINE.no2} µg/m³)`),
-};
+/** Tick labels: the index itself, or for PM2.5 and NO2 the concentration in µg/m³. The colours
+ *  stay on multiples of the WHO guideline (layerRatio), so the ticks are those multiples × it. */
+function tickLabel(layer: HeatLayer, ratio: number): string {
+  if (ratio === 0) return "0";
+  if (layer === "combined") return fmtNumber(ratio, 1);
+  const value = ratio * WHO_GUIDELINE[layer];
+  return fmtNumber(value, Number.isInteger(value) ? 0 : 1);
+}
 
 /** Map legend: the two route line styles and the heatmap scale with its layer switch
  *  (subbab 3.1, Gambar 3.5). Read top to bottom: what and when (title, data time), which
@@ -42,12 +40,10 @@ export class Legend {
   private heat = h("div", { class: "legend-section", hidden: true });
   private layerButtons = new Map<HeatLayer, HTMLButtonElement>();
   private heatTitle = h("h2", { class: "legend-title" });
-  private heatTime = h("span", { class: "heat-time mono" });
   private layerGroup = h("div", { class: "layer-switch", role: "group" });
   private status = h("p", { class: "heat-status", role: "status" });
   private retry = h("button", { type: "button", class: "link-btn", hidden: true });
   private scale = h("div", { class: "heat-scale-wrap" });
-  private key = h("div", { class: "legend-key" });
   private aboutSummary = h("summary", {});
   private indexNote = h("p", { class: "legend-note" });
 
@@ -65,12 +61,11 @@ export class Legend {
     }
     this.retry.addEventListener("click", () => this.onRetry());
     this.heat.append(
-      h("div", { class: "legend-head" }, this.heatTitle, this.heatTime),
+      h("div", { class: "legend-head" }, this.heatTitle),
       this.layerGroup,
       this.status,
       this.retry,
       this.scale,
-      this.key,
       h("details", { class: "legend-about" }, this.aboutSummary, this.indexNote),
     );
     // Narrow screens: the legend folds into one button so it does not cover the route.
@@ -100,10 +95,6 @@ export class Legend {
     this.heat.hidden = !s.visible;
     for (const [layer, b] of this.layerButtons) b.setAttribute("aria-pressed", String(layer === s.layer));
 
-    // The time of the data drawn sits beside the title; amber when it is old.
-    this.heatTime.textContent = s.timeLabel ?? "";
-    this.heatTime.classList.toggle("is-stale", s.stale);
-    this.heatTime.title = s.timeLabel ? tr(`Data kualitas udara ${s.timeLabel}`, `Air-quality data ${s.timeLabel}`) : "";
 
     // The status line speaks only when something is not as expected.
     let text = "";
@@ -150,20 +141,11 @@ export class Legend {
       h(
         "div",
         { class: "scale-ticks mono", "aria-hidden": "true" },
-        ...TICKS.map((x) => h("span", { style: `left:${scalePos(x)}%` }, x === 0 ? "0" : fmtNumber(x, 1))),
+        ...TICKS.map((x) => h("span", { style: `left:${scalePos(x)}%` }, tickLabel(s.layer, x))),
       ),
       h("div", { class: "scale-classes" }, ...classes),
-      h("p", { class: "scale-unit" }, SCALE_NOTE[s.layer]()),
     );
 
-    // Map key: grey and striped areas, side by side.
-    clear(this.key);
-    this.key.append(
-      h("span", { class: "key-item" }, h("span", { class: "nodata-swatch", "aria-hidden": "true" }), tr("Tanpa estimasi", "No estimate")),
-      s.allLowConfidence
-        ? h("span", { class: "key-item" }, tr("Keyakinan rendah di seluruh area", "Low confidence everywhere shown"))
-        : h("span", { class: "key-item" }, h("span", { class: "hatch-swatch", "aria-hidden": "true" }), tr("Keyakinan rendah", "Low confidence")),
-    );
     this.refreshVisibility();
   }
 

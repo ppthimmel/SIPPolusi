@@ -12,10 +12,9 @@ import {
 import { clear, h, icon } from "./dom";
 import { describeRouteError, type ErrorField, type ErrorView } from "./errors";
 import { getLang, onLangChange, setLang, tr, translateDom, type Lang } from "./i18n";
-import { allLowConfidence } from "./exposure";
 import { renderResult, setRouteVia } from "./results-view";
 import { routeMidpoint, streetFromPlace } from "./route-names";
-import { fmtCoord, fmtNumber, fmtWib } from "./format";
+import { fmtCoord, fmtNumber } from "./format";
 import { Legend } from "./legend";
 import { MapView, type SegmentClick } from "./map-view";
 import { NavView, type NavMessage } from "./nav-view";
@@ -120,12 +119,35 @@ const legend = new Legend($("legend"));
 /** Texts that are not part of a view: index.html markup, fine print and mode labels. */
 function applyStaticText(): void {
   translateDom();
+  renderCredits();
   $("mode-walk-label").replaceChildren(icon("walk"), ` ${tr("Jalan kaki", "Walk")}`);
   $("mode-bike-label").replaceChildren(icon("bike"), ` ${tr("Sepeda", "Bike")}`);
   for (const b of Array.from(document.querySelectorAll<HTMLButtonElement>(".lang-btn"))) {
     b.setAttribute("aria-pressed", String(b.dataset.lang === getLang()));
   }
 }
+/** Credits for the basemap and OpenStreetMap data (roads, places, place search). Shown in the
+ *  panel instead of on the map. */
+function renderCredits(): void {
+  const link = (href: string, text: string) => h("a", { href, target: "_blank", rel: "noopener noreferrer" }, text);
+  const line = (...parts: (string | HTMLElement)[]) => h("p", {}, ...parts);
+  $("panel-credits").replaceChildren(
+    line(`© ${new Date().getFullYear()} SipPolusi`),
+    line(
+      tr("Peta ", "Map "),
+      link("https://openfreemap.org", "OpenFreeMap"),
+      " · ",
+      link("https://www.openmaptiles.org/", "© OpenMapTiles"),
+      " · ",
+      tr("Data © ", "Data © "),
+      link("https://www.openstreetmap.org/copyright", tr("kontributor OpenStreetMap", "OpenStreetMap contributors")),
+      " · ",
+      tr("Pencarian tempat ", "Place search "),
+      link("https://photon.komoot.io", "Photon (komoot)"),
+    ),
+  );
+}
+
 applyStaticText();
 $("swap-btn").append(icon("swap", 20));
 $("locate-btn").append(icon("locate", 22));
@@ -593,10 +615,8 @@ function legendState(): void {
     visible: hs.on,
     layer: hs.layer,
     status: heatSurface.status,
-    timeLabel: fmtWib(surface?.timeWindowStart),
     stale: surface?.dataStale ?? false,
     showingOldData: !!surface && surface.features.length > 0,
-    allLowConfidence: !!surface && allLowConfidence(surface.features),
   });
 }
 

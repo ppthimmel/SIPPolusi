@@ -105,7 +105,7 @@ export class MapView {
         [STUDY_AREA.minLon - 0.3, STUDY_AREA.minLat - 0.3],
         [STUDY_AREA.maxLon + 0.3, STUDY_AREA.maxLat + 0.3],
       ],
-      attributionControl: { compact: true },
+      attributionControl: false, // credits are in the side panel (renderCredits in main.ts)
     });
     this.map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
     // The container can be laid out after the map is created (fonts, bottom sheet,

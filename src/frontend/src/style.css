@@ -86,6 +86,10 @@ button:disabled { cursor: not-allowed; }
 .lang-btn[aria-pressed="true"] { background: var(--ink); color: #fff; }
 
 .panel-body { flex: 1; overflow-y: auto; padding: 4px 20px 20px; min-height: 0; }
+.panel-credits { flex: none; padding: 10px 20px 12px; border-top: 1px solid var(--line); font-size: 11px; line-height: 1.45; color: var(--subtle); }
+.panel-credits p { margin: 0; }
+.panel-credits p + p { margin-top: 2px; }
+.panel-credits a { color: inherit; }
 /* Thin scrollbars that blend into the panel: no arrows, no track, a soft thumb. */
 .panel-body, .place-menu, .legend {
   scrollbar-width: thin;
@@ -297,7 +301,8 @@ button:disabled { cursor: not-allowed; }
 }
 .route-pick {
   display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; column-gap: 16px; align-items: start;
-  width: 100%; padding: 16px 20px; border: 0; background: none; text-align: left; color: var(--ink);
+  /* Little space below: the row's "Mulai navigasi" button follows right under it. */
+  width: 100%; padding: 16px 20px 6px; border: 0; background: none; text-align: left; color: var(--ink);
   transition: background 0.15s;
 }
 .route-pick:hover { background: rgba(23, 33, 30, 0.04); }
@@ -384,8 +389,6 @@ button:disabled { cursor: not-allowed; }
 /* Title and data time on one line. */
 .legend-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
 .legend-head .legend-title { margin: 0; }
-.heat-time { font-size: 12px; color: var(--subtle); white-space: nowrap; }
-.heat-time.is-stale { color: var(--amber-ink); font-weight: 500; }
 .layer-switch { display: flex; gap: 8px; margin-bottom: 12px; }
 .layer-btn {
   min-height: 32px; padding: 0 12px; border-radius: 8px; background: var(--surface); border: 1px solid var(--outline);
@@ -397,7 +400,6 @@ button:disabled { cursor: not-allowed; }
 .heat-status:empty { display: none; }
 .heat-status.is-error { color: var(--red); }
 .heat-status.is-warn { color: var(--amber-ink); }
-.scale-unit { margin: 8px 0 0; color: var(--subtle); }
 /* Linear scale: numbers at their true positions, class names centred under their range. */
 .scale-bar { position: relative; height: 10px; border-radius: 5px; }
 .scale-divider { position: absolute; top: 0; bottom: 0; width: 1.5px; margin-left: -0.75px; background: rgba(255, 255, 255, 0.85); }
@@ -408,8 +410,6 @@ button:disabled { cursor: not-allowed; }
 .scale-classes { height: 28px; margin-top: 2px; font-size: 10.5px; color: var(--subtle); line-height: 1.2; }
 .scale-classes span { position: absolute; top: 0; text-align: center; padding: 0 1px; }
 /* Map key: the grey and striped areas side by side. */
-.legend-key { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line); color: var(--muted); }
-.key-item { display: inline-flex; align-items: center; gap: 6px; }
 /* The index explanation, one tap away. */
 .legend-about { margin-top: 8px; }
 .legend-about summary { cursor: pointer; min-height: 28px; display: flex; align-items: center; font-weight: 500; color: var(--blue); list-style: none; }
@@ -417,9 +417,6 @@ button:disabled { cursor: not-allowed; }
 .legend-about summary::after { content: "▾"; margin-left: 6px; font-size: 11px; }
 .legend-about[open] summary::after { content: "▴"; }
 .legend-note { margin: 4px 0 0; color: var(--subtle); line-height: 1.45; }
-.hatch-swatch, .nodata-swatch { width: 22px; height: 12px; border-radius: 3px; flex: none; border: 1px solid rgba(0, 0, 0, 0.15); }
-.hatch-swatch { background: repeating-linear-gradient(135deg, #f3b676 0 3px, rgba(60, 40, 20, 0.8) 3px 4.5px); }
-.nodata-swatch { background: #bdb8aa; }
 
 .legend-toggle { display: none; }
 
