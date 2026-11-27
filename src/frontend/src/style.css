@@ -106,29 +106,26 @@ button:disabled { cursor: not-allowed; }
 .panel-toggle { display: none; }
 /* Desktop: the panel's right corners are rounded and the map runs a little under the panel, so
    the map (not the page background) shows in the corners. The navigation overlay keeps its gap.
-   The sidebar button sits in the panel's header, as in chat apps' sidebars; with the panel slid
-   out (.panel-collapsed) the same button waits as a card at the map's top-left to bring it back. */
+   A small tab on the panel's right edge, halfway down (as in map apps), slides the panel out and
+   back; with the panel out it sits at the window's left edge and its chevron turns around. */
 @media (min-width: 900px) {
   .app { position: relative; }
   .panel { position: relative; border-radius: 0 18px 18px 0; overflow: hidden; transition: margin-left var(--dur-slow) var(--ease-out); }
   .app.panel-collapsed .panel { margin-left: -408px; }
-  .brand { padding-right: 60px; } /* room for the sidebar button at the header's end */
   .panel-toggle {
-    display: grid; place-items: center; position: absolute; z-index: 6; top: 12px; left: calc(408px - 52px);
-    width: 40px; height: 40px; padding: 0; border: 0; border-radius: 10px; background: transparent; color: var(--muted);
+    display: grid; place-items: center; position: absolute; z-index: 6; top: 50%; left: 408px;
+    width: 24px; height: 48px; padding: 0; margin-top: -24px;
+    border: 1px solid var(--line); border-left: 0; border-radius: 0 8px 8px 0;
+    background: var(--surface); color: var(--muted); box-shadow: 1px 1px 3px rgba(23, 33, 30, 0.12);
     cursor: pointer;
-    transition: left var(--dur-slow) var(--ease-out), background-color var(--dur-fast) ease, box-shadow var(--dur-fast) ease;
+    transition: left var(--dur-slow) var(--ease-out), background-color var(--dur-fast) ease, color var(--dur-fast) ease;
   }
-  .panel-toggle:hover { background: rgba(23, 33, 30, 0.08); color: var(--ink); }
-  .app.panel-collapsed .panel-toggle {
-    left: 12px; width: 44px; height: 44px; border-radius: var(--radius); background: var(--surface); color: var(--ink);
-    box-shadow: var(--elev-1);
-  }
-  .app.panel-collapsed .panel-toggle:hover { background: #fff; }
+  .panel-toggle:hover { background: #fff; color: var(--ink); }
+  .panel-toggle svg { transition: transform var(--dur-slow) var(--ease-out); }
+  .app.panel-collapsed .panel-toggle { left: 0; }
+  .app.panel-collapsed .panel-toggle svg { transform: rotate(180deg); }
   .map-wrap { margin-left: -18px; }
   #nav-view .nav-banner, #nav-view .nav-sheet { left: 30px; }
-  /* Panel slid out: the instruction banner starts after the sidebar button. */
-  .app.panel-collapsed #nav-view .nav-banner { left: 86px; }
 }
 @media (max-width: 899px) {
   .app { display: block; position: relative; }
@@ -326,10 +323,7 @@ button:disabled { cursor: not-allowed; }
 
 /* White box; the numbers take the button green when the route cuts exposure, and stay grey
    when it adds exposure or cannot be compared. */
-.delta-banner {
-  display: flex; align-items: center; gap: 16px; border-radius: var(--radius-lg); padding: 14px 16px; margin: 4px 0 8px;
-  background: #fff; border: 1px solid var(--line);
-}
+.delta-banner { display: flex; align-items: center; gap: 16px; padding: 6px 0; margin: 4px 0 8px; }
 .delta-good { color: var(--blue); }
 .delta-neutral { color: var(--muted); }
 .delta-banner .delta-big { font-size: 28px; font-weight: 500; line-height: 1; white-space: nowrap; letter-spacing: -0.01em; }
@@ -384,8 +378,7 @@ button:disabled { cursor: not-allowed; }
    with a note saying how to get it back. */
 .nav-lock-note { display: none; }
 .app.is-navigating .nav-lock-note {
-  display: block; margin: 14px 0 0; padding: 10px 12px; border-radius: var(--radius);
-  background: var(--surface-2); color: var(--muted); font-size: 13px;
+  display: block; margin: 14px 0 0; color: var(--muted); font-size: 13px;
 }
 /* On the form, not #form-view: that one's entrance animation holds its opacity at 1. */
 .app.is-navigating #trip-form { opacity: 0.45; filter: grayscale(1); }
@@ -424,6 +417,43 @@ button:disabled { cursor: not-allowed; }
 .nav-pill-warn .icon { color: #9a6a00; }
 .nav-pill-error .icon { color: var(--red); }
 .nav-pill-done .icon { color: var(--green); }
+/* GPS signal problems: a light veil over the map, the alert in its centre. The map under it
+   still takes drags and clicks; the banner and the bottom card stay on top. */
+.nav-gps-layer {
+  position: absolute; inset: 0; display: grid; place-items: center; padding: 24px;
+  background: rgba(253, 252, 250, 0.9); pointer-events: none; animation: fade-in var(--dur) var(--ease-out) both;
+}
+.nav-gps-layer[hidden] { display: none; }
+/* No card: a line-drawn cone, a title in capitals, plain text and a pill button, right on the
+   light veil, in the red of the panel's error messages (--red). */
+.nav-gps-alert {
+  --alert-red: var(--red);
+  display: grid; justify-items: center; gap: 6px; max-width: 280px; text-align: center; color: var(--muted);
+  animation: menu-in var(--dur) var(--ease-out) both;
+}
+.nav-gps-icon { display: block; margin-bottom: 14px; color: var(--alert-red); }
+.nav-gps-icon svg { display: block; }
+.nav-cone-shine { fill: #cfe9f5; opacity: 0.85; }
+/* The cone rocks on its base, then settles, every few seconds. */
+.nav-cone { transform-origin: 60px 88px; animation: cone-wobble 2.6s ease-in-out infinite; }
+@keyframes cone-wobble {
+  0%, 55%, 100% { transform: rotate(0deg); }
+  12% { transform: rotate(-7deg); }
+  24% { transform: rotate(6deg); }
+  36% { transform: rotate(-3deg); }
+  46% { transform: rotate(1.5deg); }
+}
+.nav-gps-alert strong {
+  font-size: 22px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--alert-red);
+}
+.nav-gps-alert p { margin: 0; font-size: 14px; line-height: 1.45; }
+#nav-view.is-gps-alert .nav-banner, #nav-view.is-gps-alert .nav-sheet { display: none; }
+.nav-end.nav-gps-exit {
+  margin-top: 20px; min-width: 180px; pointer-events: auto; text-shadow: none; background: var(--alert-red);
+  font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; box-shadow: 0 4px 12px rgba(143, 42, 34, 0.25);
+}
+.nav-end.nav-gps-exit:hover { background: #74211b; }
+@media (prefers-reduced-motion: reduce) { .nav-cone { animation: none; } }
 
 .nav-sheet { position: absolute; left: 12px; right: 12px; bottom: 12px; max-width: 460px; display: grid; gap: 10px; justify-items: start; }
 .nav-recenter {

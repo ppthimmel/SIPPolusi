@@ -48,6 +48,8 @@ export interface NavMessage {
   kind: "info" | "warn" | "error" | "done";
   title: string;
   text: string;
+  /** A GPS signal problem: shown as an alert in the middle of a dimmed map, not as a pill. */
+  gps?: boolean;
 }
 
 export interface NavViewState {
@@ -60,7 +62,7 @@ export interface NavViewState {
 
 /** Navigation screen over the map (TI-SE-13), laid out like a directions app: the instruction in
  *  a banner at the top (with "Then …" when the next turn follows soon), status notes as a small
- *  pill under it, and a card at the bottom with time left, distance and arrival time and the exit
+ *  pill under it (GPS signal problems instead as an alert in the middle of a dimmed map), and a card at the bottom with time left, distance and arrival time and the exit
  *  button. Built once, then only its text changes, so the buttons keep focus and screen readers
  *  hear a new instruction only when it changes. */
 export class NavView {
@@ -73,12 +75,17 @@ export class NavView {
   private readonly time = h("strong", { class: "nav-time" });
   private readonly summary = h("span", { class: "nav-summary" });
   private readonly status = h("div", { class: "nav-status" });
+  /** GPS signal problems: a dimmed layer over the map with the alert in its centre. */
+  private readonly gpsAlert = h("div", { class: "nav-gps-layer", hidden: true });
   private readonly live = h("p", { class: "visually-hidden", "aria-live": "polite" });
   private readonly sheet: HTMLElement;
   /** Receives focus when navigation starts. */
   readonly title = h("h2", { class: "visually-hidden", tabindex: "-1" }, tr("Navigasi", "Navigation"));
   private readonly recenter: HTMLButtonElement;
   private readonly finish: HTMLButtonElement;
+  /** Exit button under the GPS alert, which stands in for the banner and the bottom card. */
+  private readonly gpsExit: HTMLButtonElement;
+  private readonly container: HTMLElement;
   private announced = "";
   /** The notice now shown. It is rebuilt only when it changes, so its live role does not
    *  re-announce the same notice on every fix. */
@@ -87,6 +94,12 @@ export class NavView {
   constructor(container: HTMLElement, handlers: { onEnd: () => void; onRecenter: () => void }) {
     this.recenter = h("button", { type: "button", class: "nav-recenter", onclick: handlers.onRecenter }, icon("navigate", 18), ` ${tr("Ikuti posisi", "Re-centre")}`);
     this.finish = h("button", { type: "button", class: "nav-end", onclick: handlers.onEnd }, tr("Keluar", "Exit"));
+    this.gpsExit = h(
+      "button",
+      { type: "button", class: "nav-end nav-gps-exit", "aria-label": tr("Akhiri navigasi", "End navigation"), onclick: handlers.onEnd },
+      tr("Keluar", "Exit"),
+    );
+    this.container = container;
     this.sheet = h(
       "div",
       { class: "nav-sheet" },
@@ -95,7 +108,8 @@ export class NavView {
     );
     clear(container);
     this.banner.append(this.status); // status notes stack under the instruction
-    container.append(this.title, this.banner, this.sheet, this.live);
+    // The GPS layer comes first, so the instruction banner and the bottom card stay above it.
+    container.append(this.title, this.gpsAlert, this.banner, this.sheet, this.live);
   }
 
   /** Space the banner (top) and the bottom card take over the map, for the camera padding. */
@@ -132,7 +146,22 @@ export class NavView {
     if (key !== this.shownMessage) {
       this.shownMessage = key;
       clear(this.status);
-      if (message) {
+      clear(this.gpsAlert);
+      this.gpsAlert.hidden = !message?.gps;
+      // With the GPS alert up, the instruction banner and the bottom card step aside.
+      this.container.classList.toggle("is-gps-alert", !!message?.gps);
+      if (message?.gps) {
+        this.gpsAlert.append(
+          h(
+            "div",
+            { class: "nav-gps-alert", role: "alert" },
+            coneIcon(),
+            h("strong", {}, message.title),
+            h("p", {}, message.text),
+            this.gpsExit,
+          ),
+        );
+      } else if (message) {
         this.status.append(
           h(
             "div",
@@ -157,6 +186,21 @@ export class NavView {
   }
 }
 
+/** Line-drawn traffic cone on a broken ground line, for the GPS alert; it wobbles (style.css). */
+function coneIcon(): HTMLElement {
+  const span = h("span", { class: "nav-gps-icon", "aria-hidden": "true" });
+  span.innerHTML =
+    '<svg viewBox="0 0 120 100" width="120" height="100" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">' +
+    '<g class="nav-cone">' +
+    '<path class="nav-cone-shine" d="M64 16 L79 84 L71 84 L61 26 Z" stroke="none"/>' +
+    '<path d="M54 12h12M54 12L38 88M66 12L82 88"/>' +
+    '<path d="M49 36h22M44 58h32M40 76h40"/>' +
+    "</g>" +
+    '<path class="nav-cone-ground" d="M14 90h4M30 90h60M102 90h4"/>' +
+    "</svg>";
+  return span;
+}
+
 /** "Then …" is shown when the turn after the next one is at most this far after it. */
 const THEN_WITHIN_M = 250;
 
@@ -173,11 +217,9 @@ function statusMessage(s: NavSnapshot): NavMessage | null {
       const acc = fmtNumber(Math.ceil((s.fix?.accuracyM ?? 0) / 10) * 10, 0);
       return {
         kind: "warn",
+        gps: true,
         title: tr("Sinyal GPS lemah", "Weak GPS signal"),
-        text: tr(
-          `Akurasi sekitar ±${acc} m, jadi posisi di peta bisa meleset. Deteksi keluar rute ditunda sampai sinyal membaik.`,
-          `Accuracy is about ±${acc} m, so the position on the map may be off. Off-route detection is paused until the signal improves.`,
-        ),
+        text: tr(`Akurasi ±${acc} m. Posisi bisa meleset.`, `Accuracy ±${acc} m. Position may be off.`),
       };
     }
     case "off_route":

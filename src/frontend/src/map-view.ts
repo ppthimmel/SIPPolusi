@@ -3,14 +3,15 @@ import {
   BASEMAP_ATTRIBUTION,
   BASEMAP_STYLE,
   BASEMAP_TILES,
-  CONFIDENCE_LOW,
+  DETAIL_ZOOM,
   MAP_CENTER,
   MAP_ZOOM,
   STUDY_AREA,
 } from "./config";
-import { EXPOSURE_STOPS, NO_DATA_COLOR, allLowConfidence, layerRatio } from "./exposure";
+import { EXPOSURE_STOPS, NO_DATA_COLOR, layerRatio } from "./exposure";
 import { circle, splitAt, type RouteLine } from "./nav-geometry";
 import landmarks from "./landmarks.json";
+import jakartaBoundary from "./jakarta-boundary.json";
 import type { BBox, ExposureSurface, HeatLayer, Point, RouteResponse, SurfaceFeature } from "./types";
 import { tr } from "./i18n";
 
@@ -18,12 +19,20 @@ const ROUTE_SOURCE = "routes";
 const HEAT_SOURCE = "heat";
 const ACCURACY_SOURCE = "position-accuracy";
 const LANDMARK_SOURCE = "landmarks";
-const HATCH_IMAGE = "hatch";
 const SKELETON_SOURCE = "heat-skeleton";
 const MASK_SOURCE = "outside-study-area";
 /** Grey of the loading skeleton and of the area outside the study area (--surface-2 / --outline). */
 const SKELETON_COLOR = "#cfcac2";
 const OUTSIDE_COLOR = "#ece8e2";
+/** Basemap source layers that give the map its shape; outside the study area only these are drawn. */
+const SHAPE_SOURCE_LAYERS = new Set(["water", "waterway"]);
+const SHAPE_SUFFIX = "-shape";
+/** The app's own layers, which are not basemap and never reach outside the study area. */
+const APP_LAYERS = new Set([
+  "heat-skeleton", "heat-fill", "heat-line",
+  "route-casing", "route-comparison", "route-recommended", "route-nav-casing", "route-passed", "route-nav",
+  "position-accuracy", "outside-fill", "outside-edge",
+]);
 
 const ROUTE_GREEN = "#2b6f2f"; // --green in style.css
 /** The part of the route already travelled while navigating. */
@@ -46,26 +55,6 @@ function colorExpression(prop: string): maplibregl.ExpressionSpecification {
     NO_DATA_COLOR,
   ] as unknown as maplibregl.ExpressionSpecification;
 }
-
-/** Diagonal stripes drawn on a canvas; marks areas where confidence is low. */
-function hatchImage(): ImageData {
-  const size = 12;
-  const canvas = document.createElement("canvas");
-  canvas.width = canvas.height = size;
-  const ctx = canvas.getContext("2d")!;
-  ctx.strokeStyle = "rgba(60, 40, 20, 0.75)";
-  ctx.lineWidth = 1.6;
-  ctx.beginPath();
-  for (const offset of [-size, 0, size]) {
-    ctx.moveTo(offset, size);
-    ctx.lineTo(offset + size, 0);
-  }
-  ctx.stroke();
-  return ctx.getImageData(0, 0, size, size);
-}
-
-// Set per feature in renderHeat: low confidence, unless every feature drawn is low.
-const hatched: maplibregl.ExpressionSpecification = ["get", "hatch"] as unknown as maplibregl.ExpressionSpecification;
 
 /** The vector basemap, or raster tiles when VITE_BASEMAP_TILES is set. */
 function basemapStyle(): string | maplibregl.StyleSpecification {
@@ -141,7 +130,6 @@ export class MapView {
 
   private initLayers(): void {
     const m = this.map;
-    m.addImage(HATCH_IMAGE, hatchImage(), { pixelRatio: 2 });
     // The heatmap, routes and position sit above every basemap road, bridge and building, but
     // under its labels and place icons (street names, landmarks), as in a directions app. Not
     // simply before the first symbol layer: in the vector style that is the one-way arrows, which
@@ -176,30 +164,12 @@ export class MapView {
       paint: { "fill-color": colorExpression("ratio"), "fill-opacity": 0.6 },
     });
     addLayer({
-      id: "heat-fill-hatch",
-      type: "fill",
-      source: HEAT_SOURCE,
-      filter: ["all", isArea, hatched] as unknown as maplibregl.FilterSpecification,
-      paint: { "fill-pattern": HATCH_IMAGE, "fill-opacity": 0.8 },
-    });
-    addLayer({
       id: "heat-line",
       type: "line",
       source: HEAT_SOURCE,
       filter: isLine,
       layout: { "line-cap": "butt" },
       paint: { "line-color": colorExpression("ratio"), "line-width": lineWidth, "line-opacity": 0.92 },
-    });
-    addLayer({
-      id: "heat-line-hatch",
-      type: "line",
-      source: HEAT_SOURCE,
-      filter: ["all", isLine, hatched] as unknown as maplibregl.FilterSpecification,
-      paint: {
-        "line-color": "rgba(255,255,255,0.85)",
-        "line-width": ["interpolate", ["linear"], ["zoom"], 11, 1, 15, 2, 18, 4] as unknown as maplibregl.ExpressionSpecification,
-        "line-dasharray": [1.5, 1.5],
-      },
     });
 
     // Routes: casing first so the lines stay legible over the heatmap.
@@ -267,24 +237,77 @@ export class MapView {
     this.addOutsideMask();
   }
 
-  /** Greys out everything outside the study area (the same rectangle the Backend and the form
-   *  accept), over the basemap's roads and labels, with a dashed edge. Routes and the heatmap
-   *  never reach there, so it can sit on top of every layer. */
+  /** Greys out everything outside Jakarta's administrative border (jakarta-boundary.json, from
+   *  geoBoundaries / OpenStreetMap) while keeping the map's shape there: the sea, rivers and lakes
+   *  stay, but the roads, buildings, labels and place icons go, with a dashed edge along the border.
+   *  The Backend still serves the whole STUDY_AREA rectangle; this is only how the map looks.
+   *
+   *  MapLibre cannot clip a layer to an area, so it is built in layers. Bottom to top: the basemap's
+   *  land, roads and buildings; the heatmap cells; an opaque grey mask with Jakarta cut out; copies
+   *  of the water layers (so the water shows everywhere, and the cells stop at the water's edge as
+   *  well); copies of the bridge layers from zoom 14, inside Jakarta only, so a flyover over a canal
+   *  is not cut; the dashed border; the heatmap's road lines and the routes; and the labels and
+   *  place icons, inside Jakarta only. On a raster basemap there is nothing to copy: plain grey. */
   private addOutsideMask(): void {
-    const a = STUDY_AREA;
+    const m = this.map;
+    const border = jakartaBoundary as GeoJSON.MultiPolygon;
     const world = [[-180, -85], [180, -85], [180, 85], [-180, 85], [-180, -85]];
-    const hole = [[a.minLon, a.minLat], [a.minLon, a.maxLat], [a.maxLon, a.maxLat], [a.maxLon, a.minLat], [a.minLon, a.minLat]];
-    this.map.addSource(MASK_SOURCE, {
+    // One polygon: the world with a hole for each part of Jakarta (holes wind the other way).
+    const holes = border.coordinates.map((poly) => [...poly[0]].reverse());
+    const inside = ["within", border] as unknown as maplibregl.ExpressionSpecification;
+    const restrict = (filter: unknown, keepAreas = false): maplibregl.FilterSpecification => {
+      // `within` only answers for points and lines; area features (rare among labels) keep showing.
+      const test = keepAreas
+        ? ["any", ["match", ["geometry-type"], ["Polygon", "MultiPolygon"], true, false], inside]
+        : inside;
+      return (filter === undefined ? test : ["all", toExpression(filter), test]) as maplibregl.FilterSpecification;
+    };
+
+    const basemap = m.getStyle().layers.filter((l) => !APP_LAYERS.has(l.id) && !l.id.startsWith("landmark-"));
+    const sourceLayer = (l: maplibregl.LayerSpecification) => (l as { "source-layer"?: string })["source-layer"];
+    // Above the heatmap cells, under its road lines and the routes.
+    const before = m.getLayer("heat-line") ? "heat-line" : undefined;
+
+    m.addSource(MASK_SOURCE, {
       type: "geojson",
-      data: { type: "Feature", properties: {}, geometry: { type: "Polygon", coordinates: [world, hole] } },
+      data: { type: "Feature", properties: {}, geometry: { type: "Polygon", coordinates: [world, ...holes] } },
     });
-    this.map.addLayer({ id: "outside-fill", type: "fill", source: MASK_SOURCE, paint: { "fill-color": OUTSIDE_COLOR, "fill-opacity": 1 } });
-    this.map.addLayer({
-      id: "outside-edge",
-      type: "line",
-      source: MASK_SOURCE,
-      paint: { "line-color": "#8a857e", "line-width": 1.5, "line-dasharray": [3, 2] },
-    });
+    m.addLayer({ id: "outside-fill", type: "fill", source: MASK_SOURCE, paint: { "fill-color": OUTSIDE_COLOR, "fill-opacity": 1 } }, before);
+
+    // The map's shape: sea, lakes, rivers, canals.
+    for (const l of basemap) {
+      if (l.type === "symbol" || /tunnel/i.test(l.id) || !SHAPE_SOURCE_LAYERS.has(sourceLayer(l) ?? "")) continue;
+      m.addLayer({ ...l, id: `${l.id}${SHAPE_SUFFIX}` } as maplibregl.AddLayerObject, before);
+    }
+    // Bridges over that water, inside Jakarta, from the zoom where the heatmap turns into road lines
+    // (below it a flyover would stick out of the heatmap cells).
+    for (const l of basemap) {
+      if (l.type === "symbol" || sourceLayer(l) !== "transportation" || !/bridge/i.test(l.id)) continue;
+      const copy = {
+        ...l,
+        id: `${l.id}${SHAPE_SUFFIX}`,
+        minzoom: Math.max(l.minzoom ?? 0, DETAIL_ZOOM),
+        filter: restrict((l as { filter?: unknown }).filter),
+      };
+      m.addLayer(copy as maplibregl.AddLayerObject, before);
+    }
+
+    m.addLayer(
+      {
+        id: "outside-edge",
+        type: "line",
+        source: MASK_SOURCE,
+        paint: { "line-color": "#8a857e", "line-width": 1.5, "line-dasharray": [3, 2] },
+      },
+      before,
+    );
+
+    // The heatmap's road lines, labels and place icons sit above the mask: keep them inside.
+    if (m.getLayer("heat-line")) m.setFilter("heat-line", restrict(m.getFilter("heat-line") ?? undefined));
+    for (const l of m.getStyle().layers) {
+      if (l.type !== "symbol" || l.id.endsWith(SHAPE_SUFFIX)) continue;
+      m.setFilter(l.id, restrict((l as { filter?: unknown }).filter, true));
+    }
   }
 
   /** Landmarks at city zoom, as in a directions app. The vector style shows place icons only from
@@ -547,9 +570,7 @@ export class MapView {
   /** Each heat layer's opacity property and its full and dimmed values. */
   private static readonly HEAT_OPACITY: ReadonlyArray<[id: string, prop: string, full: number, dimmed: number]> = [
     ["heat-fill", "fill-opacity", 0.6, 0.25],
-    ["heat-fill-hatch", "fill-opacity", 0.8, 0.35],
     ["heat-line", "line-opacity", 0.92, 0.35],
-    ["heat-line-hatch", "line-opacity", 1, 0.4],
   ];
   private heatDimmed = false;
   private heatShown = false;
@@ -569,13 +590,11 @@ export class MapView {
   private renderHeat(): void {
     // `ratio` is the WHO-guideline ratio of whichever layer is shown, so the
     // paint expressions never change; `i` indexes back into this.surface on click.
-    const stripes = !allLowConfidence(this.surface);
     const features: GeoJSON.Feature[] = this.surface.map((f, i) => ({
       type: "Feature",
       geometry: f.geometry,
       properties: {
         ratio: layerRatio(this.heatLayer, f),
-        hatch: stripes && (f.confidence ?? 0) < CONFIDENCE_LOW,
         i,
       },
     }));
@@ -707,4 +726,45 @@ export function skeletonCells(area: BBox, drawn: ReadonlyArray<SurfaceFeature>):
     }
   }
   return cells;
+}
+
+/** A style filter as an expression. The basemap's style may still use the legacy filter syntax
+ *  (["==", "class", "x"]), which cannot be put inside an expression's "all"; this converts it. */
+function toExpression(f: unknown): unknown {
+  if (isExpressionFilter(f)) return f;
+  const [op, key, ...rest] = f as [string, unknown, ...unknown[]];
+  const value = (k: unknown) => (k === "$type" ? ["geometry-type"] : k === "$id" ? ["id"] : ["get", k]);
+  const eq = (k: unknown, v: unknown): unknown =>
+    k === "$type" ? ["match", ["geometry-type"], [v as string, `Multi${v}`], true, false] : ["==", value(k), v];
+  switch (op) {
+    case "all": case "any":
+      return [op, ...(f as unknown[]).slice(1).map(toExpression)];
+    case "none":
+      return ["!", ["any", ...(f as unknown[]).slice(1).map(toExpression)]];
+    case "==": return eq(key, rest[0]);
+    case "!=": return ["!", eq(key, rest[0])];
+    case "<": case "<=": case ">": case ">=":
+      return [op, value(key), rest[0]];
+    case "in": return ["any", ...rest.map((v) => eq(key, v))];
+    case "!in": return ["!", ["any", ...rest.map((v) => eq(key, v))]];
+    case "has": return key === "$id" ? ["!=", ["id"], null] : ["has", key];
+    case "!has": return key === "$id" ? ["==", ["id"], null] : ["!", ["has", key]];
+    default: return f;
+  }
+}
+
+/** Whether a filter is already an expression (after isExpressionFilter in the MapLibre style spec). */
+function isExpressionFilter(f: unknown): boolean {
+  if (f === true || f === false) return true;
+  if (!Array.isArray(f) || f.length === 0) return false;
+  switch (f[0]) {
+    case "has": return f.length >= 2 && f[1] !== "$id" && f[1] !== "$type";
+    case "in": return f.length >= 3 && (typeof f[1] !== "string" || Array.isArray(f[2]));
+    case "!in": case "!has": case "none": return false;
+    case "==": case "!=": case ">": case ">=": case "<": case "<=":
+      return f.length !== 3 || Array.isArray(f[1]) || Array.isArray(f[2]);
+    case "any": case "all":
+      return f.slice(1).every((g) => typeof g === "boolean" || isExpressionFilter(g));
+    default: return true;
+  }
 }

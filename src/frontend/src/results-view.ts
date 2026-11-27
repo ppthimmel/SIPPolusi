@@ -5,6 +5,7 @@ import {
   fmtDistance,
   fmtExposure,
   fmtMinutes,
+  exposureUnitLabel,
   fmtNumber,
   fmtPercent,
   fmtWib,
@@ -172,7 +173,7 @@ function routeList(resp: RouteResponse, request: RouteRequest, isFallback: boole
           "span",
           { class: "route-meta", "data-label": labelled ? title : "" },
           via && labelled ? `${title} · ` : "",
-          `${exposureLabel} ${fmtExposure(r.exposure)}`,
+          `${exposureLabel} ${fmtExposure(r.exposure)} ${exposureUnitLabel(resp.exposureUnit)}`,
           // How sure the model is of that number, shown beside it (transparency).
           confidenceText(r.confidence) && h("span", { class: "route-confidence" }, ` · ${confidenceText(r.confidence)}`),
         ),
@@ -205,13 +206,13 @@ function routeList(resp: RouteResponse, request: RouteRequest, isFallback: boole
   return list;
 }
 
-/** "Keyakinan 0,31 (rendah)": the model's confidence in a route's exposure estimate, 0–1, with
- *  its category (rendah < 0,4 ≤ sedang < 0,7 ≤ tinggi); null when the server sent none. */
+/** "Keyakinan rendah": the category of the model's confidence in a route's exposure estimate
+ *  (score 0–1: rendah < 0,4 ≤ sedang < 0,7 ≤ tinggi), without the number; null when the server sent none. */
 export function confidenceText(score: number | null): string | null {
   const cat = confidenceCategory(score);
   if (!cat) return null;
   const word = { rendah: tr("rendah", "low"), sedang: tr("sedang", "medium"), tinggi: tr("tinggi", "high") }[cat];
-  return tr(`Keyakinan ${fmtNumber(score!, 2)} (${word})`, `Confidence ${fmtNumber(score!, 2)} (${word})`);
+  return tr(`Keyakinan ${word}`, `Confidence ${word}`);
 }
 
 /** Fills in the "via …" line of a route row once its street is known. */

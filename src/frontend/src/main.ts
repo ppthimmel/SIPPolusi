@@ -464,7 +464,8 @@ function showResultView(notice: Notice = null): HTMLElement | null {
   state.resultNotice = notice;
   if (!r) return null;
   formView.hidden = false;
-  navViewEl.hidden = true;
+  // Redrawn mid-trip (a language switch): the navigation view over the map stays.
+  navViewEl.hidden = !nav.session;
   resultView.hidden = false;
   return renderResult(resultView, {
     ...r,
@@ -1058,8 +1059,9 @@ function onPositionProblem(problem: PositionProblem): void {
   setNavMessage(
     () => ({
       kind: "warn",
+      gps: true,
       title: problem === "timeout" ? tr("Sinyal GPS lemah", "Weak GPS signal") : tr("GPS tidak tersedia", "GPS unavailable"),
-      text: `${describePositionProblem(problem)} ${tr("Pelacakan terus mencoba; rute tetap di peta.", "Tracking keeps trying; the route stays on the map.")}`,
+      text: tr("Mencoba lagi…", "Trying again…"),
     }),
     "fix",
   );
@@ -1258,7 +1260,7 @@ for (const grip of [sheetHandle, panel.querySelector<HTMLElement>(".brand")!]) {
 // ------------------------------------------------------------- side panel
 // Desktop: a tab on the panel's edge slides it out so the map fills the window, and back.
 const panelToggle = $<HTMLButtonElement>("panel-toggle");
-panelToggle.append(icon("sidebar", 20));
+panelToggle.append(icon("back", 18)); // chevron; style.css turns it around when the panel is out
 function panelToggleLabel(): void {
   const collapsed = $("app").classList.contains("panel-collapsed");
   const label = collapsed ? tr("Tampilkan panel", "Show panel") : tr("Sembunyikan panel", "Hide panel");

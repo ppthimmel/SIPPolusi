@@ -13,9 +13,9 @@ describe("placeInStudyArea", () => {
 
 describe("confidenceText", () => {
   it("gives the score with its category", () => {
-    expect(confidenceText(0.31)).toBe("Keyakinan 0,31 (rendah)");
-    expect(confidenceText(0.55)).toBe("Keyakinan 0,55 (sedang)");
-    expect(confidenceText(0.8)).toBe("Keyakinan 0,80 (tinggi)");
+    expect(confidenceText(0.31)).toBe("Keyakinan rendah");
+    expect(confidenceText(0.55)).toBe("Keyakinan sedang");
+    expect(confidenceText(0.8)).toBe("Keyakinan tinggi");
     expect(confidenceText(null)).toBeNull();
   });
 });

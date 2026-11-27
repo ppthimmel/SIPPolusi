@@ -87,7 +87,7 @@ function content(close: () => void): HTMLElement[] {
     h(
       "header",
       { class: "info-head" },
-      h("h2", { id: "index-info-title" }, tr("Cara membaca peta polusi", "Reading the pollution map")),
+      h("h2", { id: "index-info-title" }, tr("Tentang indeks", "About the index")),
       h("button", { type: "button", class: "icon-btn", "aria-label": tr("Tutup", "Close"), onclick: close }, icon("close", 20)),
     ),
     h(
