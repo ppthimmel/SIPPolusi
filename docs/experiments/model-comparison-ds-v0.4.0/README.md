@@ -115,11 +115,14 @@ CPU `xgboost-cpu` 3.2.0.
 | `bundle_sha256` / `package_sha256` | `9734d6e2…` / `939f2ddf…` |
 | Package check | `verify_model_packages.py spatial --target no2`: pass, compatible, 5 files |
 | Staged on GCP | `gs://sippolusi-mlflow-87531247158/artifacts/incoming/spatial/no2/ds-v0.4.0-9734d6e298ef/` |
-| Files here | [`production_no2/`](production_no2): `bundle.json`, `package.json`, `metadata.json` (the 1 MB `model.json` is only in the bucket) |
+| Files here | [`production_no2/`](production_no2): `bundle.json`, `package.json`, `metadata.json` (the 1 MB `model.json` is only in the bucket), `loso_check.py` / `loso_check.json` |
 
-**Check of the repository code.** The same code run as LOSO on all NO₂ folds (CPU) scores the same station-hours as
-the notebook (val n = 2,005, test n = 2,354), with val RMSE 33.99 / test 35.23 (R² 0.54 / 0.50) against the notebook's
-35.95 / 37.65 ([`production_no2/loso_check.json`](production_no2/loso_check.json)). The cause of the difference was
+**Check of the repository code.** The same code run as LOSO on all 15 NO₂ folds (CPU,
+[`production_no2/loso_check.py`](production_no2/loso_check.py), commit `bb67a97`, whose training and prediction code
+equals `c8590c7`) scores the same station-hours as the notebook (val n = 2,005, test n = 2,354; fold 12, group
+`G_LCS-21`, has no val or test labels, so 14 folds contribute rows), with val RMSE 33.99 / test 35.23 (R² 0.54 / 0.50)
+against the notebook's 35.95 / 37.65 ([`production_no2/loso_check.json`](production_no2/loso_check.json), with
+per-fold counts). The cause of the difference was
 not isolated; the notebook ran XGBoost on the GPU (`device="cuda"`), whose row and column sampling differs from the
 CPU's, with the Colab XGBoost version. The selection above uses the notebook numbers and is unchanged.
 

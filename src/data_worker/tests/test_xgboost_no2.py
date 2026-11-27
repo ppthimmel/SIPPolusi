@@ -14,11 +14,11 @@ SNAPSHOT = ROOT / "docs/experiments/ds-v0.3.0"
 
 @pytest.fixture(scope="module")
 def fold_bundle(tmp_path_factory):
-    import os
     from spatial_model.models.lightgbm.train import train
-    os.environ["THREADS"] = "2"
     run = tmp_path_factory.mktemp("xgb") / "run"
-    return train(SNAPSHOT, run, target="no2", protocol="loso", fold=0, family="xgboost")
+    with pytest.MonkeyPatch.context() as patch:
+        patch.setenv("THREADS", "2")
+        return train(SNAPSHOT, run, target="no2", protocol="loso", fold=0, family="xgboost")
 
 
 def test_training_records_family_transform_and_held_out_sensors(fold_bundle):
@@ -51,6 +51,48 @@ def test_saved_evaluation_reproduces_training_predictions(fold_bundle, tmp_path)
         saved = pd.read_parquet(tmp_path / "evaluation" / f"{split}_predictions.parquet")
         assert len(saved) > 0
         np.testing.assert_allclose(original.predicted, saved.predicted, rtol=0, atol=1e-6)
+
+
+def test_summary_pools_xgboost_folds_and_detects_stale_metadata(fold_bundle, tmp_path):
+    import shutil
+    from spatial_model.evaluation.lightgbm.evaluate import evaluate
+    from spatial_model.training.results import summarize
+    run = tmp_path / "fold-0"
+    shutil.copytree(fold_bundle.parent, run, ignore=shutil.ignore_patterns("bundle"))
+    evaluate(SNAPSHOT, run, run / "evaluation")
+    summary, coverage = summarize(tmp_path, [0])
+    assert set(coverage.status) == {"available"}
+    pooled = summary[(summary.scope == "pooled") & (summary.method == "model")].set_index("split")
+    for split in ("val", "test"):
+        assert pooled.loc[split, "n"] == len(pd.read_parquet(run / "evaluation" / f"{split}_predictions.parquet"))
+    metadata = json.loads((run / "metadata.json").read_text())
+    (run / "metadata.json").write_text(json.dumps(dict(metadata, note="edited")))
+    assert set(summarize(tmp_path, [0])[1].status) == {"stale"}
+
+
+def test_worker_grid_prediction_with_the_xgboost_bundle(fold_bundle):
+    """Worker path end to end: live-shaped inputs -> tabular_frame -> XGBoost -> grid values."""
+    from types import SimpleNamespace
+    from spatial_model.data.grid import GridSpec
+    from spatial_model.inference.serving import load_model, predict_grid
+    loaded = load_model(fold_bundle, "no2")
+    columns = loaded.metadata["columns"]
+    raw = [c for c in columns[columns.index("geoscf_no2_ugm3"):]
+           if not c.startswith("ctm_") and c not in ("wind_u", "wind_v")] + ["wind_direction_10m"]
+    hours = pd.date_range("2026-10-01T00:00Z", periods=24, freq="h")
+    rng = np.random.default_rng(3)
+
+    def frames(nodes, stations, target, end):
+        ids = list(dict.fromkeys([*nodes.grid_id, *stations.grid_id]))
+        index = pd.MultiIndex.from_product([hours, ids], names=["time_utc", "grid_id"])
+        frame = pd.DataFrame({c: rng.uniform(1, 60, len(index)) for c in raw}, index=index)
+        frame["wind_direction_10m"] = rng.uniform(0, 360, len(index))
+        return hours, frame, rng.uniform(5, 80, (len(hours), len(stations)))
+
+    spec = GridSpec.from_bbox((106.8, -6.2, 106.803, -6.197))
+    values = predict_grid(loaded, SimpleNamespace(frames=frames), spec, fold_bundle, hours[-1])
+    assert len(values) == spec.n_cells
+    assert np.isfinite(values).all() and (values >= 0).all()
 
 
 def test_prediction_is_idw_plus_learned_correction(fold_bundle):

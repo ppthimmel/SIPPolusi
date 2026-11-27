@@ -1,4 +1,4 @@
-"""Registered PM2.5 IDW correction and NO2 LightGBM → grid → EdgeWeight."""
+"""Registered PM2.5 IDW correction and NO2 LightGBM/XGBoost → grid → EdgeWeight."""
 
 from __future__ import annotations
 
