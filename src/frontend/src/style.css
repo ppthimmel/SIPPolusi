@@ -433,13 +433,8 @@ button:disabled { cursor: not-allowed; }
   background: var(--surface); box-shadow: var(--elev-1); font-size: 13px; font-weight: 500; color: var(--ink);
   max-width: 100%;
 }
-.nav-pill .icon { margin-top: 1px; }
 .nav-pill-body { display: grid; gap: 1px; }
 .nav-pill-text { font-weight: 400; font-size: 12px; line-height: 1.4; color: var(--muted); }
-.nav-pill-info .icon { color: var(--subtle); }
-.nav-pill-warn .icon { color: #9a6a00; }
-.nav-pill-error .icon { color: var(--red); }
-.nav-pill-done .icon { color: var(--green); }
 /* GPS signal problems: a light veil over the map, the alert in its centre. The map under it
    still takes drags and clicks; the banner and the bottom card stay on top. */
 .nav-gps-layer {

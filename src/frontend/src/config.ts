@@ -23,6 +23,24 @@ export function timeoutMs(value: string | undefined, fallback: number): number {
   const n = Number(value);
   return value && Number.isInteger(n) && n > 0 ? n : fallback;
 }
+
+/** An on/off build variable: true/on/1/yes or false/off/0/no (any case); empty or anything
+ *  else gives the default. */
+export function envSwitch(value: string | undefined, fallback: boolean): boolean {
+  const v = (value ?? "").trim().toLowerCase();
+  if (["true", "on", "1", "yes"].includes(v)) return true;
+  if (["false", "off", "0", "no"].includes(v)) return false;
+  return fallback;
+}
+
+/** Testing tools, set at build time (or when `npm run dev` starts); both default to on in
+ *  `npm run dev` and off in a production build (docs/frontend-enhancement, "Alat bantu
+ *  pengembangan"). Never switch them on for the real public site.
+ *  - VITE_NAV_TEST_PANEL: the "Uji navigasi" panel during navigation (leave / return to the route).
+ *  - VITE_GPS_SPOOF: replaces the device's GPS through the URL: `?lokasi=` (a fixed point) and
+ *    `?simulasi=` (movement along the route while navigating). */
+export const NAV_TEST_PANEL = envSwitch(import.meta.env?.VITE_NAV_TEST_PANEL, !!import.meta.env?.DEV);
+export const GPS_SPOOF = envSwitch(import.meta.env?.VITE_GPS_SPOOF, !!import.meta.env?.DEV);
 /** Place search (TI-SE-12). The timeout stays above the Backend's API_GEOCODING_TIMEOUT_S, plus
  *  its second call for a place outside the area, so the page reads the Backend's own answer. */
 export const GEOCODE_TIMEOUT_MS = 7_000;

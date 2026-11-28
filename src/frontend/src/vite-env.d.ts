@@ -9,4 +9,8 @@ interface ImportMetaEnv {
   readonly VITE_ROUTE_TIMEOUT_MS?: string;
   /** Heatmap request timeout in ms (default 5000, Tabel 3.15). */
   readonly VITE_SURFACE_TIMEOUT_MS?: string;
+  /** "Uji navigasi" test panel: true/false (default: on in `npm run dev`, off in a build). */
+  readonly VITE_NAV_TEST_PANEL?: string;
+  /** GPS spoofer (?lokasi, ?simulasi): on/off (default: on in `npm run dev`, off in a build). */
+  readonly VITE_GPS_SPOOF?: string;
 }

@@ -101,8 +101,10 @@ kanvas peta tidak digambar ulang; panel dan penanda tetap menunjukkan keadaannya
 
 ## Simulasi posisi
 
-Hanya pada `npm run dev`: tambahkan `?simulasi=<skenario>` ke alamat, dan `&kecepatan=<m/s>` untuk mempercepat
-(bawaan 8 m/s). Modul simulasi dimuat dinamis di bawah `import.meta.env.DEV`, jadi tidak ikut build produksi.
+Bila pemalsu GPS menyala (`VITE_GPS_SPOOF`, bawaan nyala pada `npm run dev` dan mati pada build produksi):
+tambahkan `?simulasi=<skenario>` ke alamat, dan `&kecepatan=<m/s>` untuk mempercepat (bawaan 8 m/s). Modul simulasi
+dimuat dinamis hanya bila dipakai. Pengaturan variabelnya di
+[`docs/frontend-enhancement`](../frontend-enhancement/README.md#menyalakan-dan-mematikan-variabel-lingkungan).
 
 | Skenario | Perilaku |
 |---|---|
@@ -117,16 +119,16 @@ Contoh: `http://localhost:5173/?simulasi=keluar&kecepatan=25`. Untuk melihat rut
 
 ### Lokasi tetap di Jakarta
 
-Juga hanya pada `npm run dev`: `?lokasi=<tempat>` membuat peramban melaporkan satu titik tetap sebagai posisi
+Juga bila `VITE_GPS_SPOOF` menyala: `?lokasi=<tempat>` membuat peramban melaporkan satu titik tetap sebagai posisi
 perangkat, sehingga "Lokasi saya", "Gunakan lokasi saya sebagai asal", dan navigasi bisa diuji dari luar Jakarta.
 Tempat yang dikenal: `monas`, `bundaran-hi`, `sudirman`, `blok-m`, `kota`, atau koordinat `lat,lon`
 (mis. `?lokasi=-6.2,106.8`). Posisinya diam; untuk bergerak sepanjang rute saat navigasi, gabungkan dengan
 `?simulasi=` (mis. `?lokasi=monas&simulasi=normal`), yang mengambil alih posisi selama navigasi. Modulnya
-(`src/dev-location.ts`) dimuat dinamis di bawah `import.meta.env.DEV`, jadi tidak ikut build produksi.
+(`src/dev-location.ts`) dimuat dinamis hanya bila dipakai.
 
 ### Panel uji keluar rute
 
-Juga hanya pada `npm run dev`: selama navigasi, kartu **Uji navigasi** di kanan peta (kiri atas di ponsel)
+Bila `VITE_NAV_TEST_PANEL` menyala (bawaan nyala pada `npm run dev`, mati pada build produksi): selama navigasi, kartu **Uji navigasi** di kanan peta (kiri atas di ponsel)
 punya tombol **Keluar dari rute** / **Kembali ke rute**. "Keluar" membuat posisi tersimulasi berjalan tegak
 lurus menjauhi rute sampai ±80 m lalu menunggu di sana; setelah 10 detik di luar rute spanduk berubah kuning
 "Kembali ke rute · ±80 m dari rute" dan rute baru diminta dari posisi itu. "Kembali" membuatnya berjalan

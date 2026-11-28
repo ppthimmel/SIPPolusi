@@ -278,7 +278,7 @@ Tes baru: [`place-combobox.test.ts`](../../src/frontend/src/place-combobox.test.
 | Slider prioritas: lingkar halo pada pegangan saat diarahkan atau ditahan, label zona yang aktif menebal, pegangan "meletup" saat berpindah zona | Posisi slider lebih mudah dibaca tanpa angka α/β |
 | Setelah rute tampil, memindahkan titik asal atau tujuan (seret pin, klik peta, pilih tempat, lokasi saya) menghapus rute lama | Rute yang digambar di antara titik yang sudah berubah menyesatkan |
 | Saat keluar rute, spanduk navigasi berubah kuning: "Kembali ke rute · ±80 m dari rute" sampai pengguna kembali atau rute baru tiba | Belokan berikutnya dari rute yang sudah ditinggalkan menyesatkan |
-| Panel uji keluar rute (hanya pengembangan), lihat [Alat bantu pengembangan](#alat-bantu-pengembangan) | Kasus keluar rute bisa diuji kapan saja tanpa berjalan sungguhan |
+| Panel uji keluar rute (bawaan hanya pada `npm run dev`; diatur `VITE_NAV_TEST_PANEL`), lihat [Alat bantu pengembangan](#alat-bantu-pengembangan) | Kasus keluar rute bisa diuji kapan saja tanpa berjalan sungguhan |
 | Penanda posisi: lingkaran biru dengan figur putih pejalan kaki atau pesepeda sesuai moda yang dipilih (selama navigasi: moda rute yang dinavigasikan). Hanya baji arah yang berputar mengikuti arah gerak; figurnya tetap tegak walau peta diputar | Pengguna melihat moda perjalanannya di peta; sebelumnya seluruh penanda ikut berputar sehingga figur akan terbalik |
 
 Semua animasi berhenti bagi pengguna yang memilih "kurangi gerakan".
@@ -338,10 +338,35 @@ Peninjau PR #119 meminta keputusan ini dikonfirmasi; baris yang bertanda **Perlu
 
 ## Alat bantu pengembangan
 
-Semua alat di bawah hanya ada pada `npm run dev` (`import.meta.env.DEV`). Modulnya dimuat dinamis, sehingga tidak
-ikut build produksi: `npm run build` tidak memuat teks panel uji maupun lokasi palsu (sudah diperiksa pada `dist/`).
+### Menyalakan dan mematikan: variabel lingkungan
+
+Dua alat uji diatur dengan variabel lingkungan di `src/frontend/.env` (contoh di
+[`.env.example`](../../src/frontend/.env.example)). Seperti variabel `VITE_` lainnya, nilainya dibaca saat
+`npm run dev` dimulai atau saat `npm run build`; setelah mengubahnya, jalankan ulang server pengembangan.
+
+| Variabel | Nilai | Bawaan bila kosong | Mengatur |
+|---|---|---|---|
+| `VITE_NAV_TEST_PANEL` | `true` / `false` | nyala pada `npm run dev`, mati pada build produksi | Panel **Uji navigasi** selama navigasi (keluar dari / kembali ke rute) |
+| `VITE_GPS_SPOOF` | `on` / `off` | nyala pada `npm run dev`, mati pada build produksi | Pemalsu GPS lewat alamat: `?lokasi=` (titik tetap) dan `?simulasi=` (gerak sepanjang rute saat navigasi, beserta `&kecepatan=`) |
+
+- Kedua variabel menerima `true/false`, `on/off`, `1/0`, atau `yes/no` (huruf besar-kecil bebas). Nilai lain atau
+  kosong memakai bawaan.
+- `VITE_GPS_SPOOF=off` membuat `?lokasi=` dan `?simulasi=` diabaikan: posisi selalu dari GPS perangkat.
+- `VITE_NAV_TEST_PANEL` tidak bergantung pada `VITE_GPS_SPOOF`: tombol panel sendiri yang mengganti sumber posisi ke
+  simulator saat ditekan, jadi panel tetap berfungsi walau pemalsu GPS mati.
+- Untuk build Docker, keduanya tersedia sebagai build arg di [`Dockerfile`](../../src/frontend/Dockerfile)
+  (`--build-arg VITE_GPS_SPOOF=on`), mis. untuk build demo atau uji. **Jangan nyalakan untuk situs publik
+  sungguhan:** pengguna bisa memalsukan posisinya dan panel uji akan terlihat.
+- Contoh: matikan keduanya saat pengembangan untuk melihat aplikasi persis seperti pengguna
+  (`VITE_NAV_TEST_PANEL=false` dan `VITE_GPS_SPOOF=off`), atau nyalakan pemalsu GPS di build demo agar presentasi
+  bisa memakai `?lokasi=monas&simulasi=normal`.
+
+Modul alat uji dimuat dinamis hanya bila dinyalakan, jadi saat mati kodenya tidak pernah dijalankan di peramban.
+Pegangan `window.__map` tetap hanya pada `npm run dev`.
 
 ### Lokasi palsu (GPS spoofer): `?lokasi=`
+
+Butuh `VITE_GPS_SPOOF` menyala (bawaan pada `npm run dev`).
 
 Peramban melaporkan satu titik tetap sebagai posisi perangkat. Dipakai oleh penanda posisi, tombol **Lokasi saya**,
 **Gunakan lokasi saya sebagai asal**, dan navigasi, sehingga semuanya bisa diuji dari luar Jakarta.
@@ -361,6 +386,8 @@ detik selama dipantau. Nilai yang tidak dikenal hanya memunculkan peringatan di 
 
 ### Simulasi gerak navigasi: `?simulasi=` dan `&kecepatan=`
 
+Butuh `VITE_GPS_SPOOF` menyala (bawaan pada `npm run dev`).
+
 Menggantikan GPS selama navigasi dengan posisi yang bergerak sepanjang rute ([`position-sim.ts`](../../src/frontend/src/position-sim.ts)).
 `&kecepatan=<m/s>` mempercepat (bawaan 8 m/s).
 
@@ -377,7 +404,7 @@ sepanjang rute saat navigasi). `?simulasi=` mengambil alih posisi selama navigas
 
 ### Panel uji keluar rute
 
-Selama navigasi, kartu **Uji navigasi** tampil di kanan peta (kiri atas di ponsel), dengan satu tombol:
+Butuh `VITE_NAV_TEST_PANEL` menyala (bawaan pada `npm run dev`). Selama navigasi, kartu **Uji navigasi** tampil di kanan peta (kiri atas di ponsel), dengan satu tombol:
 
 - **Keluar dari rute**: posisi tersimulasi berjalan tegak lurus menjauhi rute sampai ±80 m, lalu menunggu di sana.
   Setelah 10 detik di luar rute spanduk berubah kuning "Kembali ke rute · ±80 m dari rute", pil menampilkan

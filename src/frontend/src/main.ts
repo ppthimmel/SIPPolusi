@@ -7,6 +7,8 @@ import {
   GEOCODE_DEBOUNCE_MS,
   GEOCODE_MIN_CHARS,
   STUDY_AREA,
+  GPS_SPOOF,
+  NAV_TEST_PANEL,
   SURFACE_DEBOUNCE_MS,
 } from "./config";
 import { clear, h, icon } from "./dom";
@@ -890,11 +892,13 @@ $("use-location").addEventListener("click", useMyLocation);
 // by the Backend); nothing is kept once navigation ends (PNF-06, RI-09).
 
 /** Development only: `?simulasi=normal|keluar|lemah|tolak|tanpa-gps` replaces the GPS. */
-const SIMULATION = import.meta.env.DEV ? new URLSearchParams(location.search) : null;
+/** The URL's testing parameters (?lokasi, ?simulasi, &kecepatan), read only when the GPS
+ *  spoofer is switched on (VITE_GPS_SPOOF, config.ts). */
+const SIMULATION = GPS_SPOOF ? new URLSearchParams(location.search) : null;
 
 /** Development only: `?lokasi=monas|bundaran-hi|sudirman|blok-m|kota|<lat,lon>` reports that place as the device's position. */
 const devLocationReady: Promise<void> =
-  import.meta.env.DEV && SIMULATION?.get("lokasi")
+  GPS_SPOOF && SIMULATION?.get("lokasi")
     ? import("./dev-location").then((dev) => {
         const p = dev.parseDevLocation(SIMULATION.get("lokasi"));
         if (p) dev.useFakeLocation(p);
@@ -948,7 +952,7 @@ void devLocationReady.then(startShowingLocation);
 
 async function positionSource(): Promise<PositionSource> {
   const scenario = SIMULATION?.get("simulasi") ?? null;
-  if (import.meta.env.DEV && scenario) {
+  if (GPS_SPOOF && scenario) {
     const sim = await import("./position-sim");
     if (sim.isSimScenario(scenario)) {
       const speed = Number(SIMULATION?.get("kecepatan")) || undefined;
@@ -1007,10 +1011,10 @@ async function startNavigation(role: RouteResult["role"]): Promise<void> {
   mountSimPanel();
 }
 
-/** Development only: a panel over the map to leave the route and come back on demand, to test
+/** Test panel (VITE_NAV_TEST_PANEL, config.ts): leave the route and come back on demand, to test
  *  the off-route case (banner "Kembali ke rute", then a new route from the position). */
 function mountSimPanel(): void {
-  if (import.meta.env.DEV) {
+  if (NAV_TEST_PANEL) {
     void import("./position-sim").then((sim) => {
       if (!nav.session || navViewEl.querySelector(".sim-panel")) return;
       const isAway = () => nav.source instanceof sim.SimulatedPosition && nav.source.isDetoured;
@@ -1019,10 +1023,10 @@ function mountSimPanel(): void {
   }
 }
 
-/** Development only: walks the simulated position off the route (true) or back (false). On the
+/** Test panel: walks the simulated position off the route (true) or back (false). On the
  *  device's GPS it first switches to the simulator at the current point on the route. */
 async function simDetour(away: boolean): Promise<void> {
-  if (import.meta.env.DEV) {
+  if (NAV_TEST_PANEL) {
     const sim = await import("./position-sim");
     const session = nav.session;
     if (!session) return;
