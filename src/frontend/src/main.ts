@@ -1007,13 +1007,15 @@ function stopShowingLocation(): void {
   here.source = null;
 }
 
-/** Starts the position marker only when that cannot bring up the browser's permission prompt:
- *  location already allowed, or the development spoofer. Otherwise it waits for a location feature,
- *  which explains the use first (review PR #119: no prompt on page load). */
+/** Starts the position marker on its own only when the user has agreed to the privacy notice
+ *  (consent.ts) and doing so cannot bring up the browser's permission prompt: location already
+ *  allowed, or the development spoofer. Otherwise it waits for a location feature, which asks
+ *  for both in turn (review PR #119: no prompt on page load, and no GPS before the notice, even
+ *  when the browser allowed location before the notice existed or after its storage was cleared). */
 async function resumeShowingLocation(): Promise<void> {
   await devLocationReady;
   const fake = GPS_SPOOF && !!SIMULATION?.get("lokasi");
-  if (fake || (await locationPermission()) === "granted") startShowingLocation();
+  if (fake || (hasConsent() && (await locationPermission()) === "granted")) startShowingLocation();
 }
 
 void resumeShowingLocation();

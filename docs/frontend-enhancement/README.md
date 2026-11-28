@@ -404,6 +404,13 @@ memakai komponen yang sama (`toggletip` di `results-view.ts`).
 **Diperiksa.** `tsc --noEmit` bersih, `npm test` (209 tes, 5 baru di `consent.test.ts`) dan `npm run build` lulus.
 Belum diperiksa di peramban.
 
+**Review berikutnya** ([6097216741](https://github.com/ppthimmel/SIPPolusi/pull/119#pullrequestreview-6097216741), pada `0b55257`):
+letak disclaimer dinyatakan sudah dapat diterima. Satu temuan diperbaiki:
+
+| Temuan | Perbaikan |
+|---|---|
+| **P2.** Bila izin lokasi browser sudah diberikan sebelumnya tetapi pemberitahuan privasi belum disetujui (instalasi lama yang diperbarui, atau penyimpanan persetujuan dihapus), pemantauan GPS tetap dimulai saat halaman dibuka tanpa pemberitahuan | `resumeShowingLocation` kini juga mensyaratkan `hasConsent()`; tanpa persetujuan, pemantauan menunggu fitur lokasi, yang meminta persetujuan lebih dulu. Lokasi palsu pengembangan (`?lokasi=`) tetap langsung jalan karena bukan GPS sungguhan |
+
 ## Yang dihapus dan menyentuh kebutuhan desain
 
 Teks berikut dihapus atas permintaan, padahal kode sebelumnya menandainya sebagai pemenuhan kebutuhan pada Bab III.
