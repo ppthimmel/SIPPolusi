@@ -1,6 +1,7 @@
 // The device's position for navigation and "Lokasi saya" (TI-SE-13), through the
 // Geolocation API. Fixes go straight to the caller: nothing here keeps or logs them.
 import type { Fix } from "./navigation";
+import { tr } from "./i18n";
 
 export type PositionProblem = "unsupported" | "insecure" | "denied" | "unavailable" | "timeout";
 
@@ -40,16 +41,22 @@ export function toFix(pos: GeolocationPosition): Fix {
   };
 }
 
-const PROBLEM_TEXT: Record<PositionProblem, string> = {
-  unsupported: "Perangkat atau peramban ini tidak menyediakan lokasi (GPS).",
-  insecure: "Lokasi hanya tersedia bila halaman dibuka lewat koneksi aman (HTTPS).",
-  denied: "Izin lokasi ditolak. Izinkan akses lokasi untuk situs ini di pengaturan peramban, lalu coba lagi.",
-  unavailable: "Posisi tidak dapat ditentukan. Pastikan layanan lokasi (GPS) aktif, sebaiknya di tempat terbuka.",
-  timeout: "Sinyal GPS belum didapat.",
+const PROBLEM_TEXT: Record<PositionProblem, [id: string, en: string]> = {
+  unsupported: ["Perangkat atau peramban ini tidak menyediakan lokasi (GPS).", "This device or browser does not provide location (GPS)."],
+  insecure: ["Lokasi hanya tersedia bila halaman dibuka lewat koneksi aman (HTTPS).", "Location is only available when the page is opened over a secure connection (HTTPS)."],
+  denied: [
+    "Izin lokasi ditolak. Izinkan akses lokasi untuk situs ini di pengaturan peramban, lalu coba lagi.",
+    "Location permission was denied. Allow location access for this site in the browser settings, then try again.",
+  ],
+  unavailable: [
+    "Posisi tidak dapat ditentukan. Pastikan layanan lokasi (GPS) aktif, sebaiknya di tempat terbuka.",
+    "Your position could not be determined. Make sure location services (GPS) are on, ideally outdoors.",
+  ],
+  timeout: ["Sinyal GPS belum didapat.", "No GPS signal yet."],
 };
 
 export function describePositionProblem(problem: PositionProblem): string {
-  return PROBLEM_TEXT[problem];
+  return tr(...PROBLEM_TEXT[problem]);
 }
 
 /** Problems after which no position will ever arrive in this session. */

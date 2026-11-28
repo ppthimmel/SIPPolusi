@@ -1,5 +1,6 @@
 import { CONFIDENCE_LOW, WHO_GUIDELINE } from "./config";
 import type { HeatLayer, SurfaceFeature } from "./types";
+import { tr } from "./i18n";
 
 /** Colour stops of the one-directional cream → dark-red ramp (subbab 3.1). The
  *  stops sit on the class boundaries 0,5 / 1,0 / 2,0 / 3,0. */
@@ -13,16 +14,17 @@ export const EXPOSURE_STOPS: ReadonlyArray<readonly [number, string]> = [
 
 export const NO_DATA_COLOR = "#bdb8aa";
 
-export const EXPOSURE_CLASSES: ReadonlyArray<{ max: number; label: string }> = [
-  { max: 0.5, label: "Sangat rendah" },
-  { max: 1, label: "Rendah" },
-  { max: 2, label: "Sedang" },
-  { max: 3, label: "Tinggi" },
-  { max: Infinity, label: "Sangat tinggi" },
+// Labels are getters so they follow the interface language at the time they are read.
+export const EXPOSURE_CLASSES: ReadonlyArray<{ readonly max: number; readonly label: string }> = [
+  { max: 0.5, get label() { return tr("Sangat rendah", "Very low"); } },
+  { max: 1, get label() { return tr("Rendah", "Low"); } },
+  { max: 2, get label() { return tr("Sedang", "Moderate"); } },
+  { max: 3, get label() { return tr("Tinggi", "High"); } },
+  { max: Infinity, get label() { return tr("Sangat tinggi", "Very high"); } },
 ];
 
-export const HEAT_LAYER_LABELS: Record<HeatLayer, string> = {
-  combined: "Gabungan",
+export const HEAT_LAYER_LABELS: Readonly<Record<HeatLayer, string>> = {
+  get combined() { return tr("Gabungan", "Combined"); },
   pm25: "PM2.5",
   no2: "NO2",
 };

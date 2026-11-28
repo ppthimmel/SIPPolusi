@@ -1,22 +1,41 @@
+/* Visual language modelled on today's map apps (Material 3): white surfaces over the map,
+   Roboto, one blue for actions and the chosen route, tonal containers instead of heavy boxes. */
 :root {
-  --bg: #f3f0e8;
-  --surface: #fbfaf6;
-  --ink: #17211e;
-  --muted: #566059;
-  --line: #d9d4c6;
-  --green: #0b6b50;
-  --green-dark: #08523d;
-  --green-soft: #dcebe4;
+  /* Palette taken from the basemap (OpenFreeMap "liberty"), so panel and map read as one surface:
+     its background, building and road-edge greys for the neutrals, its label greys for text, and
+     its park green for the accent, darkened for contrast (≥ 4.5:1 on every surface, 6:1 for white
+     text on buttons). The --blue* names hold the action colour. */
+  --bg: #f8f4f0;          /* map background */
+  --surface: #fdfcfa;
+  --surface-2: #ece8e2;   /* between background and buildings */
+  --surface-3: #e2ded7;
+  --ink: #222522;
+  --muted: #4a4d4a;
+  --subtle: #666666;      /* map label grey */
+  --line: #e2ddd6;
+  --outline: #cfcdca;     /* map road edge */
+  --blue: #2b6f2f;        /* park green, darkened */
+  --blue-dark: #1f5623;
+  --blue-soft: #d8e8c8;   /* map park fill */
+  --blue-softer: #e8f1e0;
+  --green: #2b6f2f;
+  --green-dark: #1f5623;
+  --green-soft: #d8e8c8;
   --amber-bg: #fdf1c8;
   --amber-ink: #5e4200;
-  --amber-line: #ecd68a;
   --red: #8f2a22;
-  --red-bg: #fbe4e1;
-  --info-bg: #e9eef0;
   --gray-line: #3b4658;
-  --radius: 12px;
-  --font: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  --radius: 8px;
+  --radius-lg: 12px;
+  --elev-1: 0 1px 2px rgba(23, 33, 30, 0.2), 0 1px 3px 1px rgba(23, 33, 30, 0.1);
+  --elev-2: 0 1px 2px rgba(23, 33, 30, 0.2), 0 2px 6px 2px rgba(23, 33, 30, 0.12);
+  --ease-out: cubic-bezier(0.2, 0, 0, 1);
+  /* Motion: one set of durations for the whole app. */
+  --dur-fast: 0.15s;
+  --dur: 0.22s;
+  --dur-slow: 0.32s;
+  --font: "Roboto", system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
+  --mono: "Roboto Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
   color-scheme: light;
 }
 
@@ -24,7 +43,7 @@
 html, body { height: 100%; margin: 0; }
 body {
   font-family: var(--font);
-  font-size: 15px;
+  font-size: 14px;
   line-height: 1.45;
   color: var(--ink);
   background: var(--bg);
@@ -35,7 +54,7 @@ button { cursor: pointer; }
 button:disabled { cursor: not-allowed; }
 :focus-visible { outline: 3px solid #0f5fd1; outline-offset: 2px; }
 [hidden] { display: none !important; }
-.mono { font-family: var(--mono); font-weight: 500; font-variant-numeric: tabular-nums; }
+.mono { font-variant-numeric: tabular-nums; }
 .visually-hidden {
   position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden;
   clip: rect(0 0 0 0); white-space: nowrap; border: 0;
@@ -45,255 +64,497 @@ button:disabled { cursor: not-allowed; }
 /* ------------------------------------------------------------------ layout */
 .app { display: flex; height: 100dvh; width: 100%; overflow: hidden; }
 .panel {
-  width: 420px; flex: none; display: flex; flex-direction: column; background: var(--bg);
-  border-right: 1px solid var(--line); z-index: 5; min-height: 0;
+  width: 408px; flex: none; display: flex; flex-direction: column; background: var(--surface); /* same white as the cards over the map */
+  border-right: 1px solid var(--line); box-shadow: 0 0 20px rgba(23, 33, 30, 0.12); z-index: 5; min-height: 0;
 }
 .map-wrap { position: relative; flex: 1; min-width: 0; }
 #map { position: absolute; inset: 0; }
 .sheet-handle { display: none; }
 
-.brand { display: flex; align-items: center; gap: 10px; padding: 16px 20px 4px; font-weight: 700; }
-.brand-mark {
-  width: 28px; height: 28px; display: grid; place-items: center; border-radius: 8px;
-  background: var(--green); color: #fff;
+.brand { display: flex; align-items: center; gap: 12px; padding: 14px 16px 10px 20px; border-bottom: 1px solid var(--line); }
+.brand-mark { width: 34px; height: 34px; flex: none; object-fit: contain; }
+.brand-text { display: grid; line-height: 1.2; min-width: 0; }
+.brand-name { font-size: 16px; font-weight: 500; }
+.brand-sub { font-size: 12px; color: var(--subtle); }
+
+/* Interface language: Indonesian / English, as a small segmented button. */
+.lang-switch {
+  margin-left: auto; display: inline-flex; border: 1px solid var(--outline); border-radius: 999px; overflow: hidden;
 }
-.panel-body { flex: 1; overflow-y: auto; padding: 8px 20px 16px; min-height: 0; }
-.disclaimer {
-  flex: none; padding: 10px 20px 14px; font-size: 12px; line-height: 1.45; color: var(--muted);
-  border-top: 1px solid var(--line); background: var(--bg);
+.lang-btn {
+  min-width: 44px; min-height: 32px; padding: 0 12px; border: 0; background: transparent;
+  font-size: 13px; font-weight: 500; color: var(--muted); transition: background 0.15s;
+}
+.lang-btn + .lang-btn { border-left: 1px solid var(--outline); }
+.lang-btn:hover:not([aria-pressed="true"]) { background: var(--surface-2); }
+.lang-btn[aria-pressed="true"] { background: var(--ink); color: #fff; }
+
+.panel-body { flex: 1; overflow-y: auto; padding: 4px 20px 20px; min-height: 0; }
+.panel-credits { flex: none; padding: 10px 20px 12px; border-top: 1px solid var(--line); font-size: 11px; line-height: 1.45; color: var(--subtle); }
+.panel-credits p { margin: 0; }
+.panel-credits p + p { margin-top: 2px; }
+.panel-credits a { color: inherit; }
+.panel-credits .link-btn { min-height: 0; padding: 0; font: inherit; color: inherit; text-decoration: underline; }
+/* Thin scrollbars that blend into the panel: no arrows, no track, a soft thumb. */
+.panel-body, .place-menu, .legend {
+  scrollbar-width: thin;
+  scrollbar-color: var(--outline) transparent;
 }
 
+.panel-toggle { display: none; }
+/* Desktop: the panel's right corners are rounded and the map runs a little under the panel, so
+   the map (not the page background) shows in the corners. The navigation overlay keeps its gap.
+   A small tab on the panel's right edge, halfway down (as in map apps), slides the panel out and
+   back; with the panel out it sits at the window's left edge and its chevron turns around. */
+@media (min-width: 900px) {
+  .app { position: relative; }
+  .panel { position: relative; border-radius: 0 18px 18px 0; overflow: hidden; transition: margin-left var(--dur-slow) var(--ease-out); }
+  .app.panel-collapsed .panel { margin-left: -408px; }
+  .panel-toggle {
+    display: grid; place-items: center; position: absolute; z-index: 6; top: 50%; left: 408px;
+    width: 24px; height: 48px; padding: 0; margin-top: -24px;
+    border: 1px solid var(--line); border-left: 0; border-radius: 0 8px 8px 0;
+    background: var(--surface); color: var(--muted); box-shadow: 1px 1px 3px rgba(23, 33, 30, 0.12);
+    cursor: pointer;
+    transition: left var(--dur-slow) var(--ease-out), background-color var(--dur-fast) ease, color var(--dur-fast) ease;
+  }
+  .panel-toggle:hover { background: #fff; color: var(--ink); }
+  .panel-toggle svg { transition: transform var(--dur-slow) var(--ease-out); }
+  .app.panel-collapsed .panel-toggle { left: 0; }
+  .app.panel-collapsed .panel-toggle svg { transform: rotate(180deg); }
+  .map-wrap { margin-left: -18px; }
+  #nav-view .nav-banner, #nav-view .nav-sheet { left: 30px; }
+}
 @media (max-width: 899px) {
   .app { display: block; position: relative; }
   .map-wrap { position: absolute; inset: 0; }
   .panel {
     position: absolute; left: 0; right: 0; bottom: 0; width: auto; max-height: 64dvh;
-    border-right: 0; border-radius: 22px 22px 0 0; box-shadow: 0 -8px 28px rgba(23, 33, 30, 0.18);
+    border-radius: 28px 28px 0 0; box-shadow: 0 -8px 28px rgba(23, 33, 30, 0.18);
   }
   .sheet-handle {
-    display: block; width: 100%; height: 28px; border: 0; background: transparent; position: relative; flex: none;
+    display: block; width: 100%; height: 22px; border: 0; background: transparent; position: relative; flex: none;
   }
   .sheet-handle::after {
-    content: ""; position: absolute; left: 50%; top: 10px; width: 44px; height: 5px; margin-left: -22px;
-    border-radius: 3px; background: #b9b3a2;
+    content: ""; position: absolute; left: 50%; top: 10px; width: 32px; height: 4px; margin-left: -16px;
+    border-radius: 2px; background: var(--outline);
   }
-  .brand { padding-top: 0; }
-  .panel.collapsed .panel-body,
-  .panel.collapsed .disclaimer { display: none; }
+  .brand { padding-top: 2px; }
+  .panel.collapsed .panel-body, .panel.collapsed .panel-credits { display: none; }
+  /* The sheet is dragged by its handle and header (main.ts): no page scroll while doing so. */
+  .sheet-handle, .brand { touch-action: none; cursor: grab; }
 }
 
 /* ------------------------------------------------------------------- form */
-.title { font-size: 26px; line-height: 1.15; margin: 12px 0 4px; font-weight: 800; letter-spacing: -0.02em; }
+.title { font-size: 22px; line-height: 1.25; margin: 16px 0 12px; font-weight: 400; }
 .title:focus { outline: none; }
-.lede { margin: 0 0 14px; color: var(--muted); }
-.hint { margin: 6px 0 0; font-size: 13px; color: var(--muted); min-height: 0; }
+.hint { margin: 6px 0 0; font-size: 13px; color: var(--subtle); }
 .hint:empty { display: none; }
+/* Required notices (PNF-06, PNF-07, RI-09): small, but always on screen where they apply. */
+.fine-print { margin: 8px 0 0; font-size: 12px; line-height: 1.45; color: var(--subtle); }
 
-.points { display: flex; gap: 10px; align-items: center; }
-.point-fields { flex: 1; display: grid; gap: 8px; min-width: 0; }
+/* Travel modes sit above the two points, as in a directions panel. */
+#trip-form { display: flex; flex-direction: column; padding-top: 16px; padding-bottom: 12px; }
+#trip-form > .mode { order: -1; margin: 0 0 14px; }
+
+.points { display: flex; gap: 4px; align-items: center; }
+.point-fields { flex: 1; display: grid; gap: 10px; min-width: 0; }
 .field {
-  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 6px 8px 6px 14px;
+  position: relative; display: grid; grid-template-columns: 24px minmax(0, 1fr); align-items: center; column-gap: 8px;
+  background: var(--surface); border: 1px solid var(--outline); border-radius: var(--radius); padding: 0 4px 0 10px;
+  transition: border-color 0.15s, box-shadow 0.15s;
 }
-.field:focus-within { border-color: var(--ink); }
-.field.is-invalid { border-color: var(--red); border-width: 2px; padding: 5px 7px 5px 13px; }
-.field label {
-  display: flex; align-items: center; gap: 8px; font-size: 11px; font-weight: 700; letter-spacing: 0.06em;
-  text-transform: uppercase; color: var(--muted);
+.field:hover { border-color: #b5b1ab; }
+.field:focus-within { z-index: 3; border-color: var(--blue); box-shadow: inset 0 0 0 1px var(--blue); }
+.field.is-invalid { border-color: var(--red); box-shadow: inset 0 0 0 1px var(--red); }
+/* The label shows as the point's symbol; its words stay for screen readers. */
+.field label { display: grid; place-items: center; height: 100%; }
+.field label span:not(.dot) {
+  position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;
 }
-.dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
-.dot-origin { background: var(--ink); }
-.dot-destination { background: var(--red); }
-.field-row { display: flex; align-items: center; gap: 4px; }
+.dot { display: inline-block; flex: none; }
+.dot-origin { width: 14px; height: 14px; border-radius: 50%; border: 2.5px solid var(--ink); background: var(--surface); }
+.dot-destination {
+  width: 14px; height: 18px; border: 0; border-radius: 0;
+  background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 32'><path d='M12 31S2 19 2 11.5a10 10 0 0120 0C22 19 12 31 12 31z' fill='%238f2a22'/><circle cx='12' cy='11.5' r='3.6' fill='white'/></svg>") center / contain no-repeat;
+}
+.field-row { display: flex; align-items: center; gap: 2px; }
 .field input {
-  flex: 1; min-width: 0; border: 0; background: transparent; padding: 6px 0; font-size: 15px; font-weight: 600;
-  min-height: 32px;
+  flex: 1; min-width: 0; border: 0; background: transparent; padding: 0; font-size: 15px; min-height: 46px;
 }
 .field input:focus-visible { outline: none; }
-.field input::placeholder { font-weight: 400; color: #7b857e; }
-.field-error { margin: 2px 0 4px; font-size: 13px; color: var(--red); font-weight: 600; }
+.field input::placeholder { color: #807d79; }
+.field-error { grid-column: 2; margin: -4px 0 8px; font-size: 12px; color: var(--red); }
 
-.field { position: relative; }
-.field:focus-within { z-index: 3; }
 .place-menu {
-  position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 4; max-height: 320px; overflow-y: auto;
-  background: var(--surface); border: 1px solid var(--ink); border-radius: var(--radius);
-  box-shadow: 0 8px 24px rgba(23, 33, 30, 0.18);
+  position: absolute; top: calc(100% + 4px); left: -1px; right: -1px; z-index: 4; max-height: 320px; overflow-y: auto;
+  background: var(--surface); border-radius: var(--radius); box-shadow: var(--elev-2);
 }
 .place-menu[hidden], .place-menu [hidden] { display: none; }
 /* The bottom sheet is short: the field being typed in has to stay in view above the list. */
 @media (max-width: 899px) { .place-menu { max-height: 220px; } }
-.place-menu ul { list-style: none; margin: 0; padding: 4px; }
-.place-option { display: grid; gap: 2px; min-height: 44px; align-content: center; padding: 6px 10px; border-radius: 8px; cursor: pointer; }
-.place-option:hover, .place-option[aria-selected="true"] { background: var(--green-soft); }
-.place-name { font-weight: 600; }
-.place-description { font-size: 13px; color: var(--muted); }
-.place-status { margin: 0; padding: 12px 14px; font-size: 14px; }
-.place-notice { margin: 8px 0 0; font-size: 12px; line-height: 1.4; color: var(--muted); }
+.place-menu ul { list-style: none; margin: 0; padding: 6px 0; }
+.place-option { display: grid; gap: 1px; min-height: 48px; align-content: center; padding: 6px 16px; cursor: pointer; }
+.place-option:hover, .place-option[aria-selected="true"] { background: var(--surface-2); }
+/* A place outside the study area: listed, greyed out, not choosable (place-combobox.ts). */
+.place-option.is-disabled { cursor: not-allowed; opacity: 0.5; }
+.place-option.is-disabled:hover { background: none; }
+.place-name { font-size: 14px; }
+.place-description { font-size: 12px; color: var(--subtle); }
+.place-status { margin: 0; padding: 14px 16px; font-size: 13px; color: var(--muted); }
 
 .pick-btn, .icon-btn, .map-btn {
-  display: inline-grid; place-items: center; min-width: 44px; min-height: 44px; border-radius: 10px;
-  border: 1px solid transparent; background: transparent; color: var(--ink);
+  display: inline-grid; place-items: center; min-width: 40px; min-height: 40px; border-radius: 50%;
+  border: 0; background: transparent; color: var(--muted); transition: background 0.15s, color 0.15s;
 }
-.pick-btn { min-width: 44px; min-height: 40px; }
-.pick-btn[aria-pressed="true"] { background: var(--ink); color: #fff; }
-.pick-btn:hover:not([aria-pressed="true"]), .icon-btn:hover { background: #ebe7da; }
-.swap-btn { background: var(--surface); border-color: var(--line); flex: none; }
+.pick-btn:hover:not([aria-pressed="true"]), .icon-btn:hover { background: rgba(23, 33, 30, 0.08); }
+.pick-btn[aria-pressed="true"] { background: var(--blue-soft); color: var(--blue); }
+.swap-btn { flex: none; width: 44px; height: 44px; }
+/* 44 × 44 px touch target (WCAG 2.5.5); the round hover shape stays small around the icon. */
+.clear-btn {
+  position: relative; display: inline-grid; place-items: center; flex: none; width: 44px; height: 44px; margin: 0 -4px;
+  border: 0; background: transparent; color: var(--subtle); transition: color 0.15s;
+}
+.clear-btn::before {
+  content: ""; position: absolute; inset: 6px; border-radius: 50%; background: transparent; transition: background 0.15s;
+}
+.clear-btn > .icon { position: relative; }
+.clear-btn:hover { color: var(--ink); }
+.clear-btn:hover::before { background: rgba(23, 33, 30, 0.08); }
 
-.mode { border: 0; margin: 16px 0 0; padding: 0; }
-.mode legend, .priority label { font-weight: 700; font-size: 14px; padding: 0; }
-.segmented { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
+#use-location { margin-top: 8px; align-self: flex-start; }
+
+.mode { border: 0; padding: 0; }
+.mode legend { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.segmented { display: flex; gap: 8px; }
 .seg { position: relative; display: block; }
 .seg input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
 .seg > span {
-  display: flex; align-items: center; justify-content: center; gap: 6px; min-height: 48px; border-radius: var(--radius);
-  background: var(--surface); border: 1px solid var(--line); font-weight: 600;
+  display: flex; align-items: center; justify-content: center; gap: 6px; min-height: 36px; padding: 0 16px 0 12px;
+  border-radius: 999px; border: 1px solid var(--outline); background: var(--surface); color: var(--muted);
+  font-size: 14px; font-weight: 500; transition: background 0.15s, border-color 0.15s, color 0.15s;
 }
+.seg:hover input:not(:checked) + span { background: var(--surface-2); }
 .seg input:checked + span { background: var(--ink); border-color: var(--ink); color: #fff; }
 .seg input:focus-visible + span { outline: 3px solid #0f5fd1; outline-offset: 2px; }
 
 .priority { margin-top: 18px; }
 .priority-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
-.priority-head .mono { font-size: 12px; color: var(--muted); }
+.priority label { font-size: 14px; font-weight: 500; }
+.priority-head .mono { font-size: 12px; color: var(--subtle); }
 .priority input[type="range"] {
-  -webkit-appearance: none; appearance: none; width: 100%; height: 44px; margin: 0; background: transparent;
+  -webkit-appearance: none; appearance: none; width: 100%; height: 40px; margin: 0; background: transparent;
 }
 .priority input[type="range"]::-webkit-slider-runnable-track {
-  height: 6px; border-radius: 3px;
-  background: linear-gradient(to right, var(--green) var(--fill, 50%), #d3cebf var(--fill, 50%));
+  height: 4px; border-radius: 2px;
+  background: linear-gradient(to right, var(--blue) var(--fill, 50%), var(--blue-soft) var(--fill, 50%));
 }
 .priority input[type="range"]::-moz-range-track {
-  height: 6px; border-radius: 3px;
-  background: linear-gradient(to right, var(--green) var(--fill, 50%), #d3cebf var(--fill, 50%));
+  height: 4px; border-radius: 2px;
+  background: linear-gradient(to right, var(--blue) var(--fill, 50%), var(--blue-soft) var(--fill, 50%));
 }
+/* The handle answers the pointer (Material-style): a soft halo on hover and keyboard focus, a
+   larger halo and a slightly bigger handle while held, and a short pop when the value crosses
+   into another zone (main.ts adds .zone-pop). */
+.priority input[type="range"] { --halo: 0px; --grow: 1; cursor: pointer; }
+.priority input[type="range"]:hover, .priority input[type="range"]:focus-visible { --halo: 8px; }
+.priority input[type="range"]:active { --halo: 11px; --grow: 1.15; cursor: grabbing; }
+.priority input[type="range"]:focus-visible { outline: none; }
 .priority input[type="range"]::-webkit-slider-thumb {
-  -webkit-appearance: none; width: 24px; height: 24px; margin-top: -9px; border-radius: 50%;
-  background: var(--green); border: 3px solid #fff; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+  -webkit-appearance: none; width: 20px; height: 20px; margin-top: -8px; border-radius: 50%;
+  background: var(--blue); border: 0;
+  box-shadow: 0 0 0 var(--halo) rgba(43, 111, 47, 0.16), var(--elev-1);
+  transform: scale(var(--grow));
+  transition: box-shadow var(--dur) var(--ease-out), transform var(--dur-fast) var(--ease-out);
 }
 .priority input[type="range"]::-moz-range-thumb {
-  width: 18px; height: 18px; border-radius: 50%; background: var(--green); border: 3px solid #fff;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+  width: 20px; height: 20px; border-radius: 50%; background: var(--blue); border: 0;
+  box-shadow: 0 0 0 var(--halo) rgba(43, 111, 47, 0.16), var(--elev-1);
+  transform: scale(var(--grow));
+  transition: box-shadow var(--dur) var(--ease-out), transform var(--dur-fast) var(--ease-out);
 }
-.priority-scale { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); margin-top: -4px; }
+.priority input[type="range"].zone-pop::-webkit-slider-thumb { animation: thumb-pop 0.32s var(--ease-out); }
+.priority input[type="range"].zone-pop::-moz-range-thumb { animation: thumb-pop 0.32s var(--ease-out); }
+@keyframes thumb-pop { 40% { transform: scale(1.35); } }
+/* The label of the zone the handle is in darkens; the others stay grey. */
+.priority-scale { display: flex; justify-content: space-between; font-size: 12px; color: var(--subtle); margin-top: -6px; }
+.priority-scale span { transition: color var(--dur) ease; }
+.priority-scale span.is-current { color: var(--ink); font-weight: 500; }
 
 .primary, .secondary {
-  display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; min-height: 52px; border-radius: var(--radius);
-  font-weight: 700; font-size: 16px; border: 1px solid transparent;
+  display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; min-height: 44px;
+  border-radius: 999px; font-weight: 500; font-size: 14px; letter-spacing: 0.01em; border: 1px solid transparent;
+  transition: background 0.15s, box-shadow 0.15s, border-color 0.15s;
 }
-.primary { background: var(--green); color: #fff; margin-top: 16px; }
-.primary:hover:not(:disabled) { background: var(--green-dark); }
-.primary:disabled { background: #a9b9b2; color: #f3f6f4; }
-.primary.is-busy { background: var(--green-dark); color: #fff; cursor: progress; }
-.secondary { background: var(--surface); border-color: var(--line); min-height: 44px; font-size: 14px; width: auto; padding: 0 16px; }
-.secondary.dark { background: var(--ink); color: #fff; width: 100%; margin-top: 10px; }
+.primary { background: var(--blue); color: #fff; margin-top: 18px; }
+.primary:hover:not(:disabled) { background: var(--blue-dark); box-shadow: var(--elev-1); }
+.primary:disabled { background: #b3c1ae; color: #f6f8f3; }
+/* Searching: disabled look, with a white spinner in place of the label. */
+.primary.is-busy { cursor: progress; }
+.primary .spinner { border-color: rgba(255, 255, 255, 0.45); border-top-color: #fff; }
+.secondary { background: var(--surface); border-color: var(--outline); color: var(--blue); width: auto; padding: 0 20px; }
+.secondary:hover:not(:disabled) { background: var(--blue-softer); }
+.secondary.dark { background: var(--blue); border-color: var(--blue); color: #fff; width: 100%; margin-top: 10px; }
+.secondary.dark:hover:not(:disabled) { background: var(--blue-dark); }
 #cancel-btn { margin-top: 8px; width: 100%; }
-.link-btn { background: none; border: 0; padding: 0; min-height: 32px; color: var(--green-dark); font-weight: 700; text-decoration: underline; font-size: 13px; }
+.link-btn {
+  background: none; border: 0; padding: 0; min-height: 32px; color: var(--blue); font-weight: 500; font-size: 13px;
+}
+.link-btn:hover { text-decoration: underline; }
 
 /* ----------------------------------------------------------- status/notice */
 .status { margin-top: 14px; }
-.status-note { margin: 0; font-size: 14px; color: var(--muted); }
-.loading { display: flex; align-items: center; gap: 10px; font-weight: 600; color: var(--green-dark); }
+.status:empty, .status:has(> .visually-hidden:only-child) { margin-top: 0; }
+.status-note { margin: 0; font-size: 13px; color: var(--muted); }
+.status-error { margin: 0; font-size: 13px; line-height: 1.45; color: var(--red); }
+.loading { display: flex; align-items: center; gap: 12px; color: var(--muted); }
 .spinner {
-  width: 18px; height: 18px; border-radius: 50%; border: 3px solid var(--green-soft); border-top-color: var(--green);
+  width: 20px; height: 20px; border-radius: 50%; border: 2.5px solid var(--blue-soft); border-top-color: var(--blue);
   animation: spin 0.8s linear infinite;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .spinner { animation-duration: 2.4s; } }
 
+/* A message row: tone in the icon, plain text, an action as a text button. */
 .notice {
-  display: flex; gap: 10px; align-items: flex-start; border-radius: var(--radius); padding: 12px 14px; margin: 10px 0;
-  font-size: 14px; border: 1px solid transparent;
+  --tone: var(--muted);
+  display: grid; grid-template-columns: 20px minmax(0, 1fr); column-gap: 14px; align-items: start;
+  margin: 12px 0; padding: 14px 16px; font-size: 13px; color: var(--muted);
+  background: var(--surface-2); border-radius: var(--radius-lg);
 }
-.notice p { margin: 2px 0 0; }
-.notice .icon { margin-top: 2px; }
-.notice-warn { background: var(--amber-bg); border-color: var(--amber-line); color: var(--amber-ink); }
-.notice-info { background: var(--info-bg); border-color: #cfd8dc; color: #26343b; }
-.notice-error { background: var(--red-bg); border-color: #efbdb7; color: #6d1d17; }
-.req-id { font-family: var(--mono); font-size: 12px; opacity: 0.85; word-break: break-all; }
-.error-actions { margin-top: 8px; }
+.notice > .icon { color: var(--tone); margin-top: 1px; }
+.notice strong { display: block; font-size: 14px; font-weight: 500; line-height: 1.35; color: var(--ink); }
+.notice p { margin: 4px 0 0; line-height: 1.5; }
+.stale-note { margin: 12px 0; font-size: 13px; line-height: 1.5; color: var(--muted); }
+.notice-warn { --tone: #9a6a00; }
+.notice-info { --tone: #3d5561; }
+.notice-error { --tone: var(--red); }
+.notice-done { --tone: var(--green); }
 
 /* ----------------------------------------------------------------- results */
-.result-head { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+.result-head { display: flex; align-items: center; gap: 6px; margin: 8px 0 0 -10px; }
 .trip-summary { min-width: 0; }
-.trip-line { font-weight: 700; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.trip-sub { font-size: 12px; color: var(--muted); }
-.title-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
-.result-title { font-size: 20px; margin: 8px 0; }
-.time-chip {
-  display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: var(--muted);
-}
+.trip-line { font-size: 14px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.trip-sub { font-size: 12px; color: var(--subtle); }
+/* While the trip is searched again, the old routes stay but are dimmed. */
+#result-view[aria-busy="true"] .route-list, #result-view[aria-busy="true"] .stale-note { opacity: 0.45; pointer-events: none; }
+.result-title { font-size: 20px; margin: 8px 0 4px; }
 
-.delta-banner { display: flex; align-items: center; gap: 12px; border-radius: var(--radius); padding: 12px 14px; margin: 10px 0 12px; }
-.delta-good { background: var(--green); color: #fff; }
-.delta-neutral { background: #e3dfd2; color: var(--ink); }
-.delta-big { font-size: 22px; font-weight: 600; white-space: nowrap; }
-.delta-text { font-size: 13px; font-weight: 600; line-height: 1.35; }
+/* White box; the numbers take the button green when the route cuts exposure, and stay grey
+   when it adds exposure or cannot be compared. */
+.delta-banner { display: flex; align-items: center; gap: 16px; padding: 6px 0; margin: 4px 0 8px; }
+.delta-good { color: var(--blue); }
+.delta-neutral { color: var(--muted); }
+.delta-banner .delta-big { font-size: 28px; font-weight: 500; line-height: 1; white-space: nowrap; letter-spacing: -0.01em; }
+.delta-text { font-size: 13px; line-height: 1.4; }
 
-.route-card {
-  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 14px; margin-bottom: 10px;
+/* Routes as a list, one row each (directions-panel style): mode icon, "via" line, time on the
+   right with the distance under it. The selected row has a bar on the left and shows its
+   details and the navigation button. */
+.route-list { list-style: none; margin: 4px -20px 0; padding: 0; border-top: 1px solid var(--line); }
+.route-row { position: relative; border-bottom: 1px solid var(--line); }
+.route-row.is-selected::before {
+  content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--blue);
 }
-.route-card-rec { border: 2px solid var(--green); padding: 11px 13px; }
-.route-title { display: flex; align-items: center; gap: 10px; margin: 0 0 6px; font-size: 15px; font-weight: 700; }
-.route-badges { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
-.route-sub { font-size: 13px; color: var(--muted); }
+.route-pick {
+  display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; column-gap: 16px; align-items: start;
+  /* Little space below: the row's "Mulai navigasi" button follows right under it. */
+  width: 100%; padding: 16px 20px 0; border: 0; background: none; text-align: left; color: var(--ink);
+  transition: background 0.15s;
+}
+.route-pick:hover { background: rgba(23, 33, 30, 0.04); }
+.route-pick:focus-visible { outline-offset: -3px; }
+.route-mode { display: inline-flex; padding-top: 1px; color: var(--ink); }
+.route-main { display: grid; gap: 4px; min-width: 0; }
+.route-via { font-size: 16px; line-height: 1.3; }
+/* Exposure and confidence under the select button, aligned with the "via" line (results-view.ts). */
+.route-details { position: relative; margin-top: 2px; padding: 0 96px 8px 64px; cursor: pointer; }
+/* Flows as text, so "Rute tercepat · Paparan … ⓘ" wraps like a sentence; confidence on its own line. */
+.route-meta { display: block; font-size: 12px; line-height: 1.5; color: var(--subtle); }
+.route-exposure { white-space: nowrap; }
+/* "ⓘ": a 24 px target (WCAG 2.5.8) around a small icon. */
+.info-tip {
+  display: inline-grid; place-items: center; width: 24px; height: 24px; margin: -4px 0 -4px 2px; padding: 0; border: 0;
+  vertical-align: middle;
+  border-radius: 50%; background: none; color: var(--subtle); cursor: pointer;
+}
+.info-tip:hover, .info-tip[aria-expanded="true"] { color: var(--ink); background: rgba(23, 33, 30, 0.08); }
+/* The bubble opens under the line, over what follows. */
+.info-pop {
+  position: absolute; z-index: 5; left: 56px; right: 16px; top: calc(100% - 4px); padding: 10px 12px; border-radius: 10px;
+  background: var(--ink); color: #fff; font-size: 12px; line-height: 1.45; box-shadow: var(--elev-2); cursor: default;
+  animation: menu-in var(--dur-fast) var(--ease-out) both;
+}
+.info-pop p { margin: 0 0 4px; }
+.info-pop .info-pop-more { min-height: 24px; color: #fff; text-decoration: underline; font-size: 12px; }
+/* Rows keep a transform from their entrance animation, so each is its own stacking layer and a
+   later row would paint over an earlier row's bubble: lift the row whose bubble is open. */
+.route-row:has(.info-pop:not([hidden])) { z-index: 2; }
+/* PNF-07 under the comparison box: short line, full disclaimer behind ⓘ (results-view.ts). */
+.estimate-note { position: relative; z-index: 3; margin: -2px 0 10px; font-size: 12px; line-height: 1.5; color: var(--subtle); }
+.estimate-note .info-pop { left: 0; right: 0; }
+/* Confidence on its own line under the exposure. */
+.route-confidence { display: block; }
+.route-time { display: grid; justify-items: end; gap: 2px; white-space: nowrap; }
+/* The time column is two lines tall; it may hang beside the exposure line below rather than push
+   it down, so "Paparan …" follows the "via" line directly (.route-details keeps clear of it). */
+.route-pick .route-time { margin-bottom: -22px; }
+.route-time strong { font-size: 16px; font-weight: 500; }
+.route-time span { font-size: 13px; color: var(--subtle); }
+.route-row.is-selected .route-time strong { color: var(--green); }
+.route-extra { padding: 0 20px 16px 64px; }
 .chip {
-  display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 600;
-  background: #ebe7da; color: #3c4540;
+  display: inline-flex; align-items: center; gap: 4px; height: 24px; padding: 0 8px; border-radius: 6px;
+  font-size: 12px; font-weight: 500; background: var(--surface-2); color: var(--muted);
 }
-.chip-tinggi { background: var(--green-soft); color: #0a4d3a; }
-.chip-sedang { background: #e8ebe3; color: #384238; }
-.chip-rendah { background: #f3e3bf; color: #5e4200; }
 .chip-fallback { background: #e1e6ea; color: #26343b; }
-.metrics { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 0.8fr) minmax(0, 1.3fr); gap: 8px; margin: 0; }
-.metric dt { font-size: 12px; color: var(--muted); }
-.metric dd { margin: 0; font-size: 17px; font-weight: 600; white-space: nowrap; }
-@media (max-width: 899px) { .metric dd { font-size: 15px; } }
-.metric dd.unit { font-family: var(--font); font-size: 11px; color: var(--muted); font-weight: 400; }
 
-.swatch { display: inline-block; width: 28px; height: 0; flex: none; vertical-align: middle; }
-.swatch-solid { border-top: 5px solid var(--green); border-radius: 3px; }
-.swatch-dashed { border-top: 4px dashed var(--gray-line); }
 
-.details { margin: 12px 0 4px; font-size: 13px; }
-.details summary { cursor: pointer; font-weight: 700; min-height: 32px; display: flex; align-items: center; }
-.detail-list { display: grid; grid-template-columns: 40% 60%; gap: 4px 8px; margin: 6px 0; }
-.detail-list dt { color: var(--muted); }
+.details { margin: 14px 0 4px; font-size: 13px; }
+.details summary { cursor: pointer; font-weight: 500; min-height: 36px; display: flex; align-items: center; color: var(--blue); }
+.detail-list { display: grid; grid-template-columns: 40% 60%; gap: 6px 8px; margin: 6px 0; }
+.detail-list dt { color: var(--subtle); }
 .detail-list dd { margin: 0; word-break: break-word; }
-.detail-disclaimer { color: var(--muted); font-size: 12px; }
-.route-card .nav-start { display: inline-flex; align-items: center; justify-content: center; gap: 6px; width: 100%; margin-top: 12px; }
+.route-extra .nav-start { display: inline-flex; align-items: center; justify-content: center; gap: 6px; width: auto; min-height: 40px; padding: 0 18px; margin-top: 0; }
 
 /* -------------------------------------------------------------- navigation */
-#use-location { margin-top: 6px; }
-.nav-instruction {
-  display: flex; align-items: center; gap: 14px; background: var(--green); color: #fff; border-radius: var(--radius);
-  padding: 14px 16px; margin: 4px 0 12px;
+/* While navigating the map fills the screen and the navigation view lies over it, as in a
+   directions app: instruction banner at the top, trip card with the exit button at the bottom. */
+.app.is-navigating .legend { display: none; }
+/* Desktop: the panel stays, showing the trip; starting another navigation is not offered there. */
+.app.is-navigating .route-extra { display: none; }
+/* The route search is locked while navigating (the panel body is inert, main.ts): greyed out,
+   with a note saying how to get it back. */
+.nav-lock-note { display: none; }
+.app.is-navigating .nav-lock-note {
+  display: block; margin: 14px 0 0; color: var(--muted); font-size: 13px;
 }
-.nav-turn-icon { display: inline-flex; flex: none; }
-.nav-action { display: block; font-size: 20px; line-height: 1.2; }
-.nav-when { display: block; font-size: 15px; font-weight: 600; opacity: 0.9; }
-.nav-when:empty { display: none; }
-.nav-metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); margin-bottom: 4px; }
-.nav-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
-.nav-actions .secondary { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
-.nav-actions .nav-end { margin-top: 0; }
-.notice-done { background: var(--green-soft); border-color: #b8d6c8; color: #0a4d3a; }
+/* On the form, not #form-view: that one's entrance animation holds its opacity at 1. */
+.app.is-navigating #trip-form { opacity: 0.45; filter: grayscale(1); }
+.app.is-navigating #form-view * { cursor: not-allowed; }
+@media (max-width: 899px) {
+  .app.is-navigating .panel { display: none; }
+  .app.is-navigating .map-buttons { top: auto; bottom: 128px; }
+}
+#nav-view { position: absolute; inset: 0; z-index: 4; pointer-events: none; }
+#nav-view[hidden] { display: none; }
+#nav-view button { pointer-events: auto; }
 
-.marker-user { position: relative; width: 22px; height: 22px; }
-.marker-user::after {
-  content: ""; position: absolute; inset: 0; border-radius: 50%; background: #1a73e8; border: 3px solid #fff;
-  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.45);
+.nav-banner { position: absolute; top: 12px; left: 12px; right: 12px; max-width: 460px; z-index: 1; display: grid; justify-items: start; }
+.nav-instruction {
+  justify-self: stretch; display: flex; align-items: center; gap: 18px; padding: 18px 20px; color: #fff;
+  background: var(--green-dark); border-radius: 20px; box-shadow: var(--elev-2);
+  transition: background-color var(--dur) ease;
 }
-/* A wedge pointing the way the user is heading; the marker itself is rotated. */
+/* Off the route: amber instead of green, "Kembali ke rute" (white on it: 7:1 contrast). */
+.nav-instruction.is-off-route { background: #7a4f01; }
+.nav-turn-icon { display: inline-flex; flex: none; }
+.nav-action { display: block; font-size: 24px; font-weight: 500; line-height: 1.2; }
+.nav-when { display: block; margin-top: 2px; font-size: 15px; opacity: 0.9; }
+.nav-when:empty { display: none; }
+/* "Then …": a tab hanging under the banner. */
+.nav-then {
+  position: relative; z-index: -1; display: inline-flex; align-items: center; gap: 8px; margin-top: -12px;
+  padding: 18px 18px 10px; border-radius: 0 0 16px 16px; background: var(--green-dark); color: #fff;
+  font-size: 15px; font-weight: 500; box-shadow: var(--elev-1);
+}
+.nav-then[hidden] { display: none; }
+.nav-then-icon { display: inline-flex; }
+.nav-status:empty { display: none; }
+.nav-pill {
+  display: inline-flex; align-items: flex-start; gap: 8px; margin-top: 8px; padding: 8px 14px; border-radius: 16px;
+  background: var(--surface); box-shadow: var(--elev-1); font-size: 13px; font-weight: 500; color: var(--ink);
+  max-width: 100%;
+}
+.nav-pill-body { display: grid; gap: 1px; }
+.nav-pill-text { font-weight: 400; font-size: 12px; line-height: 1.4; color: var(--muted); }
+/* GPS signal problems: a light veil over the map, the alert in its centre. The map under it
+   still takes drags and clicks; the banner and the bottom card stay on top. */
+.nav-gps-layer {
+  position: absolute; inset: 0; display: grid; place-items: center; padding: 24px;
+  background: rgba(253, 252, 250, 0.9); pointer-events: none; animation: fade-in var(--dur) var(--ease-out) both;
+}
+.nav-gps-layer[hidden] { display: none; }
+/* No card: a line-drawn cone, a title in capitals, plain text and a pill button, right on the
+   light veil, in the red of the panel's error messages (--red). */
+.nav-gps-alert {
+  --alert-red: var(--red);
+  display: grid; justify-items: center; gap: 6px; max-width: 280px; text-align: center; color: var(--muted);
+  animation: menu-in var(--dur) var(--ease-out) both;
+}
+.nav-gps-icon { display: block; margin-bottom: 14px; color: var(--alert-red); }
+.nav-gps-icon svg { display: block; }
+.nav-cone-shine { fill: #cfe9f5; opacity: 0.85; }
+/* The cone rocks on its base, then settles, every few seconds. */
+.nav-cone { transform-origin: 60px 88px; animation: cone-wobble 2.6s ease-in-out infinite; }
+@keyframes cone-wobble {
+  0%, 55%, 100% { transform: rotate(0deg); }
+  12% { transform: rotate(-7deg); }
+  24% { transform: rotate(6deg); }
+  36% { transform: rotate(-3deg); }
+  46% { transform: rotate(1.5deg); }
+}
+.nav-gps-alert strong {
+  font-size: 22px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--alert-red);
+}
+.nav-gps-alert p { margin: 0; font-size: 14px; line-height: 1.45; }
+#nav-view.is-gps-alert .nav-banner, #nav-view.is-gps-alert .nav-sheet { display: none; }
+.nav-end.nav-gps-exit {
+  margin-top: 20px; min-width: 180px; pointer-events: auto; text-shadow: none; background: var(--alert-red);
+  font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; box-shadow: 0 4px 12px rgba(143, 42, 34, 0.25);
+}
+.nav-end.nav-gps-exit:hover { background: #74211b; }
+@media (prefers-reduced-motion: reduce) { .nav-cone { animation: none; } }
+
+.nav-sheet { position: absolute; left: 12px; right: 12px; bottom: 12px; max-width: 460px; display: grid; gap: 10px; justify-items: start; }
+.nav-recenter {
+  display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 0 16px; border: 0; border-radius: 999px;
+  background: var(--surface); color: var(--green-dark); font: 500 14px var(--font); box-shadow: var(--elev-1); cursor: pointer;
+}
+.nav-recenter[hidden] { display: none; }
+.nav-sheet-card {
+  justify-self: stretch; display: flex; align-items: center; gap: 16px; padding: 16px 16px 16px 22px;
+  background: var(--surface); border-radius: 20px; box-shadow: var(--elev-2);
+}
+.nav-trip { display: grid; flex: 1; min-width: 0; }
+.nav-time { font-size: 28px; font-weight: 500; line-height: 1.1; color: var(--ink); }
+.nav-summary { margin-top: 2px; font-size: 15px; color: var(--subtle); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nav-end {
+  flex: none; min-height: 52px; padding: 0 26px; border: 0; border-radius: 999px; background: #c5221f; color: #fff;
+  font: 500 17px var(--font); cursor: pointer;
+}
+.nav-end:hover { background: #a51c19; }
+.nav-end.is-done { background: var(--green); }
+.nav-end.is-done:hover { background: var(--green-dark); }
+.nav-end:focus-visible, .nav-recenter:focus-visible { outline: 3px solid #0f5fd1; outline-offset: 2px; }
+
+/* Position marker: a blue disc with the travel mode's figure (walker or cyclist, map-view.ts
+   setUserMode) in white, upright; the white wedge around it turns with the heading. */
+.marker-user { position: relative; width: 30px; height: 30px; }
+.marker-user-glyph {
+  position: absolute; inset: 0; z-index: 1; display: grid; place-items: center; border-radius: 50%;
+  background: #1a73e8; border: 3px solid #fff; color: #fff; box-shadow: 0 1px 6px rgba(0, 0, 0, 0.45);
+}
+.marker-user-glyph .icon { animation: fade-in var(--dur) ease both; }
+/* The wedge's frame is centred on the disc and turned to the heading; the wedge sits at its top. */
+.marker-user-dir { position: absolute; inset: -13px; transform: rotate(var(--heading, 0deg)); }
+/* A white wedge pointing the way the user is heading (the marker itself is rotated); the shadow
+   keeps it visible on the light map and on the route line. */
 .marker-user-heading {
-  display: none; position: absolute; left: 50%; top: -13px; width: 0; height: 0; transform: translateX(-50%);
-  border-left: 8px solid transparent; border-right: 8px solid transparent; border-bottom: 14px solid #1a73e8;
+  display: none; position: absolute; left: 50%; top: 0; width: 0; height: 0; transform: translateX(-50%);
+  border-left: 8px solid transparent; border-right: 8px solid transparent; border-bottom: 14px solid #fff;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.55));
 }
 .marker-user.has-heading .marker-user-heading { display: block; }
 
 /* --------------------------------------------------------------------- map */
-.map-buttons { position: absolute; top: 12px; right: 12px; display: grid; gap: 8px; z-index: 2; }
-.map-btn { background: var(--surface); border: 1px solid var(--line); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15); width: 44px; height: 44px; }
+.map-buttons { position: absolute; top: 12px; right: 12px; display: grid; gap: 10px; z-index: 2; }
+.map-btn { background: var(--surface); width: 44px; height: 44px; border-radius: var(--radius); box-shadow: var(--elev-1); color: var(--ink); }
+.map-btn:hover:not([aria-pressed="true"]) { background: #fff; }
 .map-btn[aria-pressed="true"] { background: var(--ink); color: #fff; }
-.maplibregl-ctrl-top-right { top: 108px; }
+/* The zoom buttons live in .map-buttons (MapView.mountZoomButtons): no corner margins of their own. */
+.map-buttons .maplibregl-ctrl { margin: 0; }
+.maplibregl-ctrl-group:not(:empty) { border-radius: var(--radius); box-shadow: var(--elev-1); overflow: hidden; }
 .maplibregl-ctrl-group button { width: 44px; height: 44px; }
 
 .marker-origin { width: 22px; height: 22px; border-radius: 50%; background: var(--ink); border: 4px solid #fff; box-shadow: 0 1px 6px rgba(0, 0, 0, 0.5); cursor: grab; }
@@ -303,35 +564,129 @@ button:disabled { cursor: not-allowed; }
 }
 
 .legend {
-  position: absolute; right: 12px; bottom: 28px; width: 320px; max-height: calc(100% - 60px); overflow-y: auto; z-index: 2;
-  background: var(--surface); border-radius: 14px; padding: 12px 14px; box-shadow: 0 4px 18px rgba(0, 0, 0, 0.2); font-size: 12px;
+  position: absolute; right: 12px; bottom: 12px; width: 320px; max-height: calc(100% - 60px); overflow-y: auto; z-index: 2;
+  background: var(--surface); border-radius: var(--radius-lg); padding: 14px 16px; box-shadow: var(--elev-2); font-size: 12px;
 }
-.legend-section:not([hidden]) ~ .legend-section:not([hidden]) { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line); }
-.legend-title { font-size: 13px; margin: 0 0 6px; font-weight: 700; }
-.legend-row { display: flex; align-items: center; gap: 8px; margin: 4px 0; }
-.layer-switch { display: flex; gap: 6px; margin-bottom: 6px; }
+.legend-section:not([hidden]) ~ .legend-section:not([hidden]) { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); }
+.legend-title { font-size: 14px; margin: 0 0 8px; font-weight: 500; }
+.legend-row { display: flex; align-items: center; gap: 8px; margin: 4px 0; color: var(--muted); }
+/* Title and data time on one line. */
+.legend-head { display: flex; align-items: center; justify-content: flex-start; gap: 8px; margin-bottom: 10px; }
+/* Small loading disc beside the title (legend.ts); [hidden] keeps it out when idle. */
+.legend-spinner { width: 14px; height: 14px; border-width: 2px; flex: none; }
+.legend-toggle-label { display: inline-flex; align-items: center; gap: 8px; }
+.legend-head .legend-title { margin: 0; }
+.layer-switch { display: flex; gap: 8px; margin-bottom: 12px; }
 .layer-btn {
-  min-height: 36px; padding: 0 12px; border-radius: 999px; background: var(--surface); border: 1px solid var(--line);
-  font-weight: 600; font-size: 13px;
+  min-height: 32px; padding: 0 12px; border-radius: 8px; background: var(--surface); border: 1px solid var(--outline);
+  font-weight: 500; font-size: 13px; color: var(--muted);
 }
+.layer-btn:hover:not([aria-pressed="true"]) { background: var(--surface-2); }
 .layer-btn[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: #fff; }
-.heat-status { margin: 4px 0; font-size: 12px; color: var(--muted); }
+.heat-status { margin: -4px 0 10px; font-size: 12px; color: var(--subtle); }
 .heat-status:empty { display: none; }
-.heat-status.is-error { color: var(--red); font-weight: 600; }
-.heat-status.is-warn { color: var(--amber-ink); font-weight: 600; }
-.scale-head { display: flex; flex-direction: column; margin: 8px 0 4px; }
-.scale-title { font-weight: 700; }
-.scale-unit { color: var(--muted); }
-.scale-bar { height: 12px; border-radius: 6px; border: 1px solid rgba(0, 0, 0, 0.1); }
-.scale-ticks, .scale-classes { display: grid; grid-template-columns: repeat(5, 1fr); text-align: center; }
-.scale-ticks { font-size: 11px; margin-top: 3px; }
-.scale-ticks span:first-child, .scale-classes span:first-child { text-align: left; }
-.scale-ticks span:last-child, .scale-classes span:last-child { text-align: right; }
-.scale-classes { font-size: 10.5px; color: var(--muted); line-height: 1.2; }
-.legend-note { margin: 8px 0; color: var(--muted); }
-.hatch-swatch, .nodata-swatch { width: 22px; height: 12px; border-radius: 3px; flex: none; border: 1px solid rgba(0, 0, 0, 0.2); }
-.hatch-swatch { background: repeating-linear-gradient(135deg, #f3b676 0 3px, rgba(60, 40, 20, 0.8) 3px 4.5px); }
-.nodata-swatch { background: #bdb8aa; }
+.heat-status.is-error { color: var(--red); }
+.heat-status.is-warn { color: var(--amber-ink); }
+/* Linear scale: numbers at their true positions, class names centred under their range. */
+/* Unit of the tick numbers, right-aligned above the bar (legend.ts). */
+.scale-unit { margin: 0 0 4px; text-align: right; font-size: 11px; color: var(--subtle); }
+.scale-bar { position: relative; height: 10px; border-radius: 5px; }
+.scale-divider { position: absolute; top: 0; bottom: 0; width: 1.5px; margin-left: -0.75px; background: rgba(255, 255, 255, 0.85); }
+.scale-ticks, .scale-classes { position: relative; }
+.scale-ticks { height: 16px; margin-top: 3px; font-size: 11px; }
+.scale-ticks span { position: absolute; top: 0; transform: translateX(-50%); white-space: nowrap; }
+.scale-ticks span:first-child { transform: none; }
+.scale-classes { height: 28px; margin-top: 2px; font-size: 10.5px; color: var(--subtle); line-height: 1.2; }
+.scale-classes span { position: absolute; top: 0; text-align: center; padding: 0 1px; }
+/* Map key: the grey and striped areas side by side. */
+/* The index explanation, one tap away. */
+.legend-about { margin-top: 0; min-height: 28px; font-weight: 500; }
+
+/* Tooltips (tooltip.ts) in place of the browser's own: dark ink, the app font, a short fade. */
+.tooltip {
+  position: fixed; z-index: 1000; max-width: 240px; padding: 6px 10px; border-radius: 6px;
+  background: var(--ink); color: #fff; font: 500 12px/1.35 var(--font); box-shadow: var(--elev-1);
+  pointer-events: none; animation: tooltip-in 0.12s ease-out;
+}
+.tooltip[hidden] { display: none; }
+@keyframes tooltip-in { from { opacity: 0; transform: translateY(2px); } }
+@media (prefers-reduced-motion: reduce) { .tooltip { animation: none; } }
+
+/* "Tentang indeks" popup (index-info.ts): a native modal dialog. */
+.info-dialog {
+  width: min(560px, calc(100% - 32px)); max-height: min(85dvh, 760px); padding: 0; border: 0;
+  border-radius: var(--radius-lg); background: var(--surface); color: var(--ink); box-shadow: var(--elev-2);
+}
+.info-dialog[open] { display: flex; flex-direction: column; }
+.info-dialog::backdrop { background: rgba(23, 33, 30, 0.45); }
+/* Privacy consent (consent.ts): a short box with Tidak setuju / Setuju. */
+.consent-dialog { width: min(420px, calc(100% - 32px)); }
+.consent-dialog .info-body { padding-bottom: 8px; }
+.consent-actions { display: flex; justify-content: flex-end; gap: 8px; padding: 8px 20px 18px; }
+.consent-actions button { width: auto; min-height: 44px; margin: 0; padding: 0 20px; }
+/* Declining in the error red, on the usual white secondary button. */
+.consent-actions .consent-decline { color: var(--red); }
+.consent-actions .consent-decline:hover:not(:disabled) { background: #fbeceb; }
+.info-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 12px 12px 20px; border-bottom: 1px solid var(--line); }
+.info-head h2 { margin: 0; font-size: 17px; font-weight: 500; }
+.info-body { overflow-y: auto; padding: 4px 20px 20px; font-size: 14px; line-height: 1.55; color: var(--muted); scrollbar-width: thin; scrollbar-color: var(--outline) transparent; }
+.info-body h3:first-child { margin-top: 14px; }
+.info-body h3 { margin: 20px 0 8px; font-size: 15px; font-weight: 500; color: var(--ink); }
+.info-body h4 { margin: 0 0 4px; font-size: 14px; font-weight: 500; color: var(--ink); }
+.info-body p { margin: 0 0 8px; }
+.info-body a { color: var(--blue); }
+/* What the colours mean: swatch, name and range, then meaning and what to do. */
+.info-classes { list-style: none; margin: 0 0 8px; padding: 0; display: grid; gap: 8px; }
+.info-class { display: flex; align-items: flex-start; gap: 12px; }
+.info-swatch { flex: none; width: 28px; height: 28px; border-radius: 8px; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.08); }
+.info-class-text { display: grid; gap: 1px; font-size: 13px; line-height: 1.4; }
+.info-class-name { font-size: 14px; font-weight: 500; color: var(--ink); }
+.info-class-range { margin-left: 4px; font-size: 12px; font-weight: 400; color: var(--subtle); }
+/* PM2.5 and NO2 side by side; stacked on narrow screens. */
+.info-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 8px; }
+.info-card { font-size: 13px; line-height: 1.45; }
+.info-card p { margin: 0; }
+.info-card .info-card-from { margin-top: 6px; color: var(--subtle); }
+@media (max-width: 480px) { .info-cards { grid-template-columns: 1fr; } }
+/* How Combined is worked out: the example as bars against the WHO limit (index-info.ts). */
+.info-chart { margin: 4px 0 14px; }
+.info-bars { position: relative; display: grid; gap: 6px; --label: 74px; --value: 34px; }
+.info-bar { display: grid; grid-template-columns: var(--label) 1fr var(--value); align-items: center; gap: 10px; font-size: 13px; }
+.info-bar-label { color: var(--muted); font-weight: 500; }
+.info-bar-track { position: relative; height: 12px; border-radius: 6px; background: rgba(23, 33, 30, 0.07); }
+.info-bar-fill { position: absolute; inset: 0 auto 0 0; border-radius: 6px; animation: bar-grow 0.6s var(--ease-out) both; transform-origin: left; }
+.info-bar-value { text-align: right; color: var(--ink); font-size: 12px; }
+.info-bar.is-combined .info-bar-label, .info-bar.is-combined .info-bar-value { color: var(--ink); font-weight: 500; }
+.info-bar.is-combined .info-bar-track { height: 16px; border-radius: 8px; }
+.info-bar.is-combined .info-bar-fill { border-radius: 8px; animation-delay: 0.25s; }
+.info-merge { margin-left: calc(var(--label) + 10px); font-size: 11px; color: var(--subtle); }
+/* The WHO limit: a dashed line through the bars at 1×, labelled under them. */
+.info-bars::before {
+  content: ""; position: absolute; top: -4px; bottom: 19px;
+  left: calc(var(--label) + 10px + (100% - var(--label) - var(--value) - 20px) * var(--who-ratio, 0.3333));
+  border-left: 1.5px dashed var(--ink); opacity: 0.55;
+}
+.info-who {
+  justify-self: start; margin-left: calc(var(--label) + 10px + (100% - var(--label) - var(--value) - 20px) * var(--who-ratio, 0.3333));
+  transform: translateX(-50%); font-size: 11px; color: var(--muted); white-space: nowrap;
+}
+@keyframes bar-grow { from { transform: scaleX(0); } }
+
+.info-explain { font-size: 14px; line-height: 1.6; }
+/* The Combined formula, typeset with stacked fractions. */
+.info-formula {
+  display: flex; align-items: center; justify-content: center; gap: 8px; margin: 4px 0 6px; padding: 8px 0;
+  color: var(--ink); font-size: 15px; white-space: nowrap; overflow-x: auto;
+}
+.formula-name { font-weight: 500; }
+.formula-op { margin: 0 8px; }
+.frac { display: inline-flex; flex-direction: column; align-items: stretch; text-align: center; vertical-align: middle; }
+.frac-top { display: flex; align-items: center; justify-content: center; padding: 0 4px 3px; border-bottom: 1.5px solid currentColor; }
+.frac-bottom { padding: 3px 4px 0; }
+.frac .frac { font-size: 0.92em; }
+.info-formula-note { font-size: 12px; color: var(--subtle); text-align: center; }
+.info-sources { margin: 16px 0 0 !important; font-size: 11.5px; line-height: 1.5; color: var(--subtle); }
+.info-sources a { color: inherit !important; }
 
 .legend-toggle { display: none; }
 
@@ -339,24 +694,186 @@ button:disabled { cursor: not-allowed; }
   .legend { left: 12px; right: 68px; top: 12px; bottom: auto; width: auto; max-height: 34dvh; }
   .legend-toggle {
     display: flex; align-items: center; justify-content: space-between; width: 100%; min-height: 36px; padding: 0;
-    background: none; border: 0; font-weight: 700; font-size: 13px;
+    background: none; border: 0; font-weight: 500; font-size: 13px;
   }
-  .legend-toggle::after { content: "▾"; margin-left: 8px; }
+  .legend-toggle::after { content: "▾"; margin-left: 8px; color: var(--subtle); }
   .legend-toggle[aria-expanded="true"]::after { content: "▴"; }
-  .legend.is-collapsed { right: auto; padding-top: 2px; padding-bottom: 2px; }
+  .legend.is-collapsed { right: auto; padding-top: 2px; padding-bottom: 2px; border-radius: 999px; }
   .legend.is-collapsed .legend-section { display: none; }
-  .disclaimer { font-size: 11px; line-height: 1.35; padding: 8px 20px 10px; }
-  .maplibregl-ctrl-top-right { top: 108px; }
-  .delta-big { font-size: 20px; }
+  .legend .legend-head { display: none; } /* the toggle above already says "Kualitas udara" */
+  .legend:not(.is-collapsed) .legend-toggle { margin-bottom: 10px; }
 }
 
-.maplibregl-popup-content { border-radius: 12px; padding: 12px 14px; font-family: var(--font); }
-.maplibregl-popup-close-button { width: 32px; height: 32px; font-size: 20px; }
-.segment-card { display: grid; gap: 4px; font-size: 13px; min-width: 200px; padding-right: 16px; }
-.segment-name { font-weight: 700; }
-.segment-value .big { font-size: 24px; font-weight: 600; }
-.segment-layer { color: var(--muted); }
-.segment-conc { font-size: 12px; color: var(--muted); }
-.segment-class { font-weight: 700; }
-.segment-actions { display: grid; gap: 6px; margin-top: 6px; }
-.segment-actions .secondary { margin-top: 0; width: 100%; }
+.maplibregl-popup-content { border-radius: var(--radius-lg); padding: 14px 16px; font-family: var(--font); box-shadow: var(--elev-2); }
+.maplibregl-popup-close-button { width: 32px; height: 32px; font-size: 20px; color: var(--subtle); }
+
+/* ------------------------------------------------------------------ motion */
+#form-view:not([hidden]), #result-view:not([hidden]) { animation: rise var(--dur-slow) var(--ease-out) both; }
+@keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) {
+  #form-view, #result-view, #nav-view { animation: none !important; }
+  .seg > span, .primary, .field { transition: none; }
+}
+
+/* ------------------------------------------------------------------ motion */
+/* Every control eases between its states and gives a small press, so clicks feel answered. */
+button, a, .seg > span, .field, .route-row, .route-list {
+  transition:
+    background-color var(--dur-fast) ease, color var(--dur-fast) ease, border-color var(--dur-fast) ease,
+    box-shadow var(--dur-fast) ease, opacity var(--dur) ease, transform var(--dur-fast) var(--ease-out);
+}
+button:not(:disabled):not(.route-pick):not(.sheet-handle):active,
+.seg:active > span { transform: scale(0.96); }
+.route-pick:active { background: rgba(23, 33, 30, 0.07); }
+
+/* Things that appear: a short rise or drop instead of popping in. */
+@keyframes fade-in { from { opacity: 0; } }
+@keyframes drop-in { from { opacity: 0; transform: translateY(-14px); } }
+@keyframes lift-in { from { opacity: 0; transform: translateY(14px); } }
+@keyframes menu-in { from { opacity: 0; transform: translateY(-4px) scale(0.98); } }
+@keyframes pop-in { from { opacity: 0; transform: translateY(8px) scale(0.97); } }
+@keyframes pop-out { to { opacity: 0; transform: translateY(8px) scale(0.97); } }
+@keyframes fade-out { to { opacity: 0; } }
+
+.place-menu:not([hidden]) { animation: menu-in var(--dur-fast) var(--ease-out) both; transform-origin: top center; }
+.route-row { animation: rise var(--dur-slow) var(--ease-out) both; }
+.route-row:nth-child(2) { animation-delay: 60ms; }
+.legend-section:not([hidden]) { animation: fade-in var(--dur) ease both; }
+#nav-view:not([hidden]) .nav-banner { animation: drop-in var(--dur-slow) var(--ease-out) both; }
+#nav-view:not([hidden]) .nav-sheet { animation: lift-in var(--dur-slow) var(--ease-out) both; }
+.nav-pill { animation: menu-in var(--dur) var(--ease-out) both; }
+.nav-then:not([hidden]) { animation: drop-in var(--dur) var(--ease-out) both; }
+.status-error, .status-note, .field-error:not([hidden]) { animation: fade-in var(--dur) ease both; }
+
+/* The "Tentang indeks" popup grows in and shrinks away (index-info.ts adds .is-closing). */
+.info-dialog[open] { animation: pop-in var(--dur) var(--ease-out) both; }
+.info-dialog[open]::backdrop { animation: fade-in var(--dur) ease both; }
+.info-dialog.is-closing { animation: pop-out var(--dur-fast) ease-in both; }
+.info-dialog.is-closing::backdrop { animation: fade-out var(--dur-fast) ease-in both; }
+
+/* The phone sheet slides when tapped as well as when dragged (main.ts animateSheet). */
+@media (max-width: 899px) {
+  .panel { will-change: transform; }
+}
+
+/* People who ask for less motion get state changes without the movement. */
+@media (prefers-reduced-motion: reduce) {
+  *:not(.spinner), *::before, *::after, ::backdrop {
+    animation-duration: 1ms !important; animation-delay: 0ms !important; transition-duration: 1ms !important;
+  }
+  button:active, .seg:active > span { transform: none !important; }
+}
+
+/* ------------------------------------------------------------- mode icons */
+/* Hovering a travel-mode pill sets its figure in motion: the walker swings arms and legs and
+   bobs, the cyclist's wheels turn (their spokes appear) and the rider bobs. dom.ts splits the
+   icons into these parts; rotations are around the hip, shoulder or wheel centre. */
+.i-walk .i-leg-a, .i-walk .i-leg-b { transform-box: view-box; transform-origin: 11.5px 13.6px; }
+.i-walk .i-arm-a, .i-walk .i-arm-b { transform-box: view-box; transform-origin: 13px 7.4px; }
+.i-wheel { transform-box: fill-box; transform-origin: center; }
+.i-spokes { opacity: 0; transition: opacity var(--dur-fast) ease; }
+.seg:hover .i-walk { animation: walk-bob 0.5s ease-in-out infinite; }
+.seg:hover .i-walk .i-leg-a, .seg:hover .i-walk .i-arm-b { animation: swing-a 0.5s ease-in-out infinite alternate; }
+.seg:hover .i-walk .i-leg-b, .seg:hover .i-walk .i-arm-a { animation: swing-b 0.5s ease-in-out infinite alternate; }
+.seg:hover .i-spokes { opacity: 1; }
+.seg:hover .i-wheel { animation: wheel-spin 0.6s linear infinite; }
+.seg:hover .i-rider { animation: ride-bob 0.3s ease-in-out infinite alternate; }
+@keyframes walk-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-0.8px); } }
+@keyframes swing-a { from { transform: rotate(-16deg); } to { transform: rotate(16deg); } }
+@keyframes swing-b { from { transform: rotate(16deg); } to { transform: rotate(-16deg); } }
+@keyframes wheel-spin { to { transform: rotate(360deg); } }
+@keyframes ride-bob { from { transform: translateY(0); } to { transform: translateY(-0.7px); } }
+
+/* Hovering "pick on map": the pin hops and lands with a small squash, like dropping a marker. */
+.pick-btn .icon svg { transform-origin: 50% 90%; }
+.pick-btn:hover .icon svg { animation: pin-hop 0.9s var(--ease-out) infinite; }
+@keyframes pin-hop {
+  0%, 100% { transform: translateY(0) scale(1, 1); }
+  30% { transform: translateY(-4px) scale(0.95, 1.06); }
+  55% { transform: translateY(0) scale(1.08, 0.9); }
+  70% { transform: translateY(-1px) scale(0.98, 1.02); }
+}
+
+/* -------------------------------------------------------------- splash */
+/* Shown from the first paint (index.html) until the map is ready; main.ts adds .is-leaving and
+   removes it after the fade. The logo grows in with a slight turn, then floats gently; the name
+   and tagline rise after it; a thin bar sweeps while loading. */
+.splash {
+  position: fixed; inset: 0; z-index: 2000; display: grid; place-items: center;
+  background: radial-gradient(circle at 50% 45%, #fff 0%, var(--bg) 70%);
+  transition: opacity 0.45s ease, visibility 0s linear 0.45s;
+}
+.splash.is-leaving { opacity: 0; visibility: hidden; }
+.splash.is-leaving .splash-inner { transform: scale(1.04); }
+.splash-inner { display: grid; justify-items: center; gap: 6px; transition: transform 0.45s var(--ease-out); }
+.splash-logo {
+  width: 132px; height: 132px; margin-bottom: 10px;
+  animation: logo-in 0.7s var(--ease-out) both, logo-float 2.8s ease-in-out 0.7s infinite;
+}
+.splash-name { margin: 0; font-size: 26px; font-weight: 700; letter-spacing: 0.01em; color: var(--green-dark); animation: rise 0.5s var(--ease-out) 0.25s both; }
+.splash-tagline { margin: 0; font-size: 14px; color: var(--subtle); animation: rise 0.5s var(--ease-out) 0.4s both; }
+.splash-bar {
+  position: relative; width: 120px; height: 3px; margin-top: 18px; border-radius: 2px; overflow: hidden;
+  background: var(--blue-soft); animation: fade-in 0.4s ease 0.55s both;
+}
+.splash-bar::after {
+  content: ""; position: absolute; inset: 0 auto 0 0; width: 40%; border-radius: 2px; background: var(--green);
+  animation: bar-sweep 1.1s ease-in-out infinite;
+}
+@keyframes logo-in { from { opacity: 0; transform: scale(0.6) rotate(-8deg); } 70% { opacity: 1; transform: scale(1.05) rotate(1deg); } to { transform: scale(1) rotate(0); } }
+@keyframes logo-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+@keyframes bar-sweep { from { transform: translateX(-100%); } to { transform: translateX(250%); } }
+@media (prefers-reduced-motion: reduce) {
+  .splash-logo, .splash-name, .splash-tagline, .splash-bar, .splash-bar::after { animation: none !important; }
+}
+@media (prefers-reduced-motion: reduce) {
+  /* Looping hover animations would flicker under the global 1 ms rule: switch them off. */
+  .seg:hover .i-walk, .seg:hover .i-walk *, .seg:hover .i-wheel, .seg:hover .i-rider, .pick-btn:hover .icon svg { animation: none !important; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .priority input[type="range"].zone-pop::-webkit-slider-thumb { animation: none; }
+  .priority input[type="range"].zone-pop::-moz-range-thumb { animation: none; }
+}
+
+/* Development only (position-sim.ts simPanel): a small card over the map while navigating, to
+   leave the route and come back on demand. */
+.sim-panel {
+  position: absolute; right: 12px; top: 232px; z-index: 2; width: 220px; display: grid; gap: 8px;
+  padding: 12px; border-radius: var(--radius-lg); background: var(--surface); box-shadow: var(--elev-2);
+  border: 1px dashed var(--outline); pointer-events: auto; font-size: 12px; color: var(--muted);
+}
+.sim-title { font-size: 12px; font-weight: 500; color: var(--ink); text-transform: uppercase; letter-spacing: 0.04em; }
+.sim-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 36px; padding: 0 12px;
+  border: 1px solid var(--outline); border-radius: 999px; background: var(--surface); color: var(--ink); font: 500 13px var(--font);
+}
+.sim-btn[aria-pressed="true"] { background: #7a4f01; border-color: #7a4f01; color: #fff; }
+.sim-note { margin: 0; line-height: 1.4; }
+@media (max-width: 899px) { .sim-panel { top: 12px; right: auto; left: 12px; width: 200px; } }
+
+/* Map credits while the panel that holds them is hidden: the desktop panel slid out, the phone
+   sheet closed, or the phone navigating (panel hidden). */
+.map-credits {
+  display: none; position: absolute; left: 8px; bottom: 6px; z-index: 2; margin: 0; max-width: calc(100% - 16px);
+  padding: 2px 8px; border-radius: 6px; background: rgba(253, 252, 250, 0.85); font-size: 10.5px; color: var(--subtle);
+}
+.map-credits a { color: inherit; }
+.app.panel-collapsed .map-credits { display: block; }
+@media (min-width: 900px) { .app.panel-collapsed .map-credits { left: 26px; } } /* clear of the map's run under the panel */
+@media (max-width: 899px) {
+  .app:has(.panel.collapsed) .map-credits, .app.is-navigating .map-credits { display: block; top: 6px; bottom: auto; }
+}
+
+/* Heatmap loading veil (main.ts showHeatVeil): a light black layer over the map with a spinner,
+   under the map buttons and legend, letting drags and zooms through. Fades in and out. */
+.map-loading {
+  position: absolute; inset: 0; z-index: 1; display: grid; place-items: center; pointer-events: none;
+  background: rgba(0, 0, 0, 0.28); opacity: 0; visibility: hidden;
+  transition: opacity var(--dur) ease, visibility 0s linear var(--dur);
+}
+.map-loading.is-on { opacity: 1; visibility: visible; transition: opacity var(--dur) ease, visibility 0s; }
+.map-loading-box {
+  display: inline-flex; align-items: center; gap: 10px; padding: 10px 16px; border-radius: 999px;
+  background: rgba(23, 33, 30, 0.82); color: #fff; font-size: 13px; font-weight: 500; box-shadow: var(--elev-2);
+}
+.map-loading .spinner { width: 18px; height: 18px; border-color: rgba(255, 255, 255, 0.35); border-top-color: #fff; }

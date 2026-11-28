@@ -117,6 +117,20 @@ export function pointAt(line: RouteLine, along: number): Point {
   return { lat: a.lat + t * (b.lat - a.lat), lon: a.lon + t * (b.lon - a.lon) };
 }
 
+/** The line cut at `along`: the part already travelled and the part ahead, as [lon, lat] pairs
+ *  (the cut point belongs to both, so the two parts meet). */
+export function splitAt(line: RouteLine, along: number): { passed: [number, number][]; ahead: [number, number][] } {
+  const xy = (p: Point): [number, number] => [p.lon, p.lat];
+  const { points, cum } = line;
+  const cut = pointAt(line, along);
+  let i = 0;
+  while (i < points.length && cum[i] <= along) i++;
+  return {
+    passed: [...points.slice(0, i).map(xy), xy(cut)],
+    ahead: [xy(cut), ...points.slice(i).map(xy)],
+  };
+}
+
 /** Direction of travel at `along`. */
 export function bearingAt(line: RouteLine, along: number): number {
   const { length } = line;

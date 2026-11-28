@@ -77,6 +77,8 @@ export class PointNamer {
   constructor(
     private readonly load: (p: Point, signal: AbortSignal) => Promise<Place | null>,
     private readonly onName: (place: Place, p: Point) => void,
+    /** No name for the point: nothing found there, or the lookup failed (not when cancelled). */
+    private readonly onMiss: (p: Point) => void = () => {},
   ) {}
 
   name(p: Point): void {
@@ -88,9 +90,12 @@ export class PointNamer {
         if (this.controller !== controller) return;
         this.controller = null;
         if (place) this.onName(place, p);
+        else this.onMiss(p);
       },
       () => {
-        if (this.controller === controller) this.controller = null;
+        if (this.controller !== controller) return; // cancelled: a newer point or the user typing
+        this.controller = null;
+        this.onMiss(p);
       },
     );
   }

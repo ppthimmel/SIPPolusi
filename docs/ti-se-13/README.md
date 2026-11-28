@@ -61,11 +61,11 @@ Semua di [`NAV_LIMITS`](../../src/frontend/src/navigation.ts).
 
 | Hal | Perlakuan |
 |---|---|
-| Pelacakan | Seluruhnya di perangkat. Posisi tidak dikirim selama pengguna berada di rute |
+| Pelacakan | Seluruhnya di perangkat. Posisi tidak dikirim selama pengguna berada di rute. Di luar navigasi, posisi juga dipantau untuk titik "lokasi saya" di peta (sejak frontend-enhancement); posisi itu pun tidak dikirim. Pemantauan itu tidak dimulai saat halaman dibuka, kecuali izin lokasi sudah diberikan sebelumnya: baru setelah pengguna memilih fitur lokasi |
 | Heatmap | Selama navigasi, `GET /v1/exposure-surface` memakai kotak rute (+±330 m), bukan tampilan kamera yang mengikuti pengguna; gerakan kamera tidak memicu permintaan. Diperbarui hanya setelah rute ulang |
 | Rute ulang | Satu-satunya saat posisi keluar perangkat: sebagai `origin` di body `POST /v1/routes`, sama seperti pencarian rute biasa. Gateway dan Cache API hanya mencatat path; pemeriksaan E2E-11 memastikan log Cache API dan gateway tanpa koordinat perjalanan |
-| Penyimpanan | Tidak ada: tanpa `localStorage`, tanpa riwayat, tanpa log konsol. Posisi terakhir hilang saat navigasi diakhiri |
-| Pemberitahuan | Panel navigasi menulis bahwa posisi diproses di perangkat dan server hanya menerimanya saat rute dihitung ulang |
+| Penyimpanan | Tidak ada posisi yang disimpan: tanpa riwayat, tanpa log konsol. `localStorage` hanya menyimpan penanda bahwa pemberitahuan privasi sudah disetujui (`sippolusi.privacy-consent.v1`), tanpa data lokasi. Posisi terakhir hanya ada di memori halaman untuk titik "lokasi saya", dan hilang saat halaman ditutup |
+| Pemberitahuan | Catatan "Posisi GPS Anda diproses di perangkat selama navigasi …" ada di pop-up persetujuan privasi yang harus disetujui sebelum titik pertama dipilih, fitur lokasi dipakai, atau navigasi dimulai, jadi selalu sebelum browser meminta izin lokasi ([frontend-enhancement](../frontend-enhancement/README.md) bagian 17) |
 | Layar | Wake Lock API menjaga layar tetap menyala selama navigasi bila peramban mendukungnya; tanpa itu navigasi tetap berjalan |
 
 ## Keadaan yang diuji
@@ -92,7 +92,7 @@ Semua di [`NAV_LIMITS`](../../src/frontend/src/navigation.ts).
 | Posisi tidak tersedia / timeout | Navigasi tetap berjalan dengan pesan; rute dan tombol akhiri tetap ada | Browser |
 | Peramban tanpa Geolocation API, atau halaman bukan HTTPS | Navigasi tidak dimulai, pesan menyebut penyebabnya | Unit |
 | Tiba di tujuan | "Anda telah tiba", pelacakan berhenti, tombol "Selesai" kembali ke hasil | Unit, Browser, [`05`](05-tiba.jpg) |
-| Akhiri navigasi | Pelacakan berhenti, penanda posisi hilang, hasil rute tampil kembali | Browser |
+| Akhiri navigasi | Pelacakan navigasi berhenti, penanda kembali menjadi titik "lokasi saya", peta kembali datar menghadap utara, hasil rute tampil kembali | Browser |
 | Peta digeser tangan | Kamera berhenti mengikuti; tombol "Ikuti posisi" (juga tombol lokasi di peta) mengembalikannya | Browser |
 | Build produksi | Simulasi tidak ada di bundle | `vite build`, dicari di `dist/` |
 
@@ -101,8 +101,10 @@ kanvas peta tidak digambar ulang; panel dan penanda tetap menunjukkan keadaannya
 
 ## Simulasi posisi
 
-Hanya pada `npm run dev`: tambahkan `?simulasi=<skenario>` ke alamat, dan `&kecepatan=<m/s>` untuk mempercepat
-(bawaan 8 m/s). Modul simulasi dimuat dinamis di bawah `import.meta.env.DEV`, jadi tidak ikut build produksi.
+Bila pemalsu GPS menyala (`VITE_GPS_SPOOF`, bawaan nyala pada `npm run dev` dan mati pada build produksi):
+tambahkan `?simulasi=<skenario>` ke alamat, dan `&kecepatan=<m/s>` untuk mempercepat (bawaan 8 m/s). Modul simulasi
+dimuat dinamis hanya bila dipakai. Pengaturan variabelnya di
+[`docs/frontend-enhancement`](../frontend-enhancement/README.md#menyalakan-dan-mematikan-variabel-lingkungan).
 
 | Skenario | Perilaku |
 |---|---|
@@ -115,6 +117,25 @@ Hanya pada `npm run dev`: tambahkan `?simulasi=<skenario>` ke alamat, dan `&kece
 Contoh: `http://localhost:5173/?simulasi=keluar&kecepatan=25`. Untuk melihat rute ulang yang gagal, jalankan
 `curl "localhost:8000/__mock/scenario?name=timeout"` setelah navigasi dimulai.
 
+### Lokasi tetap di Jakarta
+
+Juga bila `VITE_GPS_SPOOF` menyala: `?lokasi=<tempat>` membuat peramban melaporkan satu titik tetap sebagai posisi
+perangkat, sehingga "Lokasi saya", "Gunakan lokasi saya sebagai asal", dan navigasi bisa diuji dari luar Jakarta.
+Tempat yang dikenal: `monas`, `bundaran-hi`, `sudirman`, `blok-m`, `kota`, atau koordinat `lat,lon`
+(mis. `?lokasi=-6.2,106.8`). Posisinya diam; untuk bergerak sepanjang rute saat navigasi, gabungkan dengan
+`?simulasi=` (mis. `?lokasi=monas&simulasi=normal`), yang mengambil alih posisi selama navigasi. Modulnya
+(`src/dev-location.ts`) dimuat dinamis hanya bila dipakai.
+
+### Panel uji keluar rute
+
+Bila `VITE_NAV_TEST_PANEL` menyala (bawaan nyala pada `npm run dev`, mati pada build produksi): selama navigasi, kartu **Uji navigasi** di kanan peta (kiri atas di ponsel)
+punya tombol **Keluar dari rute** / **Kembali ke rute**. "Keluar" membuat posisi tersimulasi berjalan tegak
+lurus menjauhi rute sampai ±80 m lalu menunggu di sana; setelah 10 detik di luar rute spanduk berubah kuning
+"Kembali ke rute · ±80 m dari rute" dan rute baru diminta dari posisi itu. "Kembali" membuatnya berjalan
+kembali ke rute sebelum itu terjadi. Bila navigasi memakai GPS perangkat, tombol pertama kali ditekan
+mengganti sumber posisi ke simulator di titik rute saat ini. Kodenya `simPanel` dan `setDetour` di
+[`position-sim.ts`](../../src/frontend/src/position-sim.ts), tidak ikut build produksi.
+
 ## Batasan
 
 - **Belum diuji di lapangan.** Bukti di atas berasal dari simulasi. Uji jalan kaki atau sepeda dengan ponsel di
@@ -123,7 +144,10 @@ Contoh: `http://localhost:5173/?simulasi=keluar&kecepatan=25`. Untuk melihat rut
   fix pertama memilih lintasan yang lebih awal (jalur berangkat). Karena rute dihitung dari posisi pengguna, hal
   ini jarang; perlu dilihat pada uji lapangan.
 - **Tanpa nama jalan dan suara.** Kontrak rute tidak memuat nama jalan, dan petunjuk hanya tertulis.
-- **Peta menghadap utara.** Kamera mengikuti posisi tanpa memutar peta; arah ditunjukkan oleh penanda.
+- **Kamera navigasi.** Selama navigasi kamera dimiringkan 55°, peta diputar searah perjalanan (arah GPS bila
+  bergerak, selain itu arah rute di posisi pengguna), dan pengguna ditempatkan di bagian bawah peta agar jalan di
+  depan lebih terlihat. Setelah navigasi berakhir peta kembali datar dan menghadap utara. Arah GPS yang melompat-
+  lompat di antara gedung tinggi dapat membuat peta ikut berputar; perlu dilihat pada uji lapangan.
 - **Halaman harus terbuka.** Peramban menghentikan `watchPosition` saat halaman di latar belakang atau layar mati;
   navigasi berlanjut saat halaman dibuka lagi.
 - **HTTPS.** Geolocation hanya tersedia lewat HTTPS (atau `localhost`), seperti deployment Railway.

@@ -1,0 +1,1638 @@
+{
+ "type": "FeatureCollection",
+ "_source": "OpenStreetMap contributors (ODbL), places with a Wikidata link in the study area, via Overpass API",
+ "features": [
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     106.82717,
+     -6.17541
+    ]
+   },
+   "properties": {
+    "name": "Monumen Nasional",
+    "icon": "monument",
+    "major": true,
+    "rank": 1
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     106.8312,
+     -6.17026
+    ]
+   },
+   "properties": {
+    "name": "Masjid Istiqlal",
+    "icon": "religious_muslim",
+    "major": true,
+    "rank": 2
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     106.80261,
+     -6.21858
+    ]
+   },
+   "properties": {
+    "name": "Stadion Utama Gelora Bung Karno",
+    "icon": "stadium",
+    "major": true,
+    "rank": 3
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     106.82307,
+     -6.19499
+    ]
+   },
+   "properties": {
+    "name": "Bundaran Hotel Indonesia",
+    "icon": "attraction",
+    "major": true,
+    "rank": 4
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     106.81073,
+     -6.13114
+    ]
+   },
+   "properties": {
+    "name": "Kota Tua Jakarta",
+    "icon": "castle",
+    "major": true,
+    "rank": 5
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     106.89465,
+     -6.30263
+    ]
+   },
+   "properties": {
+    "name": "Taman Mini Indonesia Indah",
+    "icon": "attraction",
+    "major": true,
+    "rank": 6
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     106.84528,
+     -6.1216
+    ]
+   },
+   "properties": {
+    "name": "Taman Impian Jaya Ancol",
+    "icon": "attraction",
+    "major": true,
+    "rank": 7
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     106.82139,
+     -6.31143
+    ]
+   },
+   "properties": {
+    "name": "Kebun Binatang Ragunan",
+    "icon": "zoo",
+    "major": true,
+    "rank": 8
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     106.8602,
+     -6.1251
+    ]
+   },
+   "properties": {
+    "name": "Jakarta International Stadium",
+    "icon": "stadium",
+    "major": true,
+    "rank": 9
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     106.83325,
+     -6.16919
+    ]
+   },
+   "properties": {
+    "name": "Katedral Jakarta",
+    "icon": "religious_christian",
+    "major": true,
+    "rank": 10
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     106.82088,
+     -6.19576
+    ]
+   },
+   "properties": {
+    "name": "Grand Indonesia Shopping Town",
+    "icon": "shop",
+    "major": true,
+    "rank": 11
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     106.8216,
+     -6.17614
+    ]
+   },
+   "properties": {
+    "name": "Museum Nasional Indonesia",
+    "icon": "museum",
+    "major": true,
+    "rank": 12
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     106.82421,
+     -6.17015
+    ]
+   },
+   "properties": {
+    "name": "Istana Merdeka",
+    "icon": "attraction",
+    "major": true,
+    "rank": 13
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     106.82188,
+     -6.19345
+    ]
+   },
+   "properties": {
+    "name": "Plaza Indonesia",
+    "icon": "shop",
+    "major": true,
+    "rank": 14
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     106.82609,
+     -6.36053
+    ]
+   },
+   "properties": {
+    "name": "Universitas Indonesia",
+    "icon": "college",
+    "major": true,
+    "rank": 15
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     106.83238,
+     -6.12425
+    ]
+   },
+   "properties": {
+    "name": "Dunia Fantasi",
+    "icon": "attraction",
+    "major": true,
+    "rank": 16
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     106.82307,
+     -6.19498
+    ]
+   },
+   "properties": {
+    "name": "Monumen Selamat Datang",
+    "icon": "monument",
+    "major": true,
+    "rank": 17
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     106.81329,
+     -6.13515
+    ]
+   },
+   "properties": {
+    "name": "Museum Sejarah Jakarta",
+    "icon": "museum",
+    "major": true,
+    "rank": 18
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     106.8349,
+     -6.17021
+    ]
+   },
+   "properties": {
+    "name": "Lapangan Banteng",
+    "icon": "park",
+    "major": true,
+    "rank": 19
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     106.80052,
+     -6.21483
+    ]
+   },
+   "properties": {
+    "name": "Indonesia Arena",
+    "icon": "stadium",
+    "major": true,
+    "rank": 20
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     106.79711,
+     -6.22732
+    ]
+   },
+   "properties": {
+    "name": "Senayan City",
+    "icon": "shop",
+    "major": true,
+    "rank": 21
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     106.7996,
+     -6.22557
+    ]
+   },
+   "properties": {
+    "name": "Plaza Senayan",
+    "icon": "shop",
+    "major": true,
+    "rank": 22
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     106.82376,
+     -6.18769
+    ]
+   },
+   "properties": {
+    "name": "Sarinah",
+    "icon": "shop",
+    "major": true,
+    "rank": 23
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     106.80985,
+     -6.22478
+    ]
+   },
+   "properties": {
+    "name": "Pacific Place Mall",
+    "icon": "shop",
+    "major": true,
+    "rank": 24
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     106.89205,
+     -6.15094
+    ]
+   },
+   "properties": {
+    "name": "Mall of Indonesia",
+    "icon": "shop",
+    "major": true,
+    "rank": 25
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     106.90873,
+     -6.15748
+    ]
+   },
+   "properties": {
+    "name": "Summarecon Mall Kelapa Gading",
+    "icon": "shop",
+    "major": true,
+    "rank": 26
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     106.8402,
+     -6.14694
+    ]
+   },
+   "properties": {
+    "name": "Art1 Museum of Art",
+    "icon": "museum",
+    "major": false,
+    "rank": 100
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     106.77924,
+     -6.1079
+    ]
+   },
+   "properties": {
+    "name": "Baywalk Mall",
+    "icon": "shop",
+    "major": false,
+    "rank": 100
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     106.79549,
+     -6.21013
+    ]
+   },
+   "properties": {
+    "name": "Bentara Budaya Jakarta",
+    "icon": "art_gallery",
+    "major": false,
+    "rank": 100
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     106.79677,
+     -6.22889
+    ]
+   },
+   "properties": {
+    "name": "Binus University",
+    "icon": "college",
+    "major": false,
+    "rank": 100
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     106.82945,
+     -6.1883
+    ]
+   },
+   "properties": {
+    "name": "Cemara 6 Galeri",
+    "icon": "art_gallery",
+    "major": false,
+    "rank": 100
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     106.89611,
+     -6.30036
+    ]
+   },
+   "properties": {
+    "name": "Dakota RI-001 Seulawah",
+    "icon": "monument",
+    "major": false,
+    "rank": 100
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     106.81542,
+     -6.25895
+    ]
+   },
+   "properties": {
+    "name": "Edwin's Gallery",
+    "icon": "art_gallery",
+    "major": false,
+    "rank": 100
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     106.83545,
+     -6.18312
+    ]
+   },
+   "properties": {
+    "name": "Gereja Anglikan Indonesia",
+    "icon": "religious_christian",
+    "major": false,
+    "rank": 100
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     106.81783,
+     -6.13819
+    ]
+   },
+   "properties": {
+    "name": "Gereja Sion",
+    "icon": "religious_christian",
+    "major": false,
+    "rank": 100
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     106.80304,
+     -6.16686
+    ]
+   },
+   "properties": {
+    "name": "ITC Roxy Mas",
+    "icon": "shop",
+    "major": false,
+    "rank": 100
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     106.80575,
+     -6.22033
+    ]
+   },
+   "properties": {
+    "name": "Istana Olahraga Gelora Bung Karno",
+    "icon": "stadium",
+    "major": false,
+    "rank": 100
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     106.84639,
+     -6.14997
+    ]
+   },
+   "properties": {
+    "name": "K Mall at Menara Jakarta",
+    "icon": "shop",
+    "major": false,
+    "rank": 100
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     106.89099,
+     -6.30446
+    ]
+   },
+   "properties": {
+    "name": "Keong Emas",
+    "icon": "theatre",
+    "major": false,
+    "rank": 100
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     106.80952,
+     -6.22436
+    ]
+   },
+   "properties": {
+    "name": "KidZania",
+    "icon": "attraction",
+    "major": false,
+    "rank": 100
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     106.86876,
+     -6.27073
+    ]
+   },
+   "properties": {
+    "name": "Lippo Plaza Kramatjati",
+    "icon": "shop",
+    "major": false,
+    "rank": 100
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     106.95927,
+     -6.36913
+    ]
+   },
+   "properties": {
+    "name": "Living World Kota Wisata",
+    "icon": "shop",
+    "major": false,
+    "rank": 100
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     106.8234,
+     -6.22434
+    ]
+   },
+   "properties": {
+    "name": "Lotte Mall",
+    "icon": "shop",
+    "major": false,
+    "rank": 100
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     106.78649,
+     -6.16824
+    ]
+   },
+   "properties": {
+    "name": "Mal Ciputra Jakarta (Citraland)",
+    "icon": "shop",
+    "major": false,
+    "rank": 100
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     106.86182,
+     -6.3125
+    ]
+   },
+   "properties": {
+    "name": "Mall Graha Cijantung",
+    "icon": "shop",
+    "major": false,
+    "rank": 100
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     106.79935,
+     -6.23501
+    ]
+   },
+   "properties": {
+    "name": "Masjid Agung Al Azhar",
+    "icon": "religious_muslim",
+    "major": false,
+    "rank": 100
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     106.80691,
+     -6.13901
+    ]
+   },
+   "properties": {
+    "name": "Masjid Al-Anshor",
+    "icon": "religious_muslim",
+    "major": false,
+    "rank": 100
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     106.8334,
+     -6.18731
+    ]
+   },
+   "properties": {
+    "name": "Masjid Cut Meutia",
+    "icon": "religious_muslim",
+    "major": false,
+    "rank": 100
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     106.80638,
+     -6.14628
+    ]
+   },
+   "properties": {
+    "name": "Masjid Jami Al Mansur",
+    "icon": "religious_muslim",
+    "major": false,
+    "rank": 100
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     106.80279,
+     -6.13665
+    ]
+   },
+   "properties": {
+    "name": "Masjid Jami Kampung Baru",
+    "icon": "religious_muslim",
+    "major": false,
+    "rank": 100
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     106.80454,
+     -6.14147
+    ]
+   },
+   "properties": {
+    "name": "Masjid Jami' Annawier",
+    "icon": "religious_muslim",
+    "major": false,
+    "rank": 100
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     106.80648,
+     -6.12379
+    ]
+   },
+   "properties": {
+    "name": "Masjid Keramat Luar Batang",
+    "icon": "religious_muslim",
+    "major": false,
+    "rank": 100
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     106.80835,
+     -6.12676
+    ]
+   },
+   "properties": {
+    "name": "Museum Bahari",
+    "icon": "museum",
+    "major": false,
+    "rank": 100
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     106.81277,
+     -6.13719
+    ]
+   },
+   "properties": {
+    "name": "Museum Bank Indonesia",
+    "icon": "museum",
+    "major": false,
+    "rank": 100
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     106.81316,
+     -6.13813
+    ]
+   },
+   "properties": {
+    "name": "Museum Bank Mandiri",
+    "icon": "museum",
+    "major": false,
+    "rank": 100
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     106.90401,
+     -6.30543
+    ]
+   },
+   "properties": {
+    "name": "Museum Hakka Indonesia",
+    "icon": "museum",
+    "major": false,
+    "rank": 100
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     106.89141,
+     -6.30089
+    ]
+   },
+   "properties": {
+    "name": "Museum Indonesia",
+    "icon": "museum",
+    "major": false,
+    "rank": 100
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     106.83264,
+     -6.1929
+    ]
+   },
+   "properties": {
+    "name": "Museum Jenderal Besar Dr. A. H. Nasution",
+    "icon": "museum",
+    "major": false,
+    "rank": 100
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     106.83804,
+     -6.17874
+    ]
+   },
+   "properties": {
+    "name": "Museum Kebangkitan Nasional",
+    "icon": "museum",
+    "major": false,
+    "rank": 100
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     106.76767,
+     -6.19116
+    ]
+   },
+   "properties": {
+    "name": "Museum MACAN",
+    "icon": "museum",
+    "major": false,
+    "rank": 100
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     106.9018,
+     -6.30409
+    ]
+   },
+   "properties": {
+    "name": "Museum Perangko",
+    "icon": "museum",
+    "major": false,
+    "rank": 100
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     106.83108,
+     -6.20044
+    ]
+   },
+   "properties": {
+    "name": "Museum Perumusan Naskah Proklamasi",
+    "icon": "museum",
+    "major": false,
+    "rank": 100
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     106.88728,
+     -6.30062
+    ]
+   },
+   "properties": {
+    "name": "Museum Purna Bhakti Pertiwi",
+    "icon": "museum",
+    "major": false,
+    "rank": 100
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     106.83653,
+     -6.20456
+    ]
+   },
+   "properties": {
+    "name": "Museum Sasmita Loka Ahmad Yani",
+    "icon": "museum",
+    "major": false,
+    "rank": 100
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     106.84303,
+     -6.18384
+    ]
+   },
+   "properties": {
+    "name": "Museum Sumpah Pemuda",
+    "icon": "museum",
+    "major": false,
+    "rank": 100
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     106.81954,
+     -6.17237
+    ]
+   },
+   "properties": {
+    "name": "Museum Taman Prasasti",
+    "icon": "museum",
+    "major": false,
+    "rank": 100
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     106.80961,
+     -6.18797
+    ]
+   },
+   "properties": {
+    "name": "Museum Tekstil",
+    "icon": "museum",
+    "major": false,
+    "rank": 100
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     106.79942,
+     -6.22932
+    ]
+   },
+   "properties": {
+    "name": "Patung Pemuda Membangun",
+    "icon": "monument",
+    "major": false,
+    "rank": 100
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     106.83491,
+     -6.17032
+    ]
+   },
+   "properties": {
+    "name": "Pembebasan Irian Jaya",
+    "icon": "monument",
+    "major": false,
+    "rank": 100
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     106.82865,
+     -6.21745
+    ]
+   },
+   "properties": {
+    "name": "Perbanas Institute",
+    "icon": "college",
+    "major": false,
+    "rank": 100
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     106.81449,
+     -6.21981
+    ]
+   },
+   "properties": {
+    "name": "Plaza Semanggi",
+    "icon": "shop",
+    "major": false,
+    "rank": 100
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     106.73206,
+     -6.26641
+    ]
+   },
+   "properties": {
+    "name": "Politeknik Keuangan Negara STAN",
+    "icon": "college",
+    "major": false,
+    "rank": 100
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     106.82459,
+     -6.37169
+    ]
+   },
+   "properties": {
+    "name": "Politeknik Negeri Jakarta",
+    "icon": "college",
+    "major": false,
+    "rank": 100
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     106.81577,
+     -6.17317
+    ]
+   },
+   "properties": {
+    "name": "Pura Agung Wira Satya Bhuana",
+    "icon": "place_of_worship",
+    "major": false,
+    "rank": 100
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     106.77892,
+     -6.15699
+    ]
+   },
+   "properties": {
+    "name": "Pura Candra Prabha",
+    "icon": "place_of_worship",
+    "major": false,
+    "rank": 100
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     106.75616,
+     -6.27973
+    ]
+   },
+   "properties": {
+    "name": "Pura Merta Sari",
+    "icon": "place_of_worship",
+    "major": false,
+    "rank": 100
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     106.85666,
+     -6.31492
+    ]
+   },
+   "properties": {
+    "name": "Pura Mustika Dharma Kopassus",
+    "icon": "place_of_worship",
+    "major": false,
+    "rank": 100
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     106.93813,
+     -6.09766
+    ]
+   },
+   "properties": {
+    "name": "Pura Segara",
+    "icon": "place_of_worship",
+    "major": false,
+    "rank": 100
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     106.84181,
+     -6.2033
+    ]
+   },
+   "properties": {
+    "name": "ROH Project",
+    "icon": "art_gallery",
+    "major": false,
+    "rank": 100
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     106.82395,
+     -6.18881
+    ]
+   },
+   "properties": {
+    "name": "RUBANAH Underground Hub",
+    "icon": "art_gallery",
+    "major": false,
+    "rank": 100
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     106.80132,
+     -6.22666
+    ]
+   },
+   "properties": {
+    "name": "Ratu Plaza",
+    "icon": "shop",
+    "major": false,
+    "rank": 100
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     106.81719,
+     -6.21909
+    ]
+   },
+   "properties": {
+    "name": "Rumah Sakit Siloam",
+    "icon": "hospital",
+    "major": false,
+    "rank": 100
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     106.9134,
+     -6.13688
+    ]
+   },
+   "properties": {
+    "name": "Stadion Tugu",
+    "icon": "stadium",
+    "major": false,
+    "rank": 100
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     106.90282,
+     -6.30432
+    ]
+   },
+   "properties": {
+    "name": "Taman Budaya Tionghoa Indonesia",
+    "icon": "attraction",
+    "major": false,
+    "rank": 100
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     106.82957,
+     -6.1963
+    ]
+   },
+   "properties": {
+    "name": "Taman Menteng",
+    "icon": "park",
+    "major": false,
+    "rank": 100
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     106.82702,
+     -6.17586
+    ]
+   },
+   "properties": {
+    "name": "Taman Monas",
+    "icon": "park",
+    "major": false,
+    "rank": 100
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     106.83262,
+     -6.19928
+    ]
+   },
+   "properties": {
+    "name": "Taman Suropati",
+    "icon": "park",
+    "major": false,
+    "rank": 100
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     106.79541,
+     -6.1153
+    ]
+   },
+   "properties": {
+    "name": "Taman Waduk Pluit",
+    "icon": "park",
+    "major": false,
+    "rank": 100
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     106.83482,
+     -6.18272
+    ]
+   },
+   "properties": {
+    "name": "Tugu Tani",
+    "icon": "monument",
+    "major": false,
+    "rank": 100
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     106.75636,
+     -6.30954
+    ]
+   },
+   "properties": {
+    "name": "UIN Syarif Hidayatullah",
+    "icon": "college",
+    "major": false,
+    "rank": 100
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     106.83317,
+     -6.22051
+    ]
+   },
+   "properties": {
+    "name": "Universitas Bakrie",
+    "icon": "college",
+    "major": false,
+    "rank": 100
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     106.8181,
+     -6.13053
+    ]
+   },
+   "properties": {
+    "name": "Universitas Bunda Mulia",
+    "icon": "college",
+    "major": false,
+    "rank": 100
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     106.97233,
+     -6.1585
+    ]
+   },
+   "properties": {
+    "name": "Universitas Esa Unggul",
+    "icon": "college",
+    "major": false,
+    "rank": 100
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     106.91009,
+     -6.26208
+    ]
+   },
+   "properties": {
+    "name": "Universitas Islam As-Syafiiyah",
+    "icon": "college",
+    "major": false,
+    "rank": 100
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     106.8153,
+     -6.21867
+    ]
+   },
+   "properties": {
+    "name": "Universitas Katolik Indonesia Atmajaya",
+    "icon": "college",
+    "major": false,
+    "rank": 100
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     106.90761,
+     -6.26331
+    ]
+   },
+   "properties": {
+    "name": "Universitas Krisnadwipayana",
+    "icon": "college",
+    "major": false,
+    "rank": 100
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     106.78854,
+     -6.17253
+    ]
+   },
+   "properties": {
+    "name": "Universitas Kristen Krida Wacana (UKRIDA) Kampus Tanjung Duren",
+    "icon": "college",
+    "major": false,
+    "rank": 100
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     106.87865,
+     -6.1948
+    ]
+   },
+   "properties": {
+    "name": "Universitas Negeri Jakarta",
+    "icon": "college",
+    "major": false,
+    "rank": 100
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     106.75868,
+     -6.34162
+    ]
+   },
+   "properties": {
+    "name": "Universitas Terbuka",
+    "icon": "college",
+    "major": false,
+    "rank": 100
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     106.84905,
+     -6.25309
+    ]
+   },
+   "properties": {
+    "name": "Universitas Trilogi",
+    "icon": "college",
+    "major": false,
+    "rank": 100
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     106.85396,
+     -6.12031
+    ]
+   },
+   "properties": {
+    "name": "Vihara Bahtera Bhakti",
+    "icon": "place_of_worship",
+    "major": false,
+    "rank": 100
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     106.81251,
+     -6.13481
+    ]
+   },
+   "properties": {
+    "name": "Wayang Museum",
+    "icon": "museum",
+    "major": false,
+    "rank": 100
+   }
+  }
+ ]
+}

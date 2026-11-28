@@ -1,5 +1,6 @@
 import { MIN_TRIP_DISTANCE_M, STUDY_AREA } from "./config";
 import type { Mode, Point, Preference, RouteRequest } from "./types";
+import { tr } from "./i18n";
 
 /** Parses "lat, lon", "lat lon" or "lat; lon" (the last allows decimal commas).
  *  Returns null when the text is not exactly two finite numbers. */
@@ -17,13 +18,14 @@ export function parseCoordinateText(text: string): Point | null {
 
 /** Error text for a point the user entered, or null when it is usable. */
 export function validatePoint(p: Point | null, label: "asal" | "tujuan"): string | null {
-  if (!p) return `Cari nama tempat, pilih titik ${label} di peta, atau ketik koordinat "lat, lon".`;
+  const en = label === "asal" ? "starting point" : "destination";
+  if (!p) return tr(`Cari nama tempat atau pilih titik ${label} di peta.`, `Search for a place or pick the ${en} on the map.`);
   if (Math.abs(p.lat) > 90 || Math.abs(p.lon) > 180) {
-    return `Koordinat titik ${label} di luar rentang yang valid.`;
+    return tr(`Koordinat titik ${label} di luar rentang yang valid.`, `The ${en} coordinates are out of the valid range.`);
   }
   const a = STUDY_AREA;
   if (p.lat < a.minLat || p.lat > a.maxLat || p.lon < a.minLon || p.lon > a.maxLon) {
-    return `Titik ${label} berada di luar wilayah studi (Jakarta).`;
+    return tr(`Titik ${label} berada di luar wilayah studi (Jakarta).`, `The ${en} is outside the study area (Jakarta).`);
   }
   return null;
 }
@@ -48,11 +50,11 @@ export function validateTrip(origin: Point | null, destination: Point | null, mo
   const errors: TripErrors = {
     origin: validatePoint(origin, "asal"),
     destination: validatePoint(destination, "tujuan"),
-    mode: mode === "walk" || mode === "bike" ? null : "Pilih moda perjalanan.",
+    mode: mode === "walk" || mode === "bike" ? null : tr("Pilih moda perjalanan.", "Choose a travel mode."),
   };
   if (!errors.origin && !errors.destination && origin && destination) {
     if (distanceMeters(origin, destination) < MIN_TRIP_DISTANCE_M) {
-      errors.destination = "Titik tujuan terlalu dekat dengan titik asal.";
+      errors.destination = tr("Titik tujuan terlalu dekat dengan titik asal.", "The destination is too close to the starting point.");
     }
   }
   return errors;

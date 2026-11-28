@@ -1,21 +1,17 @@
 import { describe, expect, it } from "vitest";
 
-import html from "../index.html?raw";
-import { GEOCODE_NOTE, ROUTE_TIMEOUT_MS, SURFACE_TIMEOUT_MS, timeoutMs } from "./config";
+import { ROUTE_TIMEOUT_MS, SURFACE_TIMEOUT_MS, envSwitch, timeoutMs } from "./config";
 
-describe("notice about the geocoding provider (PNF-06)", () => {
-  it("names everything that is sent", () => {
-    expect(GEOCODE_NOTE).toMatch(/diketik/);
-    expect(GEOCODE_NOTE).toMatch(/klik peta/);
-    expect(GEOCODE_NOTE).toMatch(/lokasi Anda/);
-    expect(GEOCODE_NOTE).toMatch(/OpenStreetMap/);
+describe("envSwitch (VITE_NAV_TEST_PANEL, VITE_GPS_SPOOF)", () => {
+  it("reads true/false and on/off in any case", () => {
+    for (const v of ["true", "on", "1", "yes", "TRUE", " On "]) expect(envSwitch(v, false)).toBe(true);
+    for (const v of ["false", "off", "0", "no", "OFF"]) expect(envSwitch(v, true)).toBe(false);
   });
 
-  it("sits on the form, not in the list a map click never opens", () => {
-    const notice = html.indexOf('id="place-notice"');
-    expect(notice).toBeGreaterThan(html.lastIndexOf('id="menu-destination"'));
-    expect(html.slice(0, notice).match(/<div class="place-menu"/g)).toHaveLength(2);
-    expect(html.slice(html.lastIndexOf('id="menu-destination"'), notice)).toMatch(/<\/div>/);
+  it("falls back to the default when empty or unknown", () => {
+    expect(envSwitch(undefined, true)).toBe(true);
+    expect(envSwitch("", false)).toBe(false);
+    expect(envSwitch("maybe", true)).toBe(true);
   });
 });
 

@@ -78,6 +78,8 @@ export interface NavSnapshot {
   remainingM: number;
   remainingMin: number;
   next: { maneuver: Maneuver; distanceM: number } | null;
+  /** The turn right after `next`, and how far it comes after it ("Then …" in the banner). */
+  then: { maneuver: Maneuver; gapM: number } | null;
 }
 
 export class NavigationSession {
@@ -111,6 +113,11 @@ export class NavigationSession {
   ) {
     this.setRoute(route);
     this.snapshot = this.build("waiting", null, null, null, null);
+  }
+
+  /** How far along the route the user is, in metres. */
+  get progressM(): number {
+    return this.progress;
   }
 
   get routeLine(): RouteLine {
@@ -255,6 +262,7 @@ export class NavigationSession {
   private build(status: NavStatus, fix: Fix | null, shown: Point | null, heading: number | null, offRouteM: number | null): NavSnapshot {
     const remainingM = Math.max(0, this.line.length - this.progress);
     const ahead = this.turns.find((m) => m.along > this.progress - this.limits.passedM) ?? null;
+    const after = ahead ? this.turns[this.turns.indexOf(ahead) + 1] ?? null : null;
     return {
       status,
       fix,
@@ -264,6 +272,7 @@ export class NavigationSession {
       remainingM,
       remainingMin: (remainingM * this.pace) / 60,
       next: ahead && status !== "arrived" ? { maneuver: ahead, distanceM: Math.max(0, ahead.along - this.progress) } : null,
+      then: ahead && after && status !== "arrived" ? { maneuver: after, gapM: after.along - ahead.along } : null,
     };
   }
 }

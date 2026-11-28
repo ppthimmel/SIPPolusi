@@ -3,14 +3,23 @@ WORKDIR /app
 COPY package.json ./
 RUN npm install
 COPY . .
-# Optional basemap tile URL baked into the bundle (empty = OpenStreetMap default).
+# Optional basemap baked into the bundle: a MapLibre style URL (empty = OpenFreeMap "liberty"),
+# or raster tiles instead when VITE_BASEMAP_TILES is set.
+ARG VITE_BASEMAP_STYLE=""
 ARG VITE_BASEMAP_TILES=""
-ENV VITE_BASEMAP_TILES=$VITE_BASEMAP_TILES
+ENV VITE_BASEMAP_STYLE=$VITE_BASEMAP_STYLE \
+    VITE_BASEMAP_TILES=$VITE_BASEMAP_TILES
 # Optional request timeouts in ms baked into the bundle (empty = 12000 route, 5000 heatmap).
 ARG VITE_ROUTE_TIMEOUT_MS=""
 ARG VITE_SURFACE_TIMEOUT_MS=""
 ENV VITE_ROUTE_TIMEOUT_MS=$VITE_ROUTE_TIMEOUT_MS \
     VITE_SURFACE_TIMEOUT_MS=$VITE_SURFACE_TIMEOUT_MS
+# Optional testing tools (empty = off in this production build): the "Uji navigasi" panel
+# (true/false) and the GPS spoofer ?lokasi / ?simulasi (on/off). Only for test or demo builds.
+ARG VITE_NAV_TEST_PANEL=""
+ARG VITE_GPS_SPOOF=""
+ENV VITE_NAV_TEST_PANEL=$VITE_NAV_TEST_PANEL \
+    VITE_GPS_SPOOF=$VITE_GPS_SPOOF
 RUN npm run build
 
 FROM nginx:alpine

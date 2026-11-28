@@ -23,16 +23,29 @@ export function timeoutMs(value: string | undefined, fallback: number): number {
   const n = Number(value);
   return value && Number.isInteger(n) && n > 0 ? n : fallback;
 }
+
+/** An on/off build variable: true/on/1/yes or false/off/0/no (any case); empty or anything
+ *  else gives the default. */
+export function envSwitch(value: string | undefined, fallback: boolean): boolean {
+  const v = (value ?? "").trim().toLowerCase();
+  if (["true", "on", "1", "yes"].includes(v)) return true;
+  if (["false", "off", "0", "no"].includes(v)) return false;
+  return fallback;
+}
+
+/** Testing tools, set at build time (or when `npm run dev` starts); both default to on in
+ *  `npm run dev` and off in a production build (docs/frontend-enhancement, "Alat bantu
+ *  pengembangan"). Never switch them on for the real public site.
+ *  - VITE_NAV_TEST_PANEL: the "Uji navigasi" panel during navigation (leave / return to the route).
+ *  - VITE_GPS_SPOOF: replaces the device's GPS through the URL: `?lokasi=` (a fixed point) and
+ *    `?simulasi=` (movement along the route while navigating). */
+export const NAV_TEST_PANEL = envSwitch(import.meta.env?.VITE_NAV_TEST_PANEL, !!import.meta.env?.DEV);
+export const GPS_SPOOF = envSwitch(import.meta.env?.VITE_GPS_SPOOF, !!import.meta.env?.DEV);
 /** Place search (TI-SE-12). The timeout stays above the Backend's API_GEOCODING_TIMEOUT_S, plus
  *  its second call for a place outside the area, so the page reads the Backend's own answer. */
 export const GEOCODE_TIMEOUT_MS = 7_000;
 export const GEOCODE_DEBOUNCE_MS = 300;
 export const GEOCODE_MIN_CHARS = 3;
-/** Always on the form, because a map click or "Lokasi saya" sends the point without ever opening
- *  the suggestion list (PNF-06): what is sent and where, and the source of the places (ODbL). */
-export const GEOCODE_NOTE =
-  "Nama yang diketik dan titik yang dipilih (klik peta atau lokasi Anda) dikirim ke layanan pencarian lokasi " +
-  "untuk mencari nama tempat, dan tidak disimpan SIPPolusi. Data tempat © OpenStreetMap.";
 
 /** Debounce for pan/zoom before GET /v1/exposure-surface (Tabel 3.4). */
 export const SURFACE_DEBOUNCE_MS = 500;
@@ -55,18 +68,11 @@ export const CONFIDENCE_HIGH = 0.7;
 /** Two points closer than this are treated as the same place. */
 export const MIN_TRIP_DISTANCE_M = 30;
 
-/** Basemap raster tiles. Override with VITE_BASEMAP_TILES for production tiles. */
-export const BASEMAP_TILES: string =
-  import.meta.env?.VITE_BASEMAP_TILES || "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
+/** Basemap: a vector style from OpenFreeMap (OpenStreetMap data, free, no key) with place
+ *  icons and landmark names. VITE_BASEMAP_STYLE points to another MapLibre style JSON. */
+export const BASEMAP_STYLE: string = import.meta.env?.VITE_BASEMAP_STYLE || "https://tiles.openfreemap.org/styles/liberty";
+
+/** Raster tiles instead of the vector style, when set (e.g. https://tiles.example/{z}/{x}/{y}.png). */
+export const BASEMAP_TILES: string | null = import.meta.env?.VITE_BASEMAP_TILES || null;
 export const BASEMAP_ATTRIBUTION = "© OpenStreetMap contributors";
 
-/** Always-visible disclaimer (PNF-07). The Backend sends its own text in
- *  metadata.disclaimer; this one is shown regardless of the response. */
-export const DISCLAIMER =
-  // Holds whichever source produced the estimate: ground sensors always, satellite and
-  // meteorological data only when the downscaling model took part (TI-SE-10, D-07).
-  "Nilai paparan adalah estimasi dari sensor darat, ditambah data satelit dan meteorologi bila model " +
-  "downscaling tersedia; bukan pengukuran langsung. Sumber estimasi tiap rute ada di rincian hasil. " +
-  "Indeks paparan menggabungkan PM2.5 dan NO2 terhadap pedoman WHO. " +
-  "Hasil ini alat bantu keputusan perjalanan, bukan rekomendasi medis atau diagnosis kesehatan; " +
-  "tetap perhatikan kondisi jalan.";

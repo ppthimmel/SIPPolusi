@@ -2,51 +2,38 @@ import { compareRoutes, type Comparison } from "./compare";
 import { clear, h, icon } from "./dom";
 import {
   confidenceCategory,
-  estimationSourceLabel,
-  exposureUnitLabel,
-  fmtCoord,
   fmtDistance,
   fmtExposure,
   fmtMinutes,
+  exposureUnitLabel,
   fmtNumber,
   fmtPercent,
   fmtWib,
+  fmtDateTimeWib,
+  fmtGraphVersionDate,
 } from "./format";
-import type { FallbackReason, Mode, RouteRequest, RouteResponse, RouteResult } from "./types";
-
-const MODE_LABEL: Record<Mode, string> = { walk: "Jalan kaki", bike: "Sepeda" };
-
-const FALLBACK_TEXT: Record<FallbackReason, string> = {
-  model_timeout: "Model utama tidak merespons tepat waktu",
-  model_unavailable: "Model utama sedang tidak dapat dihubungi",
-  model_error: "Model utama mengalami galat",
-  model_invalid_response: "Model utama menghasilkan rute yang tidak valid",
-  model_no_route: "Model utama tidak menghasilkan rute",
-  policy_unavailable: "Model utama belum tersedia",
-  policy_timeout: "Model utama tidak merespons tepat waktu",
-  policy_error: "Model utama mengalami galat",
-  invalid_route: "Model utama menghasilkan rute yang tidak valid",
-};
-
-export function priorityLabel(beta: number): string {
-  if (Math.abs(beta - 0.5) < 0.005) return "prioritas seimbang";
-  return beta < 0.5 ? "condong ke lebih cepat" : "condong ke lebih bersih";
-}
+import { tr } from "./i18n";
+import { openIndexInfo } from "./index-info";
+import { exposureDisclaimer, exposureDisclaimerShort } from "./notices";
+import type { RouteRequest, RouteResponse, RouteResult } from "./types";
 
 export interface ResultViewOptions {
   response: RouteResponse;
   request: RouteRequest;
-  /** Names of the points, when known; otherwise the header shows their coordinates. */
-  places: { origin: string | null; destination: string | null };
-  onBack: () => void;
   /** Starts navigation along one of the routes (TI-SE-13). */
   onNavigate: (role: RouteResult["role"]) => void;
   /** Shown above the routes, e.g. why navigation could not start. */
   notice?: { title: string; text: string } | null;
+  /** Streets already found for the routes' "via" lines. */
+  names?: Partial<Record<RouteResult["role"], string>>;
+  /** The route row shown as selected; the recommended one by default. */
+  selected?: RouteResult["role"];
+  /** The user chose another route row. */
+  onSelect?: (role: RouteResult["role"]) => void;
 }
 
-/** Rebuilds the result panel (Gambar 3.1b, 3.4). Returns the heading so the
- *  caller can move focus to it. */
+/** Rebuilds the result panel (Gambar 3.1b, 3.4), shown below the trip form. Returns its
+ *  heading, whose text says how many routes were found. */
 export function renderResult(container: HTMLElement, opts: ResultViewOptions): HTMLElement {
   const { response, request } = opts;
   const { recommended, comparison, metadata } = response;
@@ -59,39 +46,22 @@ export function renderResult(container: HTMLElement, opts: ResultViewOptions): H
 
   const heading = h(
     "h2",
-    { class: "title result-title", tabindex: "-1", id: "result-title" },
-    routeCount === 2 ? "2 rute ditemukan" : "Rute ditemukan",
+    { class: "visually-hidden", tabindex: "-1", id: "result-title" },
+    routeCount === 2 ? tr("2 rute ditemukan", "2 routes found") : tr("Rute ditemukan", "Route found"),
   );
 
-  container.append(
-    h(
-      "div",
-      { class: "result-head" },
-      h("button", { type: "button", class: "icon-btn", "aria-label": "Kembali ke isian perjalanan", onclick: opts.onBack }, icon("back", 20)),
-      h(
-        "div",
-        { class: "trip-summary" },
-        h("div", { class: "trip-line" }, opts.places.origin ?? fmtCoord(request.origin), " → ", opts.places.destination ?? fmtCoord(request.destination)),
-        h(
-          "div",
-          { class: "trip-sub" },
-          `${MODE_LABEL[request.mode]} · ${priorityLabel(request.preference.beta)} (α ${fmtNumber(request.preference.alpha, 2)} · β ${fmtNumber(request.preference.beta, 2)})`,
-        ),
-      ),
-    ),
-    h("div", { class: "title-row" }, heading, wib && h("span", { class: "time-chip" }, icon("clock", 14), `Data kualitas udara ${wib}`)),
-  );
+  container.append(heading);
 
   if (opts.notice) container.append(notice("warn", opts.notice.title, opts.notice.text, "alert"));
 
   if (metadata.dataStale) {
     container.append(
-      notice(
-        "warn",
-        "Data kualitas udara belum diperbarui",
+      h(
+        "p",
+        { class: "stale-note", role: "status" },
         wib
-          ? `Estimasi terakhir pukul ${wib}, lebih dari 3 jam lalu. Kondisi sekarang bisa berbeda.`
-          : "Estimasi terakhir lebih dari 3 jam lalu. Kondisi sekarang bisa berbeda.",
+          ? tr(`Estimasi terakhir pukul ${wib}. Kondisi sekarang bisa berbeda.`, `Last estimate at ${wib}. Conditions now may differ.`)
+          : tr("Kondisi sekarang bisa berbeda dari estimasi terakhir.", "Conditions now may differ from the last estimate."),
       ),
     );
   }
@@ -99,25 +69,27 @@ export function renderResult(container: HTMLElement, opts: ResultViewOptions): H
     container.append(
       notice(
         "info",
-        "Sebagian ruas tanpa estimasi",
-        `${fmtNumber(metadata.missingEdgeCount, 0)} ruas pada area rute tidak punya estimasi polutan; nilainya diisi median wilayah dengan keyakinan 0. Angka paparan bisa kurang akurat.`,
+        tr("Sebagian ruas tanpa estimasi", "Some segments have no estimate"),
+        tr(
+          `${fmtNumber(metadata.missingEdgeCount, 0)} ruas pada area rute tidak punya estimasi polutan; nilainya diisi median wilayah dengan keyakinan 0. Angka paparan bisa kurang akurat.`,
+          `${fmtNumber(metadata.missingEdgeCount, 0)} segments in the route area have no pollutant estimate; they are filled with the area median at confidence 0. Exposure figures may be less accurate.`,
+        ),
       ),
     );
   }
-  if (isFallback) {
-    const why = metadata.fallbackReason ? FALLBACK_TEXT[metadata.fallbackReason] : "Model utama tidak tersedia";
-    container.append(
-      notice(
+  // A fallback route carries its "Metode cadangan" chip on the card; no separate notice.
+  if (!isFallback && recommended.preferenceApplied === false) {
+    container.append(notice(
         "info",
-        "Memakai metode cadangan",
-        `${why}, jadi yang ditampilkan adalah rute tercepat. Prioritas waktu-paparan yang Anda atur belum diterapkan pada rute ini.`,
-      ),
-    );
-  } else if (recommended.preferenceApplied === false) {
-    container.append(notice("info", "Prioritas belum diterapkan", "Server menandai bahwa prioritas waktu-paparan tidak diterapkan pada rute ini."));
+        tr("Prioritas belum diterapkan", "Priority not applied"),
+        tr("Server menandai bahwa prioritas waktu-paparan tidak diterapkan pada rute ini.", "The server reports that the time–exposure priority was not applied to this route."),
+      ));
   }
 
-  container.append(comparisonBanner(cmp), ...routeCards(response, isFallback, opts.onNavigate));
+  // Identical routes need no comparison box: the single route card says it all.
+  if (cmp.kind !== "identical") container.append(comparisonBanner(cmp));
+  container.append(estimateNote());
+  container.append(routeList(response, request, isFallback, opts));
 
   const detail = detailSection(response);
   container.append(detail);
@@ -137,24 +109,24 @@ function comparisonBanner(c: Comparison): HTMLElement {
   const mins = Math.round(c.deltaTimeMin);
   const timeText =
     mins > 0
-      ? `dengan tambahan ${fmtNumber(mins, 0)} menit`
+      ? tr(`dengan tambahan ${fmtNumber(mins, 0)} menit`, `taking ${fmtNumber(mins, 0)} min longer`)
       : mins < 0
-        ? `dengan waktu tempuh ${fmtNumber(-mins, 0)} menit lebih singkat`
-        : "dengan waktu tempuh yang sama";
+        ? tr(`dengan waktu tempuh ${fmtNumber(-mins, 0)} menit lebih singkat`, `taking ${fmtNumber(-mins, 0)} min less`)
+        : tr("dengan waktu tempuh yang sama", "with the same travel time");
+  const vsFastest = tr("paparan polutan dibanding rute tercepat", "pollutant exposure compared with the fastest route");
 
   switch (c.kind) {
     case "lower":
-      return banner(`−${fmtPercent(c.deltaExposurePct!)}`, `paparan polutan dibanding rute tercepat, ${timeText}`, "good");
+      return banner(`−${fmtPercent(c.deltaExposurePct!)}`, `${vsFastest}, ${timeText}`, "good");
     case "higher":
-      return banner(`+${fmtPercent(c.deltaExposurePct!)}`, `paparan polutan dibanding rute tercepat, ${timeText}`, "neutral");
+      return banner(`+${fmtPercent(c.deltaExposurePct!)}`, `${vsFastest}, ${timeText}`, "neutral");
     case "same":
-      return banner("±0%", `paparan polutan setara rute tercepat, ${timeText}`, "neutral");
-    case "identical":
-      return banner("Sama", "Rute rekomendasi sama dengan rute tercepat; tidak ada selisih waktu maupun paparan.", "neutral");
+      return banner("±0%", tr(`paparan polutan setara rute tercepat, ${timeText}`, `pollutant exposure equal to the fastest route, ${timeText}`), "neutral");
+    case "identical": // not shown (see renderResult); kept so the switch stays exhaustive
     case "unknown":
-      return banner("—", `selisih paparan tidak dapat dihitung, ${timeText}`, "neutral");
+      return banner("—", tr(`selisih paparan tidak dapat dihitung, ${timeText}`, `the exposure difference cannot be calculated, ${timeText}`), "neutral");
     case "none":
-      return banner("—", "Rute pembanding tidak tersedia, jadi selisih tidak dapat dihitung.", "neutral");
+      return banner("—", tr("Rute pembanding tidak tersedia, jadi selisih tidak dapat dihitung.", "No comparison route is available, so the difference cannot be calculated."), "neutral");
   }
 }
 
@@ -162,97 +134,206 @@ function banner(big: string, text: string, tone: "good" | "neutral"): HTMLElemen
   return h("div", { class: `delta-banner delta-${tone}` }, h("span", { class: "delta-big mono" }, big), h("span", { class: "delta-text" }, text));
 }
 
-function routeCards(resp: RouteResponse, isFallback: boolean, onNavigate: ResultViewOptions["onNavigate"]): HTMLElement[] {
-  const cards: HTMLElement[] = [];
+type Role = RouteResult["role"];
+
+/** Routes as a list, one row each, like a directions panel: mode icon, "via" line, time and
+ *  distance on the right. Every row has its own navigation button; the selected row is marked,
+ *  and choosing another row (or navigating it) moves the selection and the map emphasis. */
+function routeList(resp: RouteResponse, request: RouteRequest, isFallback: boolean, opts: ResultViewOptions): HTMLElement {
   const identical = compareRoutes(resp).kind === "identical";
-  cards.push(
-    routeCard(resp.recommended, resp, onNavigate, {
-      title: isFallback ? "Rute rekomendasi" : "Rute rendah paparan",
-      sub: "Rekomendasi",
-      swatch: "solid",
-      fallbackChip: isFallback,
-      recommended: true,
-    }),
-  );
-  if (resp.comparison && !identical) {
-    cards.push(
-      routeCard(resp.comparison, resp, onNavigate, { title: "Rute tercepat", sub: "Pembanding", swatch: "dashed", fallbackChip: false, recommended: false }),
-    );
-  }
-  return cards;
-}
+  const routes: { r: RouteResult; title: string }[] = [
+    {
+      r: resp.recommended,
+      title: isFallback ? tr("Rute rekomendasi", "Recommended route") : tr("Rute rendah paparan", "Low-exposure route"),
+    },
+  ];
+  if (resp.comparison && !identical) routes.push({ r: resp.comparison, title: tr("Rute tercepat", "Fastest route") });
 
-function routeCard(
-  r: RouteResult,
-  resp: RouteResponse,
-  onNavigate: ResultViewOptions["onNavigate"],
-  o: { title: string; sub: string; swatch: "solid" | "dashed"; fallbackChip: boolean; recommended: boolean },
-): HTMLElement {
-  const unit = exposureUnitLabel(resp.exposureUnit);
-  const exposureLabel = resp.exposureUnit === "index_min" ? "Paparan gabungan" : "Paparan PM2.5";
-  return h(
-    "article",
-    { class: `route-card${o.recommended ? " route-card-rec" : ""}`, "aria-label": o.title },
-    h("h3", { class: "route-title" }, h("span", { class: `swatch swatch-${o.swatch}`, "aria-hidden": "true" }), o.title),
-    h("div", { class: "route-badges" }, h("span", { class: "route-sub" }, o.sub), confidenceBadge(r.confidence), o.fallbackChip && h("span", { class: "chip chip-fallback" }, icon("info", 13), "Metode cadangan")),
-    h(
-      "dl",
-      { class: "metrics" },
-      metric("Waktu tempuh", fmtMinutes(r.travelTimeMin)),
-      metric("Jarak", fmtDistance(r.distanceM)),
-      metric(exposureLabel, fmtExposure(r.exposure), unit),
-    ),
-    h(
+  const list = h("ul", { class: "route-list", "aria-label": tr("Pilihan rute", "Route options") });
+  const rows = new Map<Role, { li: HTMLLIElement; pick: HTMLButtonElement }>();
+  const select = (role: Role, notify: boolean) => {
+    for (const [r, { li, pick }] of rows) {
+      li.classList.toggle("is-selected", r === role);
+      pick.setAttribute("aria-pressed", String(r === role));
+    }
+    if (notify) opts.onSelect?.(role);
+  };
+
+  const exposureLabel = resp.exposureUnit === "index_min" ? tr("Paparan", "Exposure") : tr("Paparan PM2.5", "PM2.5 exposure");
+  // A route's name ("Rute tercepat", …) is only worth a line when there are two to tell apart.
+  const labelled = routes.length > 1;
+  for (const { r, title } of routes) {
+    const via = opts.names?.[r.role];
+    const pick = h(
       "button",
-      {
-        type: "button",
-        class: o.recommended ? "primary nav-start" : "secondary nav-start",
-        "aria-label": `Mulai navigasi: ${o.title}`,
-        onclick: () => onNavigate(r.role),
-      },
-      icon("navigate", 18),
-      o.recommended ? " Mulai navigasi" : " Navigasi rute ini",
-    ),
-  );
+      { type: "button", class: "route-pick", "aria-pressed": "false", onclick: () => select(r.role, true) },
+      h("span", { class: "route-mode", "aria-hidden": "true" }, icon(request.mode === "bike" ? "bike" : "walk", 22)),
+      h(
+        "span",
+        { class: "route-main" },
+        h("span", { class: "route-via", id: `route-via-${r.role}` }, via ? tr(`via ${via}`, `via ${via}`) : title),
+      ),
+      h("span", { class: "route-time" }, h("strong", { class: "mono" }, fmtMinutes(r.travelTimeMin)), h("span", { class: "mono" }, fmtDistance(r.distanceM))),
+    );
+    // Exposure and confidence on their own line under the select button (an info button cannot sit
+    // inside another button); a click on the line still selects the row.
+    const tip = exposureTip(resp.exposureUnit);
+    const details = h(
+      "div",
+      { class: "route-details", onclick: (e: Event) => !(e.target as HTMLElement).closest(".info-tip, .info-pop") && select(r.role, true) },
+      h(
+        "span",
+        { class: "route-meta", id: `route-meta-${r.role}`, "data-label": labelled ? title : "" },
+        via && labelled ? `${title} · ` : "",
+        h("span", { class: "route-exposure" }, `${exposureLabel} ${fmtExposure(r.exposure)} ${exposureUnitLabel(resp.exposureUnit)}`, tip.button),
+        // How sure the model is of that number, on the line under it (transparency).
+        confidenceText(r.confidence) && h("span", { class: "route-confidence" }, confidenceText(r.confidence)),
+      ),
+      tip.pop,
+    );
+    const extra = h(
+      "div",
+      { class: "route-extra" },
+      h(
+        "button",
+        {
+          type: "button",
+          class: "primary nav-start",
+          "aria-label": tr(`Mulai navigasi: ${title}`, `Start navigation: ${title}`),
+          onclick: () => {
+            select(r.role, true);
+            opts.onNavigate(r.role);
+          },
+        },
+        icon("navigate", 18),
+        ` ${tr("Mulai navigasi", "Start navigation")}`,
+      ),
+    );
+    const li = h("li", { class: "route-row" }, pick, details, extra);
+    rows.set(r.role, { li, pick });
+    list.append(li);
+  }
+  select(opts.selected && rows.has(opts.selected) ? opts.selected : "recommended", false);
+  return list;
 }
 
-function metric(label: string, value: string, unit?: string): HTMLElement {
-  return h("div", { class: "metric" }, h("dt", {}, label), h("dd", { class: "mono" }, value), unit && h("dd", { class: "unit" }, unit));
-}
-
-export function confidenceBadge(score: number | null): HTMLElement {
+/** "Keyakinan rendah": the category of the model's confidence in a route's exposure estimate
+ *  (score 0–1: rendah < 0,4 ≤ sedang < 0,7 ≤ tinggi), without the number; null when the server sent none. */
+export function confidenceText(score: number | null): string | null {
   const cat = confidenceCategory(score);
-  if (!cat) return h("span", { class: "chip chip-none" }, icon("shield", 13), "Keyakinan tidak tersedia");
-  return h(
-    "span",
-    { class: `chip chip-${cat}`, title: "Tingkat keyakinan estimasi model" },
-    icon("shield", 13),
-    `Keyakinan ${cat[0].toUpperCase()}${cat.slice(1)} · `,
-    h("span", { class: "mono" }, fmtNumber(score!, 2)),
+  if (!cat) return null;
+  const word = { rendah: tr("rendah", "low"), sedang: tr("sedang", "medium"), tinggi: tr("tinggi", "high") }[cat];
+  return tr(`Keyakinan ${word}`, `Confidence ${word}`);
+}
+
+let tipCount = 0;
+
+/** PNF-07 under the exposure comparison: a short line always in view, the full disclaimer behind ⓘ. */
+function estimateNote(): HTMLElement {
+  const tip = toggletip(tr("Tentang estimasi paparan", "About the exposure estimate"), [h("p", {}, exposureDisclaimer())]);
+  return h("div", { class: "estimate-note", id: "estimate-note" }, h("span", {}, exposureDisclaimerShort(), tip.button), tip.pop);
+}
+
+/** "ⓘ" after a route's exposure, explaining the index and how the route's figure is worked out.
+ *  A toggletip: hovering or focusing shows the bubble, a click or tap keeps it open until a
+ *  click elsewhere, another click, or Escape. The bubble's text is in the page (not a title
+ *  attribute), so touch and screen-reader users get it too. */
+function exposureTip(unit: RouteResponse["exposureUnit"]): { button: HTMLButtonElement; pop: HTMLElement } {
+  const more = h("button", { type: "button", class: "link-btn info-pop-more", onclick: () => openIndexInfo() }, tr("Selengkapnya", "More"));
+  const body =
+    unit === "index_min"
+      ? [
+          h("p", {}, tr(
+            "Indeks: rata-rata PM2.5 dan NO₂ setelah masing-masing dibagi ambang pedoman WHO-nya.",
+            "The index averages PM2.5 and NO₂ after dividing each by its WHO guideline.",
+          )),
+          h("p", {}, tr("Paparan = indeks × menit, dijumlah sepanjang rute.", "Exposure = index × minutes, summed along the route.")),
+        ]
+      : [
+          h("p", {}, tr("Paparan = konsentrasi PM2.5 × menit, dijumlah sepanjang rute.", "Exposure = PM2.5 concentration × minutes, summed along the route.")),
+        ];
+  return toggletip(tr("Apa arti angka paparan ini?", "What does this exposure figure mean?"), [...body, more]);
+}
+
+/** A toggletip: "ⓘ" whose bubble opens on hover or focus and stays open after a click or tap
+ *  until a click elsewhere, another click, or Escape. */
+function toggletip(label: string, content: HTMLElement[]): { button: HTMLButtonElement; pop: HTMLElement } {
+  const id = `info-pop-${++tipCount}`;
+  const pop = h("div", { class: "info-pop", id, role: "status", hidden: true }, ...content);
+  const button = h(
+    "button",
+    { type: "button", class: "info-tip", "aria-label": label, "aria-expanded": "false", "aria-controls": id },
+    icon("info", 15),
   );
+
+  let pinned = false;
+  const show = (on: boolean) => {
+    pop.hidden = !on;
+    button.setAttribute("aria-expanded", String(on));
+  };
+  const outside = (e: Event) => {
+    if (!button.contains(e.target as Node) && !pop.contains(e.target as Node)) close();
+  };
+  const close = () => {
+    pinned = false;
+    show(false);
+    document.removeEventListener("pointerdown", outside, true);
+  };
+  button.addEventListener("click", (e) => {
+    e.stopPropagation();
+    pinned = !pinned;
+    show(pinned);
+    if (pinned) document.addEventListener("pointerdown", outside, true);
+    else document.removeEventListener("pointerdown", outside, true);
+  });
+  for (const el of [button, pop]) {
+    el.addEventListener("mouseenter", () => show(true));
+    el.addEventListener("mouseleave", (e) => {
+      const to = (e as MouseEvent).relatedTarget as Node | null;
+      if (!pinned && !(to && (button.contains(to) || pop.contains(to)))) show(false);
+    });
+  }
+  button.addEventListener("focus", () => show(true));
+  button.addEventListener("blur", (e) => {
+    if (!pinned && !pop.contains((e as FocusEvent).relatedTarget as Node | null)) show(false);
+  });
+  for (const el of [button, pop]) {
+    el.addEventListener("keydown", (e) => {
+      if ((e as KeyboardEvent).key === "Escape" && !pop.hidden) {
+        e.stopPropagation();
+        close();
+        button.focus();
+      }
+    });
+  }
+  return { button, pop };
+}
+
+/** Fills in the "via …" line of a route row once its street is known. */
+export function setRouteVia(container: HTMLElement, role: Role, street: string): void {
+  const el = container.querySelector<HTMLElement>(`#route-via-${role}`);
+  if (!el) return;
+  const wasTitle = !(el.textContent ?? "").startsWith("via ");
+  el.textContent = tr(`via ${street}`, `via ${street}`);
+  // The title moves from the first line to the second, when the row shows one (see routeList).
+  const meta = container.querySelector<HTMLElement>(`#route-meta-${role}`);
+  const label = meta?.dataset.label;
+  if (meta && label && wasTitle) meta.prepend(`${label} · `);
 }
 
 function detailSection(resp: RouteResponse): HTMLElement {
   const m = resp.metadata;
   const rows: [string, string][] = [];
-  const wib = fmtWib(m.timeWindowStart);
-  if (wib) rows.push(["Data kualitas udara", `${wib}${m.timeWindowStart ? ` (${m.timeWindowStart})` : ""}`]);
-  rows.push([
-    "Sumber rute",
-    resp.recommended.routeSource === "baseline" ? "Rute tercepat (metode cadangan)" : "Model rute multi-tujuan (waktu dan paparan)",
-  ]);
-  rows.push(["Sumber estimasi", estimationSourceLabel(m.estimationSource, m.downscalingFallback)]);
-  if (m.downscalingVersion) rows.push(["Versi model downscaling", m.downscalingVersion]);
-  if (m.routePolicyVersion) rows.push(["Versi model rute", m.routePolicyVersion]);
-  if (m.graphVersion) rows.push(["Versi data jalan (OpenStreetMap)", m.graphVersion]);
-  rows.push(["Ruas tanpa estimasi", fmtNumber(m.missingEdgeCount, 0)]);
-  if (m.requestId) rows.push(["ID permintaan", m.requestId]);
+  const airQuality = fmtDateTimeWib(m.timeWindowStart);
+  if (airQuality) rows.push([tr("Data kualitas udara", "Air-quality data"), airQuality]);
+  if (m.graphVersion) {
+    rows.push([tr("Versi data jalan", "Road data version"), fmtGraphVersionDate(m.graphVersion) ?? m.graphVersion]);
+  }
 
   return h(
     "details",
     { class: "details" },
-    h("summary", {}, "Sumber data dan versi"),
+    h("summary", {}, tr("Sumber data dan versi", "Data sources and versions")),
     h("dl", { class: "detail-list" }, ...rows.flatMap(([k, v]) => [h("dt", {}, k), h("dd", {}, v)])),
-    m.disclaimer && h("p", { class: "detail-disclaimer" }, m.disclaimer),
   );
 }
