@@ -88,6 +88,28 @@ export function renderResult(container: HTMLElement, opts: ResultViewOptions): H
   // Identical routes need no comparison box: the single route card says it all.
   if (cmp.kind !== "identical") container.append(comparisonBanner(cmp));
   container.append(routeList(response, request, isFallback, opts));
+  // RI-09 / PNF-06: what happens to the position, readable before "Mulai navigasi" is pressed.
+  container.append(
+    h(
+      "p",
+      { class: "fine-print", id: "nav-privacy" },
+      tr(
+        "Posisi GPS Anda diproses di perangkat selama navigasi. Jika rute perlu dihitung ulang, posisi saat itu dikirim ke SIPPolusi sebagai titik awal rute baru.",
+        "Your GPS position is processed on your device during navigation. If the route needs recalculating, your position at that moment is sent to SIPPolusi as the start of the new route.",
+      ),
+    ),
+  );
+  // PNF-07: the exposure disclaimer, under the figures it qualifies (the form's copy hides meanwhile).
+  container.append(
+    h(
+      "p",
+      { class: "fine-print", id: "result-disclaimer" },
+      tr(
+        "Paparan polusi adalah estimasi model dan dapat berbeda dari kondisi sebenarnya. Gunakan sebagai pertimbangan memilih rute. Ini bukan saran medis.",
+        "Pollution exposure is a model estimate and may differ from actual conditions. Use it to help choose a route. This is not medical advice.",
+      ),
+    ),
+  );
 
   const detail = detailSection(response);
   container.append(detail);
@@ -237,8 +259,8 @@ function exposureTip(unit: RouteResponse["exposureUnit"]): { button: HTMLButtonE
     unit === "index_min"
       ? [
           h("p", {}, tr(
-            "Indeks: rata-rata PM2.5 dan NO2.",
-            "Index: PM2.5 and NO2, averaged.",
+            "Indeks: rata-rata PM2.5 dan NO₂ setelah masing-masing dibagi ambang pedoman WHO-nya.",
+            "The index averages PM2.5 and NO₂ after dividing each by its WHO guideline.",
           )),
           h("p", {}, tr("Paparan = indeks × menit, dijumlah sepanjang rute.", "Exposure = index × minutes, summed along the route.")),
         ]

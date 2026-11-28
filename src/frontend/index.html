@@ -120,6 +120,8 @@
                 </div>
                 <button type="button" class="icon-btn swap-btn" id="swap-btn" aria-label="Tukar asal dan tujuan" data-en-aria-label="Swap start and destination"></button>
               </div>
+              <!-- PNF-06: what goes to the place search service, shown before anything is typed or picked. -->
+              <p class="fine-print" id="search-privacy" data-en="Your search text and the coordinates of points you choose may be sent to a place search service to show place names or suggestions.">Teks pencarian dan koordinat titik yang Anda pilih dapat dikirim ke layanan pencarian lokasi untuk menampilkan nama atau saran tempat.</p>
               <button type="button" class="link-btn" id="use-location" data-en="Use my location as the start">Gunakan lokasi saya sebagai asal</button>
               <p class="visually-hidden" id="pick-hint" aria-live="polite"></p>
 
@@ -154,6 +156,8 @@
 
               <button type="submit" class="primary" id="submit-btn" aria-describedby="submit-help">Cari rute</button>
               <p class="hint" id="submit-help"></p>
+              <!-- PNF-07: always in view; once routes are shown it moves under them (results-view.ts). -->
+              <p class="fine-print" id="form-disclaimer" data-en="Pollution exposure is a model estimate and may differ from actual conditions. Use it to help choose a route. This is not medical advice.">Paparan polusi adalah estimasi model dan dapat berbeda dari kondisi sebenarnya. Gunakan sebagai pertimbangan memilih rute. Ini bukan saran medis.</p>
               <button type="button" class="secondary" id="cancel-btn" hidden data-en="Cancel">Batalkan</button>
             </form>
           </section>

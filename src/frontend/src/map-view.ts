@@ -22,6 +22,7 @@ const ACCURACY_SOURCE = "position-accuracy";
 const LANDMARK_SOURCE = "landmarks";
 const SKELETON_SOURCE = "heat-skeleton";
 const MASK_SOURCE = "outside-study-area";
+const BORDER_SOURCE = "jakarta-border";
 /** Grey of the loading skeleton and of the area outside the study area (--surface-2 / --outline). */
 const SKELETON_COLOR = "#cfcac2";
 const OUTSIDE_COLOR = "#ece8e2";
@@ -267,24 +268,30 @@ export class MapView {
     this.addOutsideMask();
   }
 
-  /** Greys out everything outside Jakarta's administrative border (jakarta-boundary.json, from
-   *  geoBoundaries / OpenStreetMap) while keeping the map's shape there: the sea, rivers and lakes
-   *  stay, but the roads, buildings, labels and place icons go, with a dashed edge along the border.
-   *  The Backend still serves the whole STUDY_AREA rectangle; this is only how the map looks.
+  /** Greys out everything outside the service area, the STUDY_AREA rectangle that routing, the
+   *  Backend and input validation accept, while keeping the map's shape there: the sea, rivers and
+   *  lakes stay, but the roads, buildings, labels and place icons go. The heatmap is shown over the
+   *  same rectangle, so a route never crosses a place whose pollution data is hidden (review PR #119).
+   *  Jakarta's administrative border (jakarta-boundary.json, from geoBoundaries / OpenStreetMap) is
+   *  drawn on its own as a dashed line, for orientation only.
    *
    *  MapLibre cannot clip a layer to an area, so it is built in layers. Bottom to top: the basemap's
-   *  land, roads and buildings; the heatmap cells; an opaque grey mask with Jakarta cut out; copies
+   *  land, roads and buildings; the heatmap cells; an opaque grey mask with the service area cut out; copies
    *  of the water layers (so the water shows everywhere, and the cells stop at the water's edge as
-   *  well); copies of the bridge layers from zoom 14, inside Jakarta only, so a flyover over a canal
+   *  well); copies of the bridge layers from zoom 14, inside the service area only, so a flyover over a canal
    *  is not cut; the dashed border; the heatmap's road lines and the routes; and the labels and
-   *  place icons, inside Jakarta only. On a raster basemap there is nothing to copy: plain grey. */
+   *  place icons, inside the service area only. On a raster basemap there is nothing to copy: plain grey. */
   private addOutsideMask(): void {
     const m = this.map;
-    const border = jakartaBoundary as GeoJSON.MultiPolygon;
+    const a = STUDY_AREA;
+    const service: GeoJSON.Polygon = {
+      type: "Polygon",
+      coordinates: [[[a.minLon, a.minLat], [a.maxLon, a.minLat], [a.maxLon, a.maxLat], [a.minLon, a.maxLat], [a.minLon, a.minLat]]],
+    };
     const world = [[-180, -85], [180, -85], [180, 85], [-180, 85], [-180, -85]];
-    // One polygon: the world with a hole for each part of Jakarta (holes wind the other way).
-    const holes = border.coordinates.map((poly) => [...poly[0]].reverse());
-    const inside = ["within", border] as unknown as maplibregl.ExpressionSpecification;
+    // One polygon: the world with the service area cut out (the hole winds the other way).
+    const hole = [...service.coordinates[0]].reverse();
+    const inside = ["within", service] as unknown as maplibregl.ExpressionSpecification;
     const restrict = (filter: unknown, keepAreas = false): maplibregl.FilterSpecification => {
       // `within` only answers for points and lines; area features (rare among labels) keep showing.
       const test = keepAreas
@@ -300,7 +307,11 @@ export class MapView {
 
     m.addSource(MASK_SOURCE, {
       type: "geojson",
-      data: { type: "Feature", properties: {}, geometry: { type: "Polygon", coordinates: [world, ...holes] } },
+      data: { type: "Feature", properties: {}, geometry: { type: "Polygon", coordinates: [world, hole] } },
+    });
+    m.addSource(BORDER_SOURCE, {
+      type: "geojson",
+      data: { type: "Feature", properties: {}, geometry: jakartaBoundary as GeoJSON.MultiPolygon },
     });
     m.addLayer({ id: "outside-fill", type: "fill", source: MASK_SOURCE, paint: { "fill-color": OUTSIDE_COLOR, "fill-opacity": 1 } }, before);
 
@@ -309,7 +320,7 @@ export class MapView {
       if (l.type === "symbol" || /tunnel/i.test(l.id) || !SHAPE_SOURCE_LAYERS.has(sourceLayer(l) ?? "")) continue;
       m.addLayer({ ...l, id: `${l.id}${SHAPE_SUFFIX}` } as maplibregl.AddLayerObject, before);
     }
-    // Bridges over that water, inside Jakarta, from the zoom where the heatmap turns into road lines
+    // Bridges over that water, inside the service area, from the zoom where the heatmap turns into road lines
     // (below it a flyover would stick out of the heatmap cells).
     for (const l of basemap) {
       if (l.type === "symbol" || sourceLayer(l) !== "transportation" || !/bridge/i.test(l.id)) continue;
@@ -326,7 +337,7 @@ export class MapView {
       {
         id: "outside-edge",
         type: "line",
-        source: MASK_SOURCE,
+        source: BORDER_SOURCE,
         paint: { "line-color": "#8a857e", "line-width": 1.5, "line-dasharray": [3, 2] },
       },
       before,

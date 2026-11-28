@@ -302,6 +302,8 @@ function currentErrors(): Record<Which, string | null> {
 }
 
 function refreshForm(): void {
+  // PNF-07: one disclaimer on screen; with routes shown, the copy under them takes over.
+  $("form-disclaimer").hidden = !!state.result;
   const errors = currentErrors();
   const valid = !errors.origin && !errors.destination;
   for (const w of ["origin", "destination"] as const) {
@@ -352,6 +354,9 @@ function refreshForm(): void {
 
 function onTyped(which: Which): void {
   cancelPendingSearch(); // typing changes the trip's point
+  // A completed result belongs to the old point: drop it, as setPoint does, so "Mulai navigasi"
+  // cannot start a route the form no longer shows (review PR #119).
+  if (state.result && !nav.session) dropResult();
   const text = fields[which].input.value;
   const p = parseCoordinateText(text);
   const isSearch = text.trim() !== "" && !p;
@@ -443,6 +448,7 @@ for (const w of ["origin", "destination"] as const) {
 
 $("swap-btn").addEventListener("click", () => {
   cancelPendingSearch(); // the trip is reversed
+  if (state.result && !nav.session) dropResult(); // the result runs the other way now
   const { origin, destination } = state.points;
   const texts = [fields.origin.input.value, fields.destination.input.value];
   const titles = [fields.origin.input.title, fields.destination.input.title];
@@ -625,6 +631,7 @@ function applyServerField(field: ErrorField, message: string): void {
  *  behind the map's load; nothing here waits for the basemap. */
 function dropResult(): void {
   state.result = null;
+  $("form-disclaimer").hidden = false; // PNF-07: back to the form's copy
   resultView.hidden = true;
   clear(resultView);
   void mapView.clearRoutes();

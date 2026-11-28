@@ -149,6 +149,8 @@ button:disabled { cursor: not-allowed; }
 .title:focus { outline: none; }
 .hint { margin: 6px 0 0; font-size: 13px; color: var(--subtle); }
 .hint:empty { display: none; }
+/* Required notices (PNF-06, PNF-07, RI-09): small, but always on screen where they apply. */
+.fine-print { margin: 8px 0 0; font-size: 12px; line-height: 1.45; color: var(--subtle); }
 
 /* Travel modes sit above the two points, as in a directions panel. */
 #trip-form { display: flex; flex-direction: column; padding-top: 16px; padding-bottom: 12px; }

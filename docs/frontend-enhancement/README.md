@@ -13,7 +13,8 @@ bisa mengganti hal di putaran sebelumnya, dan itu ditandai *diganti, lihat …* 
 | 12 | Logo, layar pembuka, animasi, keluar rute, penanda posisi sesuai moda | `7ce5370` dan sesudahnya |
 | 13 | Perubahan dari tinjauan tim: batas Jakarta sungguhan, peringatan GPS, dan lainnya | `c0583bb` |
 | 14 | Tanggapan atas review PR #119 | `32ab844` |
-| 15 | Satuan di legenda, penjelasan angka paparan (ⓘ), keyakinan di baris sendiri, lapisan pemuatan heatmap | commit ini |
+| 15 | Satuan di legenda, penjelasan angka paparan (ⓘ), keyakinan di baris sendiri, lapisan pemuatan heatmap | `51ca9f7` |
+| 16 | Tanggapan atas review kedua PR #119; lokasi saya di atas lembar bawah | `0c6ef24` dan commit ini |
 | — | Yang dihapus dan menyentuh kebutuhan desain; alat bantu pengembangan; cara menjalankan; verifikasi | |
 
 Dokumen ini mencatat setiap perubahan beserta alasannya. Kontrak API tidak berubah (`POST /v1/routes`,
@@ -297,7 +298,7 @@ Ditambahkan oleh peninjau sesudah putaran ketiga; dicatat di sini agar dokumen s
 
 | Perubahan | Alasan |
 |---|---|
-| Area di luar Jakarta kini mengikuti **batas administratif Jakarta** ([`jakarta-boundary.json`](../../src/frontend/src/jakarta-boundary.json), MultiPolygon), bukan persegi wilayah studi. Di luar batas hanya bentuk peta (laut, danau, sungai) yang tetap tergambar; jalan layang, label, dan ikon tempat dibatasi di dalam Jakarta | Peta menunjukkan Jakarta yang sebenarnya, bukan potongan Tangerang, Depok, dan Bekasi yang ikut masuk persegi. Catatan: Backend dan pemeriksaan isian tetap memakai persegi wilayah studi, jadi titik di antara batas dan persegi masih diterima |
+| Area di luar Jakarta kini mengikuti **batas administratif Jakarta** (*diganti, lihat 16: mask kembali ke persegi wilayah layanan, batas Jakarta tinggal garis putus-putus*) ([`jakarta-boundary.json`](../../src/frontend/src/jakarta-boundary.json), MultiPolygon), bukan persegi wilayah studi. Di luar batas hanya bentuk peta (laut, danau, sungai) yang tetap tergambar; jalan layang, label, dan ikon tempat dibatasi di dalam Jakarta | Peta menunjukkan Jakarta yang sebenarnya, bukan potongan Tangerang, Depok, dan Bekasi yang ikut masuk persegi. Catatan: Backend dan pemeriksaan isian tetap memakai persegi wilayah studi, jadi titik di antara batas dan persegi masih diterima |
 | Arsiran keyakinan rendah pada heatmap dihapus | Peta lebih bersih; keyakinan kini ditampilkan per rute di daftar |
 | Baris rute: "Paparan 110,7 indeks·menit · Keyakinan rendah" (kategori saja, tanpa angka; satuan kembali ditampilkan) (*keyakinan dipindah ke baris sendiri, lihat 15*) | Kategori lebih mudah dipahami daripada angka 0–1 |
 | Masalah sinyal GPS tampil sebagai peringatan di tengah peta yang diredupkan (ikon kerucut lalu lintas, tombol **Keluar**), bukan pil kecil; teks "Mencoba lagi…" | Masalah GPS menghentikan navigasi secara praktis, jadi harus terlihat jelas |
@@ -331,7 +332,7 @@ diperbaiki dan diperiksa di peramban terhadap stack lokal lengkap.
 | Satuan paparan diperiksa: `indeks·menit` benar. Backend menjumlahkan indeks tiap ruas × menit di ruas itu (Σ Iₑ τₑ); indeks = rata-rata PM2.5/15 dan NO2/25 (pedoman WHO), sehingga tak bersatuan, dan satuannya menjadi indeks × menit. Untuk respons lama berlabel `pm25_ug_m3_min`, satuan tetap µg/m³·menit | Angka tanpa satuan yang benar menyesatkan |
 | Keyakinan ("Keyakinan rendah/sedang/tinggi") pindah ke baris sendiri di bawah paparan; titik pemisah "·" di depannya dihapus | Dua informasi berbeda tidak lagi berdempet dalam satu baris; baris paparan tidak terpotong di ponsel |
 | Legenda heatmap: satuan di atas skala, rata kanan, "indeks" untuk Gabungan dan "µg/m³" untuk PM2.5 dan NO2; ikut berganti saat lapisan diganti | Angka 0,5 / 1 / 2 / 3 (atau 7,5 / 15 / …) tanpa satuan tidak jelas apakah indeks atau konsentrasi |
-| Tombol **ⓘ** di samping angka paparan. Isinya singkat: "Indeks: rata-rata PM2.5 dan NO2." dan "Paparan = indeks × menit, dijumlah sepanjang rute.", ditambah tautan **Selengkapnya** ke popup "Tentang indeks" | Pengguna bisa tahu arti angka tanpa meninggalkan daftar rute; rincian rumus tetap ada di popup. Teks dibuat sependek mungkin atas permintaan |
+| Tombol **ⓘ** di samping angka paparan. Isinya singkat: "Indeks: rata-rata PM2.5 dan NO2." (*diganti, lihat 16: menyebut pembagian dengan pedoman WHO*) dan "Paparan = indeks × menit, dijumlah sepanjang rute.", ditambah tautan **Selengkapnya** ke popup "Tentang indeks" | Pengguna bisa tahu arti angka tanpa meninggalkan daftar rute; rincian rumus tetap ada di popup. Teks dibuat sependek mungkin atas permintaan |
 | ⓘ berupa *toggletip*: muncul saat diarahkan kursor atau difokus, klik/ketuk menahannya terbuka sampai klik di luar, klik lagi, atau Escape. Teksnya ada di halaman (bukan atribut `title`), tombolnya 24 × 24 px dengan `aria-expanded` dan `aria-controls` | Bisa dibuka dengan mouse, sentuh, dan papan ketik, dan terbaca pembaca layar (temuan serupa pada review PR #119 tentang `title`). Target 24 px memenuhi WCAG 2.5.8 |
 | Paparan dan keyakinan dikeluarkan dari tombol pilih rute ke baris di bawahnya (`.route-details`); klik pada baris itu tetap memilih rute, kecuali klik pada ⓘ atau gelembungnya | Tombol ⓘ tidak boleh berada di dalam tombol lain (HTML tidak mengizinkan elemen interaktif bersarang) |
 | Jarak antara baris "via …" dan baris paparan dirapatkan menjadi sekitar 4 px | Kolom waktu yang dua baris sebelumnya mendorong baris paparan turun (celah 21 px); kini kolom waktu tidak lagi menambah tinggi dan baris paparan diberi ruang kanan agar tidak menabrak waktu dan jarak |
@@ -348,16 +349,46 @@ luar dan Escape; celah di bawah "via" 4 px tanpa tumpang tindih; lapisan pemuata
 ditekan dan hilang saat data tiba (~370 ms), tidak tampil saat peta digeser, hilang saat heatmap dimatikan.
 `npm test` (204 tes) dan `npm run build` lulus.
 
+## 16. Tanggapan atas review kedua PR #119
+
+Review kedua [PR #119](https://github.com/ppthimmel/SIPPolusi/pull/119#pullrequestreview-6096810762) (RunningPie,
+*changes requested*, pada `0c6ef24`).
+
+| Temuan | Perbaikan |
+|---|---|
+| **P2.** Setelah tukar asal-tujuan atau mengetik ulang isian, hasil rute lama tetap ada: **Mulai navigasi** menavigasi ke tujuan lama padahal isian sudah berbalik | Tukar asal-tujuan dan `onTyped` kini juga membuang hasil yang sudah selesai (`dropResult`), sama seperti `setPoint`; tidak berlaku selama navigasi berjalan |
+| **P2.** Mask batas administratif menyembunyikan heatmap, padahal rute dan pemeriksaan isian menerima persegi wilayah studi yang lebih besar (mis. −6,20; 106,72 diterima tetapi di luar poligon), jadi rute bisa melewati area yang datanya disembunyikan | Mask abu-abu, filter garis jalan heatmap, label, dan ikon tempat kini memakai persegi wilayah layanan (`STUDY_AREA`), sama dengan Backend dan pemeriksaan isian. Batas administratif Jakarta digambar terpisah sebagai garis putus-putus (sumber `jakarta-border`), hanya untuk orientasi |
+| **P2.** Teks ⓘ terbaca seperti rata-rata langsung konsentrasi PM2.5 dan NO₂ | "Indeks: rata-rata PM2.5 dan NO₂ setelah masing-masing dibagi ambang pedoman WHO-nya." / "The index averages PM2.5 and NO₂ after dividing each by its WHO guideline." |
+| Konfirmasi PNF-07 dan PNF-06 / RI-09 untuk build evaluasi UX | Ketiganya berlaku dan dikembalikan ke layar sebagai teks kecil (`.fine-print`), dengan teks Indonesia di bawah dan terjemahan Inggrisnya: |
+
+| Kebutuhan | Teks | Letak |
+|---|---|---|
+| PNF-07 · disclaimer paparan | "Paparan polusi adalah estimasi model dan dapat berbeda dari kondisi sebenarnya. Gunakan sebagai pertimbangan memilih rute. Ini bukan saran medis." | Di bawah tombol **Cari rute** (`#form-disclaimer`); saat rute tampil, salinan itu disembunyikan dan baris yang sama muncul di bawah daftar rute (`#result-disclaimer`), jadi selalu ada tepat satu, juga di ponsel |
+| PNF-06 · pencarian tempat | "Teks pencarian dan koordinat titik yang Anda pilih dapat dikirim ke layanan pencarian lokasi untuk menampilkan nama atau saran tempat." | Di bawah isian asal dan tujuan, sebelum "Gunakan lokasi saya sebagai asal" (`#search-privacy`) |
+| PNF-06 / RI-09 · navigasi | "Posisi GPS Anda diproses di perangkat selama navigasi. Jika rute perlu dihitung ulang, posisi saat itu dikirim ke SIPPolusi sebagai titik awal rute baru." | Di bawah daftar rute, sekali untuk semua tombol **Mulai navigasi** (`#nav-privacy`) |
+
+Di luar review: di ponsel, tombol lokasi saya dan "Gunakan lokasi saya sebagai asal" memusatkan titik pada
+seluruh peta, sehingga tertutup lembar bawah yang terbuka. `MapView.flyTo` kini menerima tinggi yang ditutup
+lembar bawah (`panelInset()`) dan menggeser titik ke tengah bagian peta yang terlihat, memakai `offset` (bukan
+padding kamera) agar tidak ada sisa pada kamera (`0c6ef24`).
+
+**Berkas.** [`main.ts`](../../src/frontend/src/main.ts) (`onTyped`, tombol tukar),
+[`map-view.ts`](../../src/frontend/src/map-view.ts) (`addOutsideMask`, `flyTo`),
+[`results-view.ts`](../../src/frontend/src/results-view.ts) (`exposureTip`, `renderResult`),
+[`index.html`](../../src/frontend/index.html), [`style.css`](../../src/frontend/src/style.css) (`.fine-print`).
+
+**Diperiksa.** `tsc --noEmit` bersih, `npm test` (204 tes) dan `npm run build` lulus. Belum diperiksa di peramban.
+
 ## Yang dihapus dan menyentuh kebutuhan desain
 
 Teks berikut dihapus atas permintaan, padahal kode sebelumnya menandainya sebagai pemenuhan kebutuhan pada Bab III.
-Peninjau PR #119 meminta keputusan ini dikonfirmasi; baris yang bertanda **Perlu keputusan tim** belum diputuskan.
+Peninjau PR #119 meminta keputusan ini dikonfirmasi. Untuk build evaluasi UX ketiga catatan PNF-06, PNF-07, dan RI-09 dinyatakan tetap berlaku dan dikembalikan (16).
 
 | Teks | Kebutuhan | Keadaan sekarang |
 |---|---|---|
-| Disclaimer di kaki panel ("Nilai paparan adalah estimasi… bukan rekomendasi medis") | PNF-07: disclaimer selalu terlihat | Disclaimer dari Backend (`metadata.disclaimer`) tidak lagi ditampilkan setelah rincian diringkas (bagian 7). **Perlu keputusan tim:** bila PNF-07 masih berlaku, tambahkan satu baris pendek, mis. di bawah daftar rute |
-| Catatan privasi pencarian tempat ("Nama yang diketik … dikirim ke layanan pencarian lokasi …") | PNF-06: memberi tahu apa yang dikirim ke penyedia geocoding | Tidak ada di layar. Tes yang mewajibkannya (`config.test.ts`) ikut dihapus. **Perlu keputusan tim:** bila PNF-06 masih berlaku, kembalikan sebagai satu baris atau tautan "Privasi" |
-| Catatan privasi navigasi ("Posisi Anda diproses di perangkat ini …") | PNF-06, RI-09 | Tidak ada di layar (10.4). Perilakunya tidak berubah: posisi hanya keluar perangkat saat rute ulang. **Perlu keputusan tim** seperti baris di atas |
+| Disclaimer di kaki panel ("Nilai paparan adalah estimasi… bukan rekomendasi medis") | PNF-07: disclaimer selalu terlihat | **Dikembalikan (16).** Satu baris di bawah tombol **Cari rute**; saat rute tampil, pindah ke bawah daftar rute. Rumus perhitungannya tetap di **Tentang indeks** |
+| Catatan privasi pencarian tempat ("Nama yang diketik … dikirim ke layanan pencarian lokasi …") | PNF-06: memberi tahu apa yang dikirim ke penyedia geocoding | **Dikembalikan (16).** Satu baris di bawah isian asal dan tujuan, di atas "Gunakan lokasi saya sebagai asal" |
+| Catatan privasi navigasi ("Posisi Anda diproses di perangkat ini …") | PNF-06, RI-09 | **Dikembalikan (16).** Satu baris di bawah daftar rute, terbaca sebelum **Mulai navigasi** ditekan. Perilakunya tidak berubah: posisi hanya keluar perangkat saat rute ulang |
 | Kredit OpenStreetMap selalu terlihat | Lisensi ODbL OSM | **Selesai (14).** Kredit ada di kaki panel; saat panel tidak terlihat, baris kredit kecil tampil di peta |
 | Kunci peta "Tanpa estimasi / Keyakinan rendah" | Penjelasan arsiran dan area abu-abu pada heatmap | Dihapus dari legenda (10.3). Arsiran keyakinan rendah juga sudah dihapus dari peta (13); area abu-abu (tanpa estimasi) tetap tanpa penjelasan di layar |
 
