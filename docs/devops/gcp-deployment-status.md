@@ -89,12 +89,14 @@ data that updates every hour. Both downscaling models are in production: PM2.5 (
 
 ### Priority 1: finish the app
 
-> **Attempted 18 November 2026; all items are still open.**
+> **Status 28 November 2026:** the models are done (registered, promoted and verified in the Data Worker; checked
+> items below). Only the budget alert is still open.
+>
+> *Historical note, 18 November 2026 (superseded for the models):*
 > - **Budget alert:** the deploying account has no billing permission; a Billing Account Administrator must create
->   the budget.
-> - **Bundles:** listing the Railway bucket returns `AccessDenied` with the bucket's own credentials. The workspace is
->   still over its hard limit ($10.03 of $10; the period ends 27 November), which is the likely cause.
-> - **Register, promote and verify** depend on the bundles, so they haven't started.
+>   the budget. Still the case.
+> - **Bundles:** listing the Railway bucket returned `AccessDenied` with the bucket's own credentials while the
+>   workspace was over its hard limit. The bundles were registered on GCP afterwards (19 and 28 November).
 
 - [ ] **Account owner:** set a budget alert in GCP Billing.
 - [x] PM2.5 and NO₂ (LightGBM) registered as version 1 and promoted to `production` (19 Nov 2026).

@@ -91,7 +91,7 @@ not support this protocol (it needs held-out stations).
 ## Conclusion
 
 - **NO₂:** every learned model beats IDW in LOSO. The tree models are best (about −20% RMSE, R² 0.43–0.46 against
-  0.10). XGBoost + IDW corr is selected on validation; LightGBM direct, the current production model, is close to it
+  0.10). XGBoost + IDW corr is selected on validation; LightGBM direct, the production model until 28 November 2026, is close to it
   (val 36.21 against 35.95; test 36.71 against 37.65). No confidence interval was computed for that difference, so
   this run does not show which of the two is better. XGBoost was not tuned, while LightGBM's hyperparameters were
   tuned on ds-v0.3.0.
@@ -114,7 +114,7 @@ CPU `xgboost-cpu` 3.2.0.
 | Model version | `ds-v0.4.0-9734d6e298ef` |
 | `bundle_sha256` / `package_sha256` | `9734d6e2…` / `939f2ddf…` |
 | Package check | `verify_model_packages.py spatial --target no2`: pass, compatible, 5 files |
-| Staged on GCP | `gs://sippolusi-mlflow-87531247158/artifacts/incoming/spatial/no2/ds-v0.4.0-9734d6e298ef/` |
+| On GCP | registered as `spatial-downscaling-no2` version 2 from `gs://sippolusi-mlflow-87531247158/artifacts/incoming/spatial/no2/ds-v0.4.0-9734d6e298ef/`, `production` since 28 November 2026 ([`scripts/gcp/README.md`](../../../scripts/gcp/README.md), "Model NO₂") |
 | Files here | [`production_no2/`](production_no2): `bundle.json`, `package.json`, `metadata.json` (the 1 MB `model.json` is only in the bucket), `loso_check.py` / `loso_check.json` |
 
 **Check of the repository code.** The same code run as LOSO on all 15 NO₂ folds (CPU,
