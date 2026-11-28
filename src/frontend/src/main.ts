@@ -154,6 +154,15 @@ function applyStaticText(): void {
 function renderCredits(): void {
   const link = (href: string, text: string) => h("a", { href, target: "_blank", rel: "noopener noreferrer" }, text);
   const line = (...parts: (string | HTMLElement)[]) => h("p", {}, ...parts);
+  // Panel hidden (desktop slid out, phone sheet closed or navigating): a short credit line on
+  // the map instead, so the attribution stays visible (review PR #119, style.css).
+  $("map-credits").replaceChildren(
+    link("https://openfreemap.org", "OpenFreeMap"),
+    " · ",
+    link("https://www.openmaptiles.org/", "© OpenMapTiles"),
+    " · ",
+    link("https://www.openstreetmap.org/copyright", tr("© kontributor OpenStreetMap", "© OpenStreetMap contributors")),
+  );
   $("panel-credits").replaceChildren(
     line(`© ${new Date().getFullYear()} SIPPolusi`),
     line(
@@ -184,17 +193,37 @@ for (const w of ["origin", "destination"] as const) {
 const mode = (): Mode => (tripForm.elements.namedItem("mode") as RadioNodeList).value === "bike" ? "bike" : "walk";
 // The position marker shows the chosen mode's figure; while navigating, the route's own mode.
 mapView.setUserMode(mode());
-tripForm.addEventListener("change", () => {
+tripForm.addEventListener("change", (e) => {
   if (!nav.session) mapView.setUserMode(mode());
+  // A new mode is another trip. (Text fields also fire "change" when they lose focus: those are
+  // handled where their point changes, setPoint and onTyped.)
+  if ((e.target as HTMLInputElement).name === "mode") cancelPendingSearch();
 });
+slider.addEventListener("change", cancelPendingSearch); // a new priority too (on release)
 
 // -------------------------------------------------------------- form helpers
+/** The trip changed while a search was pending (review PR #119): that search is for a trip that
+ *  no longer exists, so it is dropped silently. Its response, if it still comes, is ignored
+ *  (submit() checks state.controller), and the form is usable again at once. */
+function cancelPendingSearch(): void {
+  const controller = state.controller;
+  if (!controller) return;
+  state.controller = null;
+  controller.abort();
+  state.busy = false;
+  resultView.removeAttribute("aria-busy");
+  resultView.inert = false;
+  clearStatus();
+  refreshForm();
+}
+
 function setPoint(which: Which, p: Point | null, opts: { fill?: boolean; fly?: boolean; label?: string } = {}): void {
   // A route belongs to the points it was found for: once one moves (pin dragged, map clicked,
   // place chosen, own location), the old route and its list are removed rather than left
   // drawn between points that no longer match.
   const old = state.points[which];
   const moved = !old || !p || old.lat !== p.lat || old.lon !== p.lon;
+  if (moved) cancelPendingSearch();
   if (state.result && moved && !nav.session) dropResult();
   state.points[which] = p;
   state.labels[which] = opts.label ?? null;
@@ -320,6 +349,7 @@ function refreshForm(): void {
 }
 
 function onTyped(which: Which): void {
+  cancelPendingSearch(); // typing changes the trip's point
   const text = fields[which].input.value;
   const p = parseCoordinateText(text);
   const isSearch = text.trim() !== "" && !p;
@@ -410,6 +440,7 @@ for (const w of ["origin", "destination"] as const) {
 }
 
 $("swap-btn").addEventListener("click", () => {
+  cancelPendingSearch(); // the trip is reversed
   const { origin, destination } = state.points;
   const texts = [fields.origin.input.value, fields.destination.input.value];
   const titles = [fields.origin.input.title, fields.destination.input.title];
@@ -604,6 +635,9 @@ async function submit(): Promise<void> {
   if (state.waitUntil > Date.now()) return;
 
   const request = buildRouteRequest(origin, destination, mode(), Number(slider.value));
+  // The place names belong to this request: captured now, not when the response arrives, when
+  // the form may already describe another trip.
+  const places = { ...state.labels };
   const controller = new AbortController();
   state.controller = controller;
   state.busy = true;
@@ -615,15 +649,22 @@ async function submit(): Promise<void> {
   // Routes already shown stay, dimmed and marked busy, until the new ones replace them; they
   // are removed if this search fails, so nothing from an earlier trip outlives an error.
   const hadResult = !!state.result;
-  if (hadResult) resultView.setAttribute("aria-busy", "true");
+  if (hadResult) {
+    resultView.setAttribute("aria-busy", "true");
+    // Out of reach for keyboard and pointer alike: an old route must not start navigation while
+    // its replacement is on the way (review PR #119).
+    resultView.inert = true;
+  }
 
   try {
     const response = await submitRouteRequest(request, controller.signal);
     if (state.controller !== controller) return;
     state.busy = false;
     resultView.removeAttribute("aria-busy");
+    resultView.inert = false;
     if (hadResult) void mapView.clearRoutes();
-    state.result = { response, request, places: { ...state.labels }, names: {}, selected: "recommended" };
+    nav.exitLine = null; // a new trip: the heatmap follows the map view again
+    state.result = { response, request, places, names: {}, selected: "recommended" };
     const found = showResultView()!.textContent ?? "";
     // Focus stays on the form; screen readers hear how many routes came.
     setStatus(() => formStatus.append(h("p", { class: "visually-hidden" }, found)));
@@ -639,6 +680,7 @@ async function submit(): Promise<void> {
     if (state.controller !== controller) return;
     state.busy = false;
     resultView.removeAttribute("aria-busy");
+    resultView.inert = false;
     if (hadResult) dropResult(); // they belong to the previous trip; the form shows the error
     if (err instanceof ApiError && err.kind === "aborted") {
       statusNote(() => tr("Pencarian dibatalkan.", "Search cancelled."));
@@ -681,7 +723,11 @@ cancelBtn.addEventListener("click", () => state.controller?.abort());
  *  bounds would give the position away: the route's area is used instead, since its ends are
  *  what the route request sent. */
 function heatArea(): BBox {
-  return nav.session ? routeArea(nav.session.routeLine) : mapView.getView().bbox;
+  // Just after navigation the camera may still show where the last GPS fix was, so the route's
+  // area is asked for until the user moves the map by hand or searches again (review PR #119).
+  if (nav.session) return routeArea(nav.session.routeLine);
+  if (nav.exitLine) return routeArea(nav.exitLine);
+  return mapView.getView().bbox;
 }
 
 const heatSurface = new SurfaceRefresher(
@@ -869,6 +915,8 @@ const nav = {
   wakeLock: null as WakeLockSentinel | null,
   /** The heatmap was on when navigation started: it comes back when navigation ends. */
   heatWasOn: false,
+  /** The last navigated route, while its area stands in for the camera's (heatArea). */
+  exitLine: null as RouteLine | null,
 };
 
 /** The user's position, shown on the map whenever the browser allows it. Navigation draws its own
@@ -916,7 +964,8 @@ function navRoute(response: RouteResponse): RouteResult {
 
 async function startNavigation(role: RouteResult["role"]): Promise<void> {
   const r = state.result;
-  if (!r || nav.session) return;
+  // Not while a new search is pending: its response would replace the trip under the session.
+  if (!r || nav.session || state.busy) return;
   const problem = positionProblem();
   if (problem) {
     showResultView(() => ({
@@ -993,6 +1042,7 @@ async function simDetour(away: boolean): Promise<void> {
 
 /** Ends navigation and returns to the route result. `notice` says why, when it was not the user. */
 function endNavigation(notice: Notice = null): void {
+  nav.exitLine = nav.session?.routeLine ?? null;
   nav.source?.stop();
   nav.source = null;
   nav.controller?.abort();
@@ -1224,6 +1274,8 @@ document.addEventListener("visibilitychange", () => {
 });
 
 mapView.onUserCamera = () => {
+  // A hand-made camera move ends the post-navigation hold on the heatmap's area (heatArea).
+  if (!nav.session) nav.exitLine = null;
   if (nav.session && nav.following) {
     nav.following = false;
     renderNav();

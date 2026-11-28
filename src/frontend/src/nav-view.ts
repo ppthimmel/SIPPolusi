@@ -174,9 +174,11 @@ export class NavView {
         this.status.append(
           h(
             "div",
-            { class: `nav-pill nav-pill-${message.kind}`, role: message.kind === "error" ? "alert" : "status", title: message.text },
+            { class: `nav-pill nav-pill-${message.kind}`, role: message.kind === "error" ? "alert" : "status" },
             icon(message.kind === "done" ? "flag" : message.kind === "info" ? "info" : "warn", 16),
-            h("span", {}, message.title),
+            // The details (why a new route failed, when it is tried again) are shown, not left in a
+            // tooltip that touch and keyboard users cannot open (review PR #119).
+            h("span", { class: "nav-pill-body" }, h("span", { class: "nav-pill-title" }, message.title), message.text && h("span", { class: "nav-pill-text" }, message.text)),
           ),
         );
       }

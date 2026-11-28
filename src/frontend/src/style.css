@@ -429,9 +429,13 @@ button:disabled { cursor: not-allowed; }
 .nav-then-icon { display: inline-flex; }
 .nav-status:empty { display: none; }
 .nav-pill {
-  display: inline-flex; align-items: center; gap: 6px; margin-top: 8px; padding: 6px 12px; border-radius: 999px;
+  display: inline-flex; align-items: flex-start; gap: 8px; margin-top: 8px; padding: 8px 14px; border-radius: 16px;
   background: var(--surface); box-shadow: var(--elev-1); font-size: 13px; font-weight: 500; color: var(--ink);
+  max-width: 100%;
 }
+.nav-pill .icon { margin-top: 1px; }
+.nav-pill-body { display: grid; gap: 1px; }
+.nav-pill-text { font-weight: 400; font-size: 12px; line-height: 1.4; color: var(--muted); }
 .nav-pill-info .icon { color: var(--subtle); }
 .nav-pill-warn .icon { color: #9a6a00; }
 .nav-pill-error .icon { color: var(--red); }
@@ -808,3 +812,16 @@ button:not(:disabled):not(.route-pick):not(.sheet-handle):active,
 .sim-btn[aria-pressed="true"] { background: #7a4f01; border-color: #7a4f01; color: #fff; }
 .sim-note { margin: 0; line-height: 1.4; }
 @media (max-width: 899px) { .sim-panel { top: 12px; right: auto; left: 12px; width: 200px; } }
+
+/* Map credits while the panel that holds them is hidden: the desktop panel slid out, the phone
+   sheet closed, or the phone navigating (panel hidden). */
+.map-credits {
+  display: none; position: absolute; left: 8px; bottom: 6px; z-index: 2; margin: 0; max-width: calc(100% - 16px);
+  padding: 2px 8px; border-radius: 6px; background: rgba(253, 252, 250, 0.85); font-size: 10.5px; color: var(--subtle);
+}
+.map-credits a { color: inherit; }
+.app.panel-collapsed .map-credits { display: block; }
+@media (min-width: 900px) { .app.panel-collapsed .map-credits { left: 26px; } } /* clear of the map's run under the panel */
+@media (max-width: 899px) {
+  .app:has(.panel.collapsed) .map-credits, .app.is-navigating .map-credits { display: block; top: 6px; bottom: auto; }
+}

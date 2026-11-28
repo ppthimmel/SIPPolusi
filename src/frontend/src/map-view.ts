@@ -77,6 +77,17 @@ function basemapStyle(): string | maplibregl.StyleSpecification {
   };
 }
 
+/** Bundled stand-in when the basemap style cannot be loaded (review PR #119): a plain
+ *  background in the panel's colour, so routes, the heatmap and the pins still have a map to sit
+ *  on. Needs no network; landmarks are skipped on it (addLandmarks finds no place style). */
+export const FALLBACK_STYLE: maplibregl.StyleSpecification = {
+  version: 8,
+  sources: {},
+  layers: [{ id: "background", type: "background", paint: { "background-color": "#f8f4f0" } }],
+};
+/** How long the basemap style may take before the fallback is used instead. */
+const STYLE_TIMEOUT_MS = 15_000;
+
 export interface SegmentClick {
   point: Point;
   feature: SurfaceFeature | null;
@@ -116,10 +127,28 @@ export class MapView {
     new ResizeObserver(() => this.map.resize()).observe(container);
 
     this.ready = new Promise((resolve) => {
-      this.map.on("load", () => {
+      let initialised = false;
+      const init = () => {
+        if (initialised) return;
+        initialised = true;
         this.initLayers();
         resolve();
+      };
+      this.map.on("load", init);
+      // The basemap style comes from another server. If it fails (or never arrives), the
+      // overlays would wait forever while the API keeps answering, so the bundled style stands in.
+      let fellBack = false;
+      const fallBack = (why: string) => {
+        if (initialised || fellBack) return;
+        fellBack = true;
+        console.warn(`[map] basemap style unavailable (${why}); using the bundled fallback`);
+        this.map.once("style.load", init);
+        this.map.setStyle(FALLBACK_STYLE);
+      };
+      this.map.on("error", () => {
+        if (!initialised && !this.map.isStyleLoaded()) fallBack("load error");
       });
+      window.setTimeout(() => fallBack("timeout"), STYLE_TIMEOUT_MS);
     });
     this.map.on("moveend", () => this.onViewChange());
     this.map.on("click", (e) => this.handleClick(e));

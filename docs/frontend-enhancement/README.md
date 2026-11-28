@@ -1,9 +1,19 @@
 # Frontend Enhancement (issue #113)
 
-Perbaikan UI/UX antarmuka rute ([issue #113](https://github.com/ppthimmel/SIPPolusi/issues/113)): copywriting,
-penyajian status pemrosesan, tampilan, dan responsivitas mobile. Branch `frontend-enchancement`: bagian 1–9 untuk
-commit `647338e`; bagian 10 untuk putaran berikutnya (commit `31decc3` dan sesudahnya), yang juga mengganti
-beberapa hal di bagian 1–9 (ditandai *diganti, lihat 10.x*).
+Perbaikan UI/UX antarmuka rute ([issue #113](https://github.com/ppthimmel/SIPPolusi/issues/113), PR
+[#119](https://github.com/ppthimmel/SIPPolusi/pull/119)): copywriting, penyajian status pemrosesan, tampilan, dan
+responsivitas mobile. Branch `frontend-enchancement`. Dokumen ini disusun per putaran; putaran yang lebih baru
+bisa mengganti hal di putaran sebelumnya, dan itu ditandai *diganti, lihat …* di baris lamanya.
+
+| Bagian | Isi | Commit |
+|---|---|---|
+| 1–9 | Putaran pertama: dua bahasa, tampilan, isian, status, galat, hasil, rincian, legenda, mobile | `647338e` |
+| 10 | Putaran kedua: pola Google Maps, peta vektor, landmark, navigasi, popup "Tentang indeks" | `31decc3` … `c98203d` |
+| 11 | Putaran ketiga: kotak selisih, keyakinan, skeleton heatmap, kunci navigasi, saran di luar Jakarta | `ada3295` |
+| 12 | Logo, layar pembuka, animasi, keluar rute, penanda posisi sesuai moda | `7ce5370` dan sesudahnya |
+| 13 | Perubahan dari tinjauan tim: batas Jakarta sungguhan, peringatan GPS, dan lainnya | `c0583bb` |
+| 14 | Tanggapan atas review PR #119 | commit ini |
+| — | Yang dihapus dan menyentuh kebutuhan desain; alat bantu pengembangan; cara menjalankan; verifikasi | |
 
 Dokumen ini mencatat setiap perubahan beserta alasannya. Kontrak API tidak berubah (`POST /v1/routes`,
 `GET /v1/exposure-surface`, `/v1/geocode/*`); `contract.test.ts` tetap lulus, dan Backend tidak disentuh.
@@ -242,12 +252,12 @@ Berdasarkan tinjauan berikutnya pada aplikasi yang berjalan.
 |---|---|
 | Kotak selisih paparan berlatar putih. Angka dan teksnya hijau tombol bila rute **mengurangi** paparan (mis. −7,3%), abu-abu bila **menambah** paparan (+5,0%) atau tidak bisa dibandingkan | Warna hijau hanya untuk kabar baik, sama dengan tombol aksi; latar berwarna sebelumnya bersaing dengan daftar rute |
 | Jarak tombol **Cari rute** ke kotak di bawahnya dirapatkan (±34 px → 16 px) | Hasil terasa menyambung dengan tombol yang baru ditekan |
-| Baris rute menampilkan keyakinan di samping paparan: "Paparan 110,7 · Keyakinan 0,27 (rendah)" | Transparansi (trustworthy AI): angka paparan adalah estimasi model, dan pengguna perlu tahu seberapa yakin modelnya. Kategori mengikuti ambang yang sama dengan peta (rendah < 0,4 ≤ sedang < 0,7 ≤ tinggi) |
+| Baris rute menampilkan keyakinan di samping paparan: "Paparan 110,7 · Keyakinan 0,27 (rendah)" (*diganti, lihat 13: kini kategori saja, "Keyakinan rendah"*) | Transparansi (trustworthy AI): angka paparan adalah estimasi model, dan pengguna perlu tahu seberapa yakin modelnya. Kategori mengikuti ambang yang sama dengan peta (rendah < 0,4 ≤ sedang < 0,7 ≤ tinggi) |
 | Heatmap: selama data suatu area dimuat, area itu menampilkan sel abu-abu yang berdenyut pelan (skeleton); sel yang sudah ada tetap tampil di atasnya, dan pemuatan pertama memudar masuk | Pemuatan tidak lagi tampak kaku (kotak sel yang tiba-tiba muncul); pengguna melihat bahwa data sedang datang. Tanpa denyut bila pengguna memilih "kurangi gerakan" |
 | Selama navigasi, isian pencarian rute diabu-abukan dan dikunci, dengan catatan "Akhiri navigasi untuk mencari rute lain."; klik peta tidak lagi bisa memindahkan titik | Mencari rute lain di tengah navigasi akan mengganti rute yang sedang diikuti; pengguna harus keluar dulu |
-| Tombol sembunyikan panel pindah ke dalam kepala panel (ikon sidebar), seperti sidebar pada antarmuka chat (Claude, ChatGPT); saat panel tersembunyi, tombol yang sama tampil sebagai kartu di kiri atas peta | Pola yang sudah dikenal; tab di tepi panel sebelumnya mudah terlewat dan menutupi peta |
+| Tombol sembunyikan panel pindah ke dalam kepala panel (ikon sidebar), seperti sidebar pada antarmuka chat (Claude, ChatGPT); saat panel tersembunyi, tombol yang sama tampil sebagai kartu di kiri atas peta (*diganti, lihat 13: kembali menjadi tab bertanda panah di tepi panel*) | Pola yang sudah dikenal; tab di tepi panel sebelumnya mudah terlewat dan menutupi peta |
 | Status "Memperbarui…" pada legenda diganti cakram pemuatan kecil di samping judul "Kualitas udara" (juga pada tombol legenda di ponsel); teksnya tetap dibacakan pembaca layar | Baris status yang muncul-hilang menggeser isi legenda setiap kali peta digeser |
-| Di luar wilayah studi peta diabu-abukan penuh (tanpa jalan dan label) dengan tepi putus-putus | Menunjukkan sejak awal di mana rute bisa dicari. Batasnya persegi wilayah studi yang sama dengan Backend, Data Worker, dan pemeriksaan isian (106,68–106,98 BT, 6,08–6,38 LS); repositori tidak memuat poligon batas administratif Jakarta |
+| Di luar wilayah studi peta diabu-abukan penuh (tanpa jalan dan label) dengan tepi putus-putus (*diganti, lihat 13: kini mengikuti batas administratif Jakarta*) | Menunjukkan sejak awal di mana rute bisa dicari. Batasnya persegi wilayah studi yang sama dengan Backend, Data Worker, dan pemeriksaan isian (106,68–106,98 BT, 6,08–6,38 LS); repositori tidak memuat poligon batas administratif Jakarta |
 | Saran tempat di luar wilayah studi tampil abu-abu dengan keterangan "Di luar Jakarta" dan tidak bisa dipilih (klik, Enter, dan panah melewatinya). Titik di luar wilayah yang tetap masuk (mis. klik peta) langsung memunculkan galat pada kolomnya | Pengguna tahu mengapa tempat itu tidak bisa dipakai, tanpa menunggu pencarian rute gagal. Backend saat ini sudah menyaring hasil di luar wilayah, jadi saran abu-abu adalah pengaman tambahan |
 | Nama aplikasi ditulis **SIPPolusi** di semua tempat | Ejaan resmi nama proyek |
 
@@ -268,34 +278,170 @@ Tes baru: [`place-combobox.test.ts`](../../src/frontend/src/place-combobox.test.
 | Slider prioritas: lingkar halo pada pegangan saat diarahkan atau ditahan, label zona yang aktif menebal, pegangan "meletup" saat berpindah zona | Posisi slider lebih mudah dibaca tanpa angka α/β |
 | Setelah rute tampil, memindahkan titik asal atau tujuan (seret pin, klik peta, pilih tempat, lokasi saya) menghapus rute lama | Rute yang digambar di antara titik yang sudah berubah menyesatkan |
 | Saat keluar rute, spanduk navigasi berubah kuning: "Kembali ke rute · ±80 m dari rute" sampai pengguna kembali atau rute baru tiba | Belokan berikutnya dari rute yang sudah ditinggalkan menyesatkan |
-| Panel uji keluar rute (hanya pengembangan), lihat [TI-SE-13](../ti-se-13/README.md#panel-uji-keluar-rute) | Kasus keluar rute bisa diuji kapan saja tanpa berjalan sungguhan |
+| Panel uji keluar rute (hanya pengembangan), lihat [Alat bantu pengembangan](#alat-bantu-pengembangan) | Kasus keluar rute bisa diuji kapan saja tanpa berjalan sungguhan |
+| Penanda posisi: lingkaran biru dengan figur putih pejalan kaki atau pesepeda sesuai moda yang dipilih (selama navigasi: moda rute yang dinavigasikan). Hanya baji arah yang berputar mengikuti arah gerak; figurnya tetap tegak walau peta diputar | Pengguna melihat moda perjalanannya di peta; sebelumnya seluruh penanda ikut berputar sehingga figur akan terbalik |
 
 Semua animasi berhenti bagi pengguna yang memilih "kurangi gerakan".
 
+**Berkas.** [`public/`](../../src/frontend/public/), [`index.html`](../../src/frontend/index.html),
+[`dom.ts`](../../src/frontend/src/dom.ts) (ikon pejalan dan sepeda dipecah menjadi bagian yang bisa digerakkan),
+[`map-view.ts`](../../src/frontend/src/map-view.ts) (`setUserMode`), [`nav-view.ts`](../../src/frontend/src/nav-view.ts)
+(`offRouteStep`), [`position-sim.ts`](../../src/frontend/src/position-sim.ts) (`setDetour`, `simPanel`),
+[`main.ts`](../../src/frontend/src/main.ts), [`style.css`](../../src/frontend/src/style.css).
+Tes baru: [`position-sim.test.ts`](../../src/frontend/src/position-sim.test.ts).
+
+## 13. Perubahan dari tinjauan tim (commit `c0583bb`)
+
+Ditambahkan oleh peninjau sesudah putaran ketiga; dicatat di sini agar dokumen sesuai dengan kode.
+
+| Perubahan | Alasan |
+|---|---|
+| Area di luar Jakarta kini mengikuti **batas administratif Jakarta** ([`jakarta-boundary.json`](../../src/frontend/src/jakarta-boundary.json), MultiPolygon), bukan persegi wilayah studi. Di luar batas hanya bentuk peta (laut, danau, sungai) yang tetap tergambar; jalan layang, label, dan ikon tempat dibatasi di dalam Jakarta | Peta menunjukkan Jakarta yang sebenarnya, bukan potongan Tangerang, Depok, dan Bekasi yang ikut masuk persegi. Catatan: Backend dan pemeriksaan isian tetap memakai persegi wilayah studi, jadi titik di antara batas dan persegi masih diterima |
+| Arsiran keyakinan rendah pada heatmap dihapus | Peta lebih bersih; keyakinan kini ditampilkan per rute di daftar |
+| Baris rute: "Paparan 110,7 indeks·menit · Keyakinan rendah" (kategori saja, tanpa angka; satuan kembali ditampilkan) | Kategori lebih mudah dipahami daripada angka 0–1 |
+| Masalah sinyal GPS tampil sebagai peringatan di tengah peta yang diredupkan (ikon kerucut lalu lintas, tombol **Keluar**), bukan pil kecil; teks "Mencoba lagi…" | Masalah GPS menghentikan navigasi secara praktis, jadi harus terlihat jelas |
+| Tombol sembunyikan panel kembali menjadi tab kecil di tepi panel dengan panah | Pola aplikasi peta |
+| Judul popup indeks menjadi "Tentang indeks" | Sama dengan tautan yang membukanya |
+
+## 14. Tanggapan atas review PR #119
+
+Review [PR #119](https://github.com/ppthimmel/SIPPolusi/pull/119) (RunningPie, *changes requested*). Setiap temuan
+diperbaiki dan diperiksa di peramban terhadap stack lokal lengkap.
+
+| Temuan | Perbaikan | Diperiksa |
+|---|---|---|
+| **P1.** Saat pencarian baru berjalan, rute lama masih bisa dicapai dengan Tab dan Enter, lalu navigasi dimulai pada perjalanan yang akan diganti | Hasil lama dibuat `inert` (tidak bisa dicapai papan ketik maupun pointer) selama pencarian; `startNavigation` menolak dimulai bila `state.busy` | Selama pencarian ulang `#result-view` inert dan tombol **Mulai navigasi** tidak bisa menerima fokus; sesudahnya bisa lagi |
+| **P1.** Saat keluar dari navigasi, permintaan heatmap bisa memakai batas kamera yang masih mengikuti posisi GPS terakhir | Sesudah navigasi, `heatArea()` tetap memakai area rute (`nav.exitLine`) sampai pengguna menggeser peta dengan tangan atau mencari rute baru | Kamera selama navigasi: sekitar Monas saja (posisi GPS). Dua permintaan `/v1/exposure-surface` sesudah keluar: bbox seluruh rute (Monas → tujuan, dengan margin), bukan bbox kamera |
+| **P2.** Respons pencarian untuk isian yang sudah berubah tetap ditampilkan; label tempat diambil dari isian saat respons tiba | Pencarian yang tertunda dibatalkan diam-diam bila perjalanan berubah: titik berpindah (`setPoint`), mengetik (`onTyped`), tukar asal-tujuan, ganti moda, atau ganti prioritas. Label tempat diambil saat permintaan dikirim | Kirim pencarian lalu langsung hapus tujuan: status sibuk hilang seketika, respons yang datang kemudian diabaikan (tidak ada rute di panel maupun peta, tanpa pesan "dibatalkan") |
+| **P2.** Bila gaya peta dasar gagal dimuat, sumber rute dan heatmap tidak pernah dibuat | Gaya cadangan minimal yang dibundel (`FALLBACK_STYLE`: latar polos); dipakai bila gaya gagal dimuat atau belum tiba dalam 15 detik, lalu semua lapisan aplikasi dibuat di atasnya | Dengan permintaan ke OpenFreeMap diblokir, peta beralih ke gaya cadangan dan sumber heatmap, rute, serta mask siap dalam 0,25 detik |
+| **P2.** Penjelasan pemulihan navigasi (mengapa rute baru gagal, kapan dicoba lagi) hanya ada di atribut `title`, tidak bisa dibuka di layar sentuh atau papan ketik | Penjelasan ditampilkan langsung sebagai baris kedua pada pil status | Pil menampilkan "Anda keluar dari rute · Mencari rute baru dari posisi Anda…"; tanpa atribut `title` |
+| Atribusi peta harus tetap terlihat saat panel disembunyikan | Baris kredit kecil di peta ("OpenFreeMap · © OpenMapTiles · © kontributor OpenStreetMap") saat panel desktop disembunyikan, lembar bawah ponsel tertutup, atau navigasi di ponsel | Tersembunyi saat panel terbuka (kredit ada di kaki panel), tampil saat panel disembunyikan |
+| Konfirmasi keputusan PNF-07 dan PNF-06 / RI-09 | **Belum diputuskan.** Lihat tabel di bawah; perlu keputusan pemilik produk | — |
+
+**Berkas.** [`main.ts`](../../src/frontend/src/main.ts) (`cancelPendingSearch`, `heatArea`, `submit`, `startNavigation`,
+`renderCredits`), [`map-view.ts`](../../src/frontend/src/map-view.ts) (`FALLBACK_STYLE`),
+[`nav-view.ts`](../../src/frontend/src/nav-view.ts), [`index.html`](../../src/frontend/index.html),
+[`style.css`](../../src/frontend/src/style.css).
+
 ## Yang dihapus dan menyentuh kebutuhan desain
 
-Dua teks dihapus atas permintaan, padahal kode sebelumnya menandainya sebagai pemenuhan kebutuhan pada Bab III:
+Teks berikut dihapus atas permintaan, padahal kode sebelumnya menandainya sebagai pemenuhan kebutuhan pada Bab III.
+Peninjau PR #119 meminta keputusan ini dikonfirmasi; baris yang bertanda **Perlu keputusan tim** belum diputuskan.
 
 | Teks | Kebutuhan | Keadaan sekarang |
 |---|---|---|
 | Disclaimer di kaki panel ("Nilai paparan adalah estimasi… bukan rekomendasi medis") | PNF-07: disclaimer selalu terlihat | Disclaimer dari Backend (`metadata.disclaimer`) tidak lagi ditampilkan setelah rincian diringkas (bagian 7). **Perlu keputusan tim:** bila PNF-07 masih berlaku, tambahkan satu baris pendek, mis. di bawah daftar rute |
 | Catatan privasi pencarian tempat ("Nama yang diketik … dikirim ke layanan pencarian lokasi …") | PNF-06: memberi tahu apa yang dikirim ke penyedia geocoding | Tidak ada di layar. Tes yang mewajibkannya (`config.test.ts`) ikut dihapus. **Perlu keputusan tim:** bila PNF-06 masih berlaku, kembalikan sebagai satu baris atau tautan "Privasi" |
 | Catatan privasi navigasi ("Posisi Anda diproses di perangkat ini …") | PNF-06, RI-09 | Tidak ada di layar (10.4). Perilakunya tidak berubah: posisi hanya keluar perangkat saat rute ulang. **Perlu keputusan tim** seperti baris di atas |
-| Kredit OpenStreetMap selalu terlihat | Lisensi ODbL OSM | Kredit ada di kaki panel (10.2), tetapi tidak terlihat saat panel desktop disembunyikan, lembar bawah ponsel tertutup, atau navigasi di ponsel. **Perlu keputusan tim:** bila diperlukan, tambahkan "© OpenStreetMap" kecil di pojok peta pada keadaan itu |
-| Kunci peta "Tanpa estimasi / Keyakinan rendah" | Penjelasan arsiran dan area abu-abu pada heatmap | Dihapus dari legenda (10.3); arsiran dan area abu-abu tetap ada di peta tanpa penjelasan di layar |
+| Kredit OpenStreetMap selalu terlihat | Lisensi ODbL OSM | **Selesai (14).** Kredit ada di kaki panel; saat panel tidak terlihat, baris kredit kecil tampil di peta |
+| Kunci peta "Tanpa estimasi / Keyakinan rendah" | Penjelasan arsiran dan area abu-abu pada heatmap | Dihapus dari legenda (10.3). Arsiran keyakinan rendah juga sudah dihapus dari peta (13); area abu-abu (tanpa estimasi) tetap tanpa penjelasan di layar |
 
 ## Alat bantu pengembangan
 
-`?lokasi=<tempat|lat,lon>`, hanya pada `npm run dev`: peramban melaporkan titik tetap di Jakarta sebagai posisi
-perangkat, untuk menguji "Lokasi saya", "Gunakan lokasi saya sebagai asal", dan navigasi dari luar Jakarta.
-Tempat: `monas`, `bundaran-hi`, `sudirman`, `blok-m`, `kota`. Gabungkan dengan `?simulasi=normal` agar posisi
-bergerak sepanjang rute. Rinciannya di [`docs/ti-se-13`](../ti-se-13/README.md#lokasi-tetap-di-jakarta);
-kodenya [`dev-location.ts`](../../src/frontend/src/dev-location.ts), tidak ikut build produksi.
+Semua alat di bawah hanya ada pada `npm run dev` (`import.meta.env.DEV`). Modulnya dimuat dinamis, sehingga tidak
+ikut build produksi: `npm run build` tidak memuat teks panel uji maupun lokasi palsu (sudah diperiksa pada `dist/`).
+
+### Lokasi palsu (GPS spoofer): `?lokasi=`
+
+Peramban melaporkan satu titik tetap sebagai posisi perangkat. Dipakai oleh penanda posisi, tombol **Lokasi saya**,
+**Gunakan lokasi saya sebagai asal**, dan navigasi, sehingga semuanya bisa diuji dari luar Jakarta.
+
+| Nilai | Titik |
+|---|---|
+| `monas` | Monumen Nasional (−6,1754; 106,8272) |
+| `bundaran-hi` | Bundaran HI (−6,1950; 106,8230) |
+| `sudirman` | Jl. Jenderal Sudirman (−6,2088; 106,8227) |
+| `blok-m` | Blok M (−6,2441; 106,7993) |
+| `kota` | Kota Tua (−6,1376; 106,8146) |
+| `lat,lon` | Koordinat apa pun, mis. `?lokasi=-6.2,106.8` |
+
+Cara kerjanya: `navigator.geolocation` diganti objek yang selalu menjawab titik itu (akurasi 8 m), satu fix per
+detik selama dipantau. Nilai yang tidak dikenal hanya memunculkan peringatan di konsol. Kode:
+[`dev-location.ts`](../../src/frontend/src/dev-location.ts), tes [`dev-location.test.ts`](../../src/frontend/src/dev-location.test.ts).
+
+### Simulasi gerak navigasi: `?simulasi=` dan `&kecepatan=`
+
+Menggantikan GPS selama navigasi dengan posisi yang bergerak sepanjang rute ([`position-sim.ts`](../../src/frontend/src/position-sim.ts)).
+`&kecepatan=<m/s>` mempercepat (bawaan 8 m/s).
+
+| Skenario | Perilaku |
+|---|---|
+| `normal` | Bergerak mengikuti rute sampai tujuan |
+| `keluar` | Menyimpang ±80 m dari rute di 40% perjalanan, lalu mengikuti rute baru |
+| `lemah` | Akurasi ±120 m di antara 30% dan 50% perjalanan (peringatan sinyal GPS) |
+| `tolak` | Izin lokasi ditolak |
+| `tanpa-gps` | Posisi tidak tersedia |
+
+Gabungan yang berguna: `?lokasi=monas&simulasi=normal&kecepatan=25` (posisi awal di Monas, lalu bergerak cepat
+sepanjang rute saat navigasi). `?simulasi=` mengambil alih posisi selama navigasi; `?lokasi=` berlaku di luar itu.
+
+### Panel uji keluar rute
+
+Selama navigasi, kartu **Uji navigasi** tampil di kanan peta (kiri atas di ponsel), dengan satu tombol:
+
+- **Keluar dari rute**: posisi tersimulasi berjalan tegak lurus menjauhi rute sampai ±80 m, lalu menunggu di sana.
+  Setelah 10 detik di luar rute spanduk berubah kuning "Kembali ke rute · ±80 m dari rute", pil menampilkan
+  "Anda keluar dari rute · Mencari rute baru dari posisi Anda…", dan rute baru diminta dari posisi itu.
+- **Kembali ke rute**: berjalan kembali ke rute sebelum rute baru diminta.
+
+Bila navigasi memakai GPS perangkat, tombol pertama kali ditekan mengganti sumber posisi ke simulator di titik rute
+saat ini. Tombol mengikuti keadaan simulator: setelah rute baru tiba, ia kembali ke **Keluar dari rute**. Contoh
+hasil pada stack lokal: spanduk kuning setelah ±13 detik, rute baru ±4,6 detik kemudian, lalu spanduk hijau lagi.
+
+### Server tiruan: `npm run mock`
+
+Backend tiruan di port 8000 ([`mock/server.mjs`](../../src/frontend/mock/server.mjs)) untuk menguji semua keadaan
+tanpa stack lengkap. Ganti skenario dengan `curl "localhost:8000/__mock/scenario?name=<nama>"`; tanpa `name`
+untuk melihat daftar dan skenario aktif. (Port 8000 juga dipakai layanan `backend` di Docker Compose; jalankan salah
+satu saja.)
+
+| Kelompok | Skenario |
+|---|---|
+| Rute (`POST /v1/routes`) | `ok`, `fallback`, `stale`, `partial`, `same_route`, `higher`, `no_recommended`, `no_route`, `point_not_on_network`, `point_origin`, `outside_study_area`, `invalid_request`, `rate_limited`, `cache_unavailable`, `route_unavailable`, `upstream_timeout`, `gateway_html`, `timeout` (20 s), `slow` (3 s), `bad_shape`, `bad_json` |
+| Heatmap (`GET /v1/exposure-surface`) | `heat_ok`, `heat_stale`, `heat_error`, `heat_slow` (7 s), `heat_empty` |
+| Pencarian tempat (`/v1/geocode/*`) | `geo_ok`, `geo_slow`, `geo_unavailable`, `geo_rate_limited`, `geo_gateway_html`, `geo_bad_shape`, `geo_timeout` |
+
+Skenario `slow` cocok untuk memeriksa perbaikan P2 di bagian 14 (hapus tujuan selagi pencarian berjalan).
+
+### Lain-lain
+
+- `window.__map`: objek peta MapLibre, untuk memeriksa lapisan dan sumber dari konsol.
+- [`scripts/build_frontend_logo.py`](../../scripts/build_frontend_logo.py): membuat ulang PNG logo dari `public/logo-source.jpg`.
+- [`scripts/build_frontend_landmarks.py`](../../scripts/build_frontend_landmarks.py): memperbarui `landmarks.json`.
+
+## Menjalankan secara lokal
+
+Frontend saja (dengan server tiruan):
+
+```
+cd src/frontend
+npm install
+npm run mock        # terminal 1, port 8000
+npm run dev         # terminal 2, http://localhost:5173
+```
+
+Dengan stack lengkap (Docker Compose), frontend diarahkan ke gateway: `BACKEND_URL=http://localhost:8081 npm run dev`.
+Agar rute dan heatmap berisi data, database lokal perlu graf jalan, model terdaftar, dan cache polusi:
+
+1. `docker compose up -d postgres minio model_registry backend cache_api gateway data_worker`
+2. Graf jalan: `docker compose --profile tools run --rm seed_graph` (jakarta-20261005, 299.067 simpul, 373.352 ruas).
+3. Model: letakkan bundel model spasial PM2.5 dan NO2 di `./.local-models/` (diabaikan git; tersedia di bucket
+   model GCP `incoming/spatial/<pm25|no2>/<versi>/`), lalu `docker compose --profile tools run --rm register_models`.
+   Model rute dibuat dari set TI-AI-09 di repositori. Ketiganya terdaftar dan dipromosikan ke `production`.
+4. Pastikan `.env` lokal sesuai `.env.example`, terutama `src/model_registry/.env` (`MLFLOW_ARTIFACT_ROOT=mlflow-artifacts:/`,
+   `MLFLOW_ARTIFACTS_DESTINATION`, kunci MinIO) dan `src/data_worker/.env` (`DOWNSCALE_WRITE_CACHE=1` beserta pengaturan
+   `SPATIAL_*`). Tanpa `DOWNSCALE_WRITE_CACHE=1` cache polusi tidak pernah terisi dan rute menjawab
+   "Rute belum dapat dicari" (503 `cache_unavailable`).
+5. Data Worker mengisi cache pada siklus pertama (±14 menit), lalu setiap jam pada menit ke-15.
+
+Catatan: model rute yang terdaftar hanya untuk sepeda, jadi rute jalan kaki selalu memakai metode cadangan
+(rute tercepat).
 
 ## Verifikasi
 
-- `npm test` di `src/frontend`: **197 tes lulus** (putaran kedua menambah tes `PointNamer` untuk nama yang tidak
-  ditemukan), termasuk tes untuk bahasa
+- `npm test` di `src/frontend`: **202 tes lulus** pada commit tanggapan review (197 pada akhir putaran kedua;
+  putaran berikutnya menambah tes saran di luar Jakarta, label keyakinan, simulator keluar rute, dan spanduk
+  keluar rute), termasuk tes untuk bahasa
   ([`i18n.test.ts`](../../src/frontend/src/i18n.test.ts)), nama jalan
   ([`route-names.test.ts`](../../src/frontend/src/route-names.test.ts)), format tanggal
   ([`format.test.ts`](../../src/frontend/src/format.test.ts)), pesan galat umum
@@ -312,6 +458,9 @@ kodenya [`dev-location.ts`](../../src/frontend/src/dev-location.ts), tidak ikut 
   permintaan kamera, urutan lapisan peta, lembar bawah dengan pointer tersimulasi, popup, tooltip) dan tangkapan
   layar headless Chrome pada 1280 × 720 dan 390 px. Peta vektor tidak selalu tergambar di Chrome headless, jadi
   tampilan peta itu sendiri (garis rute navigasi, landmark) diperiksa lewat data lapisan, bukan gambar.
+
+- Tanggapan review PR #119: setiap temuan diperiksa di peramban terhadap stack lokal lengkap; hasilnya di tabel
+  bagian 14.
 
 **Belum diuji:** navigasi di jalan sungguhan dengan GPS ponsel, gerakan tarik dan jentik pada layar sentuh
 sungguhan, dan pembaca layar sungguhan (NVDA/VoiceOver); yang diperiksa hanyalah atribut ARIA dan teks yang
