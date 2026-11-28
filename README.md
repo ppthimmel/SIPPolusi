@@ -31,7 +31,7 @@ SIPPolusi: Sistem Informasi Pemandu Perjalanan dalam Polusi
 - [docs/experiments](docs/experiments) — frozen dataset snapshots and model
   experiment results (e.g. the TI-AI-04 IDW baseline).
 - [Spatial model training](src/data_worker/spatial_model/README.md) — ds-v0.3.0,
-  PM2.5 IDW + ST-GNN correction and NO₂ LightGBM; Python and
+  PM2.5 IDW + ST-GNN correction and NO₂ XGBoost + IDW correction (ds-v0.4.0); Python and
   [notebook workflows](notebooks/spatial_model), MLflow/MinIO registration and Worker inference.
 - [Spatial model specification](docs/SPATIAL_MODEL_SPEC.md) — GEOS-CF feature policy,
   pollutant-specific fallback, and mandatory cached grid-to-road provenance.
@@ -50,7 +50,8 @@ pushed to `dev` only after the pipeline passes) is in
 ## Spatial models and experiment results (TI-AI-05)
 
 The production-serving contract uses **IDW + ST-GNN correction for PM2.5** and
-**full-feature LightGBM for NO₂**. It does not use LightGBM for both pollutants.
+**XGBoost + IDW correction for NO₂** (selected on ds-v0.4.0; full-feature LightGBM bundles are still accepted).
+It does not use one tabular model for both pollutants.
 IDW is also the independent fallback for each pollutant when its model or required
 inputs are unavailable. See the [active spatial specification](docs/SPATIAL_MODEL_SPEC.md)
 and [training/inference guide](src/data_worker/spatial_model/README.md).

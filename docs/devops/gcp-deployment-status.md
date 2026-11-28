@@ -47,7 +47,7 @@ simpler IDW estimate. Railway is unchanged and still stopped by its usage limit.
 | Route model `morl-route-policy` | ✅ version 1, aliases `candidate` and `production`, `package_sha256 7774d98c…` (TI-AI-09 set, contract 1.1.0) |
 | Pollution cache | ✅ filled by the Data Worker, first window 2026-11-17 05:00 UTC, refreshed hourly |
 | PM2.5 model `spatial-downscaling-pm25` | ❌ not registered (IDW fallback) |
-| NO₂ model `spatial-downscaling-no2` | ❌ not registered (IDW fallback) |
+| NO₂ model `spatial-downscaling-no2` | ⏳ XGBoost + IDW corr `ds-v0.4.0-9734d6e298ef` staged in `incoming/spatial/no2/`; register and promote once the XGBoost code is deployed from `dev` (IDW fallback until then) |
 
 ### Verification results
 

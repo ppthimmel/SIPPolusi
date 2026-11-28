@@ -11,7 +11,8 @@ from types import SimpleNamespace
 import numpy as np
 import pandas as pd
 
-from spatial_model.artifacts.bundles import validate_bundle
+from spatial_model.artifacts.bundles import serving_family, validate_bundle
+from spatial_model.configs import SERVING_FAMILIES
 from log_config import log_event
 
 log = logging.getLogger(__name__)
@@ -34,8 +35,7 @@ def load_model(directory, target, runtime=None):
     directory = Path(directory)
     manifest = validate_bundle(directory, target)
     compatibility = check_package(directory, runtime)
-    expected_family = "stgnn" if target == "pm25" else "lightgbm"
-    if manifest.get("model_family", expected_family) != expected_family:
+    if serving_family(manifest) not in SERVING_FAMILIES[target]:
         raise ValueError("Research model family is incompatible with the production target pairing")
     if target == "pm25":
         import torch
@@ -56,11 +56,11 @@ def load_model(directory, target, runtime=None):
         model.eval()
         return SimpleNamespace(model=model, preprocessing=preprocessing, metadata=artifact["metadata"], manifest=manifest,
                                compatibility=compatibility)
-    import lightgbm as lgb
+    from spatial_model.models.tabular import load_native
     metadata = json.loads((directory / "metadata.json").read_text())
-    model = lgb.Booster(model_file=str(directory / "model.txt"))
-    if model.feature_name() != metadata["columns"]:
-        raise ValueError("LightGBM feature order mismatch")
+    if metadata.get("model_family", "lightgbm") != serving_family(manifest):
+        raise ValueError("Bundle and model metadata disagree on the model family")
+    model, _ = load_native(directory, metadata)
     return SimpleNamespace(model=model, metadata=metadata, manifest=manifest, compatibility=compatibility)
 
 

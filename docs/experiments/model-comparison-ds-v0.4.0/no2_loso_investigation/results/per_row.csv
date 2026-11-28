@@ -1,0 +1,11 @@
+model,comparison,rmse,n
+XGBoost + IDW corr,local CPU seed 42 vs seed 1,6.81574545195129,
+XGBoost + IDW corr,local CPU seed 42 vs seed 2,4.266455143758763,
+XGBoost + IDW corr,local CPU seed 42 vs seed 3,5.688495782895093,
+XGBoost + IDW corr,local CPU seed 42 vs seed 4,5.332584739630574,
+LightGBM,local CPU seed 42 vs seed 1,3.080478514724993,
+LightGBM,local CPU seed 42 vs seed 2,2.7693834254949996,
+LightGBM,local CPU seed 42 vs seed 3,3.456601294336278,
+LightGBM,local CPU seed 42 vs seed 4,3.7162523093508146,
+XGBoost + IDW corr,Colab (GPU) vs local notebook code CPU seed 42,5.823878603771439,4359.0
+LightGBM,Colab (GPU) vs local notebook code CPU seed 42,0.3909770737026407,4359.0

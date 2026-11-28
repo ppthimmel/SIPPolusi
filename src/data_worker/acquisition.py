@@ -66,7 +66,7 @@ def _step_ground_truth(time_window: TimeWindow, config: Config) -> dict:
 
 
 def _step_downscale_inference(time_window: TimeWindow, config: Config) -> dict:
-    """Registered PM2.5 correction/NO2 LightGBM, per-pollutant IDW fallback, then cache.
+    """Registered PM2.5 correction/NO2 LightGBM/XGBoost, per-pollutant IDW fallback, then cache.
 
     Aktif hanya bila DOWNSCALE_WRITE_CACHE=1, karena setiap time window menulis
     sekitar 372 ribu baris ke pollution.edge_pollution (±215 MB per time window

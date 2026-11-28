@@ -1,0 +1,133 @@
+{
+  "description": "NO2 XGBoost + IDW correction, LOSO over all ds-v0.4.0 NO2 folds with the repository code (CPU); prediction rows pooled across folds",
+  "command": "python docs/experiments/model-comparison-ds-v0.4.0/production_no2/loso_check.py <ds-v0.4.0 snapshot> <output dir>",
+  "code_revision": "bb67a970315d33d0d6e9183416ad0593fd7de64b",
+  "code_revision_note": "c8590c7 (the serving model's revision) differs from bb67a97 only in how the XGBoost version is recorded; training and prediction code are identical",
+  "dataset": "ds-v0.4.0",
+  "device": "cpu",
+  "xgboost": "3.2.0 (xgboost-cpu); the fold bundles record 3.1.2, read from another installation's distribution metadata before c8590c7",
+  "seed": 42,
+  "folds_trained": 15,
+  "folds_with_labels": 14,
+  "unevaluable_folds": {
+    "12": "held-out group G_LCS-21 has no val or test labels"
+  },
+  "per_fold": [
+    {
+      "fold": 0,
+      "held_out_group": "G_DKI1",
+      "val_n": 168,
+      "test_n": 199
+    },
+    {
+      "fold": 1,
+      "held_out_group": "G_DKI2",
+      "val_n": 153,
+      "test_n": 196
+    },
+    {
+      "fold": 2,
+      "held_out_group": "G_DKI3",
+      "val_n": 20,
+      "test_n": 198
+    },
+    {
+      "fold": 3,
+      "held_out_group": "G_DKI4",
+      "val_n": 168,
+      "test_n": 199
+    },
+    {
+      "fold": 4,
+      "held_out_group": "G_DKI5",
+      "val_n": 168,
+      "test_n": 199
+    },
+    {
+      "fold": 5,
+      "held_out_group": "G_DKI98",
+      "val_n": 167,
+      "test_n": 199
+    },
+    {
+      "fold": 6,
+      "held_out_group": "G_DKJ32",
+      "val_n": 167,
+      "test_n": 189
+    },
+    {
+      "fold": 7,
+      "held_out_group": "G_DKJ33",
+      "val_n": 140,
+      "test_n": 195
+    },
+    {
+      "fold": 8,
+      "held_out_group": "G_DKJ34",
+      "val_n": 167,
+      "test_n": 196
+    },
+    {
+      "fold": 9,
+      "held_out_group": "G_DKJ35",
+      "val_n": 147,
+      "test_n": 174
+    },
+    {
+      "fold": 10,
+      "held_out_group": "G_DKJ36",
+      "val_n": 146,
+      "test_n": 120
+    },
+    {
+      "fold": 11,
+      "held_out_group": "G_JMS3",
+      "val_n": 102,
+      "test_n": 50
+    },
+    {
+      "fold": 12,
+      "held_out_group": "G_LCS-21",
+      "val_n": 0,
+      "test_n": 0
+    },
+    {
+      "fold": 13,
+      "held_out_group": "G_LCS-23",
+      "val_n": 131,
+      "test_n": 47
+    },
+    {
+      "fold": 14,
+      "held_out_group": "G_LCS-24",
+      "val_n": 161,
+      "test_n": 193
+    }
+  ],
+  "val": {
+    "n": 2005,
+    "mae": 25.524244799422437,
+    "rmse": 33.990668666323685,
+    "r2": 0.5437029501797033,
+    "bias": 4.22624557672501,
+    "mean_obs": 58.61654114713217,
+    "nrmse": 0.5798818558912306,
+    "folds": 14
+  },
+  "test": {
+    "n": 2354,
+    "mae": 25.107386921926842,
+    "rmse": 35.22564525806078,
+    "r2": 0.502158393469311,
+    "bias": 1.224095208354426,
+    "mean_obs": 56.64553525913339,
+    "nrmse": 0.6218609303789937,
+    "folds": 14
+  },
+  "notebook": {
+    "val_rmse": 35.95,
+    "test_rmse": 37.65,
+    "device": "cuda"
+  },
+  "single_draw": "These metrics are one run (seed 42). Over 25 seeds the same model scores val RMSE 35.37 \u00b1 0.86 and test 36.86 \u00b1 0.79: ../no2_loso_investigation/results/seeds_summary.csv"
+}

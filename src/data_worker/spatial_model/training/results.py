@@ -6,6 +6,7 @@ from pathlib import Path
 import pandas as pd
 
 from spatial_model.evaluation.metrics import compute_metrics
+from spatial_model.models.tabular import TABULAR_FAMILIES, model_file
 
 
 def summarize(run_root, folds, *, splits=("val", "test")):
@@ -29,11 +30,14 @@ def summarize(run_root, folds, *, splits=("val", "test")):
                 status = "unverified"
                 if provenance.exists():
                     report = json.loads(provenance.read_text(encoding="utf-8"))
-                    checkpoint = directory.parent / ("best.pt" if report.get("model") == "stgnn" else "model.txt")
-                    if checkpoint.exists() and split in report.get("splits", []):
+                    family = report.get("model")
+                    # An unknown family stays "unverified" rather than being checked against another family's file.
+                    name = "best.pt" if family == "stgnn" else model_file(family) if family in TABULAR_FAMILIES else None
+                    checkpoint = directory.parent / name if name else None
+                    if checkpoint is not None and checkpoint.exists() and split in report.get("splits", []):
                         current = hashlib.sha256(checkpoint.read_bytes()).hexdigest()
                         status = "available" if current == report.get("checkpoint_sha256") else "stale"
-                        if report.get("model") == "lightgbm":
+                        if family in TABULAR_FAMILIES:
                             metadata = directory.parent / "metadata.json"
                             if not metadata.exists() or hashlib.sha256(metadata.read_bytes()).hexdigest() != report.get("metadata_sha256"):
                                 status = "stale"

@@ -26,7 +26,8 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
-from spatial_model.artifacts.bundles import digest, validate_bundle
+from spatial_model.artifacts.bundles import digest, serving_family, validate_bundle
+from spatial_model.configs import SERVING_FAMILIES
 from spatial_model.artifacts.model_package import (PACKAGE_FILE, PackageError, load_manifest, package_digest,
                                                    validate_package)
 from spatial_model.artifacts.registry import NAMES, ROUTE_NAME
@@ -152,10 +153,9 @@ def inspect_package(root, grid_spec_id=None) -> dict:
 def _inspect_spatial(root, has_package, grid_spec_id):
     bundle = validate_bundle(root)
     target = bundle["target"]
-    expected_family = "stgnn" if target == "pm25" else "lightgbm"
-    if bundle.get("model_family", expected_family) != expected_family:
-        raise RegistrationError(f"Package refused: model family {bundle['model_family']!r} is not the serving "
-                                f"family for {target} ({expected_family})")
+    if serving_family(bundle) not in SERVING_FAMILIES[target]:
+        raise RegistrationError(f"Package refused: model family {serving_family(bundle)!r} is not a serving "
+                                f"family for {target} ({', '.join(SERVING_FAMILIES[target])})")
     if bundle["metadata"].get("fold") is not None:
         raise RegistrationError("Package refused: a LOSO fold checkpoint cannot be registered as a serving model")
     if not has_package:
