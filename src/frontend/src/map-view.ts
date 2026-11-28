@@ -717,8 +717,17 @@ export class MapView {
     };
   }
 
-  flyTo(p: Point, zoom = 15): void {
-    this.map.flyTo({ center: [p.lon, p.lat], zoom: Math.max(this.map.getZoom(), zoom) });
+  /** Centres `p` in the part of the map left uncovered: `inset.bottom` is the height the bottom
+   *  sheet covers on phones. An offset (not camera padding) is used so nothing lingers on the camera. */
+  flyTo(p: Point, inset: { bottom: number } = { bottom: 0 }, zoom = 15): void {
+    const height = this.map.getContainer().clientHeight;
+    // Keep at least a sliver of map above the sheet, even when the sheet is nearly full height.
+    const covered = Math.min(Math.max(0, inset.bottom), Math.max(0, height - 120));
+    this.map.flyTo({
+      center: [p.lon, p.lat],
+      zoom: Math.max(this.map.getZoom(), zoom),
+      offset: [0, -covered / 2],
+    });
   }
 
   setPickCursor(on: boolean): void {

@@ -241,7 +241,7 @@ function setPoint(which: Which, p: Point | null, opts: { fill?: boolean; fly?: b
   if (opts.fill !== false) fields[which].input.value = opts.label ?? (p && !named ? fmtCoord(p) : "");
   fields[which].input.title = p ? fmtCoord(p) : "";
   mapView.setPoint(which, p);
-  if (p && opts.fly) mapView.flyTo(p);
+  if (p && opts.fly) mapView.flyTo(p, panelInset());
   if (named) startNaming(which, p!);
   else if (p && !opts.label) nameIfUsable(which, p);
   refreshForm();
@@ -834,7 +834,7 @@ const insideStudyArea = (p: Point) =>
 function showMyLocation(): void {
   clearStatus();
   if (here.last) {
-    mapView.flyTo(here.last);
+    mapView.flyTo(here.last, panelInset());
     return;
   }
   const say = (text: () => string) => {
@@ -848,7 +848,7 @@ function showMyLocation(): void {
       if (nav.session) return;
       const p = { lat: pos.coords.latitude, lon: pos.coords.longitude };
       void mapView.setUser(p, null, pos.coords.accuracy);
-      mapView.flyTo(p);
+      mapView.flyTo(p, panelInset());
       startShowingLocation(); // permission was just granted: keep the marker up to date from now on
     },
     (err) => {
