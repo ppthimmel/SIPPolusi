@@ -77,18 +77,19 @@ Dari `src/data_worker`, dengan dependensi `requirements.txt`:
 
 ```bash
 python -m spatial_model.training train pm25 --snapshot ../../docs/experiments/ds-v0.3.0 --out ../../.cache/training/pm25 --device cpu
-python -m spatial_model.training train no2 --snapshot ../../docs/experiments/ds-v0.3.0 --out ../../.cache/training/no2
-# Model NO₂ produksi: XGBoost + koreksi IDW pada ds-v0.4.0 (snapshot dibangun ulang dengan scripts/dataset_extension/)
-python -m spatial_model.training train no2 --family xgboost --snapshot <ds-v0.4.0> --out ../../.cache/training/no2-xgb
+# Model NO₂ produksi (bawaan): XGBoost + koreksi IDW pada ds-v0.4.0 (snapshot dibangun ulang dengan scripts/dataset_extension/)
+python -m spatial_model.training train no2 --snapshot <ds-v0.4.0> --out ../../.cache/training/no2
+# Model NO₂ LightGBM sebelumnya, hanya bila diminta eksplisit
+python -m spatial_model.training train no2 --family lightgbm --snapshot ../../docs/experiments/ds-v0.3.0 --out ../../.cache/training/no2-lgbm
 ```
 
 Gunakan folder baru per run. `--resume` melanjutkan ST-GNN dari `progress.pt`, termasuk optimizer,
 scheduler dan RNG. `--fold N` memakai grup LOSO pada dataset. Checkpoint PM2.5 dipilih pada validation,
 termasuk epoch nol (IDW). Satu epoch hanya smoke test. Test tidak dipakai memilih checkpoint.
 ST-GNN memuat 24 jam fitur termasuk prakiraan GEOS-CF dan kalender; target-group readings dikeluarkan
-dari baseline label dan receptive field saat training. NO₂ memakai parameter full-feature terpilih
-pada validation dari eksperimen yang tersimpan, dengan target langsung. `--family xgboost` melatih XGBoost
+dari baseline label dan receptive field saat training. NO₂ melatih XGBoost (`--family xgboost`, bawaan)
 dengan target `label − IDW(p = 2, k = 8)` (`resid_idw`); prediksi `max(0, IDW + keluaran model)`.
+`--family lightgbm` melatih LightGBM sebelumnya (parameter full-feature dari eksperimen ds-v0.3.0, target langsung).
 
 Bundle memuat bobot, preprocessing, fitur berurutan, satuan, stasiun sumber, parameter, versi pustaka,
 hash dataset/kode dan metrik. ST-GNN memakai `idw_residual_v1`, LightGBM format native `model.txt`, XGBoost
@@ -102,7 +103,7 @@ Folder `evaluation/` memuat metrik bersama dan evaluator tiap model.
 
 ```bash
 python -m spatial_model.evaluation stgnn --snapshot ../../docs/experiments/ds-v0.3.0 --checkpoint ../../.cache/training/pm25/best.pt --out ../../.cache/evaluation/pm25
-python -m spatial_model.evaluation lightgbm --snapshot ../../docs/experiments/ds-v0.3.0 --checkpoint ../../.cache/training/no2-fold0 --out ../../.cache/evaluation/no2-fold0
+python -m spatial_model.evaluation xgboost --snapshot <ds-v0.4.0> --checkpoint ../../.cache/training/no2-fold0 --out ../../.cache/evaluation/no2-fold0
 python -m spatial_model.evaluation idw run --manifest ../../docs/experiments/ds-v0.3.0/manifest.json --out ../../.cache/evaluation/idw
 ```
 
@@ -113,7 +114,8 @@ serta `evaluation.json` berisi hash checkpoint, snapshot, protokol, dan split.
 Checkpoint dengan hash snapshot berbeda ditolak; metadata checkpoint lama tidak ditulis ulang
 agar tampak cocok. Gunakan snapshot yang identik atau latih ulang pada snapshot saat ini.
 
-LightGBM dan XGBoost (`python -m spatial_model.evaluation xgboost ...`, evaluator yang sama) memerlukan
+LightGBM dan XGBoost memakai evaluator yang sama; perintah `lightgbm`/`xgboost` harus sesuai `model_family`
+checkpoint (checkpoint keluarga lain ditolak). Keduanya memerlukan
 checkpoint `--fold N` dari training LOSO. Serving fit tanpa fold memakai semua
 stasiun dan tidak menghasilkan klaim evaluasi LOSO; `metrics.json` mencatat status `not_evaluated`.
 ST-GNN mempertahankan protokol checkpoint (fixed split atau LOSO) dan perbandingan IDW berpasangan.

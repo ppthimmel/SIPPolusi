@@ -23,8 +23,9 @@ def main(argv=None):
     t.add_argument("--device", default="cpu")
     t.add_argument("--resume", action="store_true")
     t.add_argument("--register", action="store_true")
-    t.add_argument("--family", choices=("lightgbm", "xgboost"), default="lightgbm",
-                   help="NO2 model family (xgboost: XGBoost + IDW correction, selected on ds-v0.4.0)")
+    t.add_argument("--family", choices=("lightgbm", "xgboost"),
+                   help="NO2 model family; default xgboost (XGBoost + IDW correction, the production model "
+                        "selected on ds-v0.4.0). lightgbm trains the earlier LightGBM model")
     r = commands.add_parser("register")
     r.add_argument("bundle", type=Path)
     p = commands.add_parser("promote", help="set the alias production (a deliberate team decision)")
@@ -89,7 +90,7 @@ def main(argv=None):
         from spatial_model.artifacts.registry import register
         print(json.dumps(register(args.bundle)))
     else:
-        if args.target == "pm25" and args.family != "lightgbm":
+        if args.target == "pm25" and args.family is not None:
             parser.error("--family applies to NO2; PM2.5 trains the ST-GNN")
         if args.target == "pm25":
             from spatial_model.models.stgnn.train import train
@@ -99,7 +100,7 @@ def main(argv=None):
             if args.resume:
                 parser.error("Tabular training does not use checkpoint resume")
             from spatial_model.models.lightgbm.train import train
-            bundle = train(args.snapshot, args.out, seed=args.seed, fold=args.fold, family=args.family)
+            bundle = train(args.snapshot, args.out, seed=args.seed, fold=args.fold, family=args.family or "xgboost")
         print(bundle)
         if args.register:
             from spatial_model.artifacts.registry import register

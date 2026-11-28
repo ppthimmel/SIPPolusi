@@ -15,12 +15,16 @@ from spatial_model.models.tabular import LABELS, load_native
 from spatial_model.evaluation.metrics import compute_metrics
 
 
-def evaluate(snapshot, checkpoint, output, *, splits=("val", "test"), _panel=None):
+def evaluate(snapshot, checkpoint, output, *, splits=("val", "test"), family=None, _panel=None):
+    """``family``, when given, must equal the checkpoint's recorded family (the CLI always passes it)."""
     if not splits or set(splits) - {"val", "test"}:
         raise ValueError("Evaluation permits only val/test splits")
     checkpoint, output = Path(checkpoint), Path(output)
     metadata = json.loads((checkpoint / "metadata.json").read_text(encoding="utf-8"))
     target = metadata.get("target")
+    recorded = metadata.get("model_family", "lightgbm")
+    if family is not None and family != recorded:
+        raise ValueError(f"Requested {family} evaluation, but the checkpoint is {recorded}")
     # The snapshot hash check below ties the checkpoint to this exact snapshot.
     if target not in ("pm25", "no2") or metadata.get("dataset") not in SUPPORTED_DATASETS:
         raise ValueError(f"Require a pollutant checkpoint of a supported dataset {SUPPORTED_DATASETS}")
@@ -53,7 +57,7 @@ def evaluate(snapshot, checkpoint, output, *, splits=("val", "test"), _panel=Non
         allowed = p.station_split == "train"
     if metadata["sensor_stations"] != p.stations.loc[allowed, "uuid"].tolist():
         raise ValueError("Checkpoint sensor policy differs from evaluation protocol")
-    family = metadata.get("model_family", "lightgbm")
+    family = recorded
     model, model_path = load_native(checkpoint, metadata)
     features = spatial_features(p, allowed)
     output.mkdir(parents=True, exist_ok=True)

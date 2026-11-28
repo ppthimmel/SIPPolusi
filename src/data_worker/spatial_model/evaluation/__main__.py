@@ -34,6 +34,7 @@ def main(argv=None):
         kwargs.update(device=options.device, batch_size=options.batch_size, threads=options.threads)
     else:
         from .lightgbm.evaluate import evaluate
+        kwargs.update(family=args.model)  # one evaluator for both families; reject the other family's checkpoint
     evaluate(options.snapshot, options.checkpoint, options.out, **kwargs)
     print(options.out.resolve())
 

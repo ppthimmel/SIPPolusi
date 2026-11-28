@@ -182,3 +182,20 @@ def test_cli_rejects_family_for_pm25(tmp_path):
     from spatial_model.training.__main__ import main
     with pytest.raises(SystemExit):
         main(["train", "pm25", "--out", str(tmp_path / "o"), "--family", "xgboost"])
+
+
+def test_cli_trains_xgboost_for_no2_by_default(tmp_path, monkeypatch):
+    from spatial_model.models.lightgbm import train as train_module
+    from spatial_model.training.__main__ import main
+    calls = []
+    monkeypatch.setattr(train_module, "train", lambda *a, **k: calls.append(k["family"]) or tmp_path)
+    main(["train", "no2", "--out", str(tmp_path / "a")])
+    main(["train", "no2", "--out", str(tmp_path / "b"), "--family", "lightgbm"])
+    assert calls == ["xgboost", "lightgbm"]
+
+
+def test_evaluation_cli_rejects_the_other_family(fold_bundle, tmp_path):
+    from spatial_model.evaluation.__main__ import main
+    with pytest.raises(ValueError, match="checkpoint is xgboost"):
+        main(["lightgbm", "--snapshot", str(SNAPSHOT), "--checkpoint", str(fold_bundle.parent),
+              "--out", str(tmp_path / "e")])
