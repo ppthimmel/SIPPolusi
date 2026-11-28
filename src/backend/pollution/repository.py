@@ -10,6 +10,7 @@
 """
 from __future__ import annotations
 
+import asyncio
 import logging
 from collections import Counter
 from collections.abc import Callable
@@ -165,12 +166,20 @@ class PollutionRepository:
         stale_after_s: float = 3 * 3600,
         clock: Callable[[], datetime] = _utcnow,
         weights_work_mem: str | None = None,
+        surface_max_concurrency: int = 2,
+        surface_wait_s: float = 1.0,
+        surface_statement_timeout_ms: int = 6000,
     ):
         self._db = db
         self._osm = osm
         self._stale_after_s = stale_after_s
         self._clock = clock
         self._weights_work_mem = weights_work_mem
+        # Heatmap queries are capped so they cannot take every pooled connection
+        # from route planning (PollutionSettings.surface_*).
+        self._surface_slots = asyncio.Semaphore(surface_max_concurrency)
+        self._surface_wait_s = surface_wait_s
+        self._surface_statement_timeout_ms = surface_statement_timeout_ms
 
     @staticmethod
     def _window(row) -> WindowInfo:
@@ -252,8 +261,7 @@ class PollutionRepository:
 
     async def read_surface_edges(self, window: WindowInfo, graph_version: str, bbox: BBox) -> list[dict]:
         """Edges of graph_version intersecting bbox with their geometry (zoom >= 14)."""
-        async with self._db.connection() as conn:
-            rows = await conn.fetch(_SQL_SURFACE_EDGES, window.time_window_start, graph_version, *bbox.as_list())
+        rows = await self._surface_fetch(_SQL_SURFACE_EDGES, window.time_window_start, graph_version, *bbox.as_list())
         return [dict(r) for r in rows]
 
     async def read_surface_cells(self, window: WindowInfo, graph_version: str, envelope: BBox,
@@ -262,10 +270,29 @@ class PollutionRepository:
 
         envelope must be aligned to the grid; index_range is (ix0, ix1, iy0, iy1),
         end exclusive, the cells inside envelope."""
-        async with self._db.connection() as conn:
-            rows = await conn.fetch(_SQL_SURFACE_CELLS, window.time_window_start, graph_version,
-                                    *envelope.as_list(), *cell_deg, *index_range)
+        rows = await self._surface_fetch(_SQL_SURFACE_CELLS, window.time_window_start, graph_version,
+                                         *envelope.as_list(), *cell_deg, *index_range)
         return [dict(r) for r in rows]
+
+    async def _surface_fetch(self, sql: str, *args) -> list:
+        """A surface query in one of the limited slots, under its own statement_timeout.
+
+        Waits surface_wait_s for a slot, then raises CacheUnavailable(surface_busy)
+        without touching the pool. The timeout is SET LOCAL, so it ends with the
+        transaction and pooled connections keep the default for route reads."""
+        try:
+            await asyncio.wait_for(self._surface_slots.acquire(), self._surface_wait_s)
+        except (TimeoutError, asyncio.TimeoutError):
+            raise CacheUnavailable("Heatmap sedang sibuk; coba lagi sebentar lagi.",
+                                   CacheUnavailable.SURFACE_BUSY) from None
+        try:
+            async with self._db.connection() as conn:
+                async with conn.transaction(readonly=True):
+                    await conn.execute("SELECT set_config('statement_timeout', $1, true)",
+                                       str(self._surface_statement_timeout_ms))
+                    return await conn.fetch(sql, *args)
+        finally:
+            self._surface_slots.release()
 
     async def window_model_metadata(self, window: WindowInfo) -> dict:
         """model_metadata of the run that wrote window ({} for legacy rows): which
