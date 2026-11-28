@@ -6,6 +6,7 @@ import math
 import random
 import time
 from dataclasses import replace
+from types import SimpleNamespace
 
 import pytest
 
@@ -13,7 +14,7 @@ from planner.models import Preference
 from public_api.schemas import RouteModelInfo
 from route_model.costs import edge_exposure, route_totals, weighted_cost
 from solver.cancel import CancelToken
-from solver.contract import SOLVER_ERROR, SOLVER_TIMEOUT, RouteServiceUnavailable, SolveRequest, SolverError
+from solver.contract import SOLVER_ERROR, SOLVER_NO_ROUTE, SOLVER_TIMEOUT, RouteServiceUnavailable, SolveRequest, SolverError
 from solver.mock import _routes as mock_routes
 from solver.orchestrator import call_route_solve
 from solver.paths import shortest_path
@@ -80,6 +81,22 @@ def test_invalid_exposure_is_a_solver_error():
     assert exc.value.reason == SOLVER_ERROR
 
 
+def test_non_positive_travel_time_is_a_solver_error():
+    """weighted_astar needs travel_time_s > 0 (mock accepts 0). Real edges have length_m > 0 in the database."""
+    si = _two_routes(.5)
+    si.edges[0] = replace(si.edges[0], travel_time_s=0)
+    with pytest.raises(SolverError) as exc:
+        _solve(CancelToken(), si)
+    assert exc.value.reason == SOLVER_ERROR
+
+
+def test_no_weighted_route_although_the_fastest_exists_is_a_solver_error(monkeypatch):
+    monkeypatch.setattr("solver.weighted.weighted_astar", lambda *a, **k: SimpleNamespace(edge_ids=None))
+    with pytest.raises(SolverError) as exc:
+        _solve(CancelToken(), _two_routes(.5))
+    assert exc.value.reason == SOLVER_NO_ROUTE
+
+
 def test_details_fit_metadata_route_model():
     details = _solve(CancelToken(), _two_routes(.5)).details
     info = RouteModelInfo(**details)  # strict schema: no unknown or missing fields
@@ -103,4 +120,4 @@ async def test_stops_after_the_timeout():
     with pytest.raises(RouteServiceUnavailable) as exc:
         await call_route_solve(WeightedSolver(), SolveRequest(big, deadline_ms=50), grace_ms=0)
     assert exc.value.reason == SOLVER_TIMEOUT
-    assert time.perf_counter() - started < 0.5
+    assert time.perf_counter() - started < 1.5

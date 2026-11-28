@@ -23,12 +23,12 @@ class SolverSettings(BaseSettings):
         populate_by_name=True,
     )
 
-    # mock: deterministic, no AI service needed; baseline: fastest route with the
-    # A* of route_model (TI-AI-07) in this process; weighted: weighted A* on the MORL objective
-    # (alpha*T/T_ref + beta*E/E_ref), the deterministic comparator for MORL (Subbab 5.5, C0);
-    # http: the Multi-Objective Route
-    # Model service (IRouteSolve, POST /internal/v1/solve); morl: the registered MORL
-    # policy package loaded into this process (TI-SE-07b, solver.morl).
+    # mock: deterministic, no AI service needed.
+    # baseline: fastest route with the A* of route_model (TI-AI-07), in this process.
+    # weighted: weighted A* on the MORL objective (alpha*T/T_ref + beta*E/E_ref), the deterministic
+    #   comparator for MORL (Subbab 5.5, C0).
+    # http: the Multi-Objective Route Model service (IRouteSolve, POST /internal/v1/solve).
+    # morl: the registered MORL policy package loaded into this process (TI-SE-07b, solver.morl).
     provider: Provider = "mock"
     url: str | None = Field(None, description="Base URL of the Route Model service, for provider=http")
 
