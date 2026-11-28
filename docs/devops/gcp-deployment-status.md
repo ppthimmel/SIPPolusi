@@ -100,7 +100,8 @@ data that updates every hour. Both downscaling models are in production: PM2.5 (
 - [x] PM2.5 and NO₂ (LightGBM) registered as version 1 and promoted to `production` (19 Nov 2026).
 - [x] NO₂: XGBoost + IDW corr registered as `spatial-downscaling-no2` version 2 and promoted to `production`
       (28 Nov 2026). Details in `scripts/gcp/README.md`.
-- [ ] Check the next Data Worker cycle reports `source` other than `idw` for both pollutants.
+- [x] Data Worker uses both models: the 13:15 UTC cycle on 28 Nov reported PM2.5 `spatial-downscaling-pm25:1` and NO₂
+      `spatial-downscaling-no2:2` (`idw_xgboost_residual`), 0 fallback cells each, `run_status: complete`.
 
 ### Priority 2: make it maintainable
 

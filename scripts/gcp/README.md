@@ -169,10 +169,13 @@ Image *job* `data-worker:fb30ad5` (`dev` setelah PR #115).
   `RESOLVED spatial-downscaling-no2:2: all 5 files + package.json match.  RESULT: PASS`.
 - `PROMOTE=no2:2` (eksekusi `model-register-btfsr`): `promoting spatial-downscaling-no2 version 2 (production was 1)`,
   `promoted: spatial-downscaling-no2:2 is production`.
+- Siklus Data Worker pertama sesudahnya (`data-worker-xqkwl`, 13:15 UTC, *window* 12:00 UTC): NO₂ `source:
+  idw_xgboost_residual`, `model_version: spatial-downscaling-no2:2`, `fallback_cells: 0`; PM2.5
+  `spatial-downscaling-pm25:1`, `fallback_cells: 0`; `run_status: complete`, `status: ok`. Siklus 12:15 UTC dimulai
+  sebelum promosi dan masih memakai `spatial-downscaling-no2:1` (`source: lightgbm`).
 
 ## Belum dikerjakan
 
-- Periksa bahwa siklus Data Worker berikutnya memakai `spatial-downscaling-no2:2` untuk NO₂ (bukan IDW).
 - Data lama Railway (riwayat *cache* polusi, `ground_truth`, metadata MLflow) tidak dipindahkan.
 - Observability terpasang (issue #112), tetapi penerima notifikasi alert belum diisi (secret `alertmanager-config`), dan
   Data Worker baru mengirim metrik ke Pushgateway setelah kode #112 di-*deploy* dari `dev`.
