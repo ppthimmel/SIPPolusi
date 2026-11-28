@@ -61,6 +61,7 @@ Dipilih dengan `ROUTE_SOLVER_PROVIDER`; endpoint-nya tidak berubah.
 |---|---|---|
 | `mock` (bawaan) | Deterministik. Pembanding = Dijkstra waktu tempuh; rekomendasi = Dijkstra pada α·τ/T_ref + β·I·τ/E_ref; `route_source: policy`, `model_version: mock-1`. `ROUTE_SOLVER_FAULT` = `timeout`, `error`, `no_route`, atau `invalid` menyuntikkan galat | Pembanding rute deterministik untuk MORL serta pengembangan dan uji integrasi |
 | `baseline` | A* rute tercepat dari `route_model` (TI-AI-07), dijalankan di proses ini pada subgraf dan simpul snap yang sama. `route_source: baseline`, `fallback_reason: policy_unavailable` | Rute nyata sebelum MORL tersedia |
+| `weighted` | A* berbobot ([`weighted.py`](weighted.py), memakai `route_model.weighted_astar`) pada fungsi tujuan yang sama dengan *policy* MORL: α·T/T_ref + β·E/E_ref, dengan T_ref dan E_ref waktu tempuh dan paparan rute tercepat (acuan yang sama dengan `fastest_reference` MORL). Pembanding = rute tercepat. `route_source: policy`, `preference_applied: true`, `model_version: weighted-astar-1`, `metadata.route_model.name: weighted-astar` | Pembanding deterministik yang setara bagi MORL pada evaluasi (Dokumen Desain Subbab 5.5, konfigurasi *baseline*): beda keluarannya dengan MORL berasal dari *policy*, bukan dari tujuan optimasi yang berbeda |
 | `http` | Klien `POST {ROUTE_SOLVER_URL}/internal/v1/solve`, JSON gzip (Kode 3.3) | Layanan Multi-Objective Route Model terpisah |
 | `morl` | *Policy* MORL terdaftar (`morl-route-policy@production`) dimuat di proses ini ([`morl.py`](morl.py)); rute rekomendasi dari *policy*, pembanding = rute tercepat. `model_version: morl-route-policy:<versi>` dan `metadata.route_model` | Railway: MORL sesungguhnya (TI-SE-07b) |
 
@@ -148,7 +149,7 @@ Penyedia `http` tidak memakai thread: permintaan HTTP dibatalkan langsung oleh `
 
 | Variabel | Bawaan | Keterangan |
 |---|---|---|
-| `ROUTE_SOLVER_PROVIDER` | `mock` | `mock`, `baseline`, `http`, atau `morl` |
+| `ROUTE_SOLVER_PROVIDER` | `mock` | `mock`, `baseline`, `weighted`, `http`, atau `morl` |
 | `ROUTE_SOLVER_URL` | – | Wajib untuk `http` |
 | `MLFLOW_TRACKING_URI` | – | `morl`: registry (Railway: `http://modelregistry.railway.internal:5000`); `ROUTE_SOLVER_REGISTRY_URL` menimpanya |
 | `ROUTE_SOLVER_MODEL_NAME` | `morl-route-policy` | `morl`: nama model di registry |

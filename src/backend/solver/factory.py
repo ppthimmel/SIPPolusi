@@ -12,6 +12,9 @@ def make_solver(settings: SolverSettings) -> RouteSolver:
     if settings.provider == "baseline":
         from .baseline import BaselineSolver
         return BaselineSolver()
+    if settings.provider == "weighted":
+        from .weighted import WeightedSolver
+        return WeightedSolver()
     if settings.provider == "morl":
         from .morl import MorlSolver  # imports torch only when selected
         return MorlSolver(settings)

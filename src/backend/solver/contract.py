@@ -104,7 +104,7 @@ class SolverReply:
 
 
 class RouteSolver(Protocol):
-    """IRouteSolve. Implementations: MockSolver, BaselineSolver, HttpSolver, MorlSolver."""
+    """IRouteSolve. Implementations: MockSolver, BaselineSolver, WeightedSolver, HttpSolver, MorlSolver."""
 
     name: str
 

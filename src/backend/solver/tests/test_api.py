@@ -78,7 +78,7 @@ def test_invalid_request_still_400(make_client):
         assert c.post("/v1/routes/solve", json=request_body(alpha=0.9, beta=0.9)).status_code == 400
 
 
-@pytest.mark.parametrize("provider, name", [("mock", "mock"), ("baseline", "baseline")])
+@pytest.mark.parametrize("provider, name", [("mock", "mock"), ("baseline", "baseline"), ("weighted", "weighted")])
 def test_factory_reads_configuration(provider, name):
     assert make_solver(SolverSettings(_env_file=None, provider=provider)).name == name
 
