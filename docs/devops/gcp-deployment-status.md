@@ -6,8 +6,8 @@ Deployed from branch `TI-DO-10b`. Commands, URLs and resource details: [`scripts
 **Website:** https://frontend-87531247158.asia-southeast2.run.app
 
 **In short:** the app works end to end on GCP. Routes are served by the route model, and the heatmap shows pollution
-data that updates every hour. The NO₂ downscaling model (XGBoost + IDW correction, ds-v0.4.0) is in production
-since 28 November 2026. The PM2.5 model isn't on GCP yet, so PM2.5 values use the simpler IDW estimate. Railway is unchanged and still stopped by its usage limit.
+data that updates every hour. Both downscaling models are in production: PM2.5 (ST-GNN, ds-v0.3.0) since 19 November
+2026, and NO₂ XGBoost + IDW correction (ds-v0.4.0) since 28 November 2026, replacing the LightGBM model. Railway is unchanged and still stopped by its usage limit.
 
 ---
 
@@ -46,7 +46,7 @@ since 28 November 2026. The PM2.5 model isn't on GCP yet, so PM2.5 values use th
 | Road graph `jakarta-20261005` | ✅ seeded from the repo, same edge IDs as Railway |
 | Route model `morl-route-policy` | ✅ version 1, aliases `candidate` and `production`, `package_sha256 7774d98c…` (TI-AI-09 set, contract 1.1.0) |
 | Pollution cache | ✅ filled by the Data Worker, first window 2026-11-17 05:00 UTC, refreshed hourly |
-| PM2.5 model `spatial-downscaling-pm25` | ❌ not registered (IDW fallback) |
+| PM2.5 model `spatial-downscaling-pm25` | ✅ version 1, ST-GNN `ds-v0.3.0-723c4558fd2f`, aliases `candidate` and `production` since 19 Nov 2026 (`package_sha256 ce84b2d7…`) |
 | NO₂ model `spatial-downscaling-no2` | ✅ version 2, XGBoost + IDW corr `ds-v0.4.0-9734d6e298ef`, aliases `candidate` and `production` since 28 Nov 2026 (`package_sha256 939f2ddf…`; production was version 1) |
 
 ### Verification results
@@ -67,7 +67,6 @@ since 28 November 2026. The PM2.5 model isn't on GCP yet, so PM2.5 values use th
 
 | Item | Why | Needed to finish |
 |---|---|---|
-| PM2.5 model | Its bundle exists only in the Railway bucket, which is locked by the Railway usage limit | Raise the Railway limit (or wait for 27 Nov), download the bundle, then register and promote it on GCP |
 | Old Railway data | Same lock. GCP started with an empty database | Optional: `pg_dump` of the `pollution`, `ground_truth` and `mlflow` schemas, restore into Cloud SQL |
 | CI/CD to GCP | Built, but not active until its PR is merged into `dev`; the deployer account's permissions are untested until that first run | Merge the PR, then check the first `deploy / gcp` run |
 | Budget alert for observability | `observability` is always on (1.125 vCPU, since 26 Nov 2026) | Billing account owner sets a budget alert |
@@ -81,8 +80,8 @@ since 28 November 2026. The PM2.5 model isn't on GCP yet, so PM2.5 values use th
 - **First request after idle is slow.** Cloud Run scales to zero; the first request after a few idle minutes waits a
   few seconds for startup. Setting `--min-instances=1` on `cache-api` and `gateway` removes this but costs more.
 - **`gcloud` on Windows + Git Bash** mis-parses arguments that contain spaces. Use PowerShell or the YAML job files.
-- **Data Worker status is `degraded`.** Expected while PM2.5 falls back to IDW; it clears once that model is
-  registered.
+- **PM2.5 compatibility is `flagged`.** The Data Worker reports "Contract version differs: package 1.0.0, runtime
+  1.1.0" for `spatial-downscaling-pm25:1` (28 Nov 12:15 UTC cycle). The model is still used, with 0 fallback cells.
 
 ---
 
@@ -98,13 +97,9 @@ since 28 November 2026. The PM2.5 model isn't on GCP yet, so PM2.5 values use th
 > - **Register, promote and verify** depend on the bundles, so they haven't started.
 
 - [ ] **Account owner:** set a budget alert in GCP Billing.
-- [x] NO₂: registered as `spatial-downscaling-no2` version 2 and promoted to `production` (28 Nov 2026,
-      `scripts/gcp/README.md`, "Model NO₂").
-- [ ] Get the PM2.5 bundle from the Railway bucket (`packaged/spatial/pm25/…`) once Railway's limit is raised.
-- [ ] Upload it to `gs://sippolusi-mlflow-87531247158/artifacts/incoming/spatial/pm25/<version>/`.
-- [ ] Register:
-      `gcloud run jobs execute model-register --region asia-southeast2 --update-env-vars REGISTER_PREFIX=incoming/spatial/pm25/<version>/ --wait`
-- [ ] Team decision, then promote: `--update-env-vars PROMOTE=pm25:<version>`.
+- [x] PM2.5 and NO₂ (LightGBM) registered as version 1 and promoted to `production` (19 Nov 2026).
+- [x] NO₂: XGBoost + IDW corr registered as `spatial-downscaling-no2` version 2 and promoted to `production`
+      (28 Nov 2026). Details in `scripts/gcp/README.md`.
 - [ ] Check the next Data Worker cycle reports `source` other than `idw` for both pollutants.
 
 ### Priority 2: make it maintainable

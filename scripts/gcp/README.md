@@ -2,9 +2,9 @@
 
 Deployment kedua di samping Railway *development*, dibuat 17 November 2026 dari cabang `TI-DO-10b`. Basis data
 mulai kosong: graf jalan di-*seed* dari repositori, *cache* polusi diisi Data Worker, dan model rute didaftarkan ulang
-dari set TI-AI-09 yang di-commit. Model NO₂ (XGBoost + koreksi IDW, ds-v0.4.0) terdaftar dan menjadi `production` sejak
-28 November 2026. Model PM2.5 **belum** ada (bundelnya hanya di *bucket* Railway); Data Worker memakai *fallback* IDW
-untuk PM2.5 sampai modelnya diunggah dan didaftarkan.
+dari set TI-AI-09 yang di-commit. Model spasial terdaftar dan `production`: PM2.5 `spatial-downscaling-pm25:1` (ST-GNN,
+ds-v0.3.0, sejak 19 November 2026) dan NO₂ `spatial-downscaling-no2:2` (XGBoost + koreksi IDW, ds-v0.4.0, sejak
+28 November 2026; sebelumnya versi 1, LightGBM ds-v0.3.0, sejak 19 November 2026).
 
 ## Alamat
 
@@ -146,6 +146,17 @@ Variabel `--update-env-vars` hanya berlaku untuk eksekusi itu, jadi tidak ada ni
 - `GET /v1/exposure-surface` lewat gateway dan lewat `frontend` (proxy `/v1/`): HTTP 200, 1.384 sel.
 - `cache-api` dan `model-registry` dipanggil langsung dari internet: 404 (ingress internal).
 
+## Model PM2.5 dan NO₂ versi 1 (18–19 November 2026)
+
+Dicatat 28 November 2026 dari log *job* `model-register`:
+
+- PM2.5 (`model-register-gdj2p`): `verified: spatial-downscaling-pm25 ds-v0.3.0-723c4558fd2f ... package_sha256
+  ce84b2d719560416... 13 files + package.json`, `registered: spatial-downscaling-pm25 version 1 aliases candidate`,
+  `RESULT: PASS`. Promosi (`model-register-g9fw8`): `promoted: spatial-downscaling-pm25:1 is production`.
+- NO₂ LightGBM (`model-register-xbqj5`): `verified: spatial-downscaling-no2 ds-v0.3.0-f658e5d2feb9 ... package_sha256
+  99ab5fcedd1752c0... 5 files + package.json`, `registered: spatial-downscaling-no2 version 1 aliases candidate`,
+  `RESULT: PASS`. Promosi (`model-register-l6sg4`): `promoted: spatial-downscaling-no2:1 is production`.
+
 ## Model NO₂ (28 November 2026)
 
 XGBoost + koreksi IDW `ds-v0.4.0-9734d6e298ef` (PR #115, pemilihan model di
@@ -161,8 +172,6 @@ Image *job* `data-worker:fb30ad5` (`dev` setelah PR #115).
 
 ## Belum dikerjakan
 
-- Model PM2.5: unggah bundelnya (dari *bucket* Railway, setelah batas Railway dinaikkan) ke
-  `artifacts/incoming/spatial/pm25/<versi>/`, daftarkan dengan `model-register`, lalu promosikan.
 - Periksa bahwa siklus Data Worker berikutnya memakai `spatial-downscaling-no2:2` untuk NO₂ (bukan IDW).
 - Data lama Railway (riwayat *cache* polusi, `ground_truth`, metadata MLflow) tidak dipindahkan.
 - Observability terpasang (issue #112), tetapi penerima notifikasi alert belum diisi (secret `alertmanager-config`), dan
