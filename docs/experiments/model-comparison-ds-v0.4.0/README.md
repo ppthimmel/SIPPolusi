@@ -120,11 +120,46 @@ CPU `xgboost-cpu` 3.2.0.
 **Check of the repository code.** The same code run as LOSO on all 15 NO₂ folds (CPU,
 [`production_no2/loso_check.py`](production_no2/loso_check.py), commit `bb67a97`, whose training and prediction code
 equals `c8590c7`) scores the same station-hours as the notebook (val n = 2,005, test n = 2,354; fold 12, group
-`G_LCS-21`, has no val or test labels, so 14 folds contribute rows), with val RMSE 33.99 / test 35.23 (R² 0.54 / 0.50)
-against the notebook's 35.95 / 37.65 ([`production_no2/loso_check.json`](production_no2/loso_check.json), with
-per-fold counts). The cause of the difference was
-not isolated; the notebook ran XGBoost on the GPU (`device="cuda"`), whose row and column sampling differs from the
-CPU's, with the Colab XGBoost version. The selection above uses the notebook numbers and is unchanged.
+`G_LCS-21`, has no val or test labels, so 14 folds contribute rows). That one run (seed 42) gave val RMSE 33.99 /
+test 35.23 against the notebook's 35.95 / 37.65 ([`production_no2/loso_check.json`](production_no2/loso_check.json),
+with per-fold counts). Both are single draws; the next section explains the gap and compares the models over 25 seeds.
+
+### Notebook vs repository and seed spread (NO₂ LOSO)
+
+Scripts and result files: [`no2_loso_investigation/`](no2_loso_investigation) (repository code at `d79c16e`; CPU runs
+with `xgboost-cpu` 3.2.0 and LightGBM 4.6.0, 8 threads; GPU runs with the full `xgboost` 3.2.0 wheel on an RTX 3050).
+The Colab run is the notebook's `runs/` folder (`xgboost_idwcorr/no2/loso/`, `lightgbm/no2/loso/`): per-fold
+predictions and models, XGBoost 3.4.1 with `device="cuda"`.
+
+1. **The inputs are the same.** All 4,359 val/test station-hours Colab scored match the repository design one to one,
+   with the same labels; recomputed, Colab's metrics are exactly 35.95 / 37.65 (XGBoost + IDW corr) and 36.21 / 36.71
+   (LightGBM). Every Colab fold model, predicted here from the repository's features, reproduces Colab's saved
+   predictions within 1.2·10⁻⁴ µg/m³ (`colab_models_check.csv`). The repository and notebook designs are equal on the
+   training and val/test tables of every fold (185,248 training rows): keys and labels identical, all 62 columns within
+   1.1·10⁻¹³ relative (`design_comparison.csv`).
+2. **The code is not the cause.** The notebook's own NO₂ code run on CPU gives XGBoost + IDW corr 34.01 / 35.33 and
+   LightGBM 36.10 / 36.67 (`notebook_cpu_results.csv`), next to the repository code's 33.99 / 35.23.
+3. **A single XGBoost run varies a lot.** With identical inputs, the seed alone moves XGBoost + IDW corr's val RMSE
+   between 33.09 and 36.94 (25 seeds). Two CPU seeds differ by 4.3–6.8 RMSE per row; Colab differs from the local CPU
+   run by 5.8, like another seed. LightGBM reproduces Colab within 0.39 per row (`per_row.csv`). Even the 10⁻¹³ feature
+   differences between the notebook's torch arithmetic and the repository's numpy change the seed-42 result (34.19 on
+   the notebook tables with either XGBoost wheel, 33.99 on the repository tables).
+4. **Device.** With XGBoost 3.2.0 on the same tables (5 seeds), the GPU is worse than the CPU for XGBoost direct (mean
+   val 37.77 against 35.69, about 4 standard errors; Colab 38.42) and not distinguishably worse for XGBoost + IDW corr
+   (35.54 against 34.94, about 1 standard error) (`device_seeds.csv`). XGBoost 3.4.1, the Colab version, was not
+   available on the package index used here and is untested.
+5. **Selection under the same conditions.** 25 seeds per model, CPU, the repository's training code
+   (`seeds.csv`, `seeds_summary.csv`); pooled LOSO RMSE, mean ± standard deviation over seeds:
+
+   | Model | val | test |
+   |---|---|---|
+   | XGBoost + IDW corr | 35.37 ± 0.86 (33.09–36.94) | 36.86 ± 0.79 |
+   | LightGBM | 35.78 ± 0.44 (34.98–36.54) | 36.70 ± 0.40 |
+
+   XGBoost + IDW corr keeps the lower validation RMSE, by 0.41 (standard error 0.19, 2.1 standard errors), and stays
+   the NO₂ model under the validation rule. The lead is small, it does not appear on test (LightGBM 0.16 lower), and
+   XGBoost is about twice as sensitive to the seed. The serving model is one draw (seed 42); its expected LOSO val
+   RMSE is about 35.4 ± 0.9, not the 33.99 of the single check above.
 
 ## Reproducibility
 
@@ -140,6 +175,7 @@ The tables above can be checked from this folder:
 | [`snapshot/leakage_report.json`](snapshot/leakage_report.json), [`.md`](snapshot/leakage_report.md) | The 8 leakage checks, all passed |
 | [`snapshot/sippolusi_ds-v0.4.0_bundle.zip.sha256`](snapshot/sippolusi_ds-v0.4.0_bundle.zip.sha256) | SHA-256 of the data bundle used for this run (`8a84e66b…`, LZMA zip of the snapshot above) |
 | [`backfill/BACKFILL_MANIFEST.json`](backfill/BACKFILL_MANIFEST.json) | Oct–Nov feature backfill: per-source reports and the overlap comparison with the original `dataset_processed` |
+| [`no2_loso_investigation/`](no2_loso_investigation) | NO₂ LOSO check of the notebook against the repository: `controlled.py` (designs and notebook code on CPU), `colab_models_check.py`, `per_row.py`, `device_check.py` (CPU vs GPU), `seeds.py` (25 seeds), and their CSVs in `results/` |
 
 The snapshot itself (16 MB) is not committed. It is rebuilt with
 [`src/data_worker/scripts/dataset_extension`](../../../src/data_worker/scripts/dataset_extension/README.md) and checked

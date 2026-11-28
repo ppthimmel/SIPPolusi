@@ -18,6 +18,8 @@ seluruh stasiun untuk PM2.5) belum diterapkan; fallback tetap IDW p = 2, k = 8 (
 
 NO₂ memakai XGBoost + koreksi IDW sejak [perbandingan ds-v0.4.0](../../../docs/experiments/model-comparison-ds-v0.4.0/README.md):
 model ini terpilih pada validasi LOSO (RMSE val 35,95; test 37,65 terhadap IDW p = 1 seluruh stasiun 47,28).
+Keunggulannya atas LightGBM kecil: pada 25 seed (CPU) RMSE val 35,37 ± 0,86 terhadap 35,78 ± 0,44, test setara
+(36,86 terhadap 36,70); lihat [pemeriksaan seed](../../../docs/experiments/model-comparison-ds-v0.4.0/README.md), bagian "Notebook vs repository and seed spread").
 Parameternya (`configs/xgboost.json`) belum di-*tune*. Bundle LightGBM NO₂ (`configs/lightgbm.json`) tetap diterima
 registry dan Worker; keluarga yang diizinkan per polutan ada di `SERVING_FAMILIES` (`configs/__init__.py`).
 

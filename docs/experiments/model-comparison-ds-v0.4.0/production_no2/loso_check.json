@@ -128,5 +128,6 @@
     "val_rmse": 35.95,
     "test_rmse": 37.65,
     "device": "cuda"
-  }
+  },
+  "single_draw": "These metrics are one run (seed 42). Over 25 seeds the same model scores val RMSE 35.37 \u00b1 0.86 and test 36.86 \u00b1 0.79: ../no2_loso_investigation/results/seeds_summary.csv"
 }
