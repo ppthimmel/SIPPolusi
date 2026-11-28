@@ -81,6 +81,9 @@ jobs:
           build-args: |
             VITE_ROUTE_TIMEOUT_MS=45000
             VITE_SURFACE_TIMEOUT_MS=45000
+            # TEMPORARY, for the model-comparison screenshots: enables ?lokasi= and ?simulasi= on the
+            # deployed frontend. Remove this line and merge again when the evaluation is done.
+            VITE_GPS_SPOOF=on
 
   deploy:
     name: deploy / cloud run

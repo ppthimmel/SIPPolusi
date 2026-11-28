@@ -1,5 +1,5 @@
 """Contract tests: every provider behind IRouteSolve gives a valid SolveResult on the same
-input, without any AI service (mock, in-process baseline, HTTP against a stand-in)."""
+input, without any AI service (mock, in-process baseline, weighted A*, HTTP against a stand-in)."""
 from __future__ import annotations
 
 import pytest
@@ -9,12 +9,14 @@ from solver.contract import SolveResult
 from solver.http_client import HttpSolver
 from solver.mock import MockSolver
 from solver.orchestrator import solve_route_request
+from solver.weighted import WeightedSolver
 
 from .conftest import mock_service_transport, node_id, request_body
 
 PROVIDERS = {
     "mock": lambda: MockSolver(),
     "baseline": lambda: BaselineSolver(),
+    "weighted": lambda: WeightedSolver(),
     "http": lambda: HttpSolver("http://route-model.internal", transport=mock_service_transport()),
 }
 
