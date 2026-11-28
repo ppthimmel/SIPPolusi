@@ -174,8 +174,8 @@ function routeList(resp: RouteResponse, request: RouteRequest, isFallback: boole
           { class: "route-meta", "data-label": labelled ? title : "" },
           via && labelled ? `${title} · ` : "",
           `${exposureLabel} ${fmtExposure(r.exposure)} ${exposureUnitLabel(resp.exposureUnit)}`,
-          // How sure the model is of that number, shown beside it (transparency).
-          confidenceText(r.confidence) && h("span", { class: "route-confidence" }, ` · ${confidenceText(r.confidence)}`),
+          // How sure the model is of that number, on the line under it (transparency).
+          confidenceText(r.confidence) && h("span", { class: "route-confidence" }, confidenceText(r.confidence)),
         ),
       ),
       h("span", { class: "route-time" }, h("strong", { class: "mono" }, fmtMinutes(r.travelTimeMin)), h("span", { class: "mono" }, fmtDistance(r.distanceM))),
