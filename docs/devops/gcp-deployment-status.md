@@ -1,13 +1,13 @@
 # SIPPolusi on Google Cloud: deployment status
 
-Status as of **18 November 2026**. Project `sippolusi` (number 87531247158), region `asia-southeast2` (Jakarta).
+Status as of **18 November 2026** (NO₂ model updated 28 November 2026). Project `sippolusi` (number 87531247158), region `asia-southeast2` (Jakarta).
 Deployed from branch `TI-DO-10b`. Commands, URLs and resource details: [`scripts/gcp/README.md`](../../scripts/gcp/README.md).
 
 **Website:** https://frontend-87531247158.asia-southeast2.run.app
 
 **In short:** the app works end to end on GCP. Routes are served by the route model, and the heatmap shows pollution
-data that updates every hour. The PM2.5 and NO₂ downscaling models aren't on GCP yet, so pollution values use the
-simpler IDW estimate. Railway is unchanged and still stopped by its usage limit.
+data that updates every hour. The NO₂ downscaling model (XGBoost + IDW correction, ds-v0.4.0) is in production
+since 28 November 2026. The PM2.5 model isn't on GCP yet, so PM2.5 values use the simpler IDW estimate. Railway is unchanged and still stopped by its usage limit.
 
 ---
 
@@ -47,7 +47,7 @@ simpler IDW estimate. Railway is unchanged and still stopped by its usage limit.
 | Route model `morl-route-policy` | ✅ version 1, aliases `candidate` and `production`, `package_sha256 7774d98c…` (TI-AI-09 set, contract 1.1.0) |
 | Pollution cache | ✅ filled by the Data Worker, first window 2026-11-17 05:00 UTC, refreshed hourly |
 | PM2.5 model `spatial-downscaling-pm25` | ❌ not registered (IDW fallback) |
-| NO₂ model `spatial-downscaling-no2` | ⏳ XGBoost + IDW corr `ds-v0.4.0-9734d6e298ef` staged in `incoming/spatial/no2/`; register and promote once the XGBoost code is deployed from `dev` (IDW fallback until then) |
+| NO₂ model `spatial-downscaling-no2` | ✅ version 2, XGBoost + IDW corr `ds-v0.4.0-9734d6e298ef`, aliases `candidate` and `production` since 28 Nov 2026 (`package_sha256 939f2ddf…`; production was version 1) |
 
 ### Verification results
 
@@ -67,7 +67,7 @@ simpler IDW estimate. Railway is unchanged and still stopped by its usage limit.
 
 | Item | Why | Needed to finish |
 |---|---|---|
-| PM2.5 and NO₂ models | Their bundles exist only in the Railway bucket, which is locked by the Railway usage limit | Raise the Railway limit (or wait for 27 Nov), download the bundles, then register and promote them on GCP |
+| PM2.5 model | Its bundle exists only in the Railway bucket, which is locked by the Railway usage limit | Raise the Railway limit (or wait for 27 Nov), download the bundle, then register and promote it on GCP |
 | Old Railway data | Same lock. GCP started with an empty database | Optional: `pg_dump` of the `pollution`, `ground_truth` and `mlflow` schemas, restore into Cloud SQL |
 | CI/CD to GCP | Built, but not active until its PR is merged into `dev`; the deployer account's permissions are untested until that first run | Merge the PR, then check the first `deploy / gcp` run |
 | Budget alert for observability | `observability` is always on (1.125 vCPU, since 26 Nov 2026) | Billing account owner sets a budget alert |
@@ -81,8 +81,8 @@ simpler IDW estimate. Railway is unchanged and still stopped by its usage limit.
 - **First request after idle is slow.** Cloud Run scales to zero; the first request after a few idle minutes waits a
   few seconds for startup. Setting `--min-instances=1` on `cache-api` and `gateway` removes this but costs more.
 - **`gcloud` on Windows + Git Bash** mis-parses arguments that contain spaces. Use PowerShell or the YAML job files.
-- **Data Worker status is `degraded`.** Expected while PM2.5 and NO₂ fall back to IDW; it clears once those
-  models are registered.
+- **Data Worker status is `degraded`.** Expected while PM2.5 falls back to IDW; it clears once that model is
+  registered.
 
 ---
 
@@ -98,12 +98,13 @@ simpler IDW estimate. Railway is unchanged and still stopped by its usage limit.
 > - **Register, promote and verify** depend on the bundles, so they haven't started.
 
 - [ ] **Account owner:** set a budget alert in GCP Billing.
-- [ ] Get the PM2.5 and NO₂ bundles from the Railway bucket (`packaged/spatial/pm25/…`, `incoming/spatial/no2/…`)
-      once Railway's limit is raised.
-- [ ] Upload each to `gs://sippolusi-mlflow-87531247158/artifacts/incoming/spatial/<pm25|no2>/<version>/`.
+- [x] NO₂: registered as `spatial-downscaling-no2` version 2 and promoted to `production` (28 Nov 2026,
+      `scripts/gcp/README.md`, "Model NO₂").
+- [ ] Get the PM2.5 bundle from the Railway bucket (`packaged/spatial/pm25/…`) once Railway's limit is raised.
+- [ ] Upload it to `gs://sippolusi-mlflow-87531247158/artifacts/incoming/spatial/pm25/<version>/`.
 - [ ] Register:
       `gcloud run jobs execute model-register --region asia-southeast2 --update-env-vars REGISTER_PREFIX=incoming/spatial/pm25/<version>/ --wait`
-- [ ] Team decision, then promote: `--update-env-vars PROMOTE=pm25:<version>` (same for `no2`).
+- [ ] Team decision, then promote: `--update-env-vars PROMOTE=pm25:<version>`.
 - [ ] Check the next Data Worker cycle reports `source` other than `idw` for both pollutants.
 
 ### Priority 2: make it maintainable
