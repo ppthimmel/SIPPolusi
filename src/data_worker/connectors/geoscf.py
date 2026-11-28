@@ -10,6 +10,15 @@ sama dengan data latih TI-AI-01 (``dataset_processed/geos-cf``):
 - **fcst:** satu run per hari pada 09z, 120 jam ke depan; dianggap tersedia
   setelah berkas lead terakhir terbit (``scripts/fetch_geoscf_fcst.py``).
 
+Jam setiap nilai mengikuti sumbu waktu linear pada DAS GrADS (``parse_das_time``), bukan larik
+``time`` pada respons subset. Pada beberapa posisi larik itu server menjawab waktu yang salah:
+umumnya tahunnya (mis. 2018 atau tahun 30 alih-alih 2026, dengan bulan dan jam benar),
+kadang menit atau jamnya, dan posisinya berubah antarpermintaan. Teramati sejak Agustus
+2026 (1-3 lead per run) dan jauh lebih sering sejak 26 November 2026 (7-12 lead per run,
+termasuk indeks pertama agregasi ``ana``), sedangkan nilai polutannya identik antarpermintaan.
+Ketidaksesuaian larik itu hanya dicatat sebagai diagnostik, kecuali bila larik bergeser seragam
+dari sumbu DAS (``axis_shift``): respons itu ditolak, karena DAS dan subset tidak sepadan.
+
 Tanpa autentikasi. Tabel 3.19: 60 detik, tiga kali; subset OPeNDAP dihitung di
 server (±13 detik per variabel), sehingga permintaan nilai diberi batas
 ``OPENDAP_TIMEOUT_S``. Bila gagal, prakiraan run sebelumnya untuk jam yang sama
@@ -20,7 +29,6 @@ from __future__ import annotations
 
 import datetime as dt
 import email.utils
-import re
 
 import numpy as np
 import pandas as pd
@@ -48,8 +56,6 @@ ANA_MAX_HEADS = 80
 #: Jam ana yang menunggu agregasi OPeNDAP dan akan keluar dari jendela ANA_LOOKBACK_HOURS dalam
 #: kurang dari ini diberi peringatan: setelah keluar, jam itu tidak diperiksa lagi.
 ANA_EXPIRY_WARNING_HOURS = 12
-#: Permintaan per run fcst bila larik waktu ASCII-nya tidak sesuai sumbu linear.
-FCST_ATTEMPTS = 2
 
 
 def _http_time(value: str | None) -> pd.Timestamp | None:
@@ -88,21 +94,24 @@ def ana_published(client: HttpClient, window_start: pd.Timestamp) -> pd.Timestam
 
 
 def ana_axis(client: HttpClient) -> tuple[pd.Timestamp, int]:
-    """Awal dan panjang sumbu waktu agregasi OPeNDAP ``ana`` (linear per jam, cap menit ke-30)."""
-    dds = client.get(f"{OPENDAP_ANA}.dds").text
-    match = re.search(r"Float64 time\[time = (\d+)\]", dds)
-    if not match:
-        raise FormatError("geoscf_ana: sumbu waktu tidak ditemukan pada .dds")
-    first = fcst_script._grads_time(fcst_script._parse_ascii(client.get(f"{OPENDAP_ANA}.ascii?time[0:0]").text,
-                                                              "time"))[0]
-    if first.minute != 30:
-        raise FormatError(f"geoscf_ana: cap waktu pertama {first} bukan menit ke-30")
-    return first, int(match.group(1))
+    """Awal dan panjang sumbu waktu agregasi OPeNDAP ``ana`` dari DAS (linear per jam, cap menit ke-30)."""
+    try:
+        first, step, length = fcst_script.parse_das_time(client.get(f"{OPENDAP_ANA}.das").text)
+    except ValueError as exc:
+        raise FormatError(f"geoscf_ana: sumbu waktu DAS tidak terbaca ({exc})") from exc
+    if first.minute != 30 or step != pd.Timedelta(hours=1):
+        raise FormatError(f"geoscf_ana: sumbu waktu DAS {first} langkah {step}, bukan per jam pada menit ke-30")
+    return first, length
 
 
 def ana_index(first: pd.Timestamp, start: pd.Timestamp) -> int:
     """Indeks jam ``start`` pada sumbu waktu agregasi OPeNDAP ``ana``."""
     return int((start + pd.Timedelta(minutes=30) - first) / pd.Timedelta(hours=1))
+
+
+def ana_start(first: pd.Timestamp, index: int) -> pd.Timestamp:
+    """Awal jam indeks ``index`` pada sumbu waktu agregasi OPeNDAP ``ana`` (kebalikan ``ana_index``)."""
+    return first + pd.Timedelta(hours=index) - pd.Timedelta(minutes=30)
 
 
 def ana_query(first: pd.Timestamp, starts: list[pd.Timestamp]) -> tuple[str, int, int]:
@@ -113,11 +122,14 @@ def ana_query(first: pd.Timestamp, starts: list[pd.Timestamp]) -> tuple[str, int
     return f"{OPENDAP_ANA}.ascii?{query}", i0, i1
 
 
-def parse_ana(text: str, published: dict) -> tuple[pd.DataFrame, dict]:
+def parse_ana(text: str, published: dict, start: pd.Timestamp) -> tuple[pd.DataFrame, dict]:
     """Subset ASCII OPeNDAP → baris (sel, jam) untuk jam yang sudah terbit (``published``: awal jam → waktu terbit).
 
-    Satu baris per (time_window_start, cell_id) dengan skema
-    ``geoscf_cell_hourly.parquet``; nilai di luar rentang fisik menjadi kosong.
+    ``start`` adalah awal jam indeks pertama subset (``ana_start`` dari indeks awal ``ana_query``);
+    jam berikutnya mengikuti sumbu DAS, satu jam per indeks. Satu baris per (time_window_start,
+    cell_id) dengan skema ``geoscf_cell_hourly.parquet``; nilai di luar rentang fisik menjadi kosong.
+    Respons yang larik ``time``-nya bergeser seragam dari sumbu itu ditolak (``axis_shift``);
+    selain itu, jam tersimpan yang angka ``time``-nya salah dihitung pada ``time_mismatch_hours``.
     """
     try:
         lat, lon = fcst_script._parse_ascii(text, "lat"), fcst_script._parse_ascii(text, "lon")
@@ -130,9 +142,13 @@ def parse_ana(text: str, published: dict) -> tuple[pd.DataFrame, dict]:
         raise FormatError(f"geoscf_ana: grid subset berubah ({lat}, {lon})")
     if pm25.shape != (len(times), 1, 3, 3) or no2.shape != pm25.shape:
         raise FormatError(f"geoscf_ana: bentuk larik {pm25.shape} tidak terduga")
-    if not (times.minute == 30).all():
-        raise FormatError("geoscf_ana: cap tavg bukan menit ke-30")
-    starts = times - pd.Timedelta(minutes=30)
+    starts = pd.date_range(start, periods=len(times), freq="h")
+    expected = starts + pd.Timedelta(minutes=30)
+    shift = fcst_script.axis_shift(times, expected)
+    if shift is not None:
+        raise FormatError(f"geoscf_ana: larik time bergeser {shift / pd.Timedelta(hours=1):+g} jam dari sumbu DAS "
+                          f"(awal subset {start})")
+    time_mismatch = int(((times != expected) & starts.isin(list(published))).sum())
     frame = pd.DataFrame({
         "time_window_start": np.repeat(starts, 9),
         "cell_id": np.tile(np.arange(9, dtype="int16"), len(starts)),
@@ -152,7 +168,8 @@ def parse_ana(text: str, published: dict) -> tuple[pd.DataFrame, dict]:
                               .dt.total_seconds() / 3600).astype("float32")
     duplicates = int(frame.duplicated(["time_window_start", "cell_id"]).sum())
     frame = frame.drop_duplicates(["time_window_start", "cell_id"], keep="last")
-    quality.update(hours=int(frame.time_window_start.nunique()), duplicate_rows=duplicates)
+    quality.update(hours=int(frame.time_window_start.nunique()), duplicate_rows=duplicates,
+                   time_mismatch_hours=time_mismatch)
     return frame.sort_values(["time_window_start", "cell_id"]).reset_index(drop=True), quality
 
 
@@ -186,8 +203,8 @@ def fetch_ana(client: HttpClient, now: dt.datetime, stored: set) -> tuple[pd.Dat
             info["expiring_hours"] = [f"{h:%Y-%m-%dT%H:%MZ}" for h in expiring]
         if not published:
             return pd.DataFrame(), info
-    url, _, _ = ana_query(first, list(published))
-    frame, quality = parse_ana(client.get(url, timeout=OPENDAP_TIMEOUT_S).text, published)
+    url, i0, _ = ana_query(first, list(published))
+    frame, quality = parse_ana(client.get(url, timeout=OPENDAP_TIMEOUT_S).text, published, ana_start(first, i0))
     if frame.time_window_start.nunique() != len(published):
         raise FormatError("geoscf_ana: subset tidak memuat seluruh jam yang diminta")
     return frame, {**info, **quality}
@@ -219,28 +236,15 @@ def _getter(client: HttpClient):
 def fetch_fcst(client: HttpClient, init: pd.Timestamp) -> tuple[pd.DataFrame, dict]:
     """Satu run lengkap → skema ``geoscf_fcst_cell_hourly.parquet`` (``process`` skrip data latih).
 
-    Bila larik waktu ASCII memuat lead yang tidak sesuai sumbu linear, run diminta ulang
-    (``FCST_ATTEMPTS`` kali; pada run 2026-11-01 09z kueri yang sama kadang menjawab waktu yang
-    benar). Bila masih tidak sesuai, keselarasan nilai lead itu tidak dapat dipastikan: run tidak
-    disimpan (frame kosong, ``deferred``), sehingga diminta lagi pada siklus berikutnya, dan
-    pembaca fitur memakai run sebelumnya untuk jam yang sama.
+    Jam setiap lead mengikuti sumbu DAS run itu. Lead yang angka ``time``-nya pada subset tidak
+    sesuai sumbu itu hanya dicatat (``time_mismatch_leads``): angka itu salah di sisi server dan
+    tidak menggeser nilai polutan. Larik yang bergeser seragam dari sumbu itu ditolak (``axis_shift``).
     """
     try:
-        for attempt in range(1, FCST_ATTEMPTS + 1):
-            try:
-                run = fcst_script.fetch_run(init, get=_getter(client))
-            except fcst_script.ForecastTimeMismatch:
-                if attempt == FCST_ATTEMPTS:
-                    raise
-                continue
-            if not run["time_mismatch_leads"]:
-                break
-        else:
-            return pd.DataFrame(), {"rows": 0, "deferred": True, "attempts": attempt,
-                                    "time_mismatch_leads": run["time_mismatch_leads"]}
+        run = fcst_script.fetch_run(init, get=_getter(client))
         frame = fcst_script.process({"runs": [run]})
     except (ValueError, IndexError) as exc:
         raise FormatError(f"geoscf_fcst: run {init:%Y-%m-%d %Hz} tidak terbaca ({exc})") from exc
     quality = {"rows": len(frame), "pm25_missing": int(frame.pm25_ugm3.isna().sum()),
-               "no2_missing": int(frame.no2_ppb.isna().sum()), "deferred": False, "attempts": attempt}
+               "no2_missing": int(frame.no2_ppb.isna().sum()), "time_mismatch_leads": run["time_mismatch_leads"]}
     return frame, quality

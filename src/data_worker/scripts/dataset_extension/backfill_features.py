@@ -64,9 +64,9 @@ def do_ana(start, end, out: Path) -> dict:
     frames = []
     for k in range(0, len(inside), ANA_CHUNK_HOURS):
         chunk = inside[k:k + ANA_CHUNK_HOURS]
-        url, _, _ = geoscf.ana_query(first, chunk)
+        url, i0, _ = geoscf.ana_query(first, chunk)
         text = client.get(url, timeout=geoscf.OPENDAP_TIMEOUT_S).text
-        frame, _ = geoscf.parse_ana(text, {h: published[h] for h in chunk})
+        frame, _ = geoscf.parse_ana(text, {h: published[h] for h in chunk}, geoscf.ana_start(first, i0))
         frames.append(frame)
         log(f"ana OPeNDAP {k + len(chunk)}/{len(inside)}")
     frame = pd.concat(frames, ignore_index=True)
@@ -104,9 +104,6 @@ def do_fcst(start, end, out: Path) -> dict:
                 skipped[str(init)] = "incomplete"
                 continue
             frame, quality = geoscf.fetch_fcst(client, init)
-            if quality.get("deferred"):
-                skipped[str(init)] = f"time mismatch {quality.get('time_mismatch_leads')}"
-                continue
             frames.append(frame)
             log(f"fcst {init:%Y-%m-%d %Hz} rows={len(frame)}")
         except Exception as exc:  # keep going; a missing run falls back to the previous run in the reader
