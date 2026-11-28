@@ -19,6 +19,7 @@ import { initTooltips } from "./tooltip";
 import { routeMidpoint, streetFromPlace } from "./route-names";
 import { fmtCoord, fmtNumber } from "./format";
 import { Legend } from "./legend";
+import { hasConsent, locationPermission, onConsentGiven, requireConsent, showPrivacy } from "./consent";
 import { MapView, type SegmentClick } from "./map-view";
 import { NavView, type NavMessage } from "./nav-view";
 import type { RouteLine } from "./nav-geometry";
@@ -166,7 +167,11 @@ function renderCredits(): void {
     link("https://www.openstreetmap.org/copyright", tr("© kontributor OpenStreetMap", "© OpenStreetMap contributors")),
   );
   $("panel-credits").replaceChildren(
-    line(`© ${new Date().getFullYear()} SIPPolusi`),
+    line(
+      `© ${new Date().getFullYear()} SIPPolusi · `,
+      // The privacy text agreed to in the consent pop-up, to read again (consent.ts).
+      h("button", { type: "button", class: "link-btn", "aria-haspopup": "dialog", onclick: showPrivacy }, tr("Privasi", "Privacy")),
+    ),
     line(
       tr("Peta ", "Map "),
       link("https://openfreemap.org", "OpenFreeMap"),
@@ -302,8 +307,6 @@ function currentErrors(): Record<Which, string | null> {
 }
 
 function refreshForm(): void {
-  // PNF-07: one disclaimer on screen; with routes shown, the copy under them takes over.
-  $("form-disclaimer").hidden = !!state.result;
   const errors = currentErrors();
   const valid = !errors.origin && !errors.destination;
   for (const w of ["origin", "destination"] as const) {
@@ -398,6 +401,11 @@ for (const w of ["origin", "destination"] as const) {
   f.input.addEventListener("input", () => onTyped(w));
   // While a field has the cursor, a click on the map sets its point (no need for the pin button).
   f.input.addEventListener("focus", () => {
+    // Typing searches as you go, so the privacy notice comes before the field can be used.
+    if (!hasConsent()) {
+      void withConsent(() => f.input.focus());
+      return;
+    }
     if (state.pick === w) return;
     state.pick = w;
     refreshForm();
@@ -440,10 +448,12 @@ for (const w of ["origin", "destination"] as const) {
     }
   });
   // Arms picking on the map for this field (focusing the field does the same).
-  f.pick.addEventListener("click", () => {
-    state.pick = w;
-    refreshForm();
-  });
+  f.pick.addEventListener("click", () =>
+    void withConsent(() => {
+      state.pick = w;
+      refreshForm();
+    }),
+  );
 }
 
 $("swap-btn").addEventListener("click", () => {
@@ -523,9 +533,36 @@ mapView.onClick = ({ point }: SegmentClick) => {
   // The trip is locked while navigating: a map click must not move its points.
   if (!state.pick || nav.session) return;
   const which = state.pick;
-  state.pick = which === "origin" && !state.points.destination ? "destination" : null;
-  setPoint(which, point);
+  void withConsent(() => {
+    if (nav.session) return;
+    state.pick = which === "origin" && !state.points.destination ? "destination" : null;
+    setPoint(which, point);
+  });
 };
+
+/** Shown in the form status after declining the privacy notice; it goes once they agree, unless
+ *  another message has replaced it meanwhile. */
+const consentNote = () =>
+  tr(
+    "Titik asal dan tujuan hanya bisa dipilih setelah Anda menyetujui pemberitahuan privasi. Pilih titik lagi untuk membacanya.",
+    "A start and destination can only be chosen once you agree to the privacy notice. Choose a point again to read it.",
+  );
+onConsentGiven(() => {
+  if (formStatus.textContent?.includes(consentNote())) clearStatus();
+});
+
+/** Runs `go` once the user has agreed to the privacy notice (consent.ts); straight away when they
+ *  already have. Declining leaves the form as it was, and the next attempt asks again. */
+async function withConsent(go: () => void): Promise<boolean> {
+  if (await requireConsent()) {
+    go();
+    return true;
+  }
+  state.pick = null;
+  refreshForm();
+  statusNote(consentNote);
+  return false;
+}
 
 // ---------------------------------------------------------------- route flow
 function showFormView(): void {
@@ -631,7 +668,6 @@ function applyServerField(field: ErrorField, message: string): void {
  *  behind the map's load; nothing here waits for the basemap. */
 function dropResult(): void {
   state.result = null;
-  $("form-disclaimer").hidden = false; // PNF-07: back to the form's copy
   resultView.hidden = true;
   clear(resultView);
   void mapView.clearRoutes();
@@ -838,7 +874,7 @@ const insideStudyArea = (p: Point) =>
   p.lat >= STUDY_AREA.minLat && p.lat <= STUDY_AREA.maxLat && p.lon >= STUDY_AREA.minLon && p.lon <= STUDY_AREA.maxLon;
 
 /** "Lokasi saya" on the map: moves the camera to the user's position, leaving the form as it is. */
-function showMyLocation(): void {
+async function showMyLocation(): Promise<void> {
   clearStatus();
   if (here.last) {
     mapView.flyTo(here.last, panelInset());
@@ -850,6 +886,8 @@ function showMyLocation(): void {
   };
   const problem = positionProblem();
   if (problem) return say(() => describePositionProblem(problem));
+  // The privacy notice comes before the browser's permission prompt (review PR #119).
+  if (!(await withConsent(() => {})) || nav.session) return;
   navigator.geolocation.getCurrentPosition(
     (pos) => {
       if (nav.session) return;
@@ -866,7 +904,7 @@ function showMyLocation(): void {
 }
 
 /** "Gunakan lokasi saya sebagai asal" on the form: fills in the starting point. */
-function useMyLocation(): void {
+async function useMyLocation(): Promise<void> {
   clearStatus();
   const say = (text: () => string) => {
     showFormView();
@@ -875,6 +913,7 @@ function useMyLocation(): void {
   const pickOnMap = () => tr("Pilih titik asal di peta.", "Pick the starting point on the map.");
   const problem = positionProblem();
   if (problem) return say(() => `${describePositionProblem(problem)} ${pickOnMap()}`);
+  if (!(await withConsent(() => {})) || nav.session) return;
   // Navigation may have started while this request was pending; it must not touch the form then.
   navigator.geolocation.getCurrentPosition(
     (pos) => {
@@ -902,9 +941,9 @@ function useMyLocation(): void {
 $("locate-btn").addEventListener("click", () => {
   // While navigating, the same button brings the camera back to the user.
   if (nav.session) return recenter();
-  showMyLocation();
+  void showMyLocation();
 });
-$("use-location").addEventListener("click", useMyLocation);
+$("use-location").addEventListener("click", () => void useMyLocation());
 
 // ---------------------------------------------------------------- navigation
 // TI-SE-13. Positions are handled on this device only. The one time a position leaves it
@@ -968,7 +1007,16 @@ function stopShowingLocation(): void {
   here.source = null;
 }
 
-void devLocationReady.then(startShowingLocation);
+/** Starts the position marker only when that cannot bring up the browser's permission prompt:
+ *  location already allowed, or the development spoofer. Otherwise it waits for a location feature,
+ *  which explains the use first (review PR #119: no prompt on page load). */
+async function resumeShowingLocation(): Promise<void> {
+  await devLocationReady;
+  const fake = GPS_SPOOF && !!SIMULATION?.get("lokasi");
+  if (fake || (await locationPermission()) === "granted") startShowingLocation();
+}
+
+void resumeShowingLocation();
 
 async function positionSource(): Promise<PositionSource> {
   const scenario = SIMULATION?.get("simulasi") ?? null;
@@ -998,6 +1046,9 @@ async function startNavigation(role: RouteResult["role"]): Promise<void> {
     }))?.focus();
     return;
   }
+  // RI-09: agreed to before any point could be chosen; asked again here should that not hold.
+  if (!(await requireConsent())) return;
+  if (state.result !== r || nav.session || state.busy) return; // the trip changed meanwhile
   stopShowingLocation(); // navigation's own watch takes over the marker
   // A clear map while navigating: the heatmap goes away (the button can still bring it back).
   nav.heatWasOn = state.heat.on;
@@ -1078,7 +1129,7 @@ function endNavigation(notice: Notice = null): void {
   // Back to the plain position marker (the last navigation position may be simulated or snapped).
   mapView.setUserMode(mode());
   void mapView.setUser(here.last);
-  startShowingLocation();
+  void resumeShowingLocation();
   if (nav.heatWasOn && !state.heat.on) setHeat(true);
   nav.heatWasOn = false;
   $("app").classList.remove("is-navigating");

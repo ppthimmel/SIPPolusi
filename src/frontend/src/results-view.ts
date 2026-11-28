@@ -14,6 +14,7 @@ import {
 } from "./format";
 import { tr } from "./i18n";
 import { openIndexInfo } from "./index-info";
+import { exposureDisclaimer, exposureDisclaimerShort } from "./notices";
 import type { RouteRequest, RouteResponse, RouteResult } from "./types";
 
 export interface ResultViewOptions {
@@ -87,29 +88,8 @@ export function renderResult(container: HTMLElement, opts: ResultViewOptions): H
 
   // Identical routes need no comparison box: the single route card says it all.
   if (cmp.kind !== "identical") container.append(comparisonBanner(cmp));
+  container.append(estimateNote());
   container.append(routeList(response, request, isFallback, opts));
-  // RI-09 / PNF-06: what happens to the position, readable before "Mulai navigasi" is pressed.
-  container.append(
-    h(
-      "p",
-      { class: "fine-print", id: "nav-privacy" },
-      tr(
-        "Posisi GPS Anda diproses di perangkat selama navigasi. Jika rute perlu dihitung ulang, posisi saat itu dikirim ke SIPPolusi sebagai titik awal rute baru.",
-        "Your GPS position is processed on your device during navigation. If the route needs recalculating, your position at that moment is sent to SIPPolusi as the start of the new route.",
-      ),
-    ),
-  );
-  // PNF-07: the exposure disclaimer, under the figures it qualifies (the form's copy hides meanwhile).
-  container.append(
-    h(
-      "p",
-      { class: "fine-print", id: "result-disclaimer" },
-      tr(
-        "Paparan polusi adalah estimasi model dan dapat berbeda dari kondisi sebenarnya. Gunakan sebagai pertimbangan memilih rute. Ini bukan saran medis.",
-        "Pollution exposure is a model estimate and may differ from actual conditions. Use it to help choose a route. This is not medical advice.",
-      ),
-    ),
-  );
 
   const detail = detailSection(response);
   container.append(detail);
@@ -248,12 +228,17 @@ export function confidenceText(score: number | null): string | null {
 
 let tipCount = 0;
 
+/** PNF-07 under the exposure comparison: a short line always in view, the full disclaimer behind ⓘ. */
+function estimateNote(): HTMLElement {
+  const tip = toggletip(tr("Tentang estimasi paparan", "About the exposure estimate"), [h("p", {}, exposureDisclaimer())]);
+  return h("div", { class: "estimate-note", id: "estimate-note" }, h("span", {}, exposureDisclaimerShort(), tip.button), tip.pop);
+}
+
 /** "ⓘ" after a route's exposure, explaining the index and how the route's figure is worked out.
  *  A toggletip: hovering or focusing shows the bubble, a click or tap keeps it open until a
  *  click elsewhere, another click, or Escape. The bubble's text is in the page (not a title
  *  attribute), so touch and screen-reader users get it too. */
 function exposureTip(unit: RouteResponse["exposureUnit"]): { button: HTMLButtonElement; pop: HTMLElement } {
-  const id = `exposure-tip-${++tipCount}`;
   const more = h("button", { type: "button", class: "link-btn info-pop-more", onclick: () => openIndexInfo() }, tr("Selengkapnya", "More"));
   const body =
     unit === "index_min"
@@ -267,16 +252,17 @@ function exposureTip(unit: RouteResponse["exposureUnit"]): { button: HTMLButtonE
       : [
           h("p", {}, tr("Paparan = konsentrasi PM2.5 × menit, dijumlah sepanjang rute.", "Exposure = PM2.5 concentration × minutes, summed along the route.")),
         ];
-  const pop = h("div", { class: "info-pop", id, role: "status", hidden: true }, ...body, more);
+  return toggletip(tr("Apa arti angka paparan ini?", "What does this exposure figure mean?"), [...body, more]);
+}
+
+/** A toggletip: "ⓘ" whose bubble opens on hover or focus and stays open after a click or tap
+ *  until a click elsewhere, another click, or Escape. */
+function toggletip(label: string, content: HTMLElement[]): { button: HTMLButtonElement; pop: HTMLElement } {
+  const id = `info-pop-${++tipCount}`;
+  const pop = h("div", { class: "info-pop", id, role: "status", hidden: true }, ...content);
   const button = h(
     "button",
-    {
-      type: "button",
-      class: "info-tip",
-      "aria-label": tr("Apa arti angka paparan ini?", "What does this exposure figure mean?"),
-      "aria-expanded": "false",
-      "aria-controls": id,
-    },
+    { type: "button", class: "info-tip", "aria-label": label, "aria-expanded": "false", "aria-controls": id },
     icon("info", 15),
   );
 

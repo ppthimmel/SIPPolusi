@@ -61,11 +61,11 @@ Semua di [`NAV_LIMITS`](../../src/frontend/src/navigation.ts).
 
 | Hal | Perlakuan |
 |---|---|
-| Pelacakan | Seluruhnya di perangkat. Posisi tidak dikirim selama pengguna berada di rute. Di luar navigasi, posisi juga dipantau untuk titik "lokasi saya" di peta (sejak frontend-enhancement); posisi itu pun tidak dikirim |
+| Pelacakan | Seluruhnya di perangkat. Posisi tidak dikirim selama pengguna berada di rute. Di luar navigasi, posisi juga dipantau untuk titik "lokasi saya" di peta (sejak frontend-enhancement); posisi itu pun tidak dikirim. Pemantauan itu tidak dimulai saat halaman dibuka, kecuali izin lokasi sudah diberikan sebelumnya: baru setelah pengguna memilih fitur lokasi |
 | Heatmap | Selama navigasi, `GET /v1/exposure-surface` memakai kotak rute (+±330 m), bukan tampilan kamera yang mengikuti pengguna; gerakan kamera tidak memicu permintaan. Diperbarui hanya setelah rute ulang |
 | Rute ulang | Satu-satunya saat posisi keluar perangkat: sebagai `origin` di body `POST /v1/routes`, sama seperti pencarian rute biasa. Gateway dan Cache API hanya mencatat path; pemeriksaan E2E-11 memastikan log Cache API dan gateway tanpa koordinat perjalanan |
-| Penyimpanan | Tidak ada: tanpa `localStorage`, tanpa riwayat, tanpa log konsol. Posisi terakhir hanya ada di memori halaman untuk titik "lokasi saya", dan hilang saat halaman ditutup |
-| Pemberitahuan | Catatan "posisi diproses di perangkat …" di panel navigasi dihapus pada [frontend-enhancement](../frontend-enhancement/README.md#yang-dihapus-dan-menyentuh-kebutuhan-desain). **Perlu keputusan tim** bila PNF-06 mewajibkan pemberitahuan ini di layar |
+| Penyimpanan | Tidak ada posisi yang disimpan: tanpa riwayat, tanpa log konsol. `localStorage` hanya menyimpan penanda bahwa pemberitahuan privasi sudah disetujui (`sippolusi.privacy-consent.v1`), tanpa data lokasi. Posisi terakhir hanya ada di memori halaman untuk titik "lokasi saya", dan hilang saat halaman ditutup |
+| Pemberitahuan | Catatan "Posisi GPS Anda diproses di perangkat selama navigasi …" ada di pop-up persetujuan privasi yang harus disetujui sebelum titik pertama dipilih, fitur lokasi dipakai, atau navigasi dimulai, jadi selalu sebelum browser meminta izin lokasi ([frontend-enhancement](../frontend-enhancement/README.md) bagian 17) |
 | Layar | Wake Lock API menjaga layar tetap menyala selama navigasi bila peramban mendukungnya; tanpa itu navigasi tetap berjalan |
 
 ## Keadaan yang diuji

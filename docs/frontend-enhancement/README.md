@@ -14,7 +14,8 @@ bisa mengganti hal di putaran sebelumnya, dan itu ditandai *diganti, lihat …* 
 | 13 | Perubahan dari tinjauan tim: batas Jakarta sungguhan, peringatan GPS, dan lainnya | `c0583bb` |
 | 14 | Tanggapan atas review PR #119 | `32ab844` |
 | 15 | Satuan di legenda, penjelasan angka paparan (ⓘ), keyakinan di baris sendiri, lapisan pemuatan heatmap | `51ca9f7` |
-| 16 | Tanggapan atas review kedua PR #119; lokasi saya di atas lembar bawah | `0c6ef24` dan commit ini |
+| 16 | Tanggapan atas review kedua PR #119; lokasi saya di atas lembar bawah | `0c6ef24`, `fefd8b2` |
+| 17 | Tanggapan atas review ketiga PR #119: pop-up persetujuan privasi, disclaimer ⓘ di hasil rute, gelembung ⓘ tertutup | commit ini |
 | — | Yang dihapus dan menyentuh kebutuhan desain; alat bantu pengembangan; cara menjalankan; verifikasi | |
 
 Dokumen ini mencatat setiap perubahan beserta alasannya. Kontrak API tidak berubah (`POST /v1/routes`,
@@ -363,9 +364,9 @@ Review kedua [PR #119](https://github.com/ppthimmel/SIPPolusi/pull/119#pullreque
 
 | Kebutuhan | Teks | Letak |
 |---|---|---|
-| PNF-07 · disclaimer paparan | "Paparan polusi adalah estimasi model dan dapat berbeda dari kondisi sebenarnya. Gunakan sebagai pertimbangan memilih rute. Ini bukan saran medis." | Di bawah tombol **Cari rute** (`#form-disclaimer`); saat rute tampil, salinan itu disembunyikan dan baris yang sama muncul di bawah daftar rute (`#result-disclaimer`), jadi selalu ada tepat satu, juga di ponsel |
-| PNF-06 · pencarian tempat | "Teks pencarian dan koordinat titik yang Anda pilih dapat dikirim ke layanan pencarian lokasi untuk menampilkan nama atau saran tempat." | Di bawah isian asal dan tujuan, sebelum "Gunakan lokasi saya sebagai asal" (`#search-privacy`) |
-| PNF-06 / RI-09 · navigasi | "Posisi GPS Anda diproses di perangkat selama navigasi. Jika rute perlu dihitung ulang, posisi saat itu dikirim ke SIPPolusi sebagai titik awal rute baru." | Di bawah daftar rute, sekali untuk semua tombol **Mulai navigasi** (`#nav-privacy`) |
+| PNF-07 · disclaimer paparan | "Paparan polusi adalah estimasi model dan dapat berbeda dari kondisi sebenarnya. Gunakan sebagai pertimbangan memilih rute. Ini bukan saran medis." | Di bawah tombol **Cari rute**; saat rute tampil, pindah ke bawah daftar rute (*diganti, lihat 17: baris pendek dengan ⓘ di bawah kotak selisih*) |
+| PNF-06 · pencarian tempat | "Teks pencarian dan koordinat titik yang Anda pilih dapat dikirim ke layanan pencarian lokasi untuk menampilkan nama atau saran tempat." | Di bawah isian asal dan tujuan (*diganti, lihat 17: pop-up persetujuan*) |
+| PNF-06 / RI-09 · navigasi | "Posisi GPS Anda diproses di perangkat selama navigasi. Jika rute perlu dihitung ulang, posisi saat itu dikirim ke SIPPolusi sebagai titik awal rute baru." | Di bawah daftar rute, sekali untuk semua tombol **Mulai navigasi** (*diganti, lihat 17: pop-up persetujuan*) |
 
 Di luar review: di ponsel, tombol lokasi saya dan "Gunakan lokasi saya sebagai asal" memusatkan titik pada
 seluruh peta, sehingga tertutup lembar bawah yang terbuka. `MapView.flyTo` kini menerima tinggi yang ditutup
@@ -379,6 +380,30 @@ padding kamera) agar tidak ada sisa pada kamera (`0c6ef24`).
 
 **Diperiksa.** `tsc --noEmit` bersih, `npm test` (204 tes) dan `npm run build` lulus. Belum diperiksa di peramban.
 
+## 17. Tanggapan atas review ketiga PR #119
+
+Review [izin lokasi](https://github.com/ppthimmel/SIPPolusi/pull/119#pullrequestreview-6097139214) dan
+[letak catatan](https://github.com/ppthimmel/SIPPolusi/pull/119#pullrequestreview-6097141905) (RunningPie, pada `fefd8b2`).
+Catatan dari bagian 16 diganti dengan rancangan di bawah, atas keputusan pemilik produk.
+
+| Temuan | Perbaikan |
+|---|---|
+| Pemantauan lokasi dimulai saat halaman dibuka, jadi pengunjung pertama bisa melihat permintaan izin lokasi dari browser sebelum memilih fitur lokasi atau membaca kegunaannya | Pemantauan saat halaman dibuka hanya berjalan bila izin lokasi sudah diberikan sebelumnya (Permissions API) atau lokasi palsu pengembangan (`?lokasi=`) aktif; selain itu menunggu fitur lokasi. Selesai navigasi, pemantauan dilanjutkan dengan aturan yang sama |
+| Beri konteks sebelum browser meminta izin GPS; **P2.** catatan privasi navigasi berada di bawah tombol **Mulai navigasi** | Satu pop-up persetujuan "Privasi data lokasi" berisi catatan pencarian tempat (PNF-06) dan catatan navigasi (PNF-06 / RI-09), dengan tombol **Tidak setuju** / **Setuju**. Muncul sebelum hal pertama yang mengirim atau membaca lokasi: fokus ke isian asal atau tujuan (mengetik langsung mencari tempat), klik peta atau tombol pilih di peta, "Gunakan lokasi saya sebagai asal", tombol lokasi saya, dan **Mulai navigasi**. Jadi persetujuan selalu mendahului permintaan izin lokasi dari browser dan tombol navigasi. **Tidak setuju** (atau Escape): tidak ada yang dikirim atau diisi, pesan singkat menjelaskan bahwa titik hanya bisa dipilih setelah setuju (pesan itu hilang begitu pengguna setuju), dan percobaan berikutnya membuka pop-up lagi. Tombol **Tidak setuju** memakai merah pesan galat di atas latar putih. **Setuju** diingat di browser ini (`localStorage`, kunci `sippolusi.privacy-consent.v1`, hanya penanda, bukan posisi); bila penyimpanan diblokir, berlaku untuk halaman itu saja. Tautan **Privasi** di kaki panel membuka teks yang sama untuk dibaca lagi ([`consent.ts`](../../src/frontend/src/consent.ts)) |
+| **P2.** Disclaimer ada di dalam panel yang bergulir dan bisa tidak terlihat | Disclaimer dipindah ke hasil rute, tepat di bawah kotak selisih paparan ("−11,0% paparan polutan dibanding rute tercepat …") yang ia jelaskan: baris pendek yang selalu terlihat "Estimasi model, bukan saran medis" dengan tombol **ⓘ** berisi teks PNF-07 lengkap. Pada rute yang identik (tanpa kotak selisih) baris yang sama tampil di atas daftar rute. Salinan di bawah tombol **Cari rute**, di kaki panel, di baris kredit peta, dan di kartu navigasi dihapus |
+| (Dari pemilik produk) Gelembung ⓘ paparan tertutup baris rute berikutnya, sehingga **Selengkapnya** tidak bisa diklik | Setiap baris rute menyimpan transformasi dari animasi masuknya, sehingga menjadi lapisan tersendiri dan baris sesudahnya tergambar di atas gelembung baris sebelumnya. Baris yang gelembungnya terbuka kini dinaikkan (`.route-row:has(.info-pop:not([hidden])) { z-index: 2 }`) |
+
+Semua teks catatan satu sumber di [`notices.ts`](../../src/frontend/src/notices.ts). Tombol ⓘ paparan dan ⓘ disclaimer
+memakai komponen yang sama (`toggletip` di `results-view.ts`).
+
+**Berkas.** [`consent.ts`](../../src/frontend/src/consent.ts) (baru, dengan tes), [`notices.ts`](../../src/frontend/src/notices.ts)
+(baru), [`main.ts`](../../src/frontend/src/main.ts) (`withConsent`, `resumeShowingLocation`, `showMyLocation`,
+`useMyLocation`, `startNavigation`, `renderCredits`), [`results-view.ts`](../../src/frontend/src/results-view.ts)
+(`estimateNote`, `toggletip`), [`index.html`](../../src/frontend/index.html), [`style.css`](../../src/frontend/src/style.css).
+
+**Diperiksa.** `tsc --noEmit` bersih, `npm test` (209 tes, 5 baru di `consent.test.ts`) dan `npm run build` lulus.
+Belum diperiksa di peramban.
+
 ## Yang dihapus dan menyentuh kebutuhan desain
 
 Teks berikut dihapus atas permintaan, padahal kode sebelumnya menandainya sebagai pemenuhan kebutuhan pada Bab III.
@@ -386,9 +411,9 @@ Peninjau PR #119 meminta keputusan ini dikonfirmasi. Untuk build evaluasi UX ket
 
 | Teks | Kebutuhan | Keadaan sekarang |
 |---|---|---|
-| Disclaimer di kaki panel ("Nilai paparan adalah estimasi… bukan rekomendasi medis") | PNF-07: disclaimer selalu terlihat | **Dikembalikan (16).** Satu baris di bawah tombol **Cari rute**; saat rute tampil, pindah ke bawah daftar rute. Rumus perhitungannya tetap di **Tentang indeks** |
-| Catatan privasi pencarian tempat ("Nama yang diketik … dikirim ke layanan pencarian lokasi …") | PNF-06: memberi tahu apa yang dikirim ke penyedia geocoding | **Dikembalikan (16).** Satu baris di bawah isian asal dan tujuan, di atas "Gunakan lokasi saya sebagai asal" |
-| Catatan privasi navigasi ("Posisi Anda diproses di perangkat ini …") | PNF-06, RI-09 | **Dikembalikan (16).** Satu baris di bawah daftar rute, terbaca sebelum **Mulai navigasi** ditekan. Perilakunya tidak berubah: posisi hanya keluar perangkat saat rute ulang |
+| Disclaimer di kaki panel ("Nilai paparan adalah estimasi… bukan rekomendasi medis") | PNF-07: disclaimer selalu terlihat | **Dikembalikan (16, 17).** Baris pendek "Estimasi model, bukan saran medis" yang selalu terlihat di bawah kotak selisih paparan pada hasil rute, dengan ⓘ berisi teks lengkap. Rumus perhitungannya tetap di **Tentang indeks** |
+| Catatan privasi pencarian tempat ("Nama yang diketik … dikirim ke layanan pencarian lokasi …") | PNF-06: memberi tahu apa yang dikirim ke penyedia geocoding | **Dikembalikan (16, 17).** Dalam pop-up persetujuan sebelum titik pertama dipilih atau dicari; bisa dibaca lagi lewat **Privasi** di kaki panel |
+| Catatan privasi navigasi ("Posisi Anda diproses di perangkat ini …") | PNF-06, RI-09 | **Dikembalikan (16, 17).** Dalam pop-up persetujuan yang sama, jadi disetujui sebelum titik dipilih maupun navigasi dimulai. Perilakunya tidak berubah: posisi hanya keluar perangkat saat rute ulang |
 | Kredit OpenStreetMap selalu terlihat | Lisensi ODbL OSM | **Selesai (14).** Kredit ada di kaki panel; saat panel tidak terlihat, baris kredit kecil tampil di peta |
 | Kunci peta "Tanpa estimasi / Keyakinan rendah" | Penjelasan arsiran dan area abu-abu pada heatmap | Dihapus dari legenda (10.3). Arsiran keyakinan rendah juga sudah dihapus dari peta (13); area abu-abu (tanpa estimasi) tetap tanpa penjelasan di layar |
 
