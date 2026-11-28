@@ -79,8 +79,31 @@ punya time window `complete` (misalnya basis data lokal baru), `/edge-weights` m
 |---|---|---|
 | `POLLUTION_STALE_AFTER_S` | `10800` | Batas umur time window sebelum `data_stale = true` |
 | `POLLUTION_WEIGHTS_WORK_MEM` | `32MB` | `work_mem` khusus kueri EdgeWeight (`SET LOCAL` di transaksi read-only kueri itu); kosong = bawaan server |
+| `POLLUTION_SURFACE_MAX_CONCURRENCY` | `2` | Kueri heatmap (`/v1/exposure-surface`) yang boleh memegang koneksi bersamaan, per instans |
+| `POLLUTION_SURFACE_WAIT_S` | `1.0` | Lama permintaan heatmap menunggu slot sebelum dijawab 503 `surface_busy` |
+| `POLLUTION_SURFACE_STATEMENT_TIMEOUT_MS` | `6000` | `statement_timeout` khusus kueri heatmap (`SET LOCAL`) |
 
 Variabel koneksi (`DATABASE_URL`, `OSM_STATEMENT_TIMEOUT_MS`, dll.) sama dengan modul `osm`.
+
+### Heatmap tidak boleh menggagalkan rute
+
+Kueri heatmap dan perencanaan rute memakai pool koneksi yang sama (`OSM_POOL_MAX_SIZE`, bawaan 10).
+Heatmap yang di-zoom out mengagregasi ratusan ribu baris `edge_pollution`. Saat peta digeser, Frontend
+membatalkan dan mengirim ulang permintaan (debounce 500 ms, batas 5 s), tetapi kueri yang dibatalkan
+tetap berjalan di server sampai `statement_timeout` (25 s di GCP). Pada 28 November 2026, mencari rute
+sambil zoom out di Cloud SQL `db-f1-micro` membuat kueri-kueri itu memenuhi pool. Akibatnya
+`/v1/routes` dijawab 503 `query_timeout` dan `database_unavailable (TimeoutError)` sampai instans di-restart.
+
+Kini kueri heatmap dibatasi tiga hal:
+
+- **Slot.** Paling banyak `POLLUTION_SURFACE_MAX_CONCURRENCY` kueri heatmap memegang koneksi sekaligus,
+  sehingga rute selalu punya sisa koneksi.
+- **Tunggu singkat.** Permintaan yang tidak mendapat slot dalam `POLLUTION_SURFACE_WAIT_S` dijawab
+  503 `cache_unavailable` dengan `reason: surface_busy` tanpa menyentuh pool. Frontend sudah
+  menangani galat heatmap: heatmap sebelumnya tetap tampil dengan tanda redup, dan rute tidak terpengaruh.
+- **Batas waktu sendiri.** Kueri heatmap memakai `POLLUTION_SURFACE_STATEMENT_TIMEOUT_MS` lewat `SET LOCAL`
+  dalam transaksi read-only, sedikit di atas batas 5 s Frontend. Koneksi lain di pool tetap memakai
+  `OSM_STATEMENT_TIMEOUT_MS`.
 
 ### Rute jarak jauh
 

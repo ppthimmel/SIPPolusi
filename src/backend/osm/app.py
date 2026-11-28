@@ -68,7 +68,10 @@ async def osm_lifespan(app: FastAPI) -> AsyncIterator[None]:
     pollution_settings = get_pollution_settings()
     app.state.pollution_repository = PollutionRepository(
         db, osm_repository, pollution_settings.stale_after_s,
-        weights_work_mem=pollution_settings.weights_work_mem or None)
+        weights_work_mem=pollution_settings.weights_work_mem or None,
+        surface_max_concurrency=pollution_settings.surface_max_concurrency,
+        surface_wait_s=pollution_settings.surface_wait_s,
+        surface_statement_timeout_ms=pollution_settings.surface_statement_timeout_ms)
     solver_settings = get_solver_settings()
     app.state.solver_settings = solver_settings
     app.state.route_solver = make_solver(solver_settings)

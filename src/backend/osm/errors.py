@@ -57,6 +57,8 @@ class CacheUnavailable(OsmApiError):
                           no complete time window, or no cache schemas at all)
     database_unavailable  the database cannot be reached
     query_timeout         a query exceeded statement_timeout or the client timeout
+    surface_busy          every heatmap (exposure surface) query slot is taken; the
+                          request is refused at once so routing keeps its connections
     """
 
     status_code = 503
@@ -64,6 +66,7 @@ class CacheUnavailable(OsmApiError):
     CACHE_EMPTY = "cache_empty"
     DATABASE_UNAVAILABLE = "database_unavailable"
     QUERY_TIMEOUT = "query_timeout"
+    SURFACE_BUSY = "surface_busy"
 
     def __init__(self, message: str, reason: str = DATABASE_UNAVAILABLE):
         super().__init__(message)
