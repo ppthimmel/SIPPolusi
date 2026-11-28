@@ -79,7 +79,7 @@ Dari `src/data_worker`, dengan dependensi `requirements.txt`:
 
 ```bash
 python -m spatial_model.training train pm25 --snapshot ../../docs/experiments/ds-v0.3.0 --out ../../.cache/training/pm25 --device cpu
-# Model NO₂ produksi (bawaan): XGBoost + koreksi IDW pada ds-v0.4.0 (snapshot dibangun ulang dengan scripts/dataset_extension/)
+# Model NO₂ produksi (bawaan): XGBoost + koreksi IDW pada ds-v0.4.0 (snapshot dibangun ulang dengan scripts/dataset_extension/); `--snapshot` wajib untuk NO₂
 python -m spatial_model.training train no2 --snapshot <ds-v0.4.0> --out ../../.cache/training/no2
 # Model NO₂ LightGBM sebelumnya, hanya bila diminta eksplisit
 python -m spatial_model.training train no2 --family lightgbm --snapshot ../../docs/experiments/ds-v0.3.0 --out ../../.cache/training/no2-lgbm

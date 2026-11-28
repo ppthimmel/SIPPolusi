@@ -189,9 +189,21 @@ def test_cli_trains_xgboost_for_no2_by_default(tmp_path, monkeypatch):
     from spatial_model.training.__main__ import main
     calls = []
     monkeypatch.setattr(train_module, "train", lambda *a, **k: calls.append(k["family"]) or tmp_path)
-    main(["train", "no2", "--out", str(tmp_path / "a")])
-    main(["train", "no2", "--out", str(tmp_path / "b"), "--family", "lightgbm"])
+    main(["train", "no2", "--snapshot", str(tmp_path), "--out", str(tmp_path / "a")])
+    main(["train", "no2", "--snapshot", str(tmp_path), "--out", str(tmp_path / "b"), "--family", "lightgbm"])
     assert calls == ["xgboost", "lightgbm"]
+
+
+def test_cli_requires_snapshot_for_no2(tmp_path, monkeypatch, capsys):
+    from spatial_model.models.lightgbm import train as train_module
+    from spatial_model.training.__main__ import main
+    calls = []
+    monkeypatch.setattr(train_module, "train", lambda *a, **k: calls.append(a) or tmp_path)
+    for family in ([], ["--family", "lightgbm"]):
+        with pytest.raises(SystemExit):
+            main(["train", "no2", "--out", str(tmp_path / "a"), "--register", *family])
+        assert "needs --snapshot" in capsys.readouterr().err
+    assert calls == []
 
 
 def test_evaluation_cli_rejects_the_other_family(fold_bundle, tmp_path):

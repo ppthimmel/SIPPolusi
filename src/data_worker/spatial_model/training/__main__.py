@@ -15,7 +15,9 @@ def main(argv=None):
     t.add_argument("target", choices=("pm25", "no2"))
     SNAP = next((p / "docs/experiments/ds-v0.3.0" for p in Path(__file__).resolve().parents
                  if (p / "docs/experiments/ds-v0.3.0").is_dir()), Path("docs/experiments/ds-v0.3.0"))
-    t.add_argument("--snapshot", type=Path, default=SNAP)
+    t.add_argument("--snapshot", type=Path,
+                   help="snapshot folder. Required for NO2, so the production dataset (ds-v0.4.0) is chosen "
+                        "explicitly; PM2.5 defaults to docs/experiments/ds-v0.3.0")
     t.add_argument("--out", type=Path, required=True)
     t.add_argument("--fold", type=int)
     t.add_argument("--seed", type=int, default=DEFAULT_SEED)
@@ -92,9 +94,11 @@ def main(argv=None):
     else:
         if args.target == "pm25" and args.family is not None:
             parser.error("--family applies to NO2; PM2.5 trains the ST-GNN")
+        if args.target == "no2" and args.snapshot is None:
+            parser.error("NO2 training needs --snapshot; the production NO2 model is trained on ds-v0.4.0")
         if args.target == "pm25":
             from spatial_model.models.stgnn.train import train
-            bundle = train(args.snapshot, args.out, protocol="fixed_split" if args.fold is None else "loso",
+            bundle = train(args.snapshot or SNAP, args.out, protocol="fixed_split" if args.fold is None else "loso",
                            fold=args.fold, seed=args.seed, epochs=args.epochs, device=args.device, resume=args.resume)
         else:
             if args.resume:

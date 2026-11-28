@@ -105,7 +105,7 @@ not support this protocol (it needs held-out stations).
 ## Production NO₂ model
 
 XGBoost + IDW corr, the model selected above, is the NO₂ serving model (`python -m spatial_model.training train no2
---family xgboost`, commit `c8590c7`). It is trained like the LightGBM serving fit: all 111 NO₂ stations as sensors,
+--family xgboost --snapshot <ds-v0.4.0>`, commit `c8590c7`). It is trained like the LightGBM serving fit: all 111 NO₂ stations as sensors,
 labels of the training block only (13,232 station-hours), notebook hyperparameters (`configs/xgboost.json`), seed 42,
 CPU `xgboost-cpu` 3.2.0.
 
