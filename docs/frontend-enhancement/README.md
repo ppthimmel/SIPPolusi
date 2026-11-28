@@ -12,7 +12,8 @@ bisa mengganti hal di putaran sebelumnya, dan itu ditandai *diganti, lihat …* 
 | 11 | Putaran ketiga: kotak selisih, keyakinan, skeleton heatmap, kunci navigasi, saran di luar Jakarta | `ada3295` |
 | 12 | Logo, layar pembuka, animasi, keluar rute, penanda posisi sesuai moda | `7ce5370` dan sesudahnya |
 | 13 | Perubahan dari tinjauan tim: batas Jakarta sungguhan, peringatan GPS, dan lainnya | `c0583bb` |
-| 14 | Tanggapan atas review PR #119 | commit ini |
+| 14 | Tanggapan atas review PR #119 | `32ab844` |
+| 15 | Satuan di legenda, penjelasan angka paparan (ⓘ), keyakinan di baris sendiri, lapisan pemuatan heatmap | commit ini |
 | — | Yang dihapus dan menyentuh kebutuhan desain; alat bantu pengembangan; cara menjalankan; verifikasi | |
 
 Dokumen ini mencatat setiap perubahan beserta alasannya. Kontrak API tidak berubah (`POST /v1/routes`,
@@ -298,7 +299,7 @@ Ditambahkan oleh peninjau sesudah putaran ketiga; dicatat di sini agar dokumen s
 |---|---|
 | Area di luar Jakarta kini mengikuti **batas administratif Jakarta** ([`jakarta-boundary.json`](../../src/frontend/src/jakarta-boundary.json), MultiPolygon), bukan persegi wilayah studi. Di luar batas hanya bentuk peta (laut, danau, sungai) yang tetap tergambar; jalan layang, label, dan ikon tempat dibatasi di dalam Jakarta | Peta menunjukkan Jakarta yang sebenarnya, bukan potongan Tangerang, Depok, dan Bekasi yang ikut masuk persegi. Catatan: Backend dan pemeriksaan isian tetap memakai persegi wilayah studi, jadi titik di antara batas dan persegi masih diterima |
 | Arsiran keyakinan rendah pada heatmap dihapus | Peta lebih bersih; keyakinan kini ditampilkan per rute di daftar |
-| Baris rute: "Paparan 110,7 indeks·menit · Keyakinan rendah" (kategori saja, tanpa angka; satuan kembali ditampilkan) | Kategori lebih mudah dipahami daripada angka 0–1 |
+| Baris rute: "Paparan 110,7 indeks·menit · Keyakinan rendah" (kategori saja, tanpa angka; satuan kembali ditampilkan) (*keyakinan dipindah ke baris sendiri, lihat 15*) | Kategori lebih mudah dipahami daripada angka 0–1 |
 | Masalah sinyal GPS tampil sebagai peringatan di tengah peta yang diredupkan (ikon kerucut lalu lintas, tombol **Keluar**), bukan pil kecil; teks "Mencoba lagi…" | Masalah GPS menghentikan navigasi secara praktis, jadi harus terlihat jelas |
 | Tombol sembunyikan panel kembali menjadi tab kecil di tepi panel dengan panah | Pola aplikasi peta |
 | Judul popup indeks menjadi "Tentang indeks" | Sama dengan tautan yang membukanya |
@@ -322,6 +323,30 @@ diperbaiki dan diperiksa di peramban terhadap stack lokal lengkap.
 `renderCredits`), [`map-view.ts`](../../src/frontend/src/map-view.ts) (`FALLBACK_STYLE`),
 [`nav-view.ts`](../../src/frontend/src/nav-view.ts), [`index.html`](../../src/frontend/index.html),
 [`style.css`](../../src/frontend/src/style.css).
+
+## 15. Satuan, penjelasan paparan, dan status pemuatan heatmap
+
+| Perubahan | Alasan |
+|---|---|
+| Satuan paparan diperiksa: `indeks·menit` benar. Backend menjumlahkan indeks tiap ruas × menit di ruas itu (Σ Iₑ τₑ); indeks = rata-rata PM2.5/15 dan NO2/25 (pedoman WHO), sehingga tak bersatuan, dan satuannya menjadi indeks × menit. Untuk respons lama berlabel `pm25_ug_m3_min`, satuan tetap µg/m³·menit | Angka tanpa satuan yang benar menyesatkan |
+| Keyakinan ("Keyakinan rendah/sedang/tinggi") pindah ke baris sendiri di bawah paparan; titik pemisah "·" di depannya dihapus | Dua informasi berbeda tidak lagi berdempet dalam satu baris; baris paparan tidak terpotong di ponsel |
+| Legenda heatmap: satuan di atas skala, rata kanan, "indeks" untuk Gabungan dan "µg/m³" untuk PM2.5 dan NO2; ikut berganti saat lapisan diganti | Angka 0,5 / 1 / 2 / 3 (atau 7,5 / 15 / …) tanpa satuan tidak jelas apakah indeks atau konsentrasi |
+| Tombol **ⓘ** di samping angka paparan. Isinya singkat: "Indeks: rata-rata PM2.5 dan NO2." dan "Paparan = indeks × menit, dijumlah sepanjang rute.", ditambah tautan **Selengkapnya** ke popup "Tentang indeks" | Pengguna bisa tahu arti angka tanpa meninggalkan daftar rute; rincian rumus tetap ada di popup. Teks dibuat sependek mungkin atas permintaan |
+| ⓘ berupa *toggletip*: muncul saat diarahkan kursor atau difokus, klik/ketuk menahannya terbuka sampai klik di luar, klik lagi, atau Escape. Teksnya ada di halaman (bukan atribut `title`), tombolnya 24 × 24 px dengan `aria-expanded` dan `aria-controls` | Bisa dibuka dengan mouse, sentuh, dan papan ketik, dan terbaca pembaca layar (temuan serupa pada review PR #119 tentang `title`). Target 24 px memenuhi WCAG 2.5.8 |
+| Paparan dan keyakinan dikeluarkan dari tombol pilih rute ke baris di bawahnya (`.route-details`); klik pada baris itu tetap memilih rute, kecuali klik pada ⓘ atau gelembungnya | Tombol ⓘ tidak boleh berada di dalam tombol lain (HTML tidak mengizinkan elemen interaktif bersarang) |
+| Jarak antara baris "via …" dan baris paparan dirapatkan menjadi sekitar 4 px | Kolom waktu yang dua baris sebelumnya mendorong baris paparan turun (celah 21 px); kini kolom waktu tidak lagi menambah tinggi dan baris paparan diberi ruang kanan agar tidak menabrak waktu dan jarak |
+| Saat tombol heatmap ditekan, peta diredupkan dengan lapisan hitam transparan (28%) dan pil di tengah berisi spinner serta "Memuat heatmap…", sampai data tiba atau gagal; mematikan heatmap juga menghilangkannya | Umpan balik langsung atas tekanan tombol: tanpa ini, beberapa ratus milidetik pertama tampak seperti tidak terjadi apa-apa |
+| Lapisan itu hanya untuk tekanan tombol; pembaruan saat peta digeser tetap memakai skeleton sel abu-abu (11). Lapisan berada di bawah tombol peta dan legenda, tidak menangkap klik (peta tetap bisa digeser dan di-zoom), muncul-hilang dengan transisi pudar, dan disembunyikan dari pembaca layar (status legenda sudah mengumumkan "Memuat heatmap…") | Meredupkan seluruh peta setiap kali digeser akan mengganggu; pengguna tidak boleh terkunci menunggu |
+
+**Berkas.** [`results-view.ts`](../../src/frontend/src/results-view.ts) (`exposureTip`, `.route-details`),
+[`legend.ts`](../../src/frontend/src/legend.ts) (`.scale-unit`), [`main.ts`](../../src/frontend/src/main.ts)
+(`showHeatVeil`), [`index.html`](../../src/frontend/index.html) (`#map-loading`),
+[`style.css`](../../src/frontend/src/style.css).
+
+**Diperiksa.** Di peramban terhadap stack lokal: ⓘ terbuka saat hover, fokus, dan klik, tertutup dengan klik di
+luar dan Escape; celah di bawah "via" 4 px tanpa tumpang tindih; lapisan pemuatan tampil 1 ms setelah tombol
+ditekan dan hilang saat data tiba (~370 ms), tidak tampil saat peta digeser, hilang saat heatmap dimatikan.
+`npm test` (204 tes) dan `npm run build` lulus.
 
 ## Yang dihapus dan menyentuh kebutuhan desain
 

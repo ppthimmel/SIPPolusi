@@ -356,7 +356,7 @@ button:disabled { cursor: not-allowed; }
 .route-pick {
   display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; column-gap: 16px; align-items: start;
   /* Little space below: the row's "Mulai navigasi" button follows right under it. */
-  width: 100%; padding: 16px 20px 6px; border: 0; background: none; text-align: left; color: var(--ink);
+  width: 100%; padding: 16px 20px 0; border: 0; background: none; text-align: left; color: var(--ink);
   transition: background 0.15s;
 }
 .route-pick:hover { background: rgba(23, 33, 30, 0.04); }
@@ -364,10 +364,32 @@ button:disabled { cursor: not-allowed; }
 .route-mode { display: inline-flex; padding-top: 1px; color: var(--ink); }
 .route-main { display: grid; gap: 4px; min-width: 0; }
 .route-via { font-size: 16px; line-height: 1.3; }
-.route-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; font-size: 12px; color: var(--subtle); }
+/* Exposure and confidence under the select button, aligned with the "via" line (results-view.ts). */
+.route-details { position: relative; margin-top: 2px; padding: 0 96px 8px 64px; cursor: pointer; }
+/* Flows as text, so "Rute tercepat · Paparan … ⓘ" wraps like a sentence; confidence on its own line. */
+.route-meta { display: block; font-size: 12px; line-height: 1.5; color: var(--subtle); }
+.route-exposure { white-space: nowrap; }
+/* "ⓘ": a 24 px target (WCAG 2.5.8) around a small icon. */
+.info-tip {
+  display: inline-grid; place-items: center; width: 24px; height: 24px; margin: -4px 0 -4px 2px; padding: 0; border: 0;
+  vertical-align: middle;
+  border-radius: 50%; background: none; color: var(--subtle); cursor: pointer;
+}
+.info-tip:hover, .info-tip[aria-expanded="true"] { color: var(--ink); background: rgba(23, 33, 30, 0.08); }
+/* The bubble opens under the line, over what follows. */
+.info-pop {
+  position: absolute; z-index: 5; left: 56px; right: 16px; top: calc(100% - 4px); padding: 10px 12px; border-radius: 10px;
+  background: var(--ink); color: #fff; font-size: 12px; line-height: 1.45; box-shadow: var(--elev-2); cursor: default;
+  animation: menu-in var(--dur-fast) var(--ease-out) both;
+}
+.info-pop p { margin: 0 0 4px; }
+.info-pop .info-pop-more { min-height: 24px; color: #fff; text-decoration: underline; font-size: 12px; }
 /* Confidence on its own line under the exposure. */
-.route-confidence { flex-basis: 100%; }
+.route-confidence { display: block; }
 .route-time { display: grid; justify-items: end; gap: 2px; white-space: nowrap; }
+/* The time column is two lines tall; it may hang beside the exposure line below rather than push
+   it down, so "Paparan …" follows the "via" line directly (.route-details keeps clear of it). */
+.route-pick .route-time { margin-bottom: -22px; }
 .route-time strong { font-size: 16px; font-weight: 500; }
 .route-time span { font-size: 13px; color: var(--subtle); }
 .route-row.is-selected .route-time strong { color: var(--green); }
@@ -557,6 +579,8 @@ button:disabled { cursor: not-allowed; }
 .heat-status.is-error { color: var(--red); }
 .heat-status.is-warn { color: var(--amber-ink); }
 /* Linear scale: numbers at their true positions, class names centred under their range. */
+/* Unit of the tick numbers, right-aligned above the bar (legend.ts). */
+.scale-unit { margin: 0 0 4px; text-align: right; font-size: 11px; color: var(--subtle); }
 .scale-bar { position: relative; height: 10px; border-radius: 5px; }
 .scale-divider { position: absolute; top: 0; bottom: 0; width: 1.5px; margin-left: -0.75px; background: rgba(255, 255, 255, 0.85); }
 .scale-ticks, .scale-classes { position: relative; }
@@ -822,3 +846,17 @@ button:not(:disabled):not(.route-pick):not(.sheet-handle):active,
 @media (max-width: 899px) {
   .app:has(.panel.collapsed) .map-credits, .app.is-navigating .map-credits { display: block; top: 6px; bottom: auto; }
 }
+
+/* Heatmap loading veil (main.ts showHeatVeil): a light black layer over the map with a spinner,
+   under the map buttons and legend, letting drags and zooms through. Fades in and out. */
+.map-loading {
+  position: absolute; inset: 0; z-index: 1; display: grid; place-items: center; pointer-events: none;
+  background: rgba(0, 0, 0, 0.28); opacity: 0; visibility: hidden;
+  transition: opacity var(--dur) ease, visibility 0s linear var(--dur);
+}
+.map-loading.is-on { opacity: 1; visibility: visible; transition: opacity var(--dur) ease, visibility 0s; }
+.map-loading-box {
+  display: inline-flex; align-items: center; gap: 10px; padding: 10px 16px; border-radius: 999px;
+  background: rgba(23, 33, 30, 0.82); color: #fff; font-size: 13px; font-weight: 500; box-shadow: var(--elev-2);
+}
+.map-loading .spinner { width: 18px; height: 18px; border-color: rgba(255, 255, 255, 0.35); border-top-color: #fff; }

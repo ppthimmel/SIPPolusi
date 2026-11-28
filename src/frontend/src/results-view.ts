@@ -13,6 +13,7 @@ import {
   fmtGraphVersionDate,
 } from "./format";
 import { tr } from "./i18n";
+import { openIndexInfo } from "./index-info";
 import type { RouteRequest, RouteResponse, RouteResult } from "./types";
 
 export interface ResultViewOptions {
@@ -169,16 +170,24 @@ function routeList(resp: RouteResponse, request: RouteRequest, isFallback: boole
         "span",
         { class: "route-main" },
         h("span", { class: "route-via", id: `route-via-${r.role}` }, via ? tr(`via ${via}`, `via ${via}`) : title),
-        h(
-          "span",
-          { class: "route-meta", "data-label": labelled ? title : "" },
-          via && labelled ? `${title} · ` : "",
-          `${exposureLabel} ${fmtExposure(r.exposure)} ${exposureUnitLabel(resp.exposureUnit)}`,
-          // How sure the model is of that number, on the line under it (transparency).
-          confidenceText(r.confidence) && h("span", { class: "route-confidence" }, confidenceText(r.confidence)),
-        ),
       ),
       h("span", { class: "route-time" }, h("strong", { class: "mono" }, fmtMinutes(r.travelTimeMin)), h("span", { class: "mono" }, fmtDistance(r.distanceM))),
+    );
+    // Exposure and confidence on their own line under the select button (an info button cannot sit
+    // inside another button); a click on the line still selects the row.
+    const tip = exposureTip(resp.exposureUnit);
+    const details = h(
+      "div",
+      { class: "route-details", onclick: (e: Event) => !(e.target as HTMLElement).closest(".info-tip, .info-pop") && select(r.role, true) },
+      h(
+        "span",
+        { class: "route-meta", id: `route-meta-${r.role}`, "data-label": labelled ? title : "" },
+        via && labelled ? `${title} · ` : "",
+        h("span", { class: "route-exposure" }, `${exposureLabel} ${fmtExposure(r.exposure)} ${exposureUnitLabel(resp.exposureUnit)}`, tip.button),
+        // How sure the model is of that number, on the line under it (transparency).
+        confidenceText(r.confidence) && h("span", { class: "route-confidence" }, confidenceText(r.confidence)),
+      ),
+      tip.pop,
     );
     const extra = h(
       "div",
@@ -198,7 +207,7 @@ function routeList(resp: RouteResponse, request: RouteRequest, isFallback: boole
         ` ${tr("Mulai navigasi", "Start navigation")}`,
       ),
     );
-    const li = h("li", { class: "route-row" }, pick, extra);
+    const li = h("li", { class: "route-row" }, pick, details, extra);
     rows.set(r.role, { li, pick });
     list.append(li);
   }
@@ -215,6 +224,83 @@ export function confidenceText(score: number | null): string | null {
   return tr(`Keyakinan ${word}`, `Confidence ${word}`);
 }
 
+let tipCount = 0;
+
+/** "ⓘ" after a route's exposure, explaining the index and how the route's figure is worked out.
+ *  A toggletip: hovering or focusing shows the bubble, a click or tap keeps it open until a
+ *  click elsewhere, another click, or Escape. The bubble's text is in the page (not a title
+ *  attribute), so touch and screen-reader users get it too. */
+function exposureTip(unit: RouteResponse["exposureUnit"]): { button: HTMLButtonElement; pop: HTMLElement } {
+  const id = `exposure-tip-${++tipCount}`;
+  const more = h("button", { type: "button", class: "link-btn info-pop-more", onclick: () => openIndexInfo() }, tr("Selengkapnya", "More"));
+  const body =
+    unit === "index_min"
+      ? [
+          h("p", {}, tr(
+            "Indeks: rata-rata PM2.5 dan NO2.",
+            "Index: PM2.5 and NO2, averaged.",
+          )),
+          h("p", {}, tr("Paparan = indeks × menit, dijumlah sepanjang rute.", "Exposure = index × minutes, summed along the route.")),
+        ]
+      : [
+          h("p", {}, tr("Paparan = konsentrasi PM2.5 × menit, dijumlah sepanjang rute.", "Exposure = PM2.5 concentration × minutes, summed along the route.")),
+        ];
+  const pop = h("div", { class: "info-pop", id, role: "status", hidden: true }, ...body, more);
+  const button = h(
+    "button",
+    {
+      type: "button",
+      class: "info-tip",
+      "aria-label": tr("Apa arti angka paparan ini?", "What does this exposure figure mean?"),
+      "aria-expanded": "false",
+      "aria-controls": id,
+    },
+    icon("info", 15),
+  );
+
+  let pinned = false;
+  const show = (on: boolean) => {
+    pop.hidden = !on;
+    button.setAttribute("aria-expanded", String(on));
+  };
+  const outside = (e: Event) => {
+    if (!button.contains(e.target as Node) && !pop.contains(e.target as Node)) close();
+  };
+  const close = () => {
+    pinned = false;
+    show(false);
+    document.removeEventListener("pointerdown", outside, true);
+  };
+  button.addEventListener("click", (e) => {
+    e.stopPropagation();
+    pinned = !pinned;
+    show(pinned);
+    if (pinned) document.addEventListener("pointerdown", outside, true);
+    else document.removeEventListener("pointerdown", outside, true);
+  });
+  for (const el of [button, pop]) {
+    el.addEventListener("mouseenter", () => show(true));
+    el.addEventListener("mouseleave", (e) => {
+      const to = (e as MouseEvent).relatedTarget as Node | null;
+      if (!pinned && !(to && (button.contains(to) || pop.contains(to)))) show(false);
+    });
+  }
+  button.addEventListener("focus", () => show(true));
+  button.addEventListener("blur", (e) => {
+    if (!pinned && !pop.contains((e as FocusEvent).relatedTarget as Node | null)) show(false);
+  });
+  for (const el of [button, pop]) {
+    el.addEventListener("keydown", (e) => {
+      if ((e as KeyboardEvent).key === "Escape" && !pop.hidden) {
+        e.stopPropagation();
+        close();
+        button.focus();
+      }
+    });
+  }
+  return { button, pop };
+}
+
 /** Fills in the "via …" line of a route row once its street is known. */
 export function setRouteVia(container: HTMLElement, role: Role, street: string): void {
   const el = container.querySelector<HTMLElement>(`#route-via-${role}`);
@@ -222,7 +308,7 @@ export function setRouteVia(container: HTMLElement, role: Role, street: string):
   const wasTitle = !(el.textContent ?? "").startsWith("via ");
   el.textContent = tr(`via ${street}`, `via ${street}`);
   // The title moves from the first line to the second, when the row shows one (see routeList).
-  const meta = el.nextElementSibling as HTMLElement | null;
+  const meta = container.querySelector<HTMLElement>(`#route-meta-${role}`);
   const label = meta?.dataset.label;
   if (meta && label && wasTitle) meta.prepend(`${label} · `);
 }

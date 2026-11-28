@@ -180,6 +180,11 @@
           <button type="button" class="map-btn" id="locate-btn" aria-label="Tampilkan lokasi saya" title="Lokasi saya"></button>
         </div>
 
+        <!-- Dims the map with a spinner while the heatmap loads after its button is pressed (main.ts). -->
+        <div class="map-loading" id="map-loading" aria-hidden="true">
+          <span class="map-loading-box"><span class="spinner"></span><span data-en="Loading the heatmap…">Memuat heatmap…</span></span>
+        </div>
+
         <section class="legend" id="legend" aria-label="Legenda peta" data-en-aria-label="Map legend" hidden></section>
 
         <!-- Map credits while the panel (which normally holds them) is hidden; filled by main.ts. -->

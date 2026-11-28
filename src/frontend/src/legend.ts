@@ -137,7 +137,10 @@ export class Legend {
       from = c.max;
       return h("span", { style: `left:${start}%;width:${end - start}%` }, c.label);
     });
+    // The ticks' unit above the bar: concentrations for PM2.5 and NO2, a unitless index for Gabungan.
+    const unit = s.layer === "combined" ? tr("indeks", "index") : "µg/m³";
     this.scale.append(
+      h("div", { class: "scale-unit" }, unit),
       h(
         "div",
         {

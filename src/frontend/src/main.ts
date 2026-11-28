@@ -732,6 +732,8 @@ function heatArea(): BBox {
   return mapView.getView().bbox;
 }
 
+/** A heatmap-button press is waiting for its data (the loading veil, showHeatVeil). */
+let heatVeilPending = false;
 const heatSurface = new SurfaceRefresher(
   (signal) => {
     const bbox = heatArea();
@@ -740,6 +742,7 @@ const heatSurface = new SurfaceRefresher(
   (status, surface) => {
     // Grey skeleton cells over the area while its data loads; gone once it lands or fails.
     void mapView.showHeatSkeleton(status === "loading" && state.heat.on ? heatArea() : null);
+    if (heatVeilPending && status !== "loading") showHeatVeil(false);
     if (status === "ready" && surface) {
       void mapView.setSurface(surface);
       void mapView.setHeatDimmed(false);
@@ -775,6 +778,7 @@ function setHeat(on: boolean, immediate = true): void {
   else {
     heatSurface.stop();
     void mapView.showHeatSkeleton(null);
+    if (heatVeilPending) showHeatVeil(false);
   }
   legendState();
 }
@@ -783,10 +787,19 @@ function scheduleSurface(immediate = false): void {
   if (state.heat.on) heatSurface.schedule(immediate);
 }
 
+/** The map is dimmed with a spinner from a press of the heatmap button until its data lands (or
+ *  fails); later refreshes while panning use the lighter cell skeleton instead. Screen readers
+ *  hear the legend's status line, so the veil itself is hidden from them. */
+function showHeatVeil(on: boolean): void {
+  heatVeilPending = on;
+  $("map-loading").classList.toggle("is-on", on);
+}
+
 heatToggle.addEventListener("click", () => {
   state.heat.userTurnedOff = state.heat.on;
   setHeat(!state.heat.on);
   if (state.heat.on) legend.expand(true);
+  showHeatVeil(state.heat.on && heatSurface.status === "loading");
 });
 legend.onLayer = (layer) => {
   state.heat.layer = layer;
